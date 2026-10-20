@@ -149,4 +149,4 @@ private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(),
 private fun GameVenueRequest.toInput() = GameVenueInput(venueId, name, address, court)
 private fun br.com.saqz.groups.domain.game.Game.toView() = GameView(this, 0, snapshot.capacity, 0)
 private fun GameView.toResponse(): GameResponse { val s = game.snapshot; return GameResponse(game.id, game.groupId, s.title, GameVenueResponse(s.venue.venueId,s.venue.name,s.venue.address,s.venue.court),s.localDate,s.localTime,s.zoneId.value,s.startsAt,s.durationMinutes,s.capacity,s.confirmationDeadline,s.gameFeeCents,null,game.status.name,game.version,confirmedCount,availableSpots,waitlistCount,game.financeReviewRequired) }
-private fun AttendanceRecord.toEntryResponse() = AttendanceEntryResponse(memberId, status.name, waitlistPosition ?: waitlistSequence, version)
+private fun AttendanceRecord.toEntryResponse() = AttendanceEntryResponse(memberId, status.name, waitlistPosition ?: waitlistSequence, version, position?.name, forced)

@@ -117,6 +117,7 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
             WHERE group_id = ? AND starts_at < ? AND starts_at + duration_minutes * interval '1 minute' > ?
               AND status IN ('DRAFT', 'PUBLISHED')
         """
+        // DEB-102 (V177): em grupo com posições, o gatilho de games copia as vagas por posição para o jogo e força capacity = soma delas; sem posições não muda nada.
         const val INSERT = """
             INSERT INTO games (
                 id, group_id, series_id, series_revision_id, slot_key, title,

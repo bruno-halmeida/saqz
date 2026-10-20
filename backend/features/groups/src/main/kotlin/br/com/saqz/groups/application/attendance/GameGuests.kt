@@ -1,6 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
 import br.com.saqz.groups.application.create.TransactionRunner
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.AttendanceDecision
 import br.com.saqz.groups.domain.attendance.AttendanceDecisionContext
@@ -20,7 +21,7 @@ class GameGuests(
     private val responses: RespondAttendance,
     private val now: () -> Instant,
 ) {
-    fun add(actorId: UUID, groupId: UUID, gameId: UUID, rawName: String?, requestId: UUID): AttendanceCommandResult =
+    fun add(actorId: UUID, groupId: UUID, gameId: UUID, rawName: String?, requestId: UUID, position: AthletePosition? = null): AttendanceCommandResult =
         transaction.inTransaction {
             val name = guestName(rawName) ?: return@inTransaction AttendanceCommandResult.Denied(AttendanceDenial.REASON_INVALID)
             repository.findResponseReplay(groupId, gameId, actorId, requestId)?.let {
@@ -32,8 +33,15 @@ class GameGuests(
             if (host.current?.status !in setOf(AttendanceStatus.CONFIRMED, AttendanceStatus.WAITLISTED)) {
                 return@inTransaction AttendanceCommandResult.Denied(AttendanceDenial.HOST_NOT_GOING)
             }
-            val guest = host.copy(current = null, guestSeq = repository.nextGuestSeq(gameId, actorId), guestName = name)
-            decide(guest, AttendanceIntent.CONFIRM, AttendanceSource.SELF, null, requestId)
+            val guest = host.copy(current = null, guestSeq = repository.nextGuestSeq(gameId, actorId), guestName = name, position = null)
+            // Jogo com posições: quem convida escolhe a posição do convidado; sem escolha (app antigo), a posição com
+            // mais vagas livres, porque convidado não tem perfil de posição.
+            val loads = repository.positionLoads(gameId)
+            val scoped = if (loads.isEmpty()) guest else when (val scope = guest.scopedTo(loads, position, useProfile = false)) {
+                PositionScope.Invalid -> return@inTransaction AttendanceCommandResult.Denied(AttendanceDenial.INVALID_POSITION)
+                is PositionScope.Scoped -> scope.aggregate
+            }
+            decide(scoped, AttendanceIntent.CONFIRM, AttendanceSource.SELF, null, requestId)
         }
 
     fun remove(actorId: UUID, groupId: UUID, gameId: UUID, hostId: UUID, guestSeq: Int): AttendanceCommandResult =

@@ -584,6 +584,23 @@ class AccessSessionConfiguration {
     ) = UpdateGroupSettings(transaction, readRepository, settingsRepository, GroupAccessPolicy(), scheduleSeries)
 
     @Bean
+    fun groupPositionSlotsRepository(dataSource: DataSource) =
+        br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupPositionSlotsRepository(dataSource)
+
+    @Bean
+    fun groupPositionSlotsService(
+        transaction: JdbcTransactionRunner,
+        readRepository: JdbcGroupReadRepository,
+        repository: br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupPositionSlotsRepository,
+    ) = br.com.saqz.groups.application.settings.GroupPositionSlotsService(transaction, readRepository, repository)
+
+    @Bean
+    fun groupPositionSlotsController(
+        actors: VerifiedGroupActorResolver,
+        service: br.com.saqz.groups.application.settings.GroupPositionSlotsService,
+    ) = br.com.saqz.groups.adapter.input.http.GroupPositionSlotsController(actors, service)
+
+    @Bean
     fun accessGroupSettingsController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         updateGroupSettings: UpdateGroupSettings,

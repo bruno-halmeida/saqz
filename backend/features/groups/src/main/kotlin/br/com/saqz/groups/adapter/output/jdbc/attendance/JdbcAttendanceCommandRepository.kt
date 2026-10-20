@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.output.jdbc.attendance
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.finance.charge.*
 import br.com.saqz.groups.domain.AthleteMembershipType
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
@@ -101,10 +102,25 @@ class JdbcAttendanceCommandRepository(
     }
 
     override fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord? =
-        jdbc.sql(EARLIEST_WAITLISTED)
+        earliest(EARLIEST_WAITLISTED, groupId, gameId, now, null)
+
+    override fun earliestWaitlistedIn(groupId: UUID, gameId: UUID, now: Instant, position: AthletePosition): AttendanceRecord? =
+        earliest(EARLIEST_WAITLISTED_IN_POSITION, groupId, gameId, now, position)
+
+    override fun positionLoads(gameId: UUID): List<PositionLoad> =
+        jdbc.sql(POSITION_LOADS).param("game", gameId).query { rs, _ ->
+            PositionLoad(
+                AthletePosition.valueOf(rs.getString("position")), rs.getInt("slots"),
+                rs.getInt("confirmed"), rs.getInt("waitlisted"),
+            )
+        }.list().sortedBy { it.position.ordinal }
+
+    private fun earliest(sql: String, groupId: UUID, gameId: UUID, now: Instant, position: AthletePosition?): AttendanceRecord? =
+        jdbc.sql(sql)
             .param("group", groupId)
             .param("game", gameId)
             .param("now", Timestamp.from(now))
+            .apply { if (position != null) param("position", position.name, Types.OTHER) }
             .query { rs, _ ->
                 AttendanceRecord(
                     rs.getObject("game_id", UUID::class.java),
@@ -116,6 +132,8 @@ class JdbcAttendanceCommandRepository(
                     rs.getTimestamp("updated_at").toInstant(),
                     rs.getLong("version"),
                     guestSeq = rs.getInt("guest_seq"),
+                    position = rs.position("position"),
+                    forced = rs.getBoolean("forced"),
                 )
             }
             .optional()
@@ -143,6 +161,8 @@ class JdbcAttendanceCommandRepository(
                     rs.getTimestamp("attendance_updated_at").toInstant(),
                     rs.getLong("attendance_version"),
                     guestSeq = rs.getInt("guest_seq"),
+                    position = rs.position("attendance_position"),
+                    forced = rs.getBoolean("attendance_forced"),
                 ),
                 AttendanceEvent(
                     rs.getObject("event_id", UUID::class.java),
@@ -185,6 +205,8 @@ class JdbcAttendanceCommandRepository(
                     rs.getTimestamp("attendance_updated_at").toInstant(),
                     rs.getLong("attendance_version"),
                     guestSeq = rs.getInt("guest_seq"),
+                    position = rs.position("attendance_position"),
+                    forced = rs.getBoolean("attendance_forced"),
                 ),
                 AttendanceEvent(
                     rs.getObject("event_id", UUID::class.java),
@@ -232,6 +254,8 @@ class JdbcAttendanceCommandRepository(
             .param("version", record.version)
             .param("guest", record.guestSeq)
             .param("guestName", guestName, java.sql.Types.VARCHAR)
+            .param("position", record.position?.name, Types.OTHER)
+            .param("forced", record.forced)
             .update()
 
     private fun update(record: AttendanceRecord): Int =
@@ -244,6 +268,8 @@ class JdbcAttendanceCommandRepository(
             .param("updated", Timestamp.from(record.updatedAt))
             .param("version", record.version)
             .param("guest", record.guestSeq)
+            .param("position", record.position?.name, Types.OTHER)
+            .param("forced", record.forced)
             .update()
 
     override fun nextGuestSeq(gameId: UUID, hostId: UUID): Int =
@@ -271,6 +297,8 @@ class JdbcAttendanceCommandRepository(
                     rs.getTimestamp("updated_at").toInstant(),
                     rs.getLong("version"),
                     guestSeq = rs.getInt("guest_seq"),
+                    position = rs.position("position"),
+                    forced = rs.getBoolean("forced"),
                 )
             }
             .list()
@@ -334,6 +362,8 @@ class JdbcAttendanceCommandRepository(
                         rs.getTimestamp("attendance_updated_at").toInstant(),
                         rs.getLong("attendance_version"),
                         waitlistPosition = rs.getObject("own_waitlist_position", Long::class.javaObjectType),
+                        position = rs.position("own_position"),
+                        forced = rs.getBoolean("own_forced"),
                     )
                 }
                 val confirmed = rs.getInt("confirmed_count")
@@ -347,6 +377,7 @@ class JdbcAttendanceCommandRepository(
             }
             .optional()
             .orElse(null)
+            ?.let { it.copy(positions = positionLoads(gameId)) }
 
     override fun ownByGame(actorId: UUID, groupId: UUID): Map<UUID, AttendanceRecord> =
         jdbc.sql(OWN_BY_GAME)
@@ -361,6 +392,8 @@ class JdbcAttendanceCommandRepository(
                     rs.getTimestamp("updated_at").toInstant(),
                     rs.getLong("version"),
                     waitlistPosition = rs.getObject("own_waitlist_position", Long::class.javaObjectType),
+                    position = rs.position("position"),
+                    forced = rs.getBoolean("forced"),
                 )
             }
             .list()
@@ -379,6 +412,8 @@ class JdbcAttendanceCommandRepository(
                     rs.getObject("waitlist_sequence", Long::class.javaObjectType),
                     rs.getInt("guest_seq"),
                     rs.getString("host_display_name"),
+                    rs.position("position"),
+                    rs.getBoolean("forced"),
                 )
             }
             .list()
@@ -389,7 +424,12 @@ class JdbcAttendanceCommandRepository(
         return AttendanceRoster(
             responded.filter { it.status == "CONFIRMED" }.map(RosterRow::member),
             // A consulta já vem na ordem de promoção; a posição mostrada é essa ordem, não a sequência gravada.
-            responded.filter { it.status == "WAITLISTED" }.mapIndexed { index, row -> row.member(position = index + 1L) },
+            // Com posições é a vez na fila da própria posição; sem posições, a fila única (position nula agrupa todos).
+            responded.filter { it.status == "WAITLISTED" }.let { waiting ->
+                val seen = mutableMapOf<AthletePosition?, Long>()
+                waiting.map { row -> row.member(position = seen.merge(row.position, 1L, Long::plus)) }
+            },
+            positionLoads(gameId),
         )
     }
 
@@ -417,11 +457,16 @@ class JdbcAttendanceCommandRepository(
         val waitlistSequence: Long?,
         val guestSeq: Int,
         val hostDisplayName: String?,
+        val position: AthletePosition?,
+        val forced: Boolean,
     ) {
         fun member(position: Long? = waitlistSequence) = AttendanceRosterMember(
             requireNotNull(memberId), requireNotNull(displayName), position, guestSeq, hostDisplayName,
+            this.position, forced,
         )
     }
+
+    private fun ResultSet.position(column: String): AthletePosition? = getString(column)?.let(AthletePosition::valueOf)
 
     private fun aggregate(rs: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int): AttendanceAggregate {
         val currentStatus = rs.getString("attendance_status")?.let(AttendanceStatus::valueOf)
@@ -436,6 +481,8 @@ class JdbcAttendanceCommandRepository(
                 rs.getTimestamp("attendance_updated_at").toInstant(),
                 rs.getLong("attendance_version"),
                 guestSeq = rs.getInt("guest_seq"),
+                position = rs.position("attendance_position"),
+                forced = rs.getBoolean("attendance_forced"),
             )
         }
         return AttendanceAggregate(
@@ -457,6 +504,9 @@ class JdbcAttendanceCommandRepository(
             guestSeq = rs.getInt("guest_seq"),
             guestName = rs.getString("guest_name").takeIf { rs.getInt("guest_seq") > 0 },
             startsAt = rs.getTimestamp("starts_at").toInstant(),
+            position = current?.position,
+            profilePosition = rs.position("profile_position"),
+            profileSecondaryPosition = rs.position("profile_secondary_position"),
         )
     }
 
@@ -469,6 +519,8 @@ class JdbcAttendanceCommandRepository(
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role::text END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
                    a.updated_at AS attendance_updated_at,a.version AS attendance_version,
+                   a.position AS attendance_position,a.forced AS attendance_forced,
+                   target.position AS profile_position,target.secondary_position AS profile_secondary_position,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
                    :guest::smallint AS guest_seq, a.member_display_name AS guest_name
             FROM games g
@@ -481,11 +533,11 @@ class JdbcAttendanceCommandRepository(
         // Linha nova: sem ON CONFLICT DO UPDATE (ver [write]). Conflito = 0 linhas = escrita perdida.
         const val INSERT = """
             INSERT INTO game_attendance
-                (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq)
+                (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq,position,forced)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
                    CASE WHEN :guest > 0 THEN coalesce(:guestName, (SELECT member_display_name FROM game_attendance WHERE game_id=:game AND member_user_id=:member AND guest_seq=:guest))
                         ELSE (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member) END,
-                   :guest
+                   :guest,:position,:forced
             WHERE EXISTS (
                 SELECT 1 FROM access_groups
                 WHERE id=:group AND deleted_at IS NULL
@@ -495,7 +547,7 @@ class JdbcAttendanceCommandRepository(
         // Resposta existente: só status, fila, data e versão; nome do snapshot e responded_at ficam como foram gravados.
         const val UPDATE = """
             UPDATE game_attendance
-            SET status=:status,waitlist_sequence=:sequence,updated_at=:updated,version=:version
+            SET status=:status,waitlist_sequence=:sequence,updated_at=:updated,version=:version,position=:position,forced=:forced
             WHERE game_id=:game AND member_user_id=:member AND guest_seq=:guest AND group_id=:group
               AND version=:version-1
               AND EXISTS (
@@ -520,7 +572,8 @@ class JdbcAttendanceCommandRepository(
                    attendance.waitlist_sequence AS attendance_waitlist_sequence,
                    attendance.responded_at AS attendance_responded_at,
                    attendance.updated_at AS attendance_updated_at,
-                   attendance.version AS attendance_version
+                   attendance.version AS attendance_version,
+                   attendance.position AS attendance_position,attendance.forced AS attendance_forced
             FROM attendance_events event
             JOIN game_attendance attendance
               ON attendance.game_id=event.game_id AND attendance.member_user_id=event.member_user_id
@@ -540,7 +593,8 @@ class JdbcAttendanceCommandRepository(
                    attendance.waitlist_sequence AS attendance_waitlist_sequence,
                    attendance.responded_at AS attendance_responded_at,
                    attendance.updated_at AS attendance_updated_at,
-                   attendance.version AS attendance_version
+                   attendance.version AS attendance_version,
+                   attendance.position AS attendance_position,attendance.forced AS attendance_forced
             FROM attendance_events event
             JOIN game_attendance attendance
               ON attendance.game_id=event.game_id AND attendance.member_user_id=event.member_user_id
@@ -568,7 +622,7 @@ class JdbcAttendanceCommandRepository(
             WHERE g.group_id=:group AND g.id=:game
         """
         const val ACTIVE_GUESTS = """
-            SELECT game_id,group_id,member_user_id,guest_seq,status,waitlist_sequence,responded_at,updated_at,version
+            SELECT game_id,group_id,member_user_id,guest_seq,status,waitlist_sequence,responded_at,updated_at,version,position,forced
             FROM game_attendance
             WHERE group_id=:group AND game_id=:game AND member_user_id=:host AND guest_seq>0
               AND status IN ('CONFIRMED','WAITLISTED')
@@ -577,7 +631,8 @@ class JdbcAttendanceCommandRepository(
         """
         const val EARLIEST_WAITLISTED = """
             SELECT attendance.game_id,attendance.group_id,attendance.member_user_id,attendance.guest_seq,
-                   attendance.waitlist_sequence,attendance.responded_at,attendance.updated_at,attendance.version
+                   attendance.waitlist_sequence,attendance.responded_at,attendance.updated_at,attendance.version,
+                   attendance.position,attendance.forced
             FROM game_attendance attendance
             JOIN games game ON game.id = attendance.game_id AND game.group_id = attendance.group_id
             JOIN access_groups ag ON ag.id = game.group_id AND ag.deleted_at IS NULL
@@ -593,8 +648,22 @@ class JdbcAttendanceCommandRepository(
             LIMIT 1
             FOR UPDATE OF attendance
         """
+        // Mesma ordem de promoção, só entre quem espera na posição (DEB-102): vaga que abre é só daquela posição.
+        val EARLIEST_WAITLISTED_IN_POSITION = EARLIEST_WAITLISTED.replace(
+            "AND attendance.status='WAITLISTED'", "AND attendance.status='WAITLISTED' AND attendance.position=:position",
+        )
+        const val POSITION_LOADS = """
+            SELECT s.position,s.slots,
+                   count(a.member_user_id) FILTER (WHERE a.status='CONFIRMED') AS confirmed,
+                   count(a.member_user_id) FILTER (WHERE a.status='WAITLISTED') AS waitlisted
+            FROM game_position_slots s
+            LEFT JOIN game_attendance a ON a.game_id=s.game_id AND a.position=s.position
+            WHERE s.game_id=:game
+            GROUP BY s.position,s.slots
+        """
         val DETAIL = """
             SELECT g.capacity,g.version AS game_version,a.status AS own_status,a.waitlist_sequence,
+                   a.position AS own_position,a.forced AS own_forced,
                    a.responded_at,a.updated_at AS attendance_updated_at,a.version AS attendance_version,
                    ${WaitlistPositionSql.of("a", "member", "g", "ag")} AS own_waitlist_position,
                    (SELECT count(*) FROM game_attendance c WHERE c.game_id=g.id AND c.status='CONFIRMED') AS confirmed_count,
@@ -619,7 +688,7 @@ class JdbcAttendanceCommandRepository(
         // respondido), não só nos jogos visíveis; a listagem não pagina. Se paginar, filtrar
         // por a.game_id IN (:games).
         val OWN_BY_GAME = """
-            SELECT a.game_id,a.status,a.waitlist_sequence,a.responded_at,a.updated_at,a.version,
+            SELECT a.game_id,a.status,a.waitlist_sequence,a.responded_at,a.updated_at,a.version,a.position,a.forced,
                    ${WaitlistPositionSql.of("a", "am", "g", "ag")} AS own_waitlist_position
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
@@ -629,7 +698,7 @@ class JdbcAttendanceCommandRepository(
         """
         const val ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,
-                   m.membership_type,a.guest_seq,
+                   m.membership_type,a.guest_seq,a.position,coalesce(a.forced,false) AS forced,
                    (SELECT coalesce(u.nickname, u.display_name) FROM access_users u WHERE u.id=a.member_user_id AND a.guest_seq>0) AS host_display_name
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL

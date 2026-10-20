@@ -5,6 +5,7 @@ import br.com.saqz.groups.application.communication.gameSchedule
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceSource
+import br.com.saqz.groups.domain.attendance.PositionLoad
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.job.JobLog
@@ -78,6 +79,9 @@ class SettleWaitlistAtDeadline(
         if (aggregate.gameStatus != GameStatus.PUBLISHED || aggregate.confirmationDeadline > timestamp) {
             return@inTransaction Settled()
         }
+        // Jogo com posições: vaga aberta é a de cada posição que tem fila; nada sobe de uma posição para outra.
+        val loads = repository.positionLoads(candidate.gameId)
+        if (loads.isNotEmpty()) return@inTransaction settlePositions(candidate, aggregate, loads, timestamp)
         val spots = aggregate.capacity - aggregate.confirmedCount
         if (spots <= 0) return@inTransaction Settled()
         when (aggregate.promotionMode) {
@@ -89,6 +93,34 @@ class SettleWaitlistAtDeadline(
             }
         }
     }
+
+    private fun settlePositions(
+        candidate: DeadlineWaitlistCandidate,
+        aggregate: CapacityAggregate,
+        loads: List<PositionLoad>,
+        timestamp: Instant,
+    ): Settled {
+        val open = loads.filter { it.waitlisted > 0 && it.confirmed < it.slots }
+        if (open.isEmpty()) return Settled()
+        return when (aggregate.promotionMode) {
+            PromotionMode.FIFO -> Settled(
+                promotedMemberIds = open.flatMap { load ->
+                    promotePosition(aggregate.forMember(aggregate.placeholder()), load.position, repository, charges, timestamp, ids)
+                        .map(AttendanceRecord::memberId)
+                },
+            )
+            PromotionMode.MANUAL -> {
+                if (!writeAccess.canWrite(candidate.groupId)) return Settled()
+                notice.publish(candidate, waitlistDeadlineBody(candidate.game, open.sumOf { it.waitlisted }, open.sumOf { it.slots - it.confirmed }))
+                Settled(noticed = true)
+            }
+        }
+    }
+
+    // Só o esqueleto do agregado: promotePosition troca membro, linha e vagas a cada promoção.
+    private fun CapacityAggregate.placeholder() = AttendanceRecord(
+        gameId, groupId, actorId, br.com.saqz.groups.domain.attendance.AttendanceStatus.WAITLISTED, null, startsAt, startsAt, 0,
+    )
 
     private fun promote(aggregate: CapacityAggregate, spots: Int, timestamp: Instant): List<UUID> {
         var confirmedCount = aggregate.confirmedCount

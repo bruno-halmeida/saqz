@@ -25,6 +25,8 @@ internal object WaitlistPositionSql {
                 LEFT JOIN group_memberships wm ON wm.group_id=w.group_id AND wm.user_id=w.member_user_id
                 WHERE w.game_id=$attendance.game_id AND w.status='WAITLISTED'
                   AND (w.member_user_id<>$attendance.member_user_id OR w.guest_seq<>$attendance.guest_seq)
+                  -- Jogo com posições (DEB-102): "sua vez na fila" é a fila da sua posição (position nula = jogo sem posições).
+                  AND w.position IS NOT DISTINCT FROM $attendance.position
                   AND (($theirs) < ($mine) OR (($theirs) = ($mine) AND w.waitlist_sequence < $attendance.waitlist_sequence))
             ) END
         """.trimIndent()

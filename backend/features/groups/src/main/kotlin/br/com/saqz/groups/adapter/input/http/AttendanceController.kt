@@ -5,6 +5,7 @@ import org.springframework.web.context.request.RequestContextHolder
 import br.com.saqz.sharedkernel.subscription.PLAN_READ_ONLY_REQUEST_ATTRIBUTE
 import br.com.saqz.sharedkernel.subscription.SubscriptionRequiredException
 import br.com.saqz.groups.application.attendance.*
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.sharedkernel.RequestIdentity
 import com.fasterxml.jackson.annotation.JsonCreator
@@ -19,12 +20,17 @@ import java.util.UUID
 data class AttendanceSelfRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
     @JsonProperty("intent") val intent: String?,
+    // Posição em campo (DEB-102). Ausente (apps 1.0.6 a 1.0.9): o backend escolhe pelo perfil.
+    @JsonProperty("position") val position: AthletePosition? = null,
 )
 data class AttendanceOverrideRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
     @JsonProperty("memberId") val memberId: UUID?,
     @JsonProperty("intent") val intent: String?,
     @JsonProperty("reason") val reason: String?,
+    @JsonProperty("position") val position: AthletePosition? = null,
+    // Organizador entra em posição cheia: fica acima das vagas dela e a resposta vem com forced=true.
+    @JsonProperty("force") val force: Boolean? = null,
 )
 data class AttendancePromotionRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
@@ -39,8 +45,18 @@ data class CapacityRequest @JsonCreator constructor(
 data class AttendanceEntryResponse(
     val memberId: UUID,
     val status: String,
+    /** Com posições, a vez na fila da sua posição; sem posições, a fila única (valor de sempre). */
     val waitlistPosition: Long?,
     val version: Long,
+    val position: String? = null,
+    val forced: Boolean = false,
+)
+data class PositionSummaryResponse(
+    val position: String,
+    val slots: Int,
+    val confirmed: Int,
+    val missing: Int,
+    val waitlisted: Int,
 )
 data class AttendanceAuditResponse(
     val actorId: UUID,
@@ -60,6 +76,8 @@ data class AttendanceDetailResponse(
     val pendingCount: Int,
     // Sempre false (DEB-040): os apps 1.0.4–1.0.6 ainda leem o campo.
     val autoConfirmEnabled: Boolean,
+    // Só em jogo com posições (DEB-102); os totais acima seguem sendo os do jogo (soma das posições).
+    val positions: List<PositionSummaryResponse>? = null,
 )
 data class AttendanceRosterMemberResponse(
     val memberId: UUID,
@@ -67,10 +85,13 @@ data class AttendanceRosterMemberResponse(
     val waitlistPosition: Long?,
     val guestSeq: Int,
     val hostDisplayName: String?,
+    val position: String? = null,
+    val forced: Boolean = false,
 )
 data class AttendanceRosterResponse(
     val confirmed: List<AttendanceRosterMemberResponse>,
     val waitlisted: List<AttendanceRosterMemberResponse>,
+    val positions: List<PositionSummaryResponse>? = null,
 )
 data class AttendanceMutationResponse(
     val attendance: AttendanceEntryResponse,
@@ -90,6 +111,7 @@ class AttendanceHostNotGoingException : RuntimeException()
 data class GuestRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
     @JsonProperty("displayName") val displayName: String?,
+    @JsonProperty("position") val position: AthletePosition? = null,
 )
 data class GuestResponse(
     val memberId: UUID,
@@ -97,6 +119,7 @@ data class GuestResponse(
     val displayName: String,
     val status: String,
     val waitlistPosition: Long?,
+    val position: String? = null,
 )
 
 @RestController
@@ -134,7 +157,7 @@ class AttendanceController(
         val requestId = required(request.requestId, "requestId")
         val actor = actors.resolve(identity)
         return mutation(
-            responses.execute(actor, uuid(groupId), uuid(gameId), intent = intent(request.intent), requestId = requestId),
+            responses.execute(actor, uuid(groupId), uuid(gameId), intent = intent(request.intent), requestId = requestId, position = request.position),
             actor, uuid(groupId), uuid(gameId),
         )
     }
@@ -150,7 +173,10 @@ class AttendanceController(
         val member = required(request.memberId, "memberId")
         val actor = actors.resolve(identity)
         return mutation(
-            responses.execute(actor, uuid(groupId), uuid(gameId), member, intent(request.intent), AttendanceSource.ORGANIZER, request.reason),
+            responses.execute(
+                actor, uuid(groupId), uuid(gameId), member, intent(request.intent), AttendanceSource.ORGANIZER, request.reason,
+                position = request.position, force = request.force == true,
+            ),
             actor, uuid(groupId), uuid(gameId),
         )
     }
@@ -180,9 +206,9 @@ class AttendanceController(
     ): ResponseEntity<GuestResponse> {
         val requestId = required(request.requestId, "requestId")
         val name = required(request.displayName, "displayName")
-        return when (val result = guests.add(actors.resolve(identity), uuid(groupId), uuid(gameId), name, requestId)) {
+        return when (val result = guests.add(actors.resolve(identity), uuid(groupId), uuid(gameId), name, requestId, request.position)) {
             is AttendanceCommandResult.Success -> ResponseEntity.status(HttpStatus.CREATED).body(
-                GuestResponse(result.attendance.memberId, result.attendance.guestSeq, name.trim(), result.attendance.status.name, result.attendance.waitlistSequence),
+                GuestResponse(result.attendance.memberId, result.attendance.guestSeq, name.trim(), result.attendance.status.name, result.attendance.waitlistSequence, result.attendance.position?.name),
             )
             is AttendanceCommandResult.Denied -> denied(result.reason, "displayName")
             AttendanceCommandResult.Hidden -> throw GameNotFoundException()
@@ -248,6 +274,7 @@ class AttendanceController(
             AttendanceDenial.MANUAL_PROMOTION_ONLY -> invalid("promotionMode")
             AttendanceDenial.NOT_PUBLISHED, AttendanceDenial.FROZEN -> throw AttendanceFrozenException()
             AttendanceDenial.HOST_NOT_GOING -> throw AttendanceHostNotGoingException()
+            AttendanceDenial.INVALID_POSITION -> invalid("position")
         }
         AttendanceCommandResult.Hidden -> throw GameNotFoundException()
         AttendanceCommandResult.Forbidden -> throw AccessForbiddenException()
@@ -274,7 +301,7 @@ class AttendanceController(
 }
 
 private fun AttendanceRecord.response(position: Long? = waitlistPosition ?: waitlistSequence) =
-    AttendanceEntryResponse(memberId, status.name, position, version)
+    AttendanceEntryResponse(memberId, status.name, position, version, this.position?.name, forced)
 private fun AttendanceEvent.response() = AttendanceAuditResponse(actorId, source.name, oldStatus?.name, newStatus.name, reason, occurredAt)
 private fun AttendanceDetail.response() = AttendanceDetailResponse(
     own?.response(),
@@ -285,6 +312,9 @@ private fun AttendanceDetail.response() = AttendanceDetailResponse(
     declinedCount,
     pendingCount,
     autoConfirmEnabled = false,
+    positions = positions.summary(),
 )
-private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition, guestSeq, hostDisplayName)
-private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() })
+private fun List<br.com.saqz.groups.domain.attendance.PositionLoad>.summary() =
+    takeIf { it.isNotEmpty() }?.map { PositionSummaryResponse(it.position.name, it.slots, it.confirmed, it.missing, it.waitlisted) }
+private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition, guestSeq, hostDisplayName, position?.name, forced)
+private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() }, positions.summary())

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.attendance
 
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
@@ -28,6 +29,13 @@ data class AttendanceAggregate(
     val guestSeq: Int = 0,
     val guestName: String? = null,
     val startsAt: Instant,
+    /**
+     * Jogo com posições (DEB-102): [position] é a posição da linha em jogo, [capacity] e [confirmedCount] já vêm
+     * recortados para ela (vagas e confirmados da posição). Sem posições (jogo legado) fica tudo nulo e vale o total.
+     */
+    val position: AthletePosition? = null,
+    val profilePosition: AthletePosition? = null,
+    val profileSecondaryPosition: AthletePosition? = null,
 )
 
 data class AttendanceRecord(
@@ -40,6 +48,10 @@ data class AttendanceRecord(
     val updatedAt: Instant,
     val version: Long,
     val guestSeq: Int = 0,
+    /** Posição em campo da vaga (DEB-102); nula em jogo sem posições. */
+    val position: AthletePosition? = null,
+    /** Entrou acima das vagas da posição por escolha do organizador. */
+    val forced: Boolean = false,
     /**
      * Posição na fila como o app mostra ("1º na fila"), calculada nas leituras (ver WaitlistPositionSql).
      * `null` nas escritas e fora da fila; a sequência gravada nunca é renumerada e por isso não serve de posição.
@@ -76,6 +88,13 @@ interface AttendanceCommandRepository {
     fun lock(groupId: UUID, gameId: UUID, memberId: UUID, actorId: UUID, guestSeq: Int = 0): AttendanceAggregate?
     fun lockCapacity(groupId: UUID, gameId: UUID, actorId: UUID): CapacityAggregate?
     fun nextWaitlistSequence(groupId: UUID, gameId: UUID): Long
+    /** Vagas e situação de cada posição do jogo; vazio = jogo sem posições (total, uma espera só). */
+    fun positionLoads(gameId: UUID): List<PositionLoad> = emptyList()
+
+    /** Como [earliestWaitlisted], só entre quem espera em [position] (DEB-102). */
+    fun earliestWaitlistedIn(groupId: UUID, gameId: UUID, now: Instant, position: AthletePosition): AttendanceRecord? =
+        earliestWaitlisted(groupId, gameId, now)
+
     /** Quem sobe primeiro; [now] (relógio injetado) decide se a prioridade de mensalista ainda vale (até o instante do prazo). */
     fun earliestWaitlisted(groupId: UUID, gameId: UUID, now: Instant): AttendanceRecord?
     fun save(record: AttendanceRecord)
@@ -129,6 +148,8 @@ data class AttendanceDetail(
     val gameVersion: Long,
     val declinedCount: Int = 0,
     val pendingCount: Int = 0,
+    /** Resumo por posição; vazio em jogo sem posições. O total acima segue sendo o total do jogo (soma das posições). */
+    val positions: List<PositionLoad> = emptyList(),
 )
 
 fun interface AttendanceDetailQuery {
@@ -149,11 +170,18 @@ data class AttendanceRosterMember(
     val waitlistPosition: Long? = null,
     val guestSeq: Int = 0,
     val hostDisplayName: String? = null,
+    val position: AthletePosition? = null,
+    val forced: Boolean = false,
 )
 
+/**
+ * [waitlisted] traz a posição na fila de cada um: com posições é a vez na fila da própria posição (DEB-102);
+ * sem posições, a fila única de sempre.
+ */
 data class AttendanceRoster(
     val confirmed: List<AttendanceRosterMember>,
     val waitlisted: List<AttendanceRosterMember>,
+    val positions: List<PositionLoad> = emptyList(),
 )
 
 fun interface AttendanceRosterQuery {

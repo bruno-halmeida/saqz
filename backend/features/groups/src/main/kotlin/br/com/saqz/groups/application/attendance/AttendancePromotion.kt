@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.attendance
 
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceDecision
 import br.com.saqz.groups.domain.attendance.AttendanceDecisionContext
 import br.com.saqz.groups.domain.attendance.AttendanceDenial
@@ -108,5 +109,33 @@ internal fun promoteFreed(
             if (result !is AttendancePromotionResult.Success) return@buildList
             add(result.attendance); confirmed++
         }
+    }
+}
+
+/**
+ * Jogo com posições (DEB-102): sobe da espera de [position], e só dela, enquanto a posição tiver vaga livre. Conta de
+ * novo a cada promoção (vem do banco, já com as saídas gravadas); posição com confirmados acima das vagas
+ * (entrada forçada) não promove ninguém até voltar abaixo delas. Mensalista e prioridade valem dentro da posição
+ * (a ordenação da query só olha a fila daquela posição).
+ */
+internal fun promotePosition(
+    aggregate: AttendanceAggregate,
+    position: AthletePosition,
+    repository: AttendanceCommandRepository,
+    charges: AttendanceChargePort,
+    timestamp: Instant,
+    ids: () -> UUID,
+): List<AttendanceRecord> = buildList {
+    while (true) {
+        val load = repository.positionLoads(aggregate.gameId).firstOrNull { it.position == position } ?: break
+        if (load.confirmed >= load.slots) break
+        val waiting = repository.earliestWaitlistedIn(aggregate.groupId, aggregate.gameId, timestamp, position) ?: break
+        val target = aggregate.copy(
+            memberId = waiting.memberId, guestSeq = waiting.guestSeq, guestName = null, current = waiting,
+            capacity = load.slots, confirmedCount = load.confirmed, position = position,
+        )
+        val result = promoteAttendance(target, AttendanceSource.SYSTEM, reason = null, repository = repository, charges = charges, timestamp = timestamp, ids = ids)
+        if (result !is AttendancePromotionResult.Success) break
+        add(result.attendance)
     }
 }

@@ -213,6 +213,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
               AND (g.owner_user_id = :actor OR m.user_id IS NOT NULL)
         """
 
+        // DEB-102 (V177): em grupo com posições, o gatilho de games copia as vagas por posição para o jogo e força capacity = soma delas; sem posições não muda nada.
         const val INSERT_GAME = """
             INSERT INTO games (
                 id, group_id, title, local_date, local_time, zone_id, starts_at,

@@ -24,6 +24,8 @@ data class AttendanceDecisionContext(
     val promotionMode: PromotionMode = PromotionMode.FIFO,
     /** Início do jogo (`games.starts_at` é NOT NULL); depois dele a resposta do próprio atleta e qualquer promoção da espera são negadas. */
     val startsAt: Instant,
+    /** Só o organizador: entra mesmo com a posição cheia (DEB-102). */
+    val force: Boolean = false,
 )
 
 enum class AttendanceDenial {
@@ -35,6 +37,7 @@ enum class AttendanceDenial {
     NO_CAPACITY,
     MANUAL_PROMOTION_ONLY,
     HOST_NOT_GOING,
+    INVALID_POSITION,
 }
 
 sealed interface AttendanceDecision {
@@ -46,6 +49,8 @@ sealed interface AttendanceDecision {
         val changed: Boolean,
         val allocateWaitlistSequence: Boolean,
         val createGameCharge: Boolean,
+        /** Entrou acima das vagas da posição por escolha do organizador. */
+        val forced: Boolean = false,
     ) : AttendanceDecision
 
     data class Denied(val reason: AttendanceDenial) : AttendanceDecision
@@ -99,6 +104,8 @@ object AttendanceTransitionPolicy {
             changed = changed,
             allocateWaitlistSequence = changed && target == AttendanceStatus.WAITLISTED,
             createGameCharge = changed && target == AttendanceStatus.CONFIRMED,
+            forced = changed && target == AttendanceStatus.CONFIRMED && intent == AttendanceIntent.CONFIRM &&
+                forcesEntry(context) && context.confirmedCount >= context.capacity,
         )
     }
 
@@ -111,8 +118,9 @@ object AttendanceTransitionPolicy {
      */
     private fun confirmationTarget(context: AttendanceDecisionContext): AttendanceStatus = when (context.currentStatus) {
         AttendanceStatus.CONFIRMED -> AttendanceStatus.CONFIRMED
-        AttendanceStatus.WAITLISTED -> AttendanceStatus.WAITLISTED
+        AttendanceStatus.WAITLISTED -> if (forcesEntry(context)) AttendanceStatus.CONFIRMED else AttendanceStatus.WAITLISTED
         AttendanceStatus.DECLINED, null -> when {
+            forcesEntry(context) -> AttendanceStatus.CONFIRMED
             // Convidado entra sempre pela lista de espera (VUL-239), mesmo com vaga.
             context.guest -> AttendanceStatus.WAITLISTED
             context.source == AttendanceSource.SELF && !entersDirectly(context) -> AttendanceStatus.WAITLISTED
@@ -120,6 +128,9 @@ object AttendanceTransitionPolicy {
             else -> AttendanceStatus.WAITLISTED
         }
     }
+
+    private fun forcesEntry(context: AttendanceDecisionContext) =
+        context.force && context.source == AttendanceSource.ORGANIZER && !context.guest
 
     private fun entersDirectly(context: AttendanceDecisionContext): Boolean {
         if (context.now > context.confirmationDeadline) return false

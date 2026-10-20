@@ -30,15 +30,20 @@ class ReleaseMemberAttendance(
                 addAll(repository.activeGuests(groupId, gameId, memberId))
             }
             var freed = 0
+            val freedPositions = mutableSetOf<br.com.saqz.groups.domain.AthletePosition>()
             active.forEach { row ->
                 repository.save(row.copy(status = AttendanceStatus.DECLINED, waitlistSequence = null, updatedAt = maxOf(timestamp, row.respondedAt), version = row.version + 1))
                 repository.append(AttendanceEvent(ids(), gameId, groupId, memberId, actorId, AttendanceSource.SYSTEM, row.status, AttendanceStatus.DECLINED, null, timestamp, guestSeq = row.guestSeq))
                 if (row.status == AttendanceStatus.CONFIRMED) {
                     freed++
+                    row.position?.let(freedPositions::add)
                     if (row.guestSeq > 0) charges.guestRemoved(aggregate.copy(guestSeq = row.guestSeq, current = row), actorId)
                 }
             }
-            if (freed > 0 && aggregate.promotionMode == PromotionMode.FIFO) {
+            if (freed > 0 && aggregate.promotionMode == PromotionMode.FIFO && freedPositions.isNotEmpty()) {
+                // Jogo com posições: a vaga sobe só quem espera na mesma posição (DEB-102).
+                freedPositions.forEach { promotePosition(aggregate, it, repository, charges, timestamp, ids) }
+            } else if (freed > 0 && aggregate.promotionMode == PromotionMode.FIFO) {
                 promoteFreed(aggregate, freed, repository, charges, timestamp, ids)
             }
         }

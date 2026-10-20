@@ -52,6 +52,10 @@ class AdjustGameCapacity(
         // Depois do início do jogo as vagas não mudam mais (DEB-020).
         if (aggregate.gameStatus != GameStatus.PUBLISHED || aggregate.startedAt(now())) return@inTransaction CapacityCommandResult.Frozen
         if (aggregate.version != expectedVersion) return@inTransaction CapacityCommandResult.Conflict
+        // Jogo com posições: o total é a soma das vagas por posição e não muda por aqui (ajuste por posição fica fora do DEB-102).
+        if (repository.positionLoads(gameId).isNotEmpty() && capacity != aggregate.capacity) {
+            return@inTransaction CapacityCommandResult.InvalidCapacity
+        }
         if (!repository.updateCapacity(gameId, expectedVersion, capacity)) return@inTransaction CapacityCommandResult.Conflict
         val promoted = promote(aggregate, (capacity - aggregate.confirmedCount).coerceAtLeast(0), capacity)
         CapacityCommandResult.Success(capacity, expectedVersion + 1, promoted)

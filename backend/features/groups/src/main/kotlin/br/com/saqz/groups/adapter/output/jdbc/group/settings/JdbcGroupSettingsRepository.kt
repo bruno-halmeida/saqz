@@ -56,6 +56,7 @@ class JdbcGroupSettingsRepository(
         }
     }
 
+    // DEB-102: em grupo com posições o total é a soma delas, então o `defaultCapacity` enviado não vale (o SQL abaixo o mantém).
     private fun updateProfile(command: UpdateGroupSettingsCommand): SettingsWriteResult {
         val profile = requireNotNull(command.profile)
         val (updated, currentVenueId) = jdbc.sql(
@@ -72,7 +73,8 @@ class JdbcGroupSettingsRepository(
                 custom_level = :customLevel,
                 play_style = :playStyle,
                 custom_play_style = :customPlayStyle,
-                default_capacity = :defaultCapacity,
+                default_capacity = CASE WHEN EXISTS (SELECT 1 FROM group_position_slots p WHERE p.group_id = :groupId)
+                    THEN default_capacity ELSE CAST(:defaultCapacity AS integer) END,
                 default_confirmation_lead_minutes = :defaultConfirmationLeadMinutes,
                 default_game_fee_cents = :defaultGameFeeCents,
                 monthly_fee_cents = :monthlyFeeCents,
