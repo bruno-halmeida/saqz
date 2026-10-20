@@ -86,6 +86,43 @@ class MyPlan8eScreenshotTest {
         )
     }
 
+    // DEB-097: só cortesia (sem cobrança, recibos nem gestão) e cortesia maior que o plano pago.
+    @Test
+    fun myPlan8eSoCortesia() = capture("8e-myplan-so-cortesia") {
+        MyPlanScreen(
+            state = MyPlanState(
+                isLoading = false,
+                plan = MyPlanCardUi(
+                    name = "Ilimitado",
+                    statusLabel = UiText.Raw("Ativo"),
+                    statusTone = MyPlanStatusTone.Active,
+                    nextChargeDate = null,
+                    titleOverride = UiText.Raw("Plano Ilimitado ativo"),
+                    courtesyNote = UiText.Raw("Cortesia até 31/12/2026"),
+                ),
+                courtesyOnly = true,
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
+    @Test
+    fun myPlan8eCortesiaMaiorQueOPago() = capture("8e-myplan-cortesia-maior-que-o-pago") {
+        MyPlanScreen(
+            state = ACTIVE.copy(
+                plan = ACTIVE.plan?.copy(
+                    name = "Ilimitado",
+                    courtesyNote = UiText.Raw("Cortesia sem prazo"),
+                    subscriptionNote = UiText.Raw("Sua assinatura é a do plano Organizador."),
+                ),
+                usage = null,
+            ),
+            onBack = {},
+            onIntent = {},
+        )
+    }
+
     @Test
     fun myPlan8eCancelarAssinatura() = capture("8e-myplan-cancelar") {
         MyPlanScreen(state = ACTIVE.copy(isCancelSheetOpen = true), onBack = {}, onIntent = {})
