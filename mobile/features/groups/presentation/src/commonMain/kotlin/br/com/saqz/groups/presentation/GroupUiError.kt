@@ -42,6 +42,7 @@ fun GroupMembershipError.toUiError(): GroupUiError = when (this) {
 
 fun EntryRequestError.toUiError(): GroupUiError = when (this) {
     is EntryRequestError.DataFailure -> error.toUiError()
+    EntryRequestError.MonthlyFeeRequired -> GroupUiError.Validation
 }
 
 /** O organizador está sem plano: quem responde presença recebe um aviso próprio, sem oferta de assinatura. */

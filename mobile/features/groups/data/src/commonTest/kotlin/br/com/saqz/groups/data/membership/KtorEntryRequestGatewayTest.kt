@@ -3,6 +3,7 @@ package br.com.saqz.groups.data.membership
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupMembership
@@ -21,11 +22,13 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.http.content.TextContent
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class KtorEntryRequestGatewayTest {
     @Test
@@ -52,6 +55,38 @@ class KtorEntryRequestGatewayTest {
         assertEquals(USER_ID, membership.userId)
         assertEquals("Ana Souza", membership.displayName)
         assertEquals("ATHLETE", membership.role.name)
+    }
+
+    @Test
+    fun `approve as avulso sends no body like the apps in the stores`() = runTest {
+        for (approve in listOf<suspend (KtorEntryRequestGateway) -> Unit>(
+            { it.approve(GroupId(GROUP_ID), USER_ID) },
+            { it.approve(GroupId(GROUP_ID), USER_ID, AthleteMembershipType.AVULSO) },
+        )) {
+            approve(fixture { request ->
+                assertEquals(0L, request.body.contentLength ?: 0L)
+                assertTrue(request.body !is TextContent)
+                membership()
+            }.gateway)
+        }
+    }
+
+    @Test
+    fun `approve as mensalista sends the type in the body`() = runTest {
+        assertIs<SaqzResult.Success<GroupMembership>>(fixture { request ->
+            assertEquals("/api/groups/$GROUP_ID/entry-requests/$USER_ID/approve", request.url.encodedPath)
+            assertEquals("""{"membershipType":"MENSALISTA"}""", (request.body as TextContent).text)
+            membership()
+        }.gateway.approve(GroupId(GROUP_ID), USER_ID, AthleteMembershipType.MENSALISTA))
+    }
+
+    @Test
+    fun `approve without the group default fee maps monthly fee required`() = runTest {
+        val error = assertIs<SaqzResult.Failure<EntryRequestError>>(
+            fixture { problem(422, "MONTHLY_FEE_REQUIRED") }.gateway.approve(GroupId(GROUP_ID), USER_ID, AthleteMembershipType.MENSALISTA),
+        ).error
+
+        assertEquals(EntryRequestError.MonthlyFeeRequired, error)
     }
 
     @Test

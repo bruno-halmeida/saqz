@@ -870,14 +870,20 @@ class GroupInviteViewModelsTest {
         private val rejectResult: EmptyResult<EntryRequestError> = SaqzResult.Success(Unit),
     ) : GroupEntryRequestGateway {
         var approvedUserId: String? = null
+        var approvedType: br.com.saqz.groups.domain.athlete.AthleteMembershipType? = null
         var rejectedUserId: String? = null
         override suspend fun cancelOwn(groupId: GroupId): EmptyResult<EntryRequestError> = SaqzResult.Success(Unit)
 
         /** Quem aprova passa a constar no elenco, como na API. */
         var onApproved: (String) -> Unit = {}
         override suspend fun list(groupId: GroupId) = SaqzResult.Success(requests.toList())
-        override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> {
+        override suspend fun approve(
+            groupId: GroupId,
+            userId: String,
+            membershipType: br.com.saqz.groups.domain.athlete.AthleteMembershipType,
+        ): SaqzResult<GroupMembership, EntryRequestError> {
             approvedUserId = userId
+            approvedType = membershipType
             if (approveResult is SaqzResult.Success) {
                 requests.removeAll { it.userId == userId }
                 onApproved(userId)
@@ -902,6 +908,7 @@ class GroupInviteViewModelsTest {
         override suspend fun approve(
             groupId: GroupId,
             userId: String,
+            membershipType: br.com.saqz.groups.domain.athlete.AthleteMembershipType,
         ): SaqzResult<GroupMembership, EntryRequestError> {
             approveCalls++
             val gate = CompletableDeferred<Unit>()

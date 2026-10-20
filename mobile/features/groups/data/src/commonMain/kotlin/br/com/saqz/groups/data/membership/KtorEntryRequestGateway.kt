@@ -3,6 +3,7 @@ package br.com.saqz.groups.data.membership
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
@@ -10,6 +11,7 @@ import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.membership.GroupMembership
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.NetworkError
+import br.com.saqz.network.NetworkRequest
 import br.com.saqz.network.NetworkResult
 import br.com.saqz.network.RetrySafety
 import br.com.saqz.network.retryTransport
@@ -51,13 +53,16 @@ class KtorEntryRequestGateway(
             )
         }.toListResult()
 
+    // Avulso segue sem corpo, igual aos apps antigos; só o mensalista leva o tipo (DEB-112).
     override suspend fun approve(
         groupId: GroupId,
         userId: String,
+        membershipType: AthleteMembershipType,
     ): SaqzResult<GroupMembership, EntryRequestError> = network.execute(
         HttpMethod.Post,
         "api/groups/${groupId.value}/entry-requests/$userId/approve",
         ApprovedMembershipTransport.serializer(),
+        if (membershipType == AthleteMembershipType.MENSALISTA) NetworkRequest(MENSALISTA_BODY) else NetworkRequest(),
     ).toMembershipResult()
 
     override suspend fun reject(groupId: GroupId, userId: String) = network.executeNoContent(
@@ -106,7 +111,16 @@ private fun ApprovedMembershipTransport.toDomain(): GroupMembership? {
     }
 }
 
-private fun NetworkError.toDomainError(): EntryRequestError = EntryRequestError.DataFailure(
+private const val MENSALISTA_BODY = """{"membershipType":"MENSALISTA"}"""
+
+private fun NetworkError.toDomainError(): EntryRequestError =
+    if (this is NetworkError.ApiProblemError && problem.code == "MONTHLY_FEE_REQUIRED") {
+        EntryRequestError.MonthlyFeeRequired
+    } else {
+        toDataFailure()
+    }
+
+private fun NetworkError.toDataFailure(): EntryRequestError = EntryRequestError.DataFailure(
     when (this) {
         // Plano do organizador vencido ou pausado: a tela de Membros abre a folha da assinatura (PC-09).
         is NetworkError.ApiProblemError ->

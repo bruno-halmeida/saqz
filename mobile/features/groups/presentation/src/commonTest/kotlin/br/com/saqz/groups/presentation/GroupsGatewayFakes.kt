@@ -440,6 +440,7 @@ class FakeGroupEntryRequestGateway(
     var listCalls = 0
     var listDeferred: CompletableDeferred<SaqzResult<List<GroupEntryRequest>, EntryRequestError>>? = null
     val approvedUserIds = mutableListOf<String>()
+    val approvedTypes = mutableListOf<br.com.saqz.groups.domain.athlete.AthleteMembershipType>()
     val rejectedUserIds = mutableListOf<String>()
 
     /** Quando preenchido, aprovar e recusar esperam aqui: o teste segura a chamada em voo. */
@@ -453,8 +454,13 @@ class FakeGroupEntryRequestGateway(
         return listDeferred?.await() ?: listResult
     }
 
-    override suspend fun approve(groupId: GroupId, userId: String): SaqzResult<GroupMembership, EntryRequestError> {
+    override suspend fun approve(
+        groupId: GroupId,
+        userId: String,
+        membershipType: br.com.saqz.groups.domain.athlete.AthleteMembershipType,
+    ): SaqzResult<GroupMembership, EntryRequestError> {
         approvedUserIds += userId
+        approvedTypes += membershipType
         decisionDeferred?.await()
         val result = approveResult ?: SaqzResult.Success(GroupMembership(userId, userId, GroupRole.ATHLETE))
         if (result is SaqzResult.Success) {
