@@ -27,7 +27,7 @@ class ApproveEntryRequest(
     private val subscriptionLimits: SubscriptionLimits,
     private val accessPolicy: GroupAccessPolicy,
     private val clock: Clock,
-    private val approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
+    private val approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _, _ -> },
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
     private val firstMember: FirstMemberNotice = FirstMemberNotice { _, _ -> },
 ) {
@@ -84,7 +84,7 @@ class ApproveEntryRequest(
         entryRequestRepository.delete(groupId, userId)
         entryRequestRepository.clearReturnMark(groupId, userId)
         // Aviso à pessoa aprovada, na mesma transação; não repete o aviso quando o pedido já virou vínculo (retorno acima).
-        approvalNotice.approved(groupId, userId, request.requestedAt)
+        approvalNotice.approved(groupId, userId, request.requestedAt, membershipType)
         // DEB-092: o primeiro atleta aprovado também avisa dono e admins; a trava de "primeiro" e o aviso único ficam no adaptador.
         firstMember.joined(groupId, userId)
         ApproveEntryRequestResult.Success(membership)

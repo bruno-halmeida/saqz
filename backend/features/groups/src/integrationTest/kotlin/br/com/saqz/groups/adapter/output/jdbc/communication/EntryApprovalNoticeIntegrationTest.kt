@@ -10,6 +10,7 @@ import br.com.saqz.groups.application.invite.InviteCode
 import br.com.saqz.groups.application.invite.InviteTokenDigest
 import br.com.saqz.groups.application.invite.redeem.RedeemInvite
 import br.com.saqz.groups.application.invite.redeem.RedeemInviteResult
+import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupAccessPolicy
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
 import br.com.saqz.postgrestesting.TestPostgres
@@ -64,6 +65,41 @@ class EntryApprovalNoticeIntegrationTest {
         assertEquals(1, queuedPushes(rafa))
     }
 
+    @Test fun `aceito como mensalista recebe o aviso dizendo como mensalista, no mesmo canal`() {
+        jdbc.sql("UPDATE access_groups SET monthly_fee_cents = 8000, monthly_due_day = 10 WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa, AthleteMembershipType.MENSALISTA))
+
+        assertEquals("Você entrou no QA Vôlei como mensalista.", body())
+        assertEquals(setOf(rafa), recipients())
+        assertEquals(1, queuedPushes(rafa))
+    }
+
+    @Test fun `aceito como avulso com mensalidade padrao recebe o texto de sempre`() {
+        jdbc.sql("UPDATE access_groups SET monthly_fee_cents = 8000, monthly_due_day = 10 WHERE id = :g").param("g", group).update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+
+        approve.execute(owner, group, rafa, AthleteMembershipType.AVULSO)
+
+        assertEquals("Você entrou no QA Vôlei.", body())
+    }
+
+    @Test fun `falha ao gravar o aviso de mensalista nao desfaz a aprovacao`() {
+        jdbc.sql("UPDATE access_groups SET monthly_fee_cents = 8000, monthly_due_day = 10 WHERE id = :g").param("g", group).update()
+        jdbc.sql("ALTER TABLE group_messages ADD CONSTRAINT boom CHECK (channel <> 'AUTO_CONFIRMATION')").update()
+        val rafa = user("Rafa")
+        redeem.execute(rafa, code.value)
+
+        assertIs<ApproveEntryRequestResult.Success>(approve.execute(owner, group, rafa, AthleteMembershipType.MENSALISTA))
+
+        assertEquals("MENSALISTA", jdbc.sql("SELECT membership_type::text FROM group_memberships WHERE group_id = :g AND user_id = :u")
+            .param("g", group).param("u", rafa).query(String::class.java).single())
+        assertEquals(0, count())
+    }
+
     @Test fun `aprovar de novo o mesmo pedido nao repete o aviso`() {
         val rafa = user("Rafa")
         redeem.execute(rafa, code.value)
@@ -81,7 +117,7 @@ class EntryApprovalNoticeIntegrationTest {
         val requestedAt = java.time.Instant.parse("2026-10-17T12:00:00Z")
         val notice = JdbcEntryApprovalNotice(source)
 
-        transaction.inTransaction { notice.approved(group, rafa, requestedAt); notice.approved(group, rafa, requestedAt) }
+        transaction.inTransaction { notice.approved(group, rafa, requestedAt, AthleteMembershipType.AVULSO); notice.approved(group, rafa, requestedAt, AthleteMembershipType.AVULSO) }
 
         assertEquals(2, count())
     }

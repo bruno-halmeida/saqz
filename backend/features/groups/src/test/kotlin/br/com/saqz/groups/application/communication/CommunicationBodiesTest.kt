@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.communication
 
+import br.com.saqz.groups.domain.AthleteMembershipType
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -72,6 +73,11 @@ class CommunicationBodiesTest {
 
     @Test fun `avisos de entrada no grupo dizem quem e qual grupo`() {
         assertEquals("Você entrou no Vôlei de quinta.", entryApprovedBody("Vôlei de quinta"))
+        assertEquals("Você entrou no Vôlei de quinta.", entryApprovedBody("Vôlei de quinta", AthleteMembershipType.AVULSO))
+        assertEquals(
+            "Você entrou no Vôlei de quinta como mensalista.",
+            entryApprovedBody("Vôlei de quinta", AthleteMembershipType.MENSALISTA),
+        )
         assertEquals("Ana pediu para entrar no Vôlei de quinta.", entryRequestBody("Ana", "Vôlei de quinta"))
         assertEquals("Ana entrou no Vôlei de quinta. A galera começou a chegar.", firstMemberBody("Ana", "Vôlei de quinta"))
     }

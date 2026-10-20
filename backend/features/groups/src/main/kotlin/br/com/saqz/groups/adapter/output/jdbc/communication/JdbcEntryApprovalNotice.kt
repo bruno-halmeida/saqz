@@ -2,6 +2,7 @@ package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.application.communication.EntryApprovalNotice
 import br.com.saqz.groups.application.communication.entryApprovedBody
+import br.com.saqz.groups.domain.AthleteMembershipType
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.time.Instant
 import java.util.UUID
@@ -16,7 +17,7 @@ import javax.sql.DataSource
 class JdbcEntryApprovalNotice(dataSource: DataSource) : EntryApprovalNotice {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun approved(groupId: UUID, userId: UUID, requestedAt: Instant) = guarded {
+    override fun approved(groupId: UUID, userId: UUID, requestedAt: Instant, membershipType: AthleteMembershipType) = guarded {
         val message = UUID.randomUUID()
         val inserted = jdbc.sql(
             """
@@ -29,7 +30,7 @@ class JdbcEntryApprovalNotice(dataSource: DataSource) : EntryApprovalNotice {
             """.trimIndent(),
         ).param("id", message).param("group", groupId)
             .param("request", UUID.nameUUIDFromBytes("entry-approved:$groupId:$userId:$requestedAt".toByteArray()))
-            .param("body", groupName(groupId)?.let(::entryApprovedBody) ?: return@guarded).update()
+            .param("body", groupName(groupId)?.let { entryApprovedBody(it, membershipType) } ?: return@guarded).update()
         if (inserted == 0) return@guarded
         jdbc.sql("INSERT INTO group_notifications (recipient_id, message_id) VALUES (:recipient, :id)")
             .param("recipient", userId).param("id", message).update()

@@ -94,7 +94,7 @@ class EntryRequestManagementTest {
     @Test
     fun `aprovar avisa a pessoa uma vez, depois do vinculo, com o instante do pedido`() {
         val notices = mutableListOf<Triple<UUID, UUID, Instant>>()
-        val fixture = fixture(role = GroupRole.OWNER, approvalNotice = EntryApprovalNotice { g, u, at -> notices += Triple(g, u, at) })
+        val fixture = fixture(role = GroupRole.OWNER, approvalNotice = EntryApprovalNotice { g, u, at, _ -> notices += Triple(g, u, at) })
 
         assertIs<ApproveEntryRequestResult.Success>(fixture.approve.execute(ownerId, groupId, applicantId))
 
@@ -105,7 +105,7 @@ class EntryRequestManagementTest {
     @Test
     fun `aprovar quem ja e membro, pedido sumido, limite cheio ou sem permissao nao avisa`() {
         val notices = mutableListOf<UUID>()
-        val notice = EntryApprovalNotice { _, u, _ -> notices += u }
+        val notice = EntryApprovalNotice { _, u, _, _ -> notices += u }
 
         val member = fixture(role = GroupRole.OWNER, approvalNotice = notice)
         member.membership.memberships[applicantId] = AccessMembership(applicantId, AccessName.from("Applicant"), GroupRole.ATHLETE)
@@ -154,7 +154,7 @@ class EntryRequestManagementTest {
         val notices = mutableListOf<UUID>()
         val fixture = fixture(
             role = GroupRole.OWNER,
-            approvalNotice = EntryApprovalNotice { _, u, _ -> notices += u },
+            approvalNotice = EntryApprovalNotice { _, u, _, _ -> notices += u },
             writeAccess = GroupWriteAccess { false },
         )
         fixture.entries.returnMarked += applicantId
@@ -206,7 +206,7 @@ class EntryRequestManagementTest {
     @Test
     fun `aceitar como mensalista sem mensalidade padrao e recusado e o pedido fica`() {
         val notices = mutableListOf<UUID>()
-        val fixture = fixture(role = GroupRole.OWNER, approvalNotice = EntryApprovalNotice { _, u, _ -> notices += u })
+        val fixture = fixture(role = GroupRole.OWNER, approvalNotice = EntryApprovalNotice { _, u, _, _ -> notices += u })
         fixture.entries.returnMarked += applicantId
 
         val result = fixture.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA)
@@ -217,6 +217,18 @@ class EntryRequestManagementTest {
         assertTrue(fixture.entries.promoted.isEmpty())
         assertTrue(applicantId in fixture.entries.returnMarked)
         assertTrue(notices.isEmpty())
+    }
+
+    @Test
+    fun `o aviso recebe o tipo com que a pessoa foi aceita`() {
+        val types = mutableListOf<AthleteMembershipType>()
+        val notice = EntryApprovalNotice { _, _, _, type -> types += type }
+        fixture(role = GroupRole.OWNER, approvalNotice = notice).approve.execute(ownerId, groupId, applicantId)
+        val mensalista = fixture(role = GroupRole.OWNER, approvalNotice = notice)
+        mensalista.entries.monthlyFeeDefault = true
+        mensalista.approve.execute(ownerId, groupId, applicantId, AthleteMembershipType.MENSALISTA)
+
+        assertEquals(listOf(AthleteMembershipType.AVULSO, AthleteMembershipType.MENSALISTA), types)
     }
 
     @Test
@@ -456,7 +468,7 @@ class EntryRequestManagementTest {
     private fun fixture(
         role: GroupRole?,
         athleteLimit: Int? = null,
-        approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _ -> },
+        approvalNotice: EntryApprovalNotice = EntryApprovalNotice { _, _, _, _ -> },
         writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
         firstMember: br.com.saqz.groups.application.communication.FirstMemberNotice = br.com.saqz.groups.application.communication.FirstMemberNotice { _, _ -> },
     ): Fixture {
