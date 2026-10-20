@@ -168,3 +168,8 @@ Executor: mesma sessão, brief `BRIEF-roteiro-10-segunda-passada.md`. Commit tes
 - `stack.sh up` reaproveita o bootJar existente: depois de `git reset --hard`, o jar antigo continuou servindo até eu apagá-lo. Sem isso o S6 falha com o texto antigo.
 
 Tempo da segunda passada: 19:03 às 19:24 (cerca de 21 minutos, contando o recomeço).
+
+### Análise da sessão principal (segunda passada)
+
+Sem defeito novo. O único FALHOU (V10.3) é o rótulo do botão do pedido de entrada, que no app já se chama `Entrar` (rótulo antigo, não alterado pelo DEB-112); a folha "Aceitar como" abre certa e o roteiro foi ajustado. O S7 confirma que quem já é membro cair em "Cadastro de atleta" ao abrir o convite acontece também no convite público, então não é regressão do convite de mensalistas. O toast corrigido (S2 e S3) e o nome do aviso (S6) passaram com o código final.
+
