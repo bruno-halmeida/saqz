@@ -100,8 +100,10 @@ fun GroupMembersScreen(
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = stringResource(Res.string.group_members_title), onBack = onBack)
+            // Os toasts moram na área da lista, acima do rodapé: nunca cobrem "Convidar mais gente" (V1.15).
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = metrics.horizontalPadding,
                     end = metrics.horizontalPadding,
@@ -169,6 +171,29 @@ fun GroupMembersScreen(
                     membersContent(state, onIntent)
                 }
             }
+            SaqzToast(
+                visible = invitees.notice != null,
+                onDismiss = { onInviteesIntent(GroupInviteesIntent.ClearNotice) },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding)
+                    .testTag(GroupMembersTags.InviteesNotice),
+            ) {
+                SaqzToastText(invitees.notice?.let { inviteesNoticeText(it) }.orEmpty())
+            }
+            SaqzToast(
+                visible = state.notice != null,
+                onDismiss = { onIntent(GroupMembersIntent.ClearNotice) },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding)
+                    .testTag(GroupMembersTags.Notice),
+            ) {
+                SaqzToastText(
+                    when (val notice = state.notice) {
+                        is GroupMembersNotice.RequestApproved ->
+                            stringResource(Res.string.group_invite_approved_toast, notice.name)
+                        else -> stringResource(Res.string.group_invite_rejected_toast)
+                    },
+                )
+            }
+            }
             GroupMembersFooter(onInvite = { onIntent(GroupMembersIntent.Invite) })
         }
         GroupMemberActionsSheet(selected = state.selected, onIntent = onIntent)
@@ -183,28 +208,6 @@ fun GroupMembersScreen(
         )
         GroupInviteeActionsSheet(selected = invitees.selected, onIntent = onInviteesIntent)
         GroupInviteesInvalidateConfirmation(open = invitees.confirmInvalidate, onIntent = onInviteesIntent)
-        SaqzToast(
-            visible = invitees.notice != null,
-            onDismiss = { onInviteesIntent(GroupInviteesIntent.ClearNotice) },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding)
-                .testTag(GroupMembersTags.InviteesNotice),
-        ) {
-            SaqzToastText(invitees.notice?.let { inviteesNoticeText(it) }.orEmpty())
-        }
-        SaqzToast(
-            visible = state.notice != null,
-            onDismiss = { onIntent(GroupMembersIntent.ClearNotice) },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(SaqzTheme.metrics.horizontalPadding)
-                .testTag(GroupMembersTags.Notice),
-        ) {
-            SaqzToastText(
-                when (val notice = state.notice) {
-                    is GroupMembersNotice.RequestApproved ->
-                        stringResource(Res.string.group_invite_approved_toast, notice.name)
-                    else -> stringResource(Res.string.group_invite_rejected_toast)
-                },
-            )
-        }
         if (state.subscriptionRequired) {
             SubscriptionRequiredDialog(
                 trialEnded = state.trialEnded,

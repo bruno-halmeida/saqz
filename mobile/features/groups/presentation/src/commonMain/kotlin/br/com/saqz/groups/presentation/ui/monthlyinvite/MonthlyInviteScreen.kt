@@ -107,8 +107,11 @@ fun MonthlyInviteScreen(
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
             SaqzTopAppBar(title = stringResource(Res.string.monthly_invite_title), onBack = onBack)
+            // O toast mora na área da lista, acima da barra de baixo: nunca cobre "Enviar N convites", seja qual for a altura
+            // da barra (fonte grande, tela estreita). Um toque perdido no "Desfazer" já enviou um lote (V1.15).
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
                 verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
             ) {
@@ -140,12 +143,13 @@ fun MonthlyInviteScreen(
                     else -> inviteContent(state, state.defaultFee, onIntent)
                 }
             }
+                MonthlyInviteToastHost(state.toast, onIntent, Modifier.align(Alignment.BottomCenter))
+            }
             if (!state.isLoading && !state.loadFailed && state.defaultFee != null) {
                 MonthlyInviteBottomBar(state, onIntent)
             }
         }
         MonthlyInvitePersonSheet(sheet = state.sheet, onIntent = onIntent)
-        MonthlyInviteToastHost(state.toast, onIntent, Modifier.align(Alignment.BottomCenter))
         if (state.subscriptionRequired) {
             SubscriptionRequiredDialog(trialEnded = false, onDismiss = { onIntent(MonthlyInviteIntent.DismissSubscriptionRequired) })
         }

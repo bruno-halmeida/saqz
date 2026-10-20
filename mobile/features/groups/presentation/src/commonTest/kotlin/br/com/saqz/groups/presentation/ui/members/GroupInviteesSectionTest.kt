@@ -2,6 +2,7 @@ package br.com.saqz.groups.presentation.ui.members
 
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -83,6 +84,14 @@ class GroupInviteesSectionTest {
         onNodeWithTag(GroupInviteesTags.SheetCopyLink).assertExists()
         onNodeWithText("Remover da lista").assertExists()
         onNodeWithText("(11) 95555-6677 · não saiu depois de 3 tentativas.").assertExists()
+    }
+
+    @Test fun `link copied toast stays above the invite footer`() = runComposeUiTest {
+        content(invitees = active.copy(notice = br.com.saqz.groups.presentation.members.GroupInviteesNotice.LinkCopied))
+
+        val toast = onNodeWithTag(GroupMembersTags.InviteesNotice).getBoundsInRoot()
+        val footer = onNodeWithTag(GroupMembersTags.Invite).getBoundsInRoot()
+        kotlin.test.assertTrue(toast.bottom <= footer.top, "toast $toast cobre o rodapé $footer")
     }
 
     @Test fun `invalidate confirmation has the texts`() = runComposeUiTest {
