@@ -15,7 +15,7 @@ import br.com.saqz.groups.resources.position_plural_oposto
 import br.com.saqz.groups.resources.position_plural_ponta
 import org.jetbrains.compose.resources.stringResource
 
-/** "Ponta" (seletor, linha de pessoa). */
+/** "Ponteiro(a)" (telas de posição; o rótulo de pessoa com gênero é outro, DEB-108). */
 @Composable
 internal fun AthletePosition.singularLabel(): String = stringResource(
     when (this) {
@@ -27,7 +27,7 @@ internal fun AthletePosition.singularLabel(): String = stringResource(
     },
 )
 
-/** "pontas" (cabeçalho do grupo, "2/2 pontas"). */
+/** "ponteiros(as)" (cabeçalho do grupo, "2/2 ponteiros(as)"). */
 @Composable
 internal fun AthletePosition.pluralLabel(): String = stringResource(
     when (this) {

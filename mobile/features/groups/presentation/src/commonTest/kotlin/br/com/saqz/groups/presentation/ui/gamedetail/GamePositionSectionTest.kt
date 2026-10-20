@@ -30,12 +30,12 @@ class GamePositionSectionTest {
     fun confirmadosVemAgrupadosPorPosicaoComOQueFalta() = runComposeUiTest {
         setScreen(game)
 
-        // 2/2 pontas completo, 1/2 centrais falta 1, 1/1 levantador completo.
+        // 2/2 ponteiros(as) completo, 1/2 centrais falta 1, 1/1 levantador completo.
         onNodeWithTag(GamePositionTags.header(AthletePosition.PONTA)).performScrollTo()
-        onNodeWithText("2/2 pontas").assertExists()
+        onNodeWithText("2/2 ponteiros(as)").assertExists()
         onNodeWithText("1/2 centrais").assertExists()
         onNodeWithText("falta 1").assertExists()
-        onNodeWithText("1/1 levantadores").assertExists()
+        onNodeWithText("1/1 levantadores(as)").assertExists()
         onNodeWithText("Rafa Dias").assertExists()
     }
 

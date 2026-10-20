@@ -17,16 +17,16 @@
     </plurals>
 
     <string name="position_label_libero">Líbero</string>
-    <string name="position_label_ponta">Ponta</string>
+    <string name="position_label_ponta">Ponteiro(a)</string>
     <string name="position_label_central">Central</string>
-    <string name="position_label_oposto">Oposto</string>
-    <string name="position_label_levantador">Levantador</string>
+    <string name="position_label_oposto">Oposto(a)</string>
+    <string name="position_label_levantador">Levantador(a)</string>
 
     <string name="position_plural_libero">líberos</string>
-    <string name="position_plural_ponta">pontas</string>
+    <string name="position_plural_ponta">ponteiros(as)</string>
     <string name="position_plural_central">centrais</string>
-    <string name="position_plural_oposto">opostos</string>
-    <string name="position_plural_levantador">levantadores</string>
+    <string name="position_plural_oposto">opostos(as)</string>
+    <string name="position_plural_levantador">levantadores(as)</string>
 
     <!-- Seletor de posição do "Vou" -->
     <string name="position_picker_title">Em qual posição você vai jogar?</string>
