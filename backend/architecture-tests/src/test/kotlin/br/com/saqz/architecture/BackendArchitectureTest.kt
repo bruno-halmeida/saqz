@@ -3,8 +3,13 @@ package br.com.saqz.architecture
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import org.junit.jupiter.api.Test
+import java.io.IOException
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 import kotlin.io.path.extension
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -308,21 +313,36 @@ class BackendArchitectureTest {
      */
     private fun codeOf(source: Path): String = source.readText().replace(comments, " ")
 
-    private fun kotlinSources(root: Path): List<Path> =
-        if (root.isDirectory()) {
-            Files.walk(root).use { paths ->
-                paths.filter { it.extension == "kt" }.sorted().toList()
-            }
-        } else {
-            emptyList()
-        }
+    private fun kotlinSources(root: Path): List<Path> = filesUnder(root) { it.extension == "kt" }
 
-    private fun gradleBuilds(root: Path): List<Path> =
-        if (root.isDirectory()) {
-            Files.walk(root).use { paths ->
-                paths.filter { it.name == "build.gradle.kts" }.sorted().toList()
-            }
-        } else {
-            emptyList()
-        }
+    private fun gradleBuilds(root: Path): List<Path> = filesUnder(root) { it.name == "build.gradle.kts" }
+
+    /**
+     * Arquivos de código sob [root], sem descer em `build/` nem `.gradle/`: no CI outras tarefas do Gradle criam e apagam
+     * arquivos lá enquanto este teste varre a árvore, e o `Files.walk` estourava `NoSuchFileException` (ARCH-10).
+     */
+    private fun filesUnder(root: Path, accept: (Path) -> Boolean): List<Path> {
+        if (!root.isDirectory()) return emptyList()
+        val found = mutableListOf<Path>()
+        Files.walkFileTree(
+            root,
+            object : SimpleFileVisitor<Path>() {
+                override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult =
+                    if (dir != root && dir.name in GENERATED_DIRECTORIES) FileVisitResult.SKIP_SUBTREE else FileVisitResult.CONTINUE
+
+                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    if (accept(file)) found.add(file)
+                    return FileVisitResult.CONTINUE
+                }
+
+                override fun visitFileFailed(file: Path, exc: IOException): FileVisitResult =
+                    if (exc is NoSuchFileException) FileVisitResult.CONTINUE else throw exc
+            },
+        )
+        return found.sorted()
+    }
+
+    private companion object {
+        val GENERATED_DIRECTORIES = setOf("build", ".gradle")
+    }
 }
