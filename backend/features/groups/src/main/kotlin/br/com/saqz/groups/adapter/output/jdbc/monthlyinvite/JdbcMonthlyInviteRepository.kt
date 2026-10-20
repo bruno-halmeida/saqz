@@ -3,6 +3,7 @@ package br.com.saqz.groups.adapter.output.jdbc.monthlyinvite
 import br.com.saqz.groups.application.monthlyinvite.MonthlyInviteMemberMatch
 import br.com.saqz.groups.application.monthlyinvite.MonthlyInviteOccupancy
 import br.com.saqz.groups.application.monthlyinvite.MonthlyInviteRepository
+import br.com.saqz.groups.application.monthlyinvite.MonthlyInviteRetentionRepository
 import br.com.saqz.groups.application.monthlyinvite.MonthlyInvitee
 import br.com.saqz.groups.application.monthlyinvite.MonthlyInviteePhone
 import br.com.saqz.groups.application.monthlyinvite.MonthlyInviteeStatus
@@ -15,7 +16,7 @@ import java.time.Instant
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcMonthlyInviteRepository(dataSource: DataSource) : MonthlyInviteRepository {
+class JdbcMonthlyInviteRepository(dataSource: DataSource) : MonthlyInviteRepository, MonthlyInviteRetentionRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun list(groupId: UUID): List<MonthlyInvitee> = jdbc.sql(
@@ -158,6 +159,17 @@ class JdbcMonthlyInviteRepository(dataSource: DataSource) : MonthlyInviteReposit
         }
         .optional()
         .orElse(null)
+
+    override fun deleteInviteesOfLinksDeadBefore(cutoff: Instant): Int = jdbc.sql(
+        """
+        DELETE FROM group_monthly_invitees invitees
+        USING group_monthly_invite_links links
+        WHERE links.group_id = invitees.group_id
+          AND (links.invalidated_at < :cutoff OR (links.invalidated_at IS NULL AND links.expires_at < :cutoff))
+        """.trimIndent(),
+    )
+        .param("cutoff", Timestamp.from(cutoff))
+        .update()
 
     private fun ResultSet.toInvitee() = MonthlyInvitee(
         id = getObject("id", UUID::class.java),
