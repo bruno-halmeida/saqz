@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
 import coil3.ImageLoader
+import coil3.PlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -28,10 +29,18 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.profile.fake.FakeProfileGateway
 import br.com.saqz.profile.presentation.own.OwnProfileViewModel
 import br.com.saqz.profile.presentation.own.OwnProfileIntent
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+
+// O `runComposeUiTest` compõe num despachante de teste sem fila: a foto, que o Coil busca em outra thread, voltava
+// escrevendo o estado do painter nessa thread, às vezes no meio da recomposição que trocou a URL ("Unsupported
+// concurrent change during composition", RC 1.0.10). Sem troca de contexto, a requisição roda inteira na thread que a
+// começou. No app a composição despacha para a Main, então o caso é só do teste.
+private fun testImageLoader(context: PlatformContext): ImageLoader =
+    ImageLoader.Builder(context).coroutineContext(EmptyCoroutineContext).build()
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class OwnProfileRootTest {
@@ -53,7 +62,7 @@ class OwnProfileRootTest {
         }
         setContent {
             val context = LocalPlatformContext.current
-            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            val imageLoader = remember(context) { testImageLoader(context) }
             CompositionLocalProvider(LocalUriHandler provides uriHandler) {
                 SaqzTheme {
                     OwnProfileRoot(onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
@@ -72,7 +81,7 @@ class OwnProfileRootTest {
         var version by mutableStateOf<br.com.saqz.domain.AppVersion?>(br.com.saqz.domain.AppVersion("0.0.5 (7)"))
         setContent {
             val context = LocalPlatformContext.current
-            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            val imageLoader = remember(context) { testImageLoader(context) }
             SaqzTheme {
                 OwnProfileRoot(onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
                     viewModel = OwnProfileViewModel(FakeProfileGateway()), imageLoader = imageLoader, appVersion = version)
@@ -93,7 +102,7 @@ class OwnProfileRootTest {
         var opens = 0
         setContent {
             val context = LocalPlatformContext.current
-            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            val imageLoader = remember(context) { testImageLoader(context) }
             SaqzTheme {
                 OwnProfileRoot(onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
                     onOpenReceipts = { opens++ }, isPlanOwner = false, viewModel = viewModel, imageLoader = imageLoader)
@@ -112,7 +121,7 @@ class OwnProfileRootTest {
         var onOpenReceipts by mutableStateOf<(() -> Unit)?>({ opens++ })
         setContent {
             val context = LocalPlatformContext.current
-            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            val imageLoader = remember(context) { testImageLoader(context) }
             SaqzTheme {
                 OwnProfileRoot(
                     onOpenEditor = {}, onOpenPasswordRecovery = {}, onSignOut = {},
@@ -140,7 +149,7 @@ class OwnProfileRootTest {
 
         setContent {
             val context = LocalPlatformContext.current
-            val imageLoader = remember(context) { ImageLoader.Builder(context).build() }
+            val imageLoader = remember(context) { testImageLoader(context) }
             SaqzTheme {
                 OwnProfileRoot(
                     onOpenEditor = {},
