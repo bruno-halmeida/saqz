@@ -33,3 +33,6 @@ configMapGenerator:
       # a imagem, publique com nome novo em links-page/assets e aponte aqui (design/whatsapp/render.sh).
       - SAQZ_NOTIFICATIONS_WHATSAPP_GROUP_REMINDER_IMAGE_URL=https://links.saqz.app/assets/whatsapp-lembrete-v2.jpg
       - SAQZ_NOTIFICATIONS_REMINDER_ENABLED=true
+      # Janela de presença: cartão ao vivo (Live Activity no iPhone, Live Update no Android) de 8 h antes do prazo até o prazo (DEB-113).
+      # Decisão do dono em 20/10: já nasce ligada em produção. Para desligar, apague a linha e faça o deploy.
+      - SAQZ_NOTIFICATIONS_ATTENDANCE_WINDOW_ENABLED=true
