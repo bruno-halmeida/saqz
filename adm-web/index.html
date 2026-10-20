@@ -601,6 +601,9 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         <sc-for list="{{ receitaRows }}" as="r" hint-placeholder-count="3">
           <span style="display:grid;grid-template-columns:0.8fr 1.2fr 0.8fr 1.1fr 1.1fr;gap:10px;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span>{{ r.mes }}</span><span>{{ r.origem }}</span><span>{{ r.pagamentos }}</span><strong style="font-weight:600">{{ r.bruto }}</strong><span style="color:var(--saqz-muted)">{{ r.liquido }}</span></span>
         </sc-for>
+        <sc-for list="{{ cortesiaRows }}" as="c" hint-placeholder-count="1">
+          <span style="display:grid;grid-template-columns:0.8fr 1.2fr 0.8fr 1.1fr 1.1fr;gap:10px;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:13px;color:var(--saqz-muted)"><span>{{ c.mes }}</span><span>{{ c.origem }}</span><span>{{ c.pagamentos }}</span><span>{{ c.cobrado }}</span><span style="font-style:italic">{{ c.cedido }}</span></span>
+        </sc-for>
         <span style="display:block;padding:12px 20px;font-size:13px;color:var(--saqz-muted)">{{ receitaMsg }}</span>
         <sc-if value="{{ receitaTemTeste }}" hint-placeholder-val="{{ false }}">
         <span style="display:block;padding:10px 20px;background:#FFF9ED;border-top:1px solid var(--saqz-border);font-size:12px;font-weight:700;letter-spacing:.05em;color:#8a5a00">TESTE · FORA DA RECEITA (SANDBOX, COMPRAS DE TESTE)</span>
@@ -615,7 +618,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         <sc-for list="{{ assinRows }}" as="a" hint-placeholder-count="8">
           <button type="button" sc-camel-on-click="{{ a.onOpen }}" style="{{ a.rowStyle }}" style-hover="background:var(--saqz-ice)">
             <strong style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.nome }}</strong>
-            <span style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-weight:600">{{ a.origem }}</span><span style="{{ a.cobrancaStyle }}">{{ a.cobrancaTxt }}</span></span>
+            <span style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-weight:600">{{ a.origem }}</span><span style="{{ a.cobrancaStyle }}">{{ a.cobrancaTxt }}</span><span style="{{ a.cortesiaStyle }}">{{ a.cortesiaTxt }}</span></span>
             <span><span style="{{ a.planoStyle }}">{{ a.plano }}</span></span>
             <span style="color:var(--saqz-muted)">{{ a.ciclo }}</span>
             <span style="font-weight:600">{{ a.valor }}</span>
@@ -644,6 +647,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <button type="button" sc-camel-on-click="{{ goRec }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Receita</button>
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">Assinatura de {{ ad.nome }}</strong>
       <span style="{{ adStatusStyle }}">{{ adStatusTxt }}</span>
+      <span style="{{ adCortesiaStyle }}">{{ adCortesiaTxt }}</span>
       <span style="margin-left:auto"></span>
       <sc-if value="{{ adAtiva }}" hint-placeholder-val="{{ false }}">
         <span sc-camel-on-click="{{ onCancelar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-error);background:var(--saqz-white)" style-hover="background:rgba(229,72,77,.06)">Cancelar plano</span>
@@ -1485,6 +1489,21 @@ class Component extends DCLogic {
     try { return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency }); }
     catch (e) { return `${(cents / 100).toFixed(2)} ${currency}`; }
   }
+  // Cortesia (DEB-100): "✓ Cortesia" nas assinaturas e linha própria na receita; o valor cedido (tabela) nunca soma.
+  cortesiaChip(c) {
+    return c ? { txt: "✓ Cortesia", style: this.chip("rgba(23,178,106,.12)", "#17B26A") } : { txt: "", style: "display:none" };
+  }
+  cortesiaDetalhe(c) {
+    if (!c) return "";
+    return `✓ Cortesia · ${this.planoNome(c.plan) || c.plan} ${c.endsAt ? `até ${this.dataBr(c.endsAt)}` : "sem prazo"}`;
+  }
+  cortesiaLinhas(rows) {
+    return (rows || []).map((r) => ({
+      mes: this.mesBr(r.month), origem: "Cortesia",
+      pagamentos: `${r.active} ativa${r.active === 1 ? "" : "s"}`,
+      cobrado: this.money(0), cedido: `valor cedido ${this.money(r.cededCents)} · não soma`,
+    }));
+  }
   mesBr(ym) { const [a, m] = String(ym).split("-"); return `${m}/${a}`; }
   receitaLinhas(rows) {
     return (rows || []).map((r) => ({
@@ -1877,11 +1896,13 @@ class Component extends DCLogic {
       const origem = a.source || "SITE";
       const site = origem === "SITE";
       const cb = this.cobrancaChip(a.billing);
-      return { nome: a.ownerName || a.ownerEmail || "—", origem: this.origemNome(origem), cobrancaTxt: cb.txt, cobrancaStyle: cb.style, plano: this.planoNome(a.plan) || a.plan, planoStyle: this.chipPlano(a.plan), ciclo: a.cycle ? (a.cycle === "ANNUAL" ? "anual" : "mensal") : "—", valor: a.priceCents != null && a.cycle ? `${this.money(a.priceCents)}/${a.cycle === "ANNUAL" ? "ano" : "mês"}` : "—", cupom: a.couponCode || "—", statusTxt: cs.txt, statusStyle: cs.style, desde: this.dataBr(a.createdAt), chevron: site ? "chevron_right" : "", rowStyle: "display:grid;grid-template-columns:1.6fr 1.5fr 1fr 0.7fr 0.9fr 0.9fr 0.9fr 0.8fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box".replace("cursor:pointer", site ? "cursor:pointer" : "cursor:default"), onOpen: site ? () => this.go("assinatura", { selA: a.ownerUserId }) : () => {} };
+      const cortesia = this.cortesiaChip(a.courtesy);
+      return { nome: a.ownerName || a.ownerEmail || "—", origem: this.origemNome(origem), cobrancaTxt: cb.txt, cobrancaStyle: cb.style, cortesiaTxt: cortesia.txt, cortesiaStyle: cortesia.style, plano: this.planoNome(a.plan) || a.plan, planoStyle: this.chipPlano(a.plan), ciclo: a.cycle ? (a.cycle === "ANNUAL" ? "anual" : "mensal") : "—", valor: a.priceCents != null && a.cycle ? `${this.money(a.priceCents)}/${a.cycle === "ANNUAL" ? "ano" : "mês"}` : "—", cupom: a.couponCode || "—", statusTxt: cs.txt, statusStyle: cs.style, desde: this.dataBr(a.createdAt), chevron: site ? "chevron_right" : "", rowStyle: "display:grid;grid-template-columns:1.6fr 1.5fr 1fr 0.7fr 0.9fr 0.9fr 0.9fr 0.8fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box".replace("cursor:pointer", site ? "cursor:pointer" : "cursor:default"), onOpen: site ? () => this.go("assinatura", { selA: a.ownerUserId }) : () => {} };
     }) : [];
     const rv = st.revenueData && !st.revenueData.erro ? st.revenueData : null;
     const receitaRows = rv ? this.receitaLinhas(rv.real) : [];
     const receitaTesteRows = rv ? this.receitaLinhas(rv.test) : [];
+    const cortesiaRows = rv ? this.cortesiaLinhas(rv.courtesy) : [];
     const receitaMsg = !st.revenueData ? "Carregando receita…" : st.revenueData.erro ? "Não foi possível carregar a receita." : receitaRows.length === 0 ? "Nenhum pagamento real confirmado nos últimos 12 meses." : "";
     const recResumo = sp ? (sp.erro ? "erro ao carregar" : `${sp.total} assinatura${sp.total === 1 ? "" : "s"}`) : "carregando…";
 
@@ -1954,8 +1975,8 @@ class Component extends DCLogic {
       gd, gdStatusTxt: gdStatus.txt, gdStatusStyle: gdStatus.style, gdJogos,
       isTabAss: true,
       assinRows, recResumo, sPager: this.paginacao("subs"), sOrigem: st.sOrigem, onSOrigem: this.filtroOrigem(),
-      receitaRows, receitaTesteRows, receitaMsg, receitaTemTeste: receitaTesteRows.length > 0,
-      ad, adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !!sds && !adCancelada,
+      receitaRows, cortesiaRows, receitaTesteRows, receitaMsg, receitaTemTeste: receitaTesteRows.length > 0,
+      ad, adCortesiaTxt: this.cortesiaDetalhe(sds && sds.courtesy), adCortesiaStyle: sds && sds.courtesy ? this.chip("rgba(23,178,106,.12)", "#17B26A") : "display:none", adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !!sds && !adCancelada,
       onCancelar: !sds || adCancelada ? () => {} : () => this.setState({ modal: { titulo: `Cancelar o plano de ${sds.ownerName}?`, texto: "A assinatura para de renovar no Asaas e vale até o fim do período já pago.", confirm: "Cancelar plano", danger: true, acao: () => {
         this.mutacao(`/admin/subscriptions/${sds.ownerUserId}/cancel`, { method: "POST" }).then((r) => {
           this.setState({ modal: null });

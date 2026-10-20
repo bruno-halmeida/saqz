@@ -88,3 +88,33 @@ test('a tela tem o filtro de origem, o bloco de receita, a linha de teste à par
   assert.match(html, /\{\{ a\.cobrancaTxt \}\}/);
   assert.match(html, /site \? \(\) => this\.go\("assinatura"/);
 });
+
+test('cortesia: chip "✓ Cortesia", detalhe com plano e prazo, e linha da receita com valor cedido fora do total', () => {
+  const { app } = setup();
+  assert.equal(app.cortesiaChip({ plan: 'ILIMITADO', endsAt: null }).txt, '✓ Cortesia');
+  assert.equal(app.cortesiaChip(null).txt, '');
+  assert.equal(app.cortesiaChip(undefined).style, 'display:none');
+  assert.equal(app.cortesiaDetalhe(null), '');
+  assert.equal(app.cortesiaDetalhe({ plan: 'ILIMITADO', endsAt: null }), '✓ Cortesia · Ilimitado sem prazo');
+  assert.equal(app.cortesiaDetalhe({ plan: 'ORGANIZADOR', endsAt: '2099-11-30T15:00:00Z' }), '✓ Cortesia · Organizador até ' + app.dataBr('2099-11-30T15:00:00Z'));
+  const [um, dois] = app.cortesiaLinhas([
+    { month: '2026-10', active: 2, cededCents: 15980 },
+    { month: '2026-09', active: 1, cededCents: 5990 },
+  ]);
+  assert.equal(um.origem, 'Cortesia');
+  assert.equal(um.mes, '10/2026');
+  assert.equal(um.pagamentos, '2 ativas');
+  assert.equal(dois.pagamentos, '1 ativa');
+  assert.match(um.cobrado, /0,00/);
+  assert.match(um.cedido, /valor cedido .*159,80.* não soma/);
+  assert.equal(app.cortesiaLinhas(undefined).length, 0);
+});
+
+test('backend antigo, sem o campo de cortesia: nada muda na tela', async () => {
+  const { app } = setup({ '/admin/revenue?months=12': { real: [], test: [] } });
+  app.carregarReceita();
+  await flush();
+  assert.equal(app.cortesiaLinhas(app.state.revenueData.courtesy).length, 0);
+  assert.equal(app.cortesiaChip(undefined).txt, '');
+  assert.match(require('node:fs').readFileSync(require.resolve('../index.html'), 'utf8'), /\{\{ a\.cortesiaTxt \}\}[\s\S]*\{\{ adCortesiaTxt \}\}|\{\{ adCortesiaTxt \}\}/);
+});
