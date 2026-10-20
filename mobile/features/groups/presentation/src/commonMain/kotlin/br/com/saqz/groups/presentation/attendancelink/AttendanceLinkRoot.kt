@@ -77,7 +77,6 @@ internal fun AttendanceLinkScreen(
                 verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
                 if (answered) AttendanceResultCard(state)
-                if (phase == AttendanceLinkPhase.Pending) AttendancePendingCard(state)
                 state.game?.let { game ->
                     val pending = phase == AttendanceLinkPhase.Pending
                     SaqzGameSummaryCard(
@@ -92,6 +91,8 @@ internal fun AttendanceLinkScreen(
                         modifier = Modifier.testTag(AttendanceLinkTags.GameCard),
                     )
                 }
+                // Como no Main.dc.html: o jogo em cima, o andamento do pedido embaixo.
+                if (phase == AttendanceLinkPhase.Pending) AttendancePendingCard(state)
                 if (phase == AttendanceLinkPhase.Loading) SaqzSpinner()
                 val message = when (phase) {
                     AttendanceLinkPhase.Loading -> Res.string.attendance_link_loading
