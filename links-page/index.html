@@ -36,6 +36,7 @@
   .primary { background:var(--blue); color:#fff; }
   .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid rgba(7,16,37,.18); }
   .primary:active, .secondary:active { transform:scale(.98); }
+  .quiet { display:inline-block; margin-top:20px; font-size:13px; color:#6b7186; text-decoration:underline; }
   [hidden] { display:none; }
 </style>
 </head>
@@ -46,6 +47,7 @@
   <p id="lead">Entre no grupo ou confirme sua presença no Saqz.</p>
   <a id="primary" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
   <a id="secondary" class="secondary" hidden></a>
+  <a id="tertiary" class="quiet" hidden></a>
 </main>
 <script>
   (function () {
@@ -86,6 +88,7 @@
     var lead = document.getElementById("lead");
     var primary = document.getElementById("primary");
     var secondary = document.getElementById("secondary");
+    var tertiary = document.getElementById("tertiary");
 
     if (kind === "invite") heading.textContent = "Entre no grupo no Saqz";
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
@@ -112,6 +115,16 @@
         });
     } else {
       appFlow();
+    }
+
+    // Android, convite e presença: o web app nunca é o caminho principal nem o fallback do intent.
+    // Só um link discreto, para quem não pode instalar, e só se o web app responde e há WasmGC.
+    if (isAndroid && (kind === "invite" || kind === "attendance") && supportsWasmGc() && typeof fetch === "function") {
+      fetch(webApp + "disponivel.json", { cache: "no-store" })
+        .then(function (response) {
+          if (response.ok) link(tertiary, webApp + webQuery, "Continuar no navegador");
+        })
+        .catch(function () {});
     }
 
     function appFlow() {

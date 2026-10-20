@@ -81,14 +81,15 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
    e com o "não vou").
 
 **Conferir**
-- A página tenta abrir o app e, sem ele, segue para `saqz.app/app/` com o mesmo código na query
-  (`saqz_invite` ou `saqz_attendance`, com `saqz_intent=decline` no "não vou"), não para o Google Play.
-- Se a página ficar visível, o botão principal é "Continuar no navegador", o secundário "Baixar o app"
-  (Play com `referrer`) e há "Já instalei, abrir o app".
-- Com o web app fora do ar (`saqz.app/app/disponivel.json` indisponível) ou Android sem WasmGC, o caminho
-  continua sendo o Google Play com `referrer`.
-- O link de onboarding (`saqz_onboarding`) e o link sem parâmetro continuam indo ao Play.
-- Depois da primeira resposta, o web app oferece "Baixar o app" (lembrete no celular).
+- A página tenta abrir o app e, sem ele, segue sozinha para o Google Play com o `referrer`
+  (`saqz_invite=…` ou `saqz_attendance=…`, com `&saqz_intent=decline` no "não vou"). O web app nunca é
+  o caminho principal nem o fallback automático.
+- Se a página ficar visível, o botão principal é "Baixar no Google Play" e há "Já instalei, abrir o app".
+- Com o web app no ar (`saqz.app/app/disponivel.json` responde) e Chrome com WasmGC, aparece também um
+  link discreto "Continuar no navegador" para `saqz.app/app/` com o mesmo código na query. Com o web app
+  fora do ar ou sem WasmGC, o link não aparece.
+- O link de onboarding (`saqz_onboarding`) e o link sem parâmetro vão ao Play, sem o link do navegador.
+- Se a pessoa escolher "Continuar no navegador", depois da primeira resposta o web app oferece "Baixar o app" (lembrete no celular).
 
 ## PROD-WEB06 · Link de convite no computador · P1
 

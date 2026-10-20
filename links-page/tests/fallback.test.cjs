@@ -14,6 +14,7 @@ function page(userAgent, pathname, search = '', { source = script, hidden = fals
     lead: { textContent: 'Entre no grupo ou confirme sua presença no Saqz.' },
     primary: { href: 'https://saqz.app', textContent: 'Acessar site do Saqz', hidden: false, addEventListener(event, callback) { this.clicks = { ...this.clicks, [event]: callback }; } },
     secondary: { hidden: true },
+    tertiary: { hidden: true },
   };
   const location = { pathname, search, replace(url) { this.replaced = url; } };
   const timers = [];
@@ -206,31 +207,57 @@ test('desktop with the web app down keeps the site and asks for the phone', asyn
 
 const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130';
 
-test('Android never asks for the web app: invite and attendance fall back to Google Play with the referrer', async () => {
+test('Android invite and attendance go to Google Play with the referrer, and the web app is never the main path', async () => {
   const cases = [
     ['/', '?saqz_invite=' + code, `saqz_invite%3D${code}`, `intent://links.saqz.app/?saqz_invite=${code}#Intent;`],
     ['/attendance/' + code, '', `saqz_attendance%3D${code}`, `intent://links.saqz.app/attendance/${code}#Intent;`],
     ['/attendance/' + code, '?saqz_intent=decline', `saqz_attendance%3D${code}%26saqz_intent%3Ddecline`,
       `intent://links.saqz.app/attendance/${code}?saqz_intent=decline#Intent;`],
-    ['/', '?saqz_onboarding=' + code, `saqz_onboarding%3D${code}`, `intent://links.saqz.app/?saqz_onboarding=${code}#Intent;`],
-    ['/', '', null, null],
   ];
   for (const [pathname, search, referrer, intentStart] of cases) {
     const result = page(android, pathname, search, { fetch: webUp });
     await settle();
-    assert.deepEqual(result.requests, [], search);
-    const store = referrer ? `${play}&referrer=${referrer}` : play;
+    const store = `${play}&referrer=${referrer}`;
     assert.equal(result.primary.href, store, search);
     assert.equal(result.primary.textContent, 'Baixar no Google Play');
-    if (intentStart) {
-      assert.ok(result.location.href.startsWith(intentStart), search);
-      assert.ok(result.location.href.endsWith(`S.browser_fallback_url=${encodeURIComponent(store)};end`), search);
-      assert.equal(result.secondary.textContent, 'Já instalei, abrir o app');
-      result.elapse();
-      assert.equal(result.location.replaced, store);
-    } else {
-      assert.equal(result.location.replaced, play);
-    }
+    assert.ok(result.location.href.startsWith(intentStart), search);
+    assert.ok(result.location.href.endsWith(`S.browser_fallback_url=${encodeURIComponent(store)};end`), search);
+    assert.equal(result.secondary.textContent, 'Já instalei, abrir o app');
+    result.elapse();
+    assert.equal(result.location.replaced, store);
+  }
+});
+
+test('Android shows a quiet "Continuar no navegador" link only when the web app answers and WasmGC exists', async () => {
+  const web = `https://saqz.app/app/?saqz_attendance=${code}&saqz_intent=decline`;
+  const up = page(android, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
+  assert.deepEqual(up.requests, ['https://saqz.app/app/disponivel.json']);
+  assert.equal(up.tertiary.hidden, true);
+  await settle();
+  assert.equal(up.tertiary.href, web);
+  assert.equal(up.tertiary.textContent, 'Continuar no navegador');
+  assert.equal(up.tertiary.hidden, false);
+  const invite = page(android, '/', '?saqz_invite=' + code, { fetch: webUp });
+  await settle();
+  assert.equal(invite.tertiary.href, 'https://saqz.app/app/?saqz_invite=' + code);
+  const down = page(android, '/', '?saqz_invite=' + code, { fetch: webDown });
+  await settle();
+  assert.equal(down.tertiary.hidden, true);
+  const noGc = page(android, '/', '?saqz_invite=' + code, { fetch: webUp, wasm: { validate: () => false } });
+  await settle();
+  assert.deepEqual(noGc.requests, []);
+  assert.equal(noGc.tertiary.hidden, true);
+  // Nunca vira fallback automático.
+  assert.ok(!up.location.href.includes(encodeURIComponent('saqz.app/app')));
+  assert.equal(up.location.replaced, undefined);
+});
+
+test('Android onboarding and the bare link never ask for the web app', async () => {
+  for (const search of ['?saqz_onboarding=' + code, '']) {
+    const result = page(android, '/', search, { fetch: webUp });
+    await settle();
+    assert.deepEqual(result.requests, []);
+    assert.equal(result.tertiary.hidden, true);
   }
 });
 

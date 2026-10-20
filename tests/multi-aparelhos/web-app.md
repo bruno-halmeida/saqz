@@ -47,10 +47,11 @@ Não testado aqui: Google (o emulador não faz o popup), push (não existe no we
 
 ## Link de convite e de presença no Android sem o app
 
-A `links-page` manda o Android sem o app para o web app (`/app/?saqz_invite=` ou `?saqz_attendance=`,
-com `saqz_intent=decline` no "não vou") em vez do Google Play, desde que haja WasmGC e
-`/app/disponivel.json` responda. Sem isso, o Play com `referrer` continua sendo o destino. Onboarding e
-link sem parâmetro seguem para o Play. Coberto por `links-page/tests/fallback.test.cjs`; no aparelho,
+No Android, convite e presença seguem sempre: `intent://` para o app e, sem ele, Google Play com o
+`referrer` (o `saqz_intent=decline` do "não vou" vai junto). O web app não é caminho principal nem
+fallback automático: a `links-page` só mostra o link discreto "Continuar no navegador"
+(`/app/?saqz_invite=` ou `?saqz_attendance=`) quando `/app/disponivel.json` responde e há WasmGC. Onboarding
+e link sem parâmetro não têm esse link. Coberto por `links-page/tests/fallback.test.cjs`; no aparelho,
 conferir pelo roteiro PROD-WEB05b (`tests/producao/08-site-e-links.md`).
 
 Depois da resposta, o web app no Android oferece "Baixar o app" (Google Play); no iPhone
