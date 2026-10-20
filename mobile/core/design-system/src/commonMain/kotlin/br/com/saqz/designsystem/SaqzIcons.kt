@@ -14,12 +14,15 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.Ban
+import com.composables.icons.lucide.Banknote
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Calendar
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.Check
+import com.composables.icons.lucide.ChevronDown
 import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
+import com.composables.icons.lucide.ChevronUp
 import com.composables.icons.lucide.CircleAlert
 import com.composables.icons.lucide.Clock
 import com.composables.icons.lucide.CreditCard
@@ -39,6 +42,7 @@ import com.composables.icons.lucide.Minus
 import com.composables.icons.lucide.Phone
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Search
+import com.composables.icons.lucide.Star
 import com.composables.icons.lucide.Trash
 import com.composables.icons.lucide.User
 import com.composables.icons.lucide.Users
@@ -76,6 +80,8 @@ object SaqzIcons {
     val EyeOff = Lucide.EyeOff
     val ChevronRight = Lucide.ChevronRight
     val ChevronLeft = Lucide.ChevronLeft
+    val ChevronDown = Lucide.ChevronDown
+    val ChevronUp = Lucide.ChevronUp
     val ArrowRight = Lucide.ArrowRight
     val Close = Lucide.X
     val Plus = Lucide.Plus
@@ -86,6 +92,12 @@ object SaqzIcons {
     val CircleAlert = Lucide.CircleAlert
     val Clock = Lucide.Clock
     val CreditCard = Lucide.CreditCard
+
+    /** Valor por jogo. */
+    val Banknote = Lucide.Banknote
+
+    /** Prioridade dos mensalistas. */
+    val Star = Lucide.Star
     val MessageSquare = Lucide.MessageSquare
 
     // Denunciar e bloquear (App Store 1.2): o menu de três pontos do export, a bandeira da

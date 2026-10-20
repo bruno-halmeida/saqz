@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.resources.Res
@@ -201,6 +204,10 @@ private fun SaqzStepperButton(
 
 /**
  * 10h — menos, valor, mais. Os botões desligam ao encostar no limite.
+ *
+ * [format] escreve o valor ("2h", "19h"); [previous]/[next] dizem para onde o – e o + levam quando o passo
+ * não é de 1 (grade de durações). [icon] é o ícone cinza à esquerda do [label]; as descrições dos botões
+ * podem ser específicas ("Menos uma vaga") para o leitor de tela.
  */
 @Composable
 fun SaqzStepper(
@@ -210,6 +217,13 @@ fun SaqzStepper(
     min: Int = 0,
     max: Int = Int.MAX_VALUE,
     label: String? = null,
+    icon: ImageVector? = null,
+    format: (Int) -> String = Int::toString,
+    previous: (Int) -> Int = { saqzSteppedValue(it, -1, min, max) },
+    next: (Int) -> Int = { saqzSteppedValue(it, 1, min, max) },
+    decreaseDescription: String? = null,
+    increaseDescription: String? = null,
+    valueWidth: Dp = 32.dp,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -219,31 +233,37 @@ fun SaqzStepper(
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
         if (label != null) {
-            Text(
-                text = label,
-                style = SaqzTheme.typography.body,
-                color = colors.textPrimary,
+            Row(
                 modifier = Modifier.weight(1f),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+            ) {
+                if (icon != null) SaqzIcon(icon, tint = colors.textSecondary)
+                Text(
+                    text = label,
+                    style = SaqzTheme.typography.body,
+                    color = colors.textPrimary,
+                )
+            }
         }
         SaqzStepperButton(
             icon = SaqzIcons.Minus,
-            contentDescription = stringResource(Res.string.action_decrease),
+            contentDescription = decreaseDescription ?: stringResource(Res.string.action_decrease),
             enabled = value > min,
-            onClick = { onValueChange(saqzSteppedValue(value, -1, min, max)) },
+            onClick = { onValueChange(previous(value)) },
         )
         Text(
-            text = value.toString(),
+            text = format(value),
             style = SaqzTheme.typography.subtitle,
             color = colors.textPrimary,
-            modifier = Modifier.width(32.dp),
+            modifier = Modifier.width(valueWidth),
             textAlign = TextAlign.Center,
         )
         SaqzStepperButton(
             icon = SaqzIcons.Plus,
-            contentDescription = stringResource(Res.string.action_increase),
+            contentDescription = increaseDescription ?: stringResource(Res.string.action_increase),
             enabled = value < max,
-            onClick = { onValueChange(saqzSteppedValue(value, 1, min, max)) },
+            onClick = { onValueChange(next(value)) },
         )
     }
 }
@@ -257,6 +277,10 @@ fun SaqzStepper(
  * `segBtn`/`segThumb` do bundle descreve só o botão e o polegar — quem pinta o trilho é
  * a `div` de fora.
  *
+ * [selected] fora de [options] (ex. `-1`) é "sem seleção": o polegar some. [vertical] empilha as
+ * opções, uma pílula por linha, para rótulos longos que não cabem lado a lado — a selecionada fica
+ * azul cheia e as demais brancas com borda.
+ *
  * [optionTags] dá um `testTag` por opção, na ordem de [options], para telas cujos testes
  * tocam cada uma.
  */
@@ -267,7 +291,19 @@ fun SaqzSegmented(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     optionTags: List<String> = emptyList(),
+    vertical: Boolean = false,
 ) {
+    if (vertical) {
+        SaqzVerticalSegmented(
+            options = options,
+            isSelected = { it == selected },
+            onClick = onSelect,
+            role = Role.Tab,
+            modifier = modifier,
+            optionTags = optionTags,
+        )
+        return
+    }
     val colors = SaqzTheme.colors
     val motion = SaqzTheme.motion
     val dismissKeyboard = rememberSaqzDismissKeyboard()
@@ -282,17 +318,19 @@ fun SaqzSegmented(
     ) {
         val slot = maxWidth / options.size.coerceAtLeast(1)
         val thumb by animateDpAsState(
-            targetValue = slot * selected,
+            targetValue = slot * selected.coerceAtLeast(0),
             animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
             label = "segmentedThumb",
         )
-        Box(
-            modifier = Modifier
-                .offset(x = thumb)
-                .width(slot)
-                .height(maxHeight)
-                .background(colors.primary, CircleShape),
-        )
+        if (selected in options.indices) {
+            Box(
+                modifier = Modifier
+                    .offset(x = thumb)
+                    .width(slot)
+                    .height(maxHeight)
+                    .background(colors.primary, CircleShape),
+            )
+        }
         Row(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, option ->
                 // ponytail: o rótulo acompanha o thumb (280ms enfática) em vez do
@@ -323,6 +361,132 @@ fun SaqzSegmented(
                         )
                         .padding(vertical = 9.dp)
                         .then(optionTags.getOrNull(index)?.let { Modifier.testTag(it) } ?: Modifier),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Seleção múltipla do segmented (dias da semana): cada opção liga e desliga sozinha e as marcadas ficam
+ * azul cheias. Sem polegar deslizante, porque várias opções acesas ao mesmo tempo não têm um só lugar.
+ */
+@Composable
+fun SaqzMultiSegmented(
+    options: List<String>,
+    selected: Set<Int>,
+    onToggle: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    optionTags: List<String> = emptyList(),
+) {
+    val colors = SaqzTheme.colors
+    val motion = SaqzTheme.motion
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(CircleShape)
+            .background(colors.surface, CircleShape)
+            .border(1.dp, colors.border, CircleShape)
+            .padding(4.dp),
+    ) {
+        options.forEachIndexed { index, option ->
+            val on = index in selected
+            val fill by animateColorAsState(
+                targetValue = if (on) colors.primary else colors.surface,
+                animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                label = "multiSegmentedFill",
+            )
+            val label by animateColorAsState(
+                targetValue = if (on) colors.surface else colors.textPrimary,
+                animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                label = "multiSegmentedLabel",
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(fill, CircleShape)
+                    .toggleable(
+                        value = on,
+                        role = Role.Checkbox,
+                        onValueChange = {
+                            dismissKeyboard()
+                            onToggle(index)
+                        },
+                    )
+                    .then(optionTags.getOrNull(index)?.let { Modifier.testTag(it) } ?: Modifier),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = option,
+                    style = SaqzTheme.typography.support.copy(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight(700),
+                    ),
+                    color = label,
+                    maxLines = 1,
+                    softWrap = false,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaqzVerticalSegmented(
+    options: List<String>,
+    isSelected: (Int) -> Boolean,
+    onClick: (Int) -> Unit,
+    role: Role,
+    modifier: Modifier,
+    optionTags: List<String>,
+) {
+    val colors = SaqzTheme.colors
+    val motion = SaqzTheme.motion
+    val dismissKeyboard = rememberSaqzDismissKeyboard()
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+        options.forEachIndexed { index, option ->
+            val on = isSelected(index)
+            val fill by animateColorAsState(
+                targetValue = if (on) colors.primary else colors.surface,
+                animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                label = "verticalSegmentedFill",
+            )
+            val label by animateColorAsState(
+                targetValue = if (on) colors.surface else colors.textPrimary,
+                animationSpec = tween(motion.thumbDurationMillis, easing = motion.emphasized),
+                label = "verticalSegmentedLabel",
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clip(CircleShape)
+                    .background(fill, CircleShape)
+                    .then(if (on) Modifier else Modifier.border(1.dp, colors.border, CircleShape))
+                    .selectable(
+                        selected = on,
+                        role = role,
+                        onClick = {
+                            dismissKeyboard()
+                            onClick(index)
+                        },
+                    )
+                    .then(optionTags.getOrNull(index)?.let { Modifier.testTag(it) } ?: Modifier),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = option,
+                    style = SaqzTheme.typography.support.copy(
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight(700),
+                    ),
+                    color = label,
                     textAlign = TextAlign.Center,
                 )
             }
