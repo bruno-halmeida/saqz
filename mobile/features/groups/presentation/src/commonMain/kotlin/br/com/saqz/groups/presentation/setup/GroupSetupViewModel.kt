@@ -9,10 +9,8 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
-import br.com.saqz.groups.domain.group.GroupPositionSlots
 import br.com.saqz.groups.domain.group.GroupPositionSlotsGateway
 import br.com.saqz.groups.domain.group.PositionGameSystem
-import br.com.saqz.groups.domain.group.PositionSlot
 import br.com.saqz.groups.domain.group.CreateGroupProfileCommand
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
@@ -55,7 +53,7 @@ class GroupSetupViewModel(
     // Só para saber se o grupo cobra mensalidade por membro (ver `loadRosterHasMensalista`).
     private val athleteGateway: AthleteGateway? = null,
     // DEB-102: vagas por posição; sem o gateway a tela fica como antes (só o total de jogadores).
-    private val positionSlotsGateway: GroupPositionSlotsGateway? = null,
+    positionSlotsGateway: GroupPositionSlotsGateway? = null,
 ) : MviViewModel<GroupSetupState, GroupSetupIntent, GroupSetupEffect>(
     initialState.withSavedText(savedState),
 ) {
@@ -64,8 +62,7 @@ class GroupSetupViewModel(
     private var versionToken: GroupVersionToken? = null
     private var timeZone: DomainGroupTimeZone? = null
     private var retryDelete = false
-    /** O que o backend tem hoje; a gravação só acontece quando as posições da tela mudam. */
-    private var loadedPositionSlots: Map<AthletePosition, Int>? = null
+    private val positions = GroupPositionSlotsEditor(positionSlotsGateway, viewModelScope, { state.value }, ::update)
     private val venueSearch = VenueSearch(viewModelScope, placesGateway)
 
     init {
@@ -126,13 +123,16 @@ class GroupSetupViewModel(
             is GroupSetupIntent.SelectLevel -> onFormChange(closeSheet = true) { copy(level = intent.value) }
             is GroupSetupIntent.SelectPlayStyle -> {
                 onFormChange { copy(playStyle = intent.value) }
-                suggestWhenMissing()
+                positions.suggestWhenMissing()
             }
             is GroupSetupIntent.UpdateCapacity -> onFormChange {
                 copy(defaultCapacity = intent.value.coerceAtLeast(GroupSetupDefaults.MinCapacity))
             }
-            is GroupSetupIntent.UpdatePositionSlots -> onPositionSlotsChange(intent)
-            GroupSetupIntent.SuggestPositionSlots -> onSuggestPositions()
+            is GroupSetupIntent.UpdatePositionSlots -> {
+                discardCreationKey()
+                positions.edit(intent.position, intent.value)
+            }
+            GroupSetupIntent.SuggestPositionSlots -> positions.suggest()
             is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
@@ -200,7 +200,7 @@ class GroupSetupViewModel(
                             pixLabel = group.profile?.pixLabel,
                         ).withSavedText(savedState)
                     }
-                    loadPositionSlots(generation, GroupId(mode.groupId), group.role != GroupRole.ATHLETE)
+                    positions.loadInto(GroupId(mode.groupId), group.role != GroupRole.ATHLETE) { generation == loadGeneration }
                     val needsMonthlyPolicy = group.needsRosterToShowMonthlyPolicy()
                     val isOwner = group.role == GroupRole.OWNER
                     if (needsMonthlyPolicy || isOwner) {
@@ -221,51 +221,6 @@ class GroupSetupViewModel(
      * O dono lê o mesmo roster para a folha de exclusão: perdem o acesso os membros ativos fora ele, os mesmos
      * que recebem o aviso de grupo excluído. Falha cala e a folha fala sem número.
      */
-    /** Só quem gere o grupo lê as vagas por posição; falha cala e a tela segue só com o total. */
-    private suspend fun loadPositionSlots(generation: Int, groupId: GroupId, manages: Boolean) {
-        val gateway = positionSlotsGateway ?: return
-        if (!manages) return
-        val config = (gateway.read(groupId) as? SaqzResult.Success)?.value?.value ?: return
-        if (generation != loadGeneration) return
-        val slots = config.slots.filter { it.slots > 0 }.associate { it.position to it.slots }
-        loadedPositionSlots = slots
-        update { it.copy(positionSlots = slots, positionSlotsReady = true) }
-        suggestWhenMissing()
-    }
-
-    /** 5-1 sem posições (grupo antigo ou recém-passado para 5-1): já mostra a sugestão do total, que é obrigatória. */
-    private fun suggestWhenMissing() {
-        val current = state.value
-        if (current.showsPositionSlots && current.positionSlots.isEmpty() && loadedPositionSlots != null) onSuggestPositions()
-    }
-
-    private fun onPositionSlotsChange(intent: GroupSetupIntent.UpdatePositionSlots) {
-        discardCreationKey()
-        update { current ->
-            val value = intent.value.coerceIn(0, GroupPositionDefaults.MaxPerPosition)
-            val slots = (if (value == 0) current.positionSlots - intent.position else current.positionSlots + (intent.position to value))
-            current.copy(positionSlots = slots, positionSuggestionFailed = false, creationCommandKey = null).revalidated()
-        }
-    }
-
-    private fun onSuggestPositions() {
-        val gateway = positionSlotsGateway ?: return
-        if (state.value.isSuggestingPositions) return
-        val total = state.value.positionsTarget
-        update { it.copy(isSuggestingPositions = true, positionSuggestionFailed = false) }
-        viewModelScope.launch {
-            when (val result = gateway.suggestion(PositionGameSystem.FIVE_ONE, total)) {
-                is SaqzResult.Failure -> update { it.copy(isSuggestingPositions = false, positionSuggestionFailed = true) }
-                is SaqzResult.Success -> update {
-                    it.copy(
-                        isSuggestingPositions = false,
-                        positionSlots = result.value.slots.filter { slot -> slot.slots > 0 }.associate { slot -> slot.position to slot.slots },
-                    ).revalidated()
-                }
-            }
-        }
-    }
-
     private suspend fun loadRoster(generation: Int, groupId: GroupId, monthlyPolicy: Boolean, owner: Boolean) {
         val gateway = athleteGateway ?: return
         val result = gateway.roster(groupId, AthleteRosterFilter())
@@ -328,27 +283,13 @@ class GroupSetupViewModel(
      * falhou (a tela já mostra o erro e o "tentar de novo" refaz o salvamento inteiro com a versão em mãos).
      */
     private suspend fun savePositionSlots(groupId: GroupId, token: GroupVersionToken): Boolean {
-        val gateway = positionSlotsGateway ?: return true
         val current = state.value
-        val loaded = loadedPositionSlots ?: return true
         if (!current.canManageGameConfig) return true
         val desired = if (current.showsPositionSlots) current.positionSlots else emptyMap()
-        if (desired == loaded) return true
-        val config = GroupPositionSlots(
-            gameSystem = if (desired.isEmpty()) current.form.playStyle.toPositionSystem() else PositionGameSystem.FIVE_ONE,
-            slots = AthletePosition.entries.mapNotNull { position -> desired[position]?.let { PositionSlot(position, it) } },
-        )
-        return when (val result = gateway.write(groupId, token, config)) {
-            is SaqzResult.Success -> {
-                versionToken = result.value.versionToken
-                loadedPositionSlots = desired
-                true
-            }
-            is SaqzResult.Failure -> {
-                showSaveFailure(result.error)
-                false
-            }
-        }
+        val result = positions.saveIfChanged(groupId, token, desired, current.form.playStyle.toPositionSystem()) ?: return true
+        if (result is SaqzResult.Failure) showSaveFailure(result.error)
+        if (result is SaqzResult.Success) versionToken = result.value
+        return result is SaqzResult.Success
     }
 
     private fun createGroup() {
@@ -544,7 +485,7 @@ class GroupSetupViewModel(
 
 private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupForm) = copy(form = form.transform())
 
-private fun GroupSetupState.revalidated() = if (errors.isEmpty()) this else copy(errors = validate(this))
+internal fun GroupSetupState.revalidated() = if (errors.isEmpty()) this else copy(errors = validate(this))
 
 private fun GroupSetupState.withSavedText(handle: SavedStateHandle): GroupSetupState = copy(
     form = form.withSavedText(handle),

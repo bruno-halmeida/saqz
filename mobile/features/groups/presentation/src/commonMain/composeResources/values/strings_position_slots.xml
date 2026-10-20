@@ -55,7 +55,7 @@
     <!-- Forçar entrada do gestor -->
     <string name="position_force_action">Forçar entrada</string>
     <string name="position_force_title">Forçar a entrada de %1$s?</string>
-    <string name="position_force_body">A posição de %1$s está cheia. A pessoa entra acima das vagas dela e ninguém sobe dessa posição até voltar ao limite.</string>
+    <string name="position_force_body">As vagas de %1$s estão cheias. A pessoa entra acima das vagas dela e ninguém sobe dessa posição até voltar ao limite.</string>
     <string name="position_force_confirm">Forçar entrada</string>
     <string name="position_force_keep">Voltar</string>
     <string name="position_force_reason">Entrada forçada pelo gestor</string>

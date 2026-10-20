@@ -52,7 +52,12 @@ class KtorGroupPositionSlotsGateway(
         PositionSlotsTransport.serializer(),
         NetworkRequest(
             json.encodeToString(
-                PositionSlotsTransport(config.gameSystem?.name, config.slots.map { PositionSlotTransport(it.position.name, it.slots) }, config.total.takeIf { config.slots.isNotEmpty() }),
+                PositionSlotsTransport(
+                    gameSystem = config.gameSystem?.name,
+                    positionSlots = config.slots.map { PositionSlotTransport(it.position.name, it.slots) },
+                    // Só com posições: o servidor confere que o total bate com a soma delas.
+                    total = config.total.takeIf { config.slots.isNotEmpty() },
+                ),
             ),
             mapOf(HttpHeaders.IfMatch to versionToken.value),
         ),

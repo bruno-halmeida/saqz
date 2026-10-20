@@ -74,7 +74,8 @@ internal fun GamePositionUi.metaLabel(): String {
     val base = if (full) {
         stringResource(Res.string.position_meta_full, confirmed, slots)
     } else {
-        stringResource(Res.string.position_meta_open, confirmed, slots, pluralStringResource(Res.plurals.position_missing, missing, missing))
+        val missingLabel = pluralStringResource(Res.plurals.position_missing, missing, missing)
+        stringResource(Res.string.position_meta_open, confirmed, slots, missingLabel)
     }
     return if (waitlisted > 0) stringResource(Res.string.position_meta_waiting, base, waitlisted) else base
 }
@@ -105,13 +106,17 @@ internal fun GamePositionChoices(
                 onClick = if (enabled) { { onSelect(row.position) } } else null,
                 trailing = when {
                     isSelected -> { { SaqzIcon(SaqzIcons.Check, tint = SaqzTheme.colors.primary) } }
-                    row.position == suggested -> { { SaqzStatusChip(stringResource(Res.string.position_picker_suggested), tone = SaqzChipTone.Brand) } }
+                    row.position == suggested -> { { SuggestedChip() } }
                     else -> null
                 },
             )
         }
     }
 }
+
+@Composable
+private fun SuggestedChip() =
+    SaqzStatusChip(stringResource(Res.string.position_picker_suggested), tone = SaqzChipTone.Brand)
 
 /** Folha aberta pelo "Vou" (escolhe a posição) ou pelo "Forçar entrada" do gestor (confirma). */
 @Composable

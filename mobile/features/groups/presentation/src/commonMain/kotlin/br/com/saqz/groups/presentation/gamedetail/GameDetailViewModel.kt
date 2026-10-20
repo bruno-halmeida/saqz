@@ -161,20 +161,9 @@ class GameDetailViewModel(
      * Extraídos para manter a complexidade ciclomática de [onIntent] no teto.
      */
     private fun onAttendanceIntent(intent: GameDetailIntent): Boolean {
+        if (onPositionIntent(intent)) return true
         when (intent) {
             is GameDetailIntent.Respond -> onRespond(intent.intent)
-            is GameDetailIntent.SelectPosition -> update {
-                it.copy(positionPicker = it.positionPicker?.takeIf { picker -> !picker.sending && picker.purpose is GamePositionPurpose.Self }
-                    ?.copy(selected = intent.position, failed = false) ?: it.positionPicker)
-            }
-            GameDetailIntent.ConfirmPosition -> confirmPosition()
-            GameDetailIntent.DismissPositionPicker -> if (state.value.positionPicker?.sending != true) {
-                update { it.copy(positionPicker = null) }
-            }
-            is GameDetailIntent.UpdateGuestPosition -> updateGuest { it.copy(position = intent.position) }
-            is GameDetailIntent.SelectPlacePosition -> updateOrganizer { it.copy(placePosition = intent.position, placeFailure = null) }
-            is GameDetailIntent.RequestForceEntry -> requestForceEntry(intent.rowId)
-            is GameDetailIntent.ConfirmForceEntry -> confirmForceEntry(intent.defaultReason)
             GameDetailIntent.OpenGuestSheet -> if (state.value.guest.enabled) {
                 updateGuest { it.copy(sheetOpen = true, name = "", addFailed = false, position = state.value.mostFreePosition) }
             }
@@ -559,6 +548,27 @@ class GameDetailViewModel(
      * "Vou" em jogo com posições abre o seletor (a do perfil vem sugerida); "Não vou", "Sair da lista" e jogo sem
      * posições respondem direto, como sempre. Quem já está confirmado ou na fila não escolhe de novo (PRES-009).
      */
+    /** DEB-102: intents do seletor de posição, do convidado e da entrada forçada. Devolve `true` quando tratou. */
+    private fun onPositionIntent(intent: GameDetailIntent): Boolean {
+        when (intent) {
+            is GameDetailIntent.SelectPosition -> update { current ->
+                val picker = current.positionPicker?.takeIf { !it.sending && it.purpose is GamePositionPurpose.Self }
+                current.copy(positionPicker = picker?.copy(selected = intent.position, failed = false) ?: current.positionPicker)
+            }
+            GameDetailIntent.ConfirmPosition -> confirmPosition()
+            GameDetailIntent.DismissPositionPicker -> if (state.value.positionPicker?.sending != true) {
+                update { it.copy(positionPicker = null) }
+            }
+            is GameDetailIntent.UpdateGuestPosition -> updateGuest { it.copy(position = intent.position) }
+            is GameDetailIntent.SelectPlacePosition ->
+                updateOrganizer { it.copy(placePosition = intent.position, placeFailure = null) }
+            is GameDetailIntent.RequestForceEntry -> requestForceEntry(intent.rowId)
+            is GameDetailIntent.ConfirmForceEntry -> confirmForceEntry(intent.defaultReason)
+            else -> return false
+        }
+        return true
+    }
+
     private fun onRespond(intent: AttendanceIntent) {
         val current = state.value
         val entering = intent == AttendanceIntent.Confirm && current.response.status != AttendanceStatus.Confirmed &&
@@ -769,7 +779,8 @@ class GameDetailViewModel(
         val waiting = roster?.waitlisted.orEmpty()
         val index = waiting.indexOfFirst { !it.isGuest && it.memberId == memberId }
         // Com posições a vez é a da fila da própria posição, que o servidor já conta (DEB-102).
-        return waiting.getOrNull(index)?.waitlistPosition?.takeIf { positionsOn(roster) } ?: index.takeIf { it >= 0 }?.let { it + 1L } ?: waitlistPosition
+        val perPosition = waiting.getOrNull(index)?.waitlistPosition?.takeIf { positionsOn(roster) }
+        return perPosition ?: index.takeIf { it >= 0 }?.let { it + 1L } ?: waitlistPosition
     }
 
     private fun positionsOn(roster: AttendanceRoster?) = roster?.positions?.isNotEmpty() == true
