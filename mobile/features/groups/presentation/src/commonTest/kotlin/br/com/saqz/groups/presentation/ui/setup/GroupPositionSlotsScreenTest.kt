@@ -3,7 +3,6 @@ package br.com.saqz.groups.presentation.ui.setup
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,6 +14,7 @@ import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupSetupForm
+import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
@@ -48,12 +48,31 @@ class GroupPositionSlotsScreenTest {
         state(slots, capacity).copy(mode = GroupSetupMode.Create, canManageGameConfig = false)
 
     @Test
-    fun criacaoCincoUmMostraOCardNasOpcoesAvancadasEBloqueiaOCriarAteFechar() = runComposeUiTest {
-        show(creating(eighteen - AthletePosition.PONTA + (AthletePosition.PONTA to 4)))
+    fun criacaoCincoUmMostraOPainelEMantemOCriarHabilitadoComASomaErrada() = runComposeUiTest {
+        val intents = mutableListOf<GroupSetupIntent>()
+        show(creating(eighteen - AthletePosition.PONTA + (AthletePosition.PONTA to 4)), intents::add)
         onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
         onNodeWithTag(GroupPositionSlotsTags.Section).performScrollTo().assertExists()
-        onNodeWithText("Faltam 2 vagas para fechar o total de jogadores.").performScrollTo().assertExists()
-        onNodeWithTag(GroupSetupTags.Submit).assertIsNotEnabled()
+        onNodeWithText("Faltam 2 vagas para fechar 18.").performScrollTo().assertExists()
+        onNodeWithText("16 de 18").performScrollTo().assertExists()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsEnabled().performClick()
+        assertEquals(GroupSetupIntent.Submit, intents.last())
+    }
+
+    @Test
+    fun somaErradaRecusadaAbreMaisDetalhesSozinhoEContaNoAvisoGeral() = runComposeUiTest {
+        val wrong = creating(eighteen - AthletePosition.PONTA + (AthletePosition.PONTA to 4))
+        show(wrong.copy(errors = setOf(GroupSetupError.PositionSlotsSumMismatch)))
+        onNodeWithTag(GroupSetupTags.ErrorBanner).assertExists()
+        onNodeWithText("Falta 1 informação para criar o grupo. Ela está marcada abaixo.").assertExists()
+        onNodeWithTag(GroupPositionSlotsTags.Section).performScrollTo().assertExists()
+    }
+
+    @Test
+    fun erroForaDeMaisDetalhesNaoAbreASecao() = runComposeUiTest {
+        show(creating(eighteen).copy(errors = setOf(GroupSetupError.NameRequired)))
+        onNodeWithTag(GroupSetupTags.ErrorBanner).assertExists()
+        onNodeWithTag(GroupPositionSlotsTags.Section).assertDoesNotExist()
     }
 
     @Test
@@ -86,17 +105,17 @@ class GroupPositionSlotsScreenTest {
     }
 
     @Test
-    fun faltamVagasBloqueiaOSalvarEMostraAConta() = runComposeUiTest {
+    fun faltamVagasMostraAContaEMantemOSalvarHabilitado() = runComposeUiTest {
         show(state(eighteen - AthletePosition.PONTA + (AthletePosition.PONTA to 4)))
-        onNodeWithText("Faltam 2 vagas para fechar o total de jogadores.").performScrollTo().assertExists()
-        onNodeWithTag(GroupSetupTags.Submit).assertIsNotEnabled()
+        onNodeWithText("Faltam 2 vagas para fechar 18.").performScrollTo().assertExists()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsEnabled()
     }
 
     @Test
-    fun sobramVagasBloqueiaOSalvarEMostraAConta() = runComposeUiTest {
+    fun sobramVagasMostraAContaEMantemOSalvarHabilitado() = runComposeUiTest {
         show(state(eighteen + (AthletePosition.LIBERO to 1)))
-        onNodeWithText("Sobra 1 vaga em relação ao total de jogadores.").performScrollTo().assertExists()
-        onNodeWithTag(GroupSetupTags.Submit).assertIsNotEnabled()
+        onNodeWithText("Sobra 1 vaga em relação a 18.").performScrollTo().assertExists()
+        onNodeWithTag(GroupSetupTags.Submit).assertIsEnabled()
     }
 
     @Test

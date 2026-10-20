@@ -49,8 +49,9 @@ class GroupSetupScreenTest {
         setContent { SaqzTheme { GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Create), {}, {}) } }
         onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
         onNodeWithTag(GroupSetupTags.GameFee).performScrollTo().assertExists()
-        onNodeWithText("Valor por jogo (opcional)").performScrollTo().assertExists()
-        onNodeWithText("Cobrado de quem joga avulso. Cada jogo pode ter outro valor.").assertExists()
+        onNodeWithText("Valor por jogo").performScrollTo().assertExists()
+        onNodeWithText("R$").assertExists()
+        onNodeWithText("Para avulsos. Cada jogo pode ter outro valor.").assertExists()
     }
 
     @Test
@@ -79,7 +80,6 @@ class GroupSetupScreenTest {
         openAdvancedIfCollapsed()
 
         onNodeWithTag(GroupSetupTags.Duration).performScrollTo().assertExists()
-        onNodeWithText("3h").performScrollTo().assertExists()
         onNodeWithContentDescription("Aumentar a duração").performScrollTo().performClick()
         assertEquals(GroupSetupIntent.SelectDuration(240), received.last { it is GroupSetupIntent.SelectDuration })
     }
@@ -214,7 +214,7 @@ class GroupSetupScreenTest {
             }
         }
         onNodeWithTag(GroupSetupTags.TrialOffer).assertExists()
-        onNodeWithText("Teste o Organizador com até 3 grupos e atletas ilimitados. O prazo começa no primeiro grupo e é o mesmo para todos, sem cobrança automática.").assertExists()
+        onNodeWithText("Teste grátis com até 3 grupos, sem cobrança automática.").assertExists()
     }
 
     @Test

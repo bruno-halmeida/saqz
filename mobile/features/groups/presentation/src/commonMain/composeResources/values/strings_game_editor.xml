@@ -21,7 +21,7 @@
     <string name="game_editor_capacity_label">Vagas neste jogo</string>
     <string name="game_editor_capacity_legacy">Este jogo tinha %1$d vagas. O mínimo agora é %2$d, e salvar grava %2$d.</string>
     <string name="game_editor_capacity_helper">Quando as vagas acabarem, quem confirmar entra na lista de espera.</string>
-    <string name="game_editor_confirmation_lead_label">Confirmar presença até</string>
+    <string name="game_editor_confirmation_lead_label">Prioridade dos mensalistas</string>
 
     <!-- 4a · Repetir toda semana: vira horário regular do grupo, sem passar pela edição do grupo -->
     <string name="game_editor_recurrence_label">Repetir toda semana</string>

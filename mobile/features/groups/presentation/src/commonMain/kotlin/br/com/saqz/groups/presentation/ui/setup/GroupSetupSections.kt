@@ -77,6 +77,9 @@ import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_game_config_confirmation_lead_label
+import br.com.saqz.groups.resources.group_game_config_notice_lead_hint
+import br.com.saqz.groups.resources.group_game_config_notice_lead_label
+import br.com.saqz.groups.resources.group_setup_confirmation_lead_hint
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_fifo_off
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_fifo_on
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_manual_off
@@ -157,468 +160,12 @@ private const val ErrorRingAlpha = 0.1f
 private const val ErrorSurfaceAlpha = 0.06f
 private const val PhotoSizeFactor = 3
 
-@Composable
-internal fun GroupPhotoSection(
-    photoUrl: String?,
-    groupName: String,
-    isEditing: Boolean,
-    onPick: () -> Unit,
-    modifier: Modifier = Modifier,
-    photo: ImageBitmap? = null,
-) {
-    val label = stringResource(Res.string.group_setup_photo_label)
-    val hint = when {
-        isEditing -> stringResource(Res.string.group_setup_photo_edit_hint)
-        photoUrl != null || photo != null -> stringResource(Res.string.group_setup_photo_added)
-        else -> stringResource(Res.string.group_setup_photo_hint)
-    }
-    SaqzCard(modifier = modifier) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            GroupPhotoThumb(
-                photoUrl = photoUrl,
-                photo = photo,
-                groupName = groupName,
-                actionLabel = label,
-                onPick = onPick,
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if ((photoUrl != null || photo != null) && !isEditing && groupName.isNotBlank()) groupName else label,
-                    style = SaqzTheme.typography.label,
-                    color = SaqzTheme.colors.textPrimary,
-                )
-                Text(hint, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun GroupPhotoThumb(
-    photoUrl: String?,
-    photo: ImageBitmap?,
-    groupName: String,
-    actionLabel: String,
-    onPick: () -> Unit,
-) {
-    val metrics = SaqzTheme.metrics
-    val colors = SaqzTheme.colors
-    val hasPhoto = photo != null || photoUrl != null
-    // 72 do export: o design system não tem token de miniatura, e 3 × sectionGap dá o número.
-    val size = metrics.sectionGap * PhotoSizeFactor
-    val badgeSize = metrics.sectionGap + metrics.subGrid
-    val shape = RoundedCornerShape(metrics.blockRadius)
-    val dismissKeyboard = rememberSaqzDismissKeyboard()
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clickable(
-                onClickLabel = actionLabel,
-                role = Role.Button,
-                onClick = {
-                    dismissKeyboard()
-                    onPick()
-                },
-            )
-            .testTag(GroupSetupTags.Photo),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(size)
-                .clip(shape)
-                .background(if (hasPhoto && photo == null) colors.primary else colors.surfaceSoft),
-            contentAlignment = Alignment.Center,
-        ) {
-            when {
-                photo != null -> Image(
-                    bitmap = photo,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                else -> GroupRemotePhotoRoot(photoUrl = photoUrl, modifier = Modifier.fillMaxSize()) {
-                    if (photoUrl == null) {
-                        SaqzIcon(SaqzIcons.Camera, tint = colors.primary)
-                    } else {
-                        Text(
-                            text = saqzInitials(groupName),
-                            style = SaqzTheme.typography.title.copy(fontWeight = FontWeight.ExtraBold),
-                            color = colors.onPrimary,
-                        )
-                    }
-                }
-            }
-        }
-        Box(
-            modifier = Modifier
-                // `right:-4px;bottom:-4px` do export: a insígnia encosta para fora.
-                .align(Alignment.BottomEnd)
-                .offset(x = metrics.subGrid, y = metrics.subGrid)
-                .size(badgeSize)
-                .clip(CircleShape)
-                .background(if (hasPhoto) colors.surface else colors.primary),
-            contentAlignment = Alignment.Center,
-        ) {
-            SaqzIcon(
-                icon = if (hasPhoto) SaqzIcons.Camera else SaqzIcons.Plus,
-                tint = if (hasPhoto) colors.primary else colors.onPrimary,
-                size = metrics.horizontalPadding,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun GroupNameSection(
-    name: String,
-    errorText: String?,
-    onChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(Res.string.group_setup_name_label)
-    GroupFormCard(title = label, modifier = modifier) {
-        SaqzInput(
-            value = name,
-            onValueChange = onChange,
-            label = label,
-            showLabel = false,
-            placeholder = stringResource(Res.string.group_setup_name_hint),
-            errorText = errorText,
-            modifier = Modifier.testTag(GroupSetupTags.Name),
-        )
-    }
-}
-
-@Composable
-internal fun GroupModalitySection(
-    modality: GroupModality?,
-    errorText: String?,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    GroupFormCard(title = stringResource(Res.string.group_setup_modality_label), modifier = modifier) {
-        GroupSelectRow(
-            value = modality?.label(),
-            placeholder = stringResource(Res.string.group_setup_modality_hint),
-            onClick = onOpen,
-            isError = errorText != null,
-            modifier = Modifier.testTag(GroupSetupTags.Modality),
-        )
-        GroupFieldError(errorText)
-        // `2b`: na areia o card explica por que o sistema de jogo sumiu.
-        if (modality == GroupModality.BEACH_VOLLEYBALL) {
-            GroupNoteBlock(stringResource(Res.string.group_setup_play_style_not_applicable))
-        }
-    }
-}
-
-@Composable
-internal fun GroupCompositionSection(
-    composition: GroupComposition?,
-    errorText: String?,
-    onSelect: (GroupComposition) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    GroupFormCard(
-        title = stringResource(Res.string.group_setup_composition_label),
-        hint = stringResource(Res.string.group_setup_composition_hint),
-        modifier = modifier,
-    ) {
-        SaqzSegmented(
-            options = CompositionOptions.map { it.label() },
-            // Coagir para 0 faria a tela afirmar "Masculino" sobre um valor que não existe.
-            selected = CompositionOptions.indexOfOrNone(composition),
-            onSelect = { onSelect(CompositionOptions[it]) },
-            modifier = Modifier.testTag(GroupSetupTags.Composition),
-        )
-        GroupFieldError(errorText)
-    }
-}
-
-@Composable
-internal fun GroupLevelSection(
-    levelLabel: String?,
-    customLevel: String?,
-    showsCustomLevel: Boolean,
-    customLevelError: String?,
-    onOpen: () -> Unit,
-    onCustomLevelChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(Res.string.group_setup_level_label)
-    GroupFormCard(title = label, modifier = modifier) {
-        GroupSelectRow(
-            value = levelLabel,
-            placeholder = stringResource(Res.string.group_setup_level_hint),
-            onClick = onOpen,
-            modifier = Modifier.testTag(GroupSetupTags.Level),
-        )
-        if (showsCustomLevel) {
-            SaqzInput(
-                value = customLevel.orEmpty(),
-                onValueChange = onCustomLevelChange,
-                label = label,
-                showLabel = false,
-                placeholder = stringResource(Res.string.group_setup_custom_level_hint),
-                errorText = customLevelError,
-                modifier = Modifier.testTag(GroupSetupTags.CustomLevel),
-            )
-        }
-    }
-}
-
-@Composable
-internal fun GroupPlayStyleSection(
-    playStyle: GroupPlayStyle?,
-    onSelect: (GroupPlayStyle) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    GroupFormCard(
-        title = stringResource(Res.string.group_setup_play_style_label),
-        hint = stringResource(Res.string.group_setup_play_style_hint),
-        modifier = modifier,
-    ) {
-        SaqzSegmented(
-            options = PlayStyleOptions.map { it.label() },
-            // 4-2 e personalizado existem no modelo e não no trilho, então o valor salvo
-            // pode não estar entre as opções: o trilho fica sem seleção. Coagir para 0
-            // pintaria 6-0 sobre um grupo salvo em 4-2 — e o primeiro toque gravaria a
-            // mentira por cima do dado real.
-            selected = PlayStyleOptions.indexOfOrNone(playStyle),
-            onSelect = { onSelect(PlayStyleOptions[it]) },
-            modifier = Modifier.testTag(GroupSetupTags.PlayStyle),
-        )
-    }
-}
-
-@Composable
-internal fun GroupDescriptionSection(
-    description: String?,
-    errorText: String?,
-    onChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = stringResource(Res.string.group_setup_description_label)
-    GroupFormCard(title = label, modifier = modifier) {
-        SaqzInput(
-            value = description.orEmpty(),
-            onValueChange = onChange,
-            label = label,
-            showLabel = false,
-            placeholder = stringResource(Res.string.group_setup_description_hint),
-            errorText = errorText,
-            singleLine = false,
-            minLines = DescriptionMinLines,
-            modifier = Modifier.testTag(GroupSetupTags.Description),
-        )
-    }
-}
-
-@Composable
-internal fun GroupCapacitySection(
-    capacity: Int,
-    isBeach: Boolean,
-    hasError: Boolean,
-    onChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SaqzCard(modifier = modifier) {
-        SaqzStepper(
-            value = capacity,
-            onValueChange = onChange,
-            // O teto é do backend (`4..100`), como o dos campos de texto: entra como
-            // limite de entrada, não como mensagem de erro depois do envio.
-            min = GroupSetupDefaults.MinCapacity,
-            max = GroupSetupDefaults.MaxCapacity,
-            label = stringResource(Res.string.group_setup_capacity_label),
-            modifier = Modifier.testTag(GroupSetupTags.Capacity),
-        )
-        Text(
-            // "Mínimo de 2 jogadores." só serve para o piso. O teto (100) não tem
-            // mensagem no catálogo e o stepper impede a tela de produzi-lo: estado
-            // carregado acima de 100 fica vermelho com a dica normal, até existir string.
-            text = when {
-                hasError && capacity < GroupSetupDefaults.MinCapacity ->
-                    stringResource(Res.string.group_setup_error_capacity_hint)
-
-                isBeach -> stringResource(Res.string.group_setup_capacity_beach_hint)
-                else -> stringResource(Res.string.group_setup_capacity_hint)
-            },
-            style = SaqzTheme.typography.support,
-            color = if (hasError) SaqzTheme.colors.errorForeground else SaqzTheme.colors.textSecondary,
-        )
-    }
-}
-
-/**
- * "Valor por jogo": o padrão do grupo, em reais. O texto digitado fica aqui (a vírgula no meio da
- * digitação não cabe em centavos); o formulário recebe os centavos, e vazio é "sem cobrança".
- */
-@Composable
-internal fun GroupGameFeeSection(
-    cents: Long?,
-    hasError: Boolean,
-    onChange: (Long?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var text by remember { mutableStateOf(cents?.let(::formatBrlPlain).orEmpty()) }
-    // Valor vindo de fora (carregamento, restauração) substitui o texto; a digitação em curso não.
-    LaunchedEffect(cents) {
-        if (parseBrlToCents(text) != cents) text = cents?.let(::formatBrlPlain).orEmpty()
-    }
-    val label = stringResource(Res.string.group_setup_game_fee_label)
-    GroupFormCard(title = label, hint = stringResource(Res.string.group_setup_game_fee_hint), modifier = modifier) {
-        SaqzInput(
-            value = text,
-            onValueChange = { raw ->
-                text = sanitizeBrlInput(raw)
-                onChange(parseBrlToCents(text))
-            },
-            label = label,
-            showLabel = false,
-            placeholder = stringResource(Res.string.group_setup_game_fee_placeholder),
-            errorText = if (hasError) stringResource(Res.string.group_setup_error_game_fee) else null,
-            keyboardType = KeyboardType.Decimal,
-            modifier = Modifier.testTag(GroupSetupTags.GameFee),
-        )
-    }
-}
-
-@Composable
-internal fun GroupDurationSection(
-    minutes: Int,
-    onIntent: (GroupSetupIntent) -> Unit,
-    hasError: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    SaqzCard(modifier = modifier) {
-        DurationStepper(
-            minutes = minutes,
-            onChange = { onIntent(GroupSetupIntent.SelectDuration(it)) },
-            label = stringResource(Res.string.group_setup_duration_label),
-            icon = SaqzIcons.Clock,
-            hasError = hasError,
-            modifier = Modifier.testTag(GroupSetupTags.Duration),
-        )
-    }
-}
-
-@Composable
-internal fun GroupConfirmationLeadSection(
-    minutes: Int?,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    GroupFormCard(
-        title = stringResource(Res.string.group_setup_confirmation_lead_label),
-        hint = stringResource(Res.string.group_setup_confirmation_lead_hint),
-        modifier = modifier,
-    ) {
-        GroupChoiceChipRow(
-            values = GroupSetupDefaults.ConfirmationLeadOptions,
-            selectedValue = minutes,
-            label = { confirmationLeadLabel(it) },
-            onSelect = onSelect,
-            modifier = Modifier.testTag(GroupSetupTags.ConfirmationLead),
-        )
-    }
-}
-
-@Composable
-internal fun GroupVenueSection(
-    name: String,
-    address: String,
-    nameError: String?,
-    addressError: String?,
-    onNameChange: (String) -> Unit,
-    onAddressChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    suggestions: List<PlaceSuggestion> = emptyList(),
-    onSelectSuggestion: (PlaceSuggestion) -> Unit = {},
-    onDismissSuggestions: () -> Unit = {},
-) {
-    val nameLabel = stringResource(Res.string.group_setup_venue_name_label)
-    val addressLabel = stringResource(Res.string.group_setup_venue_address_label)
-    GroupFormCard(title = nameLabel, modifier = modifier) {
-        VenueSearchField(
-            suggestions = suggestions,
-            onSelect = onSelectSuggestion,
-            onDismiss = onDismissSuggestions,
-        ) {
-            SaqzInput(
-                value = name,
-                onValueChange = onNameChange,
-                label = nameLabel,
-                showLabel = false,
-                placeholder = stringResource(Res.string.group_setup_venue_name_hint),
-                errorText = nameError,
-                modifier = Modifier.testTag(GroupSetupTags.VenueName),
-            )
-        }
-        Text(
-            text = addressLabel,
-            style = SaqzTheme.typography.label,
-            color = SaqzTheme.colors.textPrimary,
-        )
-        SaqzInput(
-            value = address,
-            onValueChange = onAddressChange,
-            label = addressLabel,
-            showLabel = false,
-            placeholder = stringResource(Res.string.group_setup_venue_address_hint),
-            errorText = addressError,
-            leadingContent = { SaqzIcon(SaqzIcons.Pin, tint = SaqzTheme.colors.textSecondary) },
-            modifier = Modifier.testTag(GroupSetupTags.VenueAddress),
-        )
-    }
-}
-
-@Composable
-internal fun GroupRecurrenceCard(
-    recurring: Boolean,
-    slots: List<GroupRegularSlotForm>,
-    hasError: Boolean,
-    onRecurringChange: (Boolean) -> Unit,
-    onAddSlot: () -> Unit,
-    onRemoveSlot: (GroupRegularSlotForm) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = SaqzTheme.colors
-    val metrics = SaqzTheme.metrics
-    SaqzCard(
-        modifier = modifier.then(
-            // O `2g` pinta a borda do card em errorForeground com um anel de 3dp a 10%.
-            // Desenhado por cima porque o SaqzCard pinta a própria borda cinza e não
-            // aceita tom de erro — ver comentário no VUL-68.
-            if (hasError) {
-                Modifier.errorOutline(colors.errorForeground, metrics.cardRadius, metrics.subGrid)
-            } else {
-                Modifier
-            },
-        ),
-    ) {
-        GroupRecurrenceSection(
-            recurring = recurring,
-            slots = slots,
-            onRecurringChange = onRecurringChange,
-            onAddSlot = onAddSlot,
-            onRemoveSlot = onRemoveSlot,
-            modifier = Modifier.testTag(GroupSetupTags.Recurrence),
-        )
-        if (hasError) GroupSlotsErrorStrip()
-    }
-}
-
 /**
  * Linha de seleção que abre um sheet — modalidade e categoria. Não é componente do
  * fluxo 10 do export, então nasce aqui, dentro da jornada que a usa.
  */
 @Composable
-private fun GroupSelectRow(
+internal fun GroupSelectRow(
     value: String?,
     placeholder: String,
     onClick: () -> Unit,
@@ -669,7 +216,7 @@ private fun GroupSelectRow(
  * mesmo tom e tamanho (VUL-60), e este é o eco dela para o seletor e o segmented.
  */
 @Composable
-private fun GroupFieldError(text: String?) {
+internal fun GroupFieldError(text: String?) {
     if (text == null) return
     Text(text, style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground)
 }
@@ -696,7 +243,7 @@ private fun GroupNoteBlock(text: String, modifier: Modifier = Modifier) {
  * **abaixo** do botão; um tom de erro no componente resolveria — está comentado no ticket.
  */
 @Composable
-private fun GroupSlotsErrorStrip(modifier: Modifier = Modifier) {
+internal fun GroupSlotsErrorStrip(modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val dash = metrics.grid
@@ -731,7 +278,7 @@ private fun GroupSlotsErrorStrip(modifier: Modifier = Modifier) {
     }
 }
 
-private fun <T> List<T>.indexOfOrNone(value: T): Int =
+internal fun <T> List<T>.indexOfOrNone(value: T): Int =
     indexOf(value).takeIf { it >= 0 } ?: NoSegmentedSelection
 
 /** Linha de 1px desenhada por trás — `border` cru gastaria um dp fora dos tokens. */
@@ -744,7 +291,7 @@ private fun Modifier.hairline(color: Color, radius: Dp, width: Dp) = drawBehind 
 }
 
 /** Borda de erro + anel de 3dp a 10%, desenhados por cima do card já pintado. */
-private fun Modifier.errorOutline(color: Color, radius: Dp, ringWidth: Dp) = drawWithContent {
+internal fun Modifier.errorOutline(color: Color, radius: Dp, ringWidth: Dp) = drawWithContent {
     drawContent()
     val corner = CornerRadius(radius.toPx())
     val line = ringWidth.toPx() / HairlineDivisor
@@ -873,16 +420,31 @@ internal fun GroupGameConfigSection(
                 modifier = Modifier.testTag(GroupSetupTags.PromotionMode),
             )
         }
-        GroupFormCard(
-            title = stringResource(Res.string.group_game_config_confirmation_lead_label),
-        ) {
-            GroupChoiceChipRow(
-                values = GroupSetupDefaults.ConfirmationLeadOptions,
-                selectedValue = confirmationLeadMinutes,
-                label = { confirmationLeadLabel(it) },
-                onSelect = onConfirmationLeadSelect,
-                modifier = Modifier.testTag(GroupSetupTags.GameConfigConfirmationLead),
-            )
+        // Prioridade ligada: o prazo é o fim da prioridade dos mensalistas. Desligada com escolha manual: é o aviso para o
+        // gestor escolher quem joga. Desligada com ordem de chegada o campo some (o valor salvo continua indo no comando).
+        if (mensalistaPriority || promotionMode == PromotionMode.MANUAL) {
+            SaqzCard {
+                GroupConfirmationLeadField(
+                    minutes = confirmationLeadMinutes,
+                    onSelect = onConfirmationLeadSelect,
+                    title = stringResource(
+                        if (mensalistaPriority) {
+                            Res.string.group_game_config_confirmation_lead_label
+                        } else {
+                            Res.string.group_game_config_notice_lead_label
+                        },
+                    ),
+                    hint = stringResource(
+                        if (mensalistaPriority) {
+                            Res.string.group_setup_confirmation_lead_hint
+                        } else {
+                            Res.string.group_game_config_notice_lead_hint
+                        },
+                    ),
+                    tag = GroupSetupTags.GameConfigConfirmationLead,
+                    icon = if (mensalistaPriority) SaqzIcons.Star else null,
+                )
+            }
         }
     }
 }

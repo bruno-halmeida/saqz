@@ -24,6 +24,7 @@ import androidx.compose.material.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -86,6 +87,7 @@ internal object GroupSetupTags {
     const val Photo = "group-setup-photo"
     const val Name = "group-setup-name"
     const val Modality = "group-setup-modality"
+    fun modalityOption(modality: GroupModality) = "group-setup-modality-${modality.name}"
     const val Composition = "group-setup-composition"
     const val Level = "group-setup-level"
     const val CustomLevel = "group-setup-custom-level"
@@ -169,18 +171,10 @@ fun GroupSetupScreen(
                     .padding(horizontal = metrics.horizontalPadding, vertical = metrics.grid),
                 verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
-                if (showTrialOffer && !state.isEditing) {
-                    Text(
-                        text = stringResource(Res.string.group_setup_trial_offer),
-                        style = SaqzTheme.typography.support,
-                        color = SaqzTheme.colors.textSecondary,
-                        modifier = Modifier.testTag(GroupSetupTags.TrialOffer),
-                    )
-                }
                 GroupSetupNotices(state, onIntent)
                 GroupSetupCards(state, onIntent, onOpenWhatsApp)
             }
-            GroupSetupFooter(state, onIntent)
+            GroupSetupFooter(state, onIntent, showTrialOffer)
         }
         GroupSetupSheets(state = state, onIntent = onIntent)
         if (state.subscriptionRequired) {
@@ -211,140 +205,47 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
 @Composable
 private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, onOpenWhatsApp: (() -> Unit)?) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
-        val form = state.form
-        var advancedExpanded by rememberSaveable { mutableStateOf(false) }
-        GroupPhotoSection(
-            photoUrl = state.photoUrl,
-            photo = state.photo,
-            groupName = form.name,
-            isEditing = state.isEditing,
-            onPick = { onIntent(GroupSetupIntent.PickPhoto) },
-        )
-        GroupNameSection(
-            name = form.name,
-            errorText = state.errorText(GroupSetupError.NameRequired, Res.string.group_setup_error_name),
-            onChange = { onIntent(GroupSetupIntent.UpdateName(it)) },
-        )
-        GroupModalitySection(
-            modality = form.modality,
-            errorText = state.errorText(
-                GroupSetupError.ModalityRequired,
-                Res.string.group_setup_error_modality,
-            ),
-            onOpen = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Modality)) },
-        )
-        GroupCompositionSection(
-            composition = form.composition,
-            errorText = state.errorText(
-                GroupSetupError.CompositionRequired,
-                Res.string.group_setup_error_composition,
-            ),
-            onSelect = { onIntent(GroupSetupIntent.SelectComposition(it)) },
-        )
-        if (!state.isEditing && state.errors.isEmpty()) {
-            Text(
-                stringResource(Res.string.onboarding_setup_simple),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-            )
-            SaqzButton(
-                label = stringResource(Res.string.onboarding_setup_advanced),
-                onClick = { advancedExpanded = !advancedExpanded },
-                variant = SaqzButtonVariant.Secondary,
-                fullWidth = true,
+        var userExpanded by rememberSaveable { mutableStateOf(false) }
+        // Na edição tudo fica aberto, sem a linha. Na criação, "Mais detalhes" só abre sozinho se algum erro estiver lá dentro.
+        val expanded = state.isEditing || userExpanded || state.hasErrorInsideDetails()
+        GroupBasicsCard(state, onIntent)
+        GroupGamesCard(state, onIntent)
+        if (!state.isEditing) {
+            GroupMoreDetailsRow(
+                expanded = expanded,
+                onToggle = { userExpanded = !userExpanded },
                 modifier = Modifier.testTag(GroupSetupTags.Advanced),
             )
-            if (!advancedExpanded) return@Column
         }
-        GroupSetupAdvancedCards(state, onIntent, onOpenWhatsApp)
+        if (expanded) GroupSetupDetails(state, onIntent, onOpenWhatsApp)
+    }
+}
+
+/** Erros que moram dentro de "Mais detalhes": só eles abrem a seção sozinha. */
+private fun GroupSetupState.hasErrorInsideDetails(): Boolean = errors.any {
+    when (it) {
+        GroupSetupError.CustomLevelRequired,
+        GroupSetupError.DescriptionTooShort,
+        GroupSetupError.CapacityOutOfRange,
+        GroupSetupError.PositionSlotsSumMismatch,
+        GroupSetupError.GameFeeInvalid,
+        GroupSetupError.DurationOutOfRange,
+        -> true
+        // Sem dia fixo a quadra vai para "Regras dos jogos".
+        GroupSetupError.VenueNameRequired, GroupSetupError.VenueAddressNotFound -> !recurring
+        else -> false
     }
 }
 
 @Composable
-private fun GroupSetupAdvancedCards(
+private fun GroupSetupDetails(
     state: GroupSetupState,
     onIntent: (GroupSetupIntent) -> Unit,
     onOpenWhatsApp: (() -> Unit)?,
 ) {
     val form = state.form
-    GroupLevelSection(
-        levelLabel = form.level?.label(),
-        customLevel = form.customLevel,
-        showsCustomLevel = state.showsCustomLevel,
-        customLevelError = state.errorText(
-            GroupSetupError.CustomLevelRequired,
-            Res.string.group_setup_error_custom_level,
-        ),
-        onOpen = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Level)) },
-        onCustomLevelChange = { onIntent(GroupSetupIntent.UpdateCustomLevel(it)) },
-    )
-    if (state.showsPlayStyle) {
-        GroupPlayStyleSection(
-            playStyle = form.playStyle,
-            onSelect = { onIntent(GroupSetupIntent.SelectPlayStyle(it)) },
-        )
-    }
-    GroupDescriptionSection(
-        description = form.description,
-        errorText = state.errorText(
-            GroupSetupError.DescriptionTooShort,
-            Res.string.group_setup_error_description,
-        ),
-        onChange = { onIntent(GroupSetupIntent.UpdateDescription(it)) },
-    )
-    GroupCapacitySection(
-        capacity = form.defaultCapacity ?: GroupSetupDefaults.Capacity,
-        isBeach = form.modality == GroupModality.BEACH_VOLLEYBALL,
-        hasError = GroupSetupError.CapacityOutOfRange in state.errors,
-        onChange = { onIntent(GroupSetupIntent.UpdateCapacity(it)) },
-    )
-    // DEB-102: no 5-1 o total é distribuído pelas posições e a soma tem de bater com ele.
-    if (state.showsPositionSlots) {
-        GroupPositionSlotsSection(state = state, onIntent = onIntent)
-    }
-    GroupGameFeeSection(
-        cents = form.defaultGameFeeCents,
-        hasError = GroupSetupError.GameFeeInvalid in state.errors,
-        onChange = { onIntent(GroupSetupIntent.UpdateDefaultGameFee(it)) },
-    )
-    GroupDurationSection(
-        minutes = state.durationMinutes,
-        onIntent = onIntent,
-        hasError = GroupSetupError.DurationOutOfRange in state.errors,
-    )
-    // VUL-157: no editar o prazo de confirmação vive dentro da seção de configurações
-    // de jogo; no criar ele continua como card solto, onde sempre esteve.
-    if (!state.isEditing) {
-        GroupConfirmationLeadSection(
-            minutes = form.defaultConfirmationLeadMinutes,
-            onSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
-        )
-    }
-    GroupVenueSection(
-        name = form.defaultVenue?.name.orEmpty(),
-        address = form.defaultVenue?.address.orEmpty(),
-        nameError = state.errorText(
-            GroupSetupError.VenueNameRequired,
-            Res.string.group_setup_error_venue_name,
-        ),
-        addressError = state.errorText(
-            GroupSetupError.VenueAddressNotFound,
-            Res.string.group_setup_error_venue_address,
-        ),
-        onNameChange = { onIntent(GroupSetupIntent.UpdateVenueName(it)) },
-        onAddressChange = { onIntent(GroupSetupIntent.UpdateVenueAddress(it)) },
-        suggestions = state.venueSearch.suggestions,
-        onSelectSuggestion = { onIntent(GroupSetupIntent.SelectPlaceSuggestion(it)) },
-        onDismissSuggestions = { onIntent(GroupSetupIntent.DismissPlaceSuggestions) },
-    )
-    GroupRecurrenceCard(
-        recurring = state.recurring,
-        slots = form.regularSlots,
-        hasError = GroupSetupError.SlotsRequired in state.errors,
-        onRecurringChange = { onIntent(GroupSetupIntent.ToggleRecurring(it)) },
-        onAddSlot = { onIntent(GroupSetupIntent.OpenSheet(GroupSetupSheet.Slot(index = null))) },
-        onRemoveSlot = { onIntent(GroupSetupIntent.RemoveSlot(it)) },
-    )
+    GroupAboutSection(state, onIntent)
+    GroupRulesSection(state, onIntent)
     if (state.isEditing && state.canManageGameConfig) {
         GroupGameConfigSection(
             mensalistaPriority = form.mensalistaPriority,
@@ -396,16 +297,26 @@ private fun GroupWhatsAppSection(onOpen: () -> Unit) {
 }
 
 @Composable
-private fun GroupSetupFooter(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit) {
+private fun GroupSetupFooter(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, showTrialOffer: Boolean) {
     val metrics = SaqzTheme.metrics
     Column {
         SaqzDivider()
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(SaqzTheme.colors.background)
                 .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+            verticalArrangement = Arrangement.spacedBy(metrics.grid),
         ) {
+            if (showTrialOffer && !state.isEditing) {
+                Text(
+                    text = stringResource(Res.string.group_setup_trial_offer),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().testTag(GroupSetupTags.TrialOffer),
+                )
+            }
             SaqzButton(
                 label = stringResource(
                     when {
@@ -415,7 +326,8 @@ private fun GroupSetupFooter(state: GroupSetupState, onIntent: (GroupSetupIntent
                     },
                 ),
                 onClick = { onIntent(GroupSetupIntent.Submit) },
-                enabled = !state.isSaving && !state.positionsBlockSave,
+                // A soma das posições não desabilita o botão: tocar com a soma errada recusa e conta no aviso geral.
+                enabled = !state.isSaving,
                 loading = state.isSaving,
                 fullWidth = true,
                 modifier = Modifier.testTag(GroupSetupTags.Submit),
@@ -425,7 +337,7 @@ private fun GroupSetupFooter(state: GroupSetupState, onIntent: (GroupSetupIntent
 }
 
 @Composable
-private fun GroupSetupState.errorText(error: GroupSetupError, resource: StringResource): String? =
+internal fun GroupSetupState.errorText(error: GroupSetupError, resource: StringResource): String? =
     if (error in errors) stringResource(resource) else null
 
 // --- Previews: um estado real por célula do export ---------------------------------

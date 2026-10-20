@@ -2,17 +2,18 @@
 <resources>
     <!-- Vagas por posição (DEB-102): configuração do grupo, seletor do Vou, lista de presença. -->
     <string name="position_slots_title">Vagas por posição</string>
-    <string name="position_slots_hint">No 5-1 distribua o total de jogadores pelas posições. Posição cheia vai para a lista de espera dela, mesmo que haja vaga em outra.</string>
-    <string name="position_slots_suggest">Sugerir pelo total</string>
+    <string name="position_slots_hint">Posição cheia: a pessoa vai para a fila dela.</string>
+    <string name="position_slots_sum">%1$d de %2$d</string>
+    <string name="position_slots_suggest">Redistribuir pelos %1$d</string>
     <string name="position_slots_suggest_failed">Não foi possível buscar a sugestão. Tente de novo.</string>
     <string name="position_slots_total_ok">As posições fecham os %1$d jogadores.</string>
     <plurals name="position_slots_short">
-        <item quantity="one">Falta %1$d vaga para fechar o total de jogadores.</item>
-        <item quantity="other">Faltam %1$d vagas para fechar o total de jogadores.</item>
+        <item quantity="one">Falta %1$d vaga para fechar %2$d.</item>
+        <item quantity="other">Faltam %1$d vagas para fechar %2$d.</item>
     </plurals>
     <plurals name="position_slots_over">
-        <item quantity="one">Sobra %1$d vaga em relação ao total de jogadores.</item>
-        <item quantity="other">Sobram %1$d vagas em relação ao total de jogadores.</item>
+        <item quantity="one">Sobra %1$d vaga em relação a %2$d.</item>
+        <item quantity="other">Sobram %1$d vagas em relação a %2$d.</item>
     </plurals>
 
     <string name="position_label_libero">Líbero</string>

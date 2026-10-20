@@ -12,5 +12,7 @@
     <string name="group_game_config_promotion_hint_manual">Escolha manual: todo "Vou" entra na lista de espera e você escolhe quem joga. Com a prioridade ligada, só o mensalista confirma direto.</string>
     <string name="group_game_config_promotion_fifo">Ordem de chegada</string>
     <string name="group_game_config_promotion_manual">Escolha manual</string>
-    <string name="group_game_config_confirmation_lead_label">Prazo de confirmação padrão</string>
+    <string name="group_game_config_confirmation_lead_label">Prioridade dos mensalistas</string>
+    <string name="group_game_config_notice_lead_label">Aviso para escolher quem joga</string>
+    <string name="group_game_config_notice_lead_hint">Horas antes do jogo em que você é avisado.</string>
 </resources>
