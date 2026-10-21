@@ -49,15 +49,10 @@
   .primary { background:var(--blue); color:#fff; }
   .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid var(--line); }
   .primary:active, .secondary:active { transform:scale(.98); }
-  .primary:focus-visible, .secondary:focus-visible, .quiet:focus-visible { outline:3px solid var(--blue); outline-offset:3px; }
-  .quiet {
-    display:inline-block; margin-top:20px; padding:4px 0; font-size:14px; color:var(--muted);
-    text-decoration:underline; text-underline-offset:3px;
-  }
+  .primary:focus-visible, .secondary:focus-visible { outline:3px solid var(--blue); outline-offset:3px; }
   @media (hover:hover) {
     .primary:hover { background:var(--blue-press); }
     .secondary:hover { border-color:var(--ink); }
-    .quiet:hover { color:var(--ink); }
   }
   /* QR code (computador, convite e presença): ladrilho branco para o leitor do celular, com margem de silêncio. */
   .qr { width:min(248px,100%); margin:0 0 32px; padding:16px; background:var(--tile); border:1px solid var(--line); border-radius:var(--radius-tile); }
@@ -66,11 +61,11 @@
   @media (min-width:780px) {
     main:has(#qr:not([hidden])) {
       width:min(900px,100%); min-height:540px; display:grid;
-      grid-template-columns:minmax(0,1fr) minmax(0,360px); grid-template-rows:1fr repeat(6,auto) 1fr;
+      grid-template-columns:minmax(0,1fr) minmax(0,360px); grid-template-rows:1fr repeat(5,auto) 1fr;
       background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); overflow:hidden;
     }
     main:has(#qr:not([hidden]))::before { content:""; grid-column:2; grid-row:1 / -1; background:var(--blue); }
-    main:has(#qr:not([hidden])) > :where(.logo, h1, p, .primary, .secondary, .quiet) {
+    main:has(#qr:not([hidden])) > :where(.logo, h1, p, .primary, .secondary) {
       grid-column:1; justify-self:start; width:100%; max-width:320px; margin-inline:56px 48px;
     }
     main:has(#qr:not([hidden])) > .logo { grid-row:2; width:148px; margin-bottom:40px; }
@@ -78,7 +73,6 @@
     main:has(#qr:not([hidden])) > p { grid-row:4; margin-bottom:32px; }
     main:has(#qr:not([hidden])) > .primary { grid-row:5; }
     main:has(#qr:not([hidden])) > .secondary { grid-row:6; }
-    main:has(#qr:not([hidden])) > .quiet { grid-row:7; width:auto; justify-self:start; }
     main:has(#qr:not([hidden])) > .qr {
       grid-column:2; grid-row:1 / -1; place-self:center; width:248px; margin:0; border:0; z-index:1;
       box-shadow:0 0 0 10px rgba(255,255,255,.14);
@@ -96,7 +90,6 @@
   <div id="qr" class="qr" role="img" aria-label="QR code para abrir este link no celular" hidden></div>
   <a id="primary" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
   <a id="secondary" class="secondary" hidden></a>
-  <a id="tertiary" class="quiet" hidden></a>
 </main>
 <script src="/assets/qrcode.js"></script>
 <script>
@@ -138,31 +131,15 @@
     var lead = document.getElementById("lead");
     var primary = document.getElementById("primary");
     var secondary = document.getElementById("secondary");
-    var tertiary = document.getElementById("tertiary");
 
     if (kind === "invite") heading.textContent = "Entre no grupo no Saqz";
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
     if (kind === "attendance") heading.textContent = "Responda no Saqz";
 
-    // O computador nunca vai sozinho ao web app (saqz.app/app/), qualquer que seja o link (convite, presença,
-    // onboarding ou sem código): o QR leva o link ao celular, que segue o fluxo do app, e o web app fica num
-    // link discreto, só se responde e há WasmGC. O celular (Android e iPhone) também não usa o web app: o
-    // atleta instala o app pela loja e o app retoma o link.
-    var webApp = "https://saqz.app/app/";
-    var webQuery = kind === "attendance" ? "?saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
-      : kind ? route : "";
+    // Nenhum aparelho usa o web app (saqz.app/app/) a partir desta página: o celular vai à loja do sistema e o app
+    // retoma o link; o computador mostra o QR do link e as duas lojas. Nada de redirecionamento nem link para o web app.
     if (!isIOS && !isAndroid) return desktopFlow();
     appFlow();
-
-    // Android, convite e presença: o web app nunca é o caminho principal nem o fallback do intent.
-    // Só um link discreto, para quem não pode instalar, e só se o web app responde e há WasmGC.
-    if (isAndroid && (kind === "invite" || kind === "attendance") && supportsWasmGc() && typeof fetch === "function") {
-      fetch(webApp + "disponivel.json", { cache: "no-store" })
-        .then(function (response) {
-          if (response.ok) link(tertiary, webApp + webQuery, "Continuar no navegador");
-        })
-        .catch(function () {});
-    }
 
     function appFlow() {
       // Convite, onboarding e presença seguem para o Play no `referrer`, para o app retomá-los
@@ -253,15 +230,6 @@
       } else {
         legacy();
         done();
-      }
-    }
-
-    // O web app é Kotlin/Wasm e precisa de WasmGC (iOS 18.2+): sem ele, o caminho de antes.
-    function supportsWasmGc() {
-      try {
-        return typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0]));
-      } catch (e) {
-        return false;
       }
     }
 

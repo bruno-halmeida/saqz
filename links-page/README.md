@@ -86,12 +86,9 @@ No celular a página redireciona sozinha, sem clique; os botões ficam de reserv
   `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, mostrado como `44DF-8SA8`) e o token longo dos links já
   enviados. A página aceita minúsculas e hífen e segue adiante sempre com o código em maiúscula e
   sem hífen (`?saqz_invite=44DF8SA8`); o que não for um dos dois formatos não é convite.
-- **Computador:** nenhum link vai ao web app, nem sozinho nem por link na página (DEB-118): convite, presença, onboarding e link sem código. A página mostra um QR code com o link canônico (`https://links.saqz.app/?saqz_invite=<código normalizado>` ou `/attendance/<token>`, com `?saqz_intent=decline` no "não vou"; no link sem código, `https://links.saqz.app/`) e os botões das duas lojas. O web app continua em `saqz.app/app/`, fora desta página; só o Android guarda o "Continuar no navegador".
+- **Computador:** nenhum link vai ao web app, nem sozinho nem por link na página (DEB-118): convite, presença, onboarding e link sem código. A página mostra um QR code com o link canônico (`https://links.saqz.app/?saqz_invite=<código normalizado>` ou `/attendance/<token>`, com `?saqz_intent=decline` no "não vou"; no link sem código, `https://links.saqz.app/`) e os botões das duas lojas. O web app continua em `saqz.app/app/`, fora desta página: nenhuma plataforma tem link para ele (o "Continuar no navegador" do Android também saiu).
 - **QR code:** `assets/qrcode.js` é o `qrcode-generator` 1.4.4 (Kazuhiko Arase, MIT, pacote npm), sem CDN.
-- **iPhone sem App Store:** enquanto `appStore` estiver vazio, também vai para o web app
-  (`/app/?saqz_invite=…`, `?saqz_onboarding=…`, `?saqz_attendance=…[&saqz_intent=decline]`). A página
-  só redireciona depois que `https://saqz.app/app/disponivel.json` responde; fora do ar, vale o aviso
-  de "em breve". Preenchido o `appStore`, o iPhone volta a ir para a loja.
+- **iPhone:** vai sempre à App Store (id6812743525); o web app não entra no caminho.
 
 - **Google Play**, no ar desde 07/10/2026. Convite, onboarding e presença seguem no
   `referrer` do Play (`saqz_invite=…`, `saqz_onboarding=…`, `saqz_attendance=…`, com

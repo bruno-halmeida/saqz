@@ -15,7 +15,6 @@ function page(userAgent, pathname, search = '', { source = script, hidden = fals
     lead: { textContent: 'Entre no grupo ou confirme sua presença no Saqz.' },
     primary: { href: 'https://saqz.app', textContent: 'Acessar site do Saqz', hidden: false, addEventListener(event, callback) { this.clicks = { ...this.clicks, [event]: callback }; } },
     secondary: { hidden: true },
-    tertiary: { hidden: true },
     qr: { hidden: true, innerHTML: '', attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } },
   };
   const location = { pathname, search, replace(url) { this.replaced = url; } };
@@ -208,7 +207,6 @@ test('desktop onboarding shows the QR and the stores, never opens the web app by
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_onboarding=' + code);
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.hidden, true);
   assert.deepEqual(result.requests, []);
 });
 
@@ -222,7 +220,6 @@ test('desktop without a link code shows the QR and the stores, never opens the w
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/');
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.hidden, true);
   // Código malformado vale como link sem código: o computador também não segue ao web app.
   const bad = page(desktop, '/', '?saqz_invite=bad', { fetch: webUp });
   await settle();
@@ -243,7 +240,6 @@ test('desktop invite: QR with the canonical link and both stores, no redirect an
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_invite=' + code);
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.hidden, true);
   assert.deepEqual(result.requests, []);
 });
 
@@ -252,22 +248,19 @@ test('desktop attendance: the QR carries the token, decline included', async () 
   await settle();
   assert.equal(confirm.heading.textContent, 'Responda no Saqz');
   assert.equal(confirm.qr.attributes['data-link'], 'https://links.saqz.app/attendance/' + code);
-  assert.equal(confirm.tertiary.hidden, true);
   assert.equal(confirm.location.replaced, undefined);
   const decline = page(desktop, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
   await settle();
   assert.ok(qrDrawn(decline));
   assert.equal(decline.qr.attributes['data-link'], `https://links.saqz.app/attendance/${code}?saqz_intent=decline`);
-  assert.equal(decline.tertiary.hidden, true);
   assert.equal(decline.location.replaced, undefined);
 });
 
-test('desktop never asks for the web app, whatever the web app or WasmGC state', async () => {
-  const cases = [{ fetch: webUp }, { fetch: webDown }, { fetch: () => Promise.reject(new Error('rede')) }, { fetch: webUp, wasm: { validate: () => false } }];
+test('desktop never asks for the web app, whatever the web app state', async () => {
+  const cases = [{ fetch: webUp }, { fetch: webDown }, { fetch: () => Promise.reject(new Error('rede')) }];
   for (const options of cases) {
     const result = page(desktop, '/', '?saqz_invite=' + code, options);
     await settle();
-    assert.equal(result.tertiary.hidden, true);
     assert.deepEqual(result.requests, []);
     assert.ok(qrDrawn(result));
     assert.equal(result.primary.href, appStore);
@@ -282,7 +275,6 @@ test('desktop without the QR library hides the QR and keeps the stores', async (
   assert.equal(result.qr.hidden, true);
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.hidden, true);
   assert.equal(result.location.replaced, undefined);
 });
 
@@ -319,28 +311,16 @@ test('Android invite and attendance go to Google Play with the referrer, and the
   }
 });
 
-test('Android shows a quiet "Continuar no navegador" link only when the web app answers and WasmGC exists', async () => {
-  const web = `https://saqz.app/app/?saqz_attendance=${code}&saqz_intent=decline`;
-  const up = page(android, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
-  assert.deepEqual(up.requests, ['https://saqz.app/app/disponivel.json']);
-  assert.equal(up.tertiary.hidden, true);
-  await settle();
-  assert.equal(up.tertiary.href, web);
-  assert.equal(up.tertiary.textContent, 'Continuar no navegador');
-  assert.equal(up.tertiary.hidden, false);
-  const invite = page(android, '/', '?saqz_invite=' + code, { fetch: webUp });
-  await settle();
-  assert.equal(invite.tertiary.href, 'https://saqz.app/app/?saqz_invite=' + code);
-  const down = page(android, '/', '?saqz_invite=' + code, { fetch: webDown });
-  await settle();
-  assert.equal(down.tertiary.hidden, true);
-  const noGc = page(android, '/', '?saqz_invite=' + code, { fetch: webUp, wasm: { validate: () => false } });
-  await settle();
-  assert.deepEqual(noGc.requests, []);
-  assert.equal(noGc.tertiary.hidden, true);
-  // Nunca vira fallback automático.
-  assert.ok(!up.location.href.includes(encodeURIComponent('saqz.app/app')));
-  assert.equal(up.location.replaced, undefined);
+test('Android never asks for the web app nor offers a link to it, with the web app up or down', async () => {
+  for (const [pathname, search] of [['/attendance/' + code, '?saqz_intent=decline'], ['/', '?saqz_invite=' + code]]) {
+    for (const fetch of [webUp, webDown]) {
+      const result = page(android, pathname, search, { fetch });
+      await settle();
+      assert.deepEqual(result.requests, []);
+      assert.ok(!result.location.href.includes(encodeURIComponent('saqz.app/app')));
+      assert.equal(result.location.replaced, undefined);
+    }
+  }
 });
 
 test('Android onboarding and the bare link never ask for the web app', async () => {
@@ -348,17 +328,7 @@ test('Android onboarding and the bare link never ask for the web app', async () 
     const result = page(android, '/', search, { fetch: webUp });
     await settle();
     assert.deepEqual(result.requests, []);
-    assert.equal(result.tertiary.hidden, true);
   }
-});
-
-test('an iPhone without WasmGC (iOS before 18.2) behaves the same: button, no redirect', async () => {
-  const noGc = { validate: () => false };
-  const result = page(iPhone, '/', '?saqz_invite=' + code, { fetch: webUp, wasm: noGc });
-  await settle();
-  assert.deepEqual(result.requests, []);
-  assert.equal(result.location.replaced, undefined);
-  assert.equal(result.primary.textContent, 'Baixar o app e continuar');
 });
 
 // Código curto do convite (44DF-8SA8): o link leva o código sem hífen.
@@ -387,7 +357,6 @@ test('short invite code on the desktop: the QR carries the normalized code', asy
   await settle();
   assert.equal(result.location.replaced, undefined);
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_invite=44DF8SA8');
-  assert.equal(result.tertiary.hidden, true);
 });
 
 test('short invite codes with ambiguous characters or wrong size are not invites', () => {

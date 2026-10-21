@@ -75,7 +75,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 ## PROD-WEB05b · Link de convite ou presença no Android sem o app · P0
 
-**Quem:** ATL no Android (Chrome) sem o app instalado, em aparelho com WasmGC (Chrome atual).
+**Quem:** ATL no Android (Chrome) sem o app instalado.
 
 1. Num chat de teste do WhatsApp, tocar no link do convite do grupo QA (repetir com o link de presença,
    e com o "não vou").
@@ -85,11 +85,8 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
   (`saqz_invite=…` ou `saqz_attendance=…`, com `&saqz_intent=decline` no "não vou"). O web app nunca é
   o caminho principal nem o fallback automático.
 - Se a página ficar visível, o botão principal é "Baixar no Google Play" e há "Já instalei, abrir o app".
-- Com o web app no ar (`saqz.app/app/disponivel.json` responde) e Chrome com WasmGC, aparece também um
-  link discreto "Continuar no navegador" para `saqz.app/app/` com o mesmo código na query. Com o web app
-  fora do ar ou sem WasmGC, o link não aparece.
-- O link de onboarding (`saqz_onboarding`) e o link sem parâmetro vão ao Play, sem o link do navegador.
-- Se a pessoa escolher "Continuar no navegador", depois da primeira resposta o web app oferece "Baixar o app" (lembrete no celular).
+- **Não** aparece link para o web app (o "Continuar no navegador" saiu em 20/10, pedido do dono), com o web app no ar ou fora dele.
+- O link de onboarding (`saqz_onboarding`) e o link sem parâmetro também vão ao Play.
 
 ## PROD-WEB06 · Link de convite no computador · P1
 
@@ -103,7 +100,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
   os botões "Baixar na App Store" e "Baixar no Google Play".
 - Ler o QR com a câmera do celular: abre o mesmo link (`links.saqz.app/?saqz_invite=…`, código sem hífen e em maiúscula) e o
   celular segue o fluxo dele (Android: Play com o `referrer`; iPhone: "Baixar o app e continuar" copia o link e abre a App Store).
-- **Não** aparece "Continuar no computador" nem qualquer link para o web app, com o web app no ar ou fora dele.
+- **Não** aparece qualquer link para o web app, com o web app no ar ou fora dele.
 - Link de **onboarding** (`saqz_onboarding=…`) e o link **sem código** (`links.saqz.app` puro) no computador também não vão ao web app: mesmo cartão, com o QR do próprio link e as duas lojas ("Continue no app Saqz" / "Este link abre no app Saqz").
 - Janela estreita (menos de 780 px): coluna única, QR acima dos botões, sem rolagem lateral.
 
