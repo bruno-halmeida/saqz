@@ -52,6 +52,17 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Promover pelo botão "Promover a mensalista" no cadastro de convites | Vira mensalista; nenhuma mensagem de WhatsApp | ☐ | ☐ |
 | Aceita pedido de entrada como mensalista, grupo com padrão | Entra mensalista, com o valor e o dia do grupo | ☐ | ☐ |
 | Aceita pedido de entrada, grupo sem padrão | Entra como avulso; a opção de mensalista nem aparece | ☐ | ☐ |
+| Isenta um mensalista (chave "Isenção da mensalidade", confirma "Dar isenção") | Continua mensalista, com prioridade; nenhuma mensalidade nova | ☐ | ☐ |
+| Liga a chave e toca "Voltar" | Nada muda | ☐ | ☐ |
+| Isenta com mensalidade pendente do mês atual | Ela vira dispensada, com a nota "Isenção da mensalidade" | ☐ | ☐ |
+| Isenta com mensalidade pendente de mês anterior | A antiga continua pendente | ☐ | ☐ |
+| Admin isenta a si mesmo | Permitido | ☐ | ☐ |
+| Atleta tenta se isentar | 403 | ☐ | ☐ |
+| Isento na lista de membros (dono ou admin) | "Mensalista · com isenção"; o cartão de valor some no editor | ☐ | ☐ |
+| Isento vira avulso | Perde a isenção; passa a pagar diária | ☐ | ☐ |
+| Avulso marcado como isento | Recusado; a chave nem aparece para avulso | ☐ | ☐ |
+| App antigo (sem o campo) edita o membro isento | A isenção continua | ☐ | ☐ |
+| Isento sai do grupo e volta | Volta sem isenção | ☐ | ☐ |
 
 ## MEM-004 · O perfil de atleta
 

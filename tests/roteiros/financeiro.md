@@ -48,6 +48,11 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Entra pelo link de mensalistas, grupo sem mensalidade padrão | Entra como avulso; nenhuma mensalidade | ☐ | ☐ |
 | Avulso vira mensalista pelo link | O dia vira o início de mensalista; segue a regra de entrada tardia | ☐ | ☐ |
 | Pedido aceito como mensalista no dia 20, regra "mês seguinte" | Nenhuma cobrança neste mês | ☐ | ☐ |
+| Mensalista isento, job roda | Nada | ☐ | ☐ |
+| Geração manual do mês | O isento não aparece e não recebe | ☐ | ☐ |
+| Isenção sai no dia 20, regra "mês seguinte" | Nenhuma cobrança neste mês; volta no próximo | ☐ | ☐ |
+| Isenção sai no dia 3, vencimento dia 10 | Mensalidade inteira do mês, no dia 10 | ☐ | ☐ |
+| Isenta (pendente do mês dispensada) e tira no mesmo mês | A dispensada fica; nada novo no mês | ☐ | ☐ |
 
 ## FIN-004 · A diária do jogo [CRÍTICO] [MULTI]
 
