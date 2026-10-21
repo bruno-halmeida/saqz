@@ -258,7 +258,9 @@ private fun AppStorePaywallCatalog(
                 tooSmallFor = groupLimit?.takeUnless { it.fits(plan.maxGroups) },
                 coupon = coupon,
                 onPurchase = {
-                    onIntent(if (coupon != null) AppStorePaywallIntent.PurchaseWithCoupon else AppStorePaywallIntent.Purchase(offer.productId))
+                    onIntent(
+                        if (coupon != null) AppStorePaywallIntent.PurchaseWithCoupon else AppStorePaywallIntent.Purchase(offer.productId),
+                    )
                 },
             )
         }
@@ -374,7 +376,11 @@ private fun AppStorePaywallPlanCard(
         }
         if (!offer.isCurrent) {
             SaqzButton(
-                label = if (coupon != null) stringResource(Res.string.paywall_coupon_cta) else stringResource(Res.string.paywall_cta, plan.name),
+                label = if (coupon != null) {
+                    stringResource(Res.string.paywall_coupon_cta)
+                } else {
+                    stringResource(Res.string.paywall_cta, plan.name)
+                },
                 onClick = onPurchase,
                 fullWidth = true,
                 enabled = enabled && tooSmallFor == null,
