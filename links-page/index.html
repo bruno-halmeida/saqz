@@ -144,32 +144,15 @@
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
     if (kind === "attendance") heading.textContent = "Responda no Saqz";
 
-    // O computador segue para o web app (saqz.app/app/), com o mesmo código na query. Só se ele
-    // responder: fora do ar, vale o pedido para abrir o link no celular. O celular (Android e iPhone)
-    // não usa o web app: o atleta instala o app pela loja e o app retoma o link.
+    // O computador nunca vai sozinho ao web app (saqz.app/app/), qualquer que seja o link (convite, presença,
+    // onboarding ou sem código): o QR leva o link ao celular, que segue o fluxo do app, e o web app fica num
+    // link discreto, só se responde e há WasmGC. O celular (Android e iPhone) também não usa o web app: o
+    // atleta instala o app pela loja e o app retoma o link.
     var webApp = "https://saqz.app/app/";
     var webQuery = kind === "attendance" ? "?saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
       : kind ? route : "";
-    // Convite e presença no computador: sem redirecionamento. O QR leva o link ao celular, que segue
-    // o fluxo do app; o web app fica num link discreto, só se responde e há WasmGC.
-    var desktopLink = !isIOS && !isAndroid && (kind === "invite" || kind === "attendance");
-    if (desktopLink) return desktopFlow();
-    var wantsWebApp = !isIOS && !isAndroid && supportsWasmGc();
-    if (wantsWebApp && typeof fetch === "function") {
-      var waiting = lead.textContent;
-      lead.textContent = "Abrindo o Saqz…";
-      fetch(webApp + "disponivel.json", { cache: "no-store" })
-        .then(function (response) {
-          if (!response.ok) throw new Error("web app fora do ar");
-          location.replace(webApp + webQuery);
-        })
-        .catch(function () {
-          lead.textContent = waiting;
-          appFlow();
-        });
-    } else {
-      appFlow();
-    }
+    if (!isIOS && !isAndroid) return desktopFlow();
+    appFlow();
 
     // Android, convite e presença: o web app nunca é o caminho principal nem o fallback do intent.
     // Só um link discreto, para quem não pode instalar, e só se o web app responde e há WasmGC.
@@ -182,11 +165,6 @@
     }
 
     function appFlow() {
-      if (!isIOS && !isAndroid) {
-        if (kind) lead.textContent = "Abra este link no celular para continuar no app.";
-        return;
-      }
-
       // Convite, onboarding e presença seguem para o Play no `referrer`, para o app retomá-los
       // depois da instalação: o link de presença também traz quem ainda não está no grupo, que
       // entra e já confirma. O "não vou" vai junto, para nunca virar confirmação.
@@ -233,7 +211,7 @@
 
     function desktopFlow() {
       lead.textContent = "Aponte a câmera do celular para o QR code e continue no app.";
-      drawQr("https://links.saqz.app/" + route);
+      drawQr("https://links.saqz.app/" + (route || ""));
       link(primary, appStore, "Baixar na App Store");
       link(secondary, googlePlay, "Baixar no Google Play");
       if (supportsWasmGc() && typeof fetch === "function") {

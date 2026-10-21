@@ -106,7 +106,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 - Com o web app no ar (`saqz.app/app/disponivel.json` responde) e navegador com WasmGC (Chrome ou Safari atuais), aparece
   também o link discreto "Continuar no computador", que leva a `saqz.app/app/?saqz_invite=…` com o mesmo código.
 - Com o web app fora do ar ou sem WasmGC: só o QR e as duas lojas, sem o link "Continuar no computador".
-- Link de **onboarding** (`saqz_onboarding=…`) no computador continua indo direto ao web app.
+- Link de **onboarding** (`saqz_onboarding=…`) e o link **sem código** (`links.saqz.app` puro) no computador também não vão ao web app: mesmo cartão, com o QR do próprio link e as duas lojas ("Continue no app Saqz" / "Este link abre no app Saqz").
 - Janela estreita (menos de 780 px): coluna única, QR acima dos botões, sem rolagem lateral.
 
 ## PROD-WEB07 · Página de exclusão de conta · P1

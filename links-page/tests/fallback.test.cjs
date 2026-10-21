@@ -199,10 +199,36 @@ test('iPhone never asks for the web app and never redirects by itself', async ()
   }
 });
 
-test('desktop onboarding opens the web app too', async () => {
+test('desktop onboarding shows the QR and the stores, never opens the web app by itself', async () => {
   const result = page(desktop, '/', '?saqz_onboarding=' + code, { fetch: webUp });
   await settle();
-  assert.equal(result.location.replaced, 'https://saqz.app/app/?saqz_onboarding=' + code);
+  assert.equal(result.location.replaced, undefined);
+  assert.equal(result.heading.textContent, 'Continue no app Saqz');
+  assert.equal(result.qr.hidden, false);
+  assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_onboarding=' + code);
+  assert.equal(result.primary.href, appStore);
+  assert.equal(result.secondary.href, play);
+  assert.equal(result.tertiary.href, 'https://saqz.app/app/?saqz_onboarding=' + code);
+  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+});
+
+test('desktop without a link code shows the QR and the stores, never opens the web app by itself', async () => {
+  const result = page(desktop, '/', '', { fetch: webUp });
+  await settle();
+  assert.equal(result.location.replaced, undefined);
+  assert.equal(result.location.href, undefined);
+  assert.equal(result.lead.textContent, 'Aponte a câmera do celular para o QR code e continue no app.');
+  assert.equal(result.qr.hidden, false);
+  assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/');
+  assert.equal(result.primary.href, appStore);
+  assert.equal(result.secondary.href, play);
+  assert.equal(result.tertiary.href, 'https://saqz.app/app/');
+  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+  // Código malformado vale como link sem código: o computador também não segue ao web app.
+  const bad = page(desktop, '/', '?saqz_invite=bad', { fetch: webUp });
+  await settle();
+  assert.equal(bad.location.replaced, undefined);
+  assert.equal(bad.qr.attributes['data-link'], 'https://links.saqz.app/');
 });
 
 // Convite e presença no computador (DEB-118): QR com o link canônico, as duas lojas e, discreto, o web app.
