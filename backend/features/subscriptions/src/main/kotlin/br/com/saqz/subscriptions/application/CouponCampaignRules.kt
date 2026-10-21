@@ -53,10 +53,11 @@ object CouponCampaignRules {
     fun appStoreCustomCode(code: String, product: CouponProduct): String =
         code.uppercase() + product.plan.name.first() + (if (product.cycle == SubscriptionCycle.MONTHLY) "M" else "A")
 
-    /** Tag de oferta do Play: minúsculas, números e hífen, até 20. */
+    /** Tag de oferta do Play (RFC-1034): começa com letra; minúsculas, números e hífen, até 20. */
     fun offerTag(raw: String): String =
-        raw.lowercase().let { java.text.Normalizer.normalize(it, java.text.Normalizer.Form.NFD) }
+        ("c-" + raw).lowercase().let { java.text.Normalizer.normalize(it, java.text.Normalizer.Form.NFD) }
             .replace(Regex("\\p{M}"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-').take(20).trim('-')
+            .removePrefix("c-").let { if (it.firstOrNull()?.isLetter() == true) it else "c-$it".take(20).trim('-') }
             .ifEmpty { "campanha" }
 
     /** Google aplica o desconto relativo sobre o preço do plano base e arredonda para o centavo. */
