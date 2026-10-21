@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import br.com.saqz.subscriptions.domain.port.GooglePlayBasePlan
+import br.com.saqz.subscriptions.domain.port.GooglePlayOffer
 import br.com.saqz.subscriptions.domain.port.GooglePlayProductsResult
 import br.com.saqz.subscriptions.domain.port.GooglePlayPurchase
 import br.com.saqz.subscriptions.domain.port.GooglePlayPurchaseResult
@@ -90,6 +91,24 @@ class AndroidGooglePlayPurchasesTest {
         )
         assertEquals(2, loaded.size)
         assertEquals(1, client.connections)
+    }
+
+    @Test
+    fun offersOfTheBasePlansCarryTheirTokenAndTheDiscountedFirstPhase() {
+        client.products = listOf(organizador())
+        val results = mutableListOf<GooglePlayProductsResult>()
+
+        purchases.loadGooglePlayProducts(listOf(ORGANIZADOR)) { results += it }
+        idle()
+
+        val product = (results.single() as GooglePlayProductsResult.Loaded).products.single()
+        assertEquals(
+            listOf(
+                GooglePlayOffer("mensal", "promo", "token-promo", "R$ 0,00"),
+                GooglePlayOffer("mensal", "cupom-verao30", "token-cupom", "R$ 41,93"),
+            ),
+            product.offers,
+        )
     }
 
     @Test
@@ -317,14 +336,16 @@ class AndroidGooglePlayPurchasesTest {
             .filterNot { java.lang.reflect.Modifier.isStatic(it.modifiers) }
             .any { field -> field.isAccessible = true; field.get(this) == value }
 
-        /** Dois planos base e uma oferta, que o app ignora: o teste grátis é do backend. */
+        /** Dois planos base, uma oferta de teste grátis (o teste é do backend) e a de um cupom de campanha. */
         fun organizador(): ProductDetails = productDetails(
             """{"productId":"$ORGANIZADOR","type":"subs","title":"Organizador (Saqz)","name":"Organizador",""" +
                 """"description":"","skuDetailsToken":"detalhes","subscriptionOfferDetails":[""" +
                 basePlan("mensal", "R$ 59,90", "P1M") + "," +
                 basePlan("anual", "R$ 539,90", "P1Y") + "," +
                 """{"basePlanId":"mensal","offerId":"promo","offerIdToken":"token-promo","offerTags":[],""" +
-                """"pricingPhases":[${phase("R$ 0,00", "P1W")},${phase("R$ 59,90", "P1M")}]}""" +
+                """"pricingPhases":[${phase("R$ 0,00", "P1W")},${phase("R$ 59,90", "P1M")}]},""" +
+                """{"basePlanId":"mensal","offerId":"cupom-verao30","offerIdToken":"token-cupom","offerTags":[],""" +
+                """"pricingPhases":[${phase("R$ 41,93", "P1M")},${phase("R$ 59,90", "P1M")}]}""" +
                 "]}",
         )
 

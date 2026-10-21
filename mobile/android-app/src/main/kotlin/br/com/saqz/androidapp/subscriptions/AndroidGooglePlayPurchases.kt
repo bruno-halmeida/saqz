@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import br.com.saqz.subscriptions.domain.port.GooglePlayBasePlan
+import br.com.saqz.subscriptions.domain.port.GooglePlayOffer
 import br.com.saqz.subscriptions.domain.port.GooglePlayProduct
 import br.com.saqz.subscriptions.domain.port.GooglePlayProductsCallback
 import br.com.saqz.subscriptions.domain.port.GooglePlayProductsResult
@@ -286,17 +287,28 @@ private fun BillingResult.toPurchaseFailure(): GooglePlayPurchaseResult = when (
     else -> GooglePlayPurchaseResult.Failed(describe())
 }
 
-/** Só planos base (sem oferta): o teste grátis é do backend, não do Play. */
-private fun ProductDetails.toDomain() = GooglePlayProduct(
-    productId = productId,
-    name = name,
-    basePlans = subscriptionOfferDetails.orEmpty()
-        .filter { it.offerId == null }
-        .mapNotNull { offer ->
-            val price = offer.pricingPhases.pricingPhaseList.lastOrNull()?.formattedPrice ?: return@mapNotNull null
-            GooglePlayBasePlan(basePlanId = offer.basePlanId, offerToken = offer.offerToken, formattedPrice = price)
+/**
+ * Planos base (sem oferta) e as ofertas deles. O teste grátis é do backend, não do Play; as
+ * ofertas são as dos cupons de campanha, e o preço delas é o da primeira fase, o com desconto.
+ */
+internal fun ProductDetails.toDomain(): GooglePlayProduct {
+    val details = subscriptionOfferDetails.orEmpty()
+    return GooglePlayProduct(
+        productId = productId,
+        name = name,
+        basePlans = details
+            .filter { it.offerId == null }
+            .mapNotNull { offer ->
+                val price = offer.pricingPhases.pricingPhaseList.lastOrNull()?.formattedPrice ?: return@mapNotNull null
+                GooglePlayBasePlan(basePlanId = offer.basePlanId, offerToken = offer.offerToken, formattedPrice = price)
+            },
+        offers = details.mapNotNull { offer ->
+            val offerId = offer.offerId ?: return@mapNotNull null
+            val price = offer.pricingPhases.pricingPhaseList.firstOrNull()?.formattedPrice ?: return@mapNotNull null
+            GooglePlayOffer(basePlanId = offer.basePlanId, offerId = offerId, offerToken = offer.offerToken, formattedPrice = price)
         },
-)
+    )
+}
 
 internal fun Purchase.toDomain(): GooglePlayPurchase? {
     val productId = products.firstOrNull() ?: return null
