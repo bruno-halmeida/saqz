@@ -117,7 +117,12 @@ class SyncCouponStoreOffers(
             val uses = (coupon.maxUses ?: CouponCampaignRules.APPLE_MAX_CUSTOM_CODE_USES)
                 .coerceAtMost(CouponCampaignRules.APPLE_MAX_CUSTOM_CODE_USES)
             current = current.copy(
-                ascCustomCodeId = api.createCustomCode(requireNotNull(current.ascOfferCodeId), requireNotNull(current.customCode), uses),
+                ascCustomCodeId = api.createCustomCode(
+                    requireNotNull(current.ascOfferCodeId),
+                    requireNotNull(current.customCode),
+                    uses,
+                    coupon.validUntil?.let(CouponCampaignRules::appStoreExpirationDate),
+                ),
                 storeCreatedAt = now,
             )
         }
@@ -199,6 +204,9 @@ class SyncCouponStoreOffers(
         val APPLE_PROPAGATION: Duration = Duration.ofMinutes(60)
         val RETRY_BASE: Duration = Duration.ofMinutes(2)
         private const val BATCH = 50
-        private val CREATABLE = setOf(CouponStoreOfferState.PENDING, CouponStoreOfferState.CREATING, CouponStoreOfferState.WAITING_STORE)
+        /** Estados que passam a DEACTIVATING quando o cupom vence ou é encerrado. */
+        private val CREATABLE = setOf(
+            CouponStoreOfferState.PENDING, CouponStoreOfferState.CREATING, CouponStoreOfferState.WAITING_STORE, CouponStoreOfferState.ACTIVE,
+        )
     }
 }

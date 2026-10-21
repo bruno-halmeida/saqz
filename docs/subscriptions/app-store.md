@@ -206,8 +206,8 @@ Cupom com duração criado no adm-web vira, para cada produto coberto, um **cód
    `offerEligibility` `STACK_WITH_INTRO_OFFERS` (não há oferta introdutória),
    `customerEligibilities` `NEW` ("Nunca assinou") e/ou `EXPIRED` ("Já cancelou"), preço só
    em `BRA`.
-4. `POST /v1/subscriptionOfferCodeCustomCodes`: `customCode` e `numberOfCodes` = limite de
-   usos (sem limite = 25.000, o máximo por código).
+4. `POST /v1/subscriptionOfferCodeCustomCodes`: `customCode`, `numberOfCodes` = limite de
+   usos (sem limite = 25.000, o máximo por código) e `expirationDate` quando o cupom tem validade.
 
 **Código personalizado é único no app inteiro** ("Custom codes can't be used for other offer
 campaigns or subscriptions for the app", ajuda do App Store Connect): por isso um código por
@@ -217,8 +217,11 @@ app recebe esse código em `appStoreOfferCode` e o link
 
 - Limites: pay as you go numa assinatura de 1 mês aceita 1 a 12 meses; de 1 ano, só 1 ano.
   Até 64 caracteres sem especiais. Código personalizado aceita no máximo 25.000 resgates por
-  criação. Validade do código não é enviada (máximo de 6 meses na Apple): o job desativa
-  quando o cupom vence ou é encerrado.
+  criação. Com validade no cupom, o código personalizado vai com `expirationDate`
+  (`AAAA-MM-DD`) = dia da validade no fuso do Pacífico: a Apple desliga à 0h PT desse dia, então
+  o código nunca vale depois do cupom (pode parar algumas horas antes, no último dia). Validade
+  além de 6 meses (máximo da Apple) é recusada no admin. Além disso, o job desativa nas lojas
+  toda oferta (inclusive já `ACTIVE`) de cupom vencido ou encerrado.
 - A Apple não avisa quando o código passa a valer (até 1 hora): a oferta fica
   `WAITING_STORE` ("Liberando na Apple (até 1 h)") e vira `ACTIVE` 60 minutos depois.
 - Encerrar = `PATCH active=false` no código personalizado e no código de oferta (a oferta

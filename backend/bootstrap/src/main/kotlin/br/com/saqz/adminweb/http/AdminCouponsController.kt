@@ -128,7 +128,7 @@ class AdminCouponsController(
         val covered = if (products.isEmpty()) CouponProduct.ALL else products.toList()
         // Com duração, o cupom vai às lojas: o que a loja não aceita é recusado aqui, com o motivo.
         val stores = durationCycles != null
-        if (stores) CouponCampaignRules.storeRejection(discount, durationCycles, covered, maxUses)?.let { return Parsed.Rejected(it) }
+        if (stores) CouponCampaignRules.storeRejection(discount, durationCycles, covered, maxUses, validUntil, now())?.let { return Parsed.Rejected(it) }
         return Parsed.Ok(
             AdminCouponCreate(
                 code = code,

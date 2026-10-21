@@ -25,6 +25,10 @@ object CouponCampaignRules {
     /** Limite de resgates por código personalizado da Apple (`numberOfCodes`). */
     const val APPLE_MAX_CUSTOM_CODE_USES = 25_000
 
+    /** Validade máxima de um código personalizado da Apple. */
+    const val APPLE_MAX_CODE_MONTHS = 6L
+    val APPLE_ZONE: java.time.ZoneId = java.time.ZoneId.of("America/Los_Angeles")
+
     /** Código do cupom: letras e números, até 32 (cabe o sufixo do produto nos 64 da Apple). */
     val CODE = Regex("^[A-Z0-9]{3,32}$")
 
@@ -32,7 +36,14 @@ object CouponCampaignRules {
      * Motivo em português quando o cupom não pode ir às lojas como está; null quando pode. As
      * mensagens aparecem no admin.
      */
-    fun storeRejection(discountPercent: Int, durationCycles: Int?, products: Collection<CouponProduct>, maxUses: Int?): String? {
+    fun storeRejection(
+        discountPercent: Int,
+        durationCycles: Int?,
+        products: Collection<CouponProduct>,
+        maxUses: Int?,
+        validUntil: Instant? = null,
+        now: Instant? = null,
+    ): String? {
         if (durationCycles == null) return "Desconto para sempre vale só no site: escolha a duração em meses para ir às lojas."
         if (discountPercent >= 100) return "As lojas não aceitam 100% de desconto por cupom: use até 99%."
         if (products.any { it.cycle == SubscriptionCycle.MONTHLY } && durationCycles > MAX_MONTHLY_STORE_CYCLES) {
@@ -41,11 +52,20 @@ object CouponCampaignRules {
         if (products.any { it.cycle == SubscriptionCycle.ANNUAL } && durationCycles > MAX_ANNUAL_STORE_CYCLES) {
             return "Na App Store o desconto do plano anual vale só para o primeiro ano: tire o anual ou use 1 ciclo."
         }
+        if (validUntil != null && now != null && appStoreExpirationDate(validUntil).isAfter(now.atZone(APPLE_ZONE).toLocalDate().plusMonths(APPLE_MAX_CODE_MONTHS))) {
+            return "Na App Store o código vale no máximo $APPLE_MAX_CODE_MONTHS meses: use uma validade menor ou deixe sem validade."
+        }
         if (maxUses != null && maxUses > APPLE_MAX_CUSTOM_CODE_USES) {
             return "A Apple aceita no máximo $APPLE_MAX_CUSTOM_CODE_USES usos por código."
         }
         return null
     }
+
+    /**
+     * Dia de expiração do código da Apple para o cupom valer até [validUntil] e nunca depois: a
+     * Apple desliga à 0h (Pacífico) do dia informado, então é o dia de [validUntil] no Pacífico.
+     */
+    fun appStoreExpirationDate(validUntil: Instant): java.time.LocalDate = validUntil.atZone(APPLE_ZONE).toLocalDate()
 
     fun googlePlayOfferId(code: String): String = "cupom-${code.lowercase()}"
 

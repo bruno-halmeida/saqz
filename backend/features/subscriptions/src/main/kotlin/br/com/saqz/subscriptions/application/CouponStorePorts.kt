@@ -56,8 +56,11 @@ interface AppStoreOffersApi {
     /** Cria o código de oferta (pay as you go, só BRA). Devolve o id. */
     fun createOfferCode(spec: AppStoreOfferCodeSpec): String
 
-    /** Cria o código personalizado da oferta. Devolve o id. */
-    fun createCustomCode(offerCodeId: String, customCode: String, numberOfCodes: Int): String
+    /**
+     * Cria o código personalizado da oferta. [expirationDate] (opcional) é o dia em que a Apple
+     * desliga o código, à meia-noite do Pacífico. Devolve o id.
+     */
+    fun createCustomCode(offerCodeId: String, customCode: String, numberOfCodes: Int, expirationDate: java.time.LocalDate? = null): String
 
     fun deactivateOfferCode(offerCodeId: String)
 

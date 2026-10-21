@@ -117,13 +117,15 @@ class HttpAppStoreOffersApi(
         return send("POST", "v1/subscriptionOfferCodes", body, "subscriptionOfferCodes.create").path("data").path("id").asText()
     }
 
-    override fun createCustomCode(offerCodeId: String, customCode: String, numberOfCodes: Int): String {
+    override fun createCustomCode(offerCodeId: String, customCode: String, numberOfCodes: Int, expirationDate: java.time.LocalDate?): String {
         val body = mapper.createObjectNode()
         body.putObject("data").apply {
             put("type", "subscriptionOfferCodeCustomCodes")
             putObject("attributes").apply {
                 put("customCode", customCode)
                 put("numberOfCodes", numberOfCodes)
+                // `date` da ASC API: AAAA-MM-DD.
+                expirationDate?.let { put("expirationDate", it.toString()) }
             }
             putObject("relationships").relation("offerCode", "subscriptionOfferCodes", offerCodeId)
         }

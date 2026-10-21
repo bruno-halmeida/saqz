@@ -29,10 +29,17 @@ data class CouponPricePreview(
 class PreviewCouponPrices(private val appStore: AppStoreOffersApi?) {
     private val pricePoints = ConcurrentHashMap<String, List<AppStorePricePoint>>()
 
-    fun execute(discountPercent: Int, durationCycles: Int?, products: Set<CouponProduct>, maxUses: Int?): CouponPricePreview {
+    fun execute(
+        discountPercent: Int,
+        durationCycles: Int?,
+        products: Set<CouponProduct>,
+        maxUses: Int?,
+        validUntil: java.time.Instant? = null,
+        now: java.time.Instant? = null,
+    ): CouponPricePreview {
         val covered = if (products.isEmpty()) CouponProduct.ALL else CouponProduct.ALL.filter { it in products }
         val stores = durationCycles != null
-        val rejection = if (stores) CouponCampaignRules.storeRejection(discountPercent, durationCycles, covered, maxUses) else null
+        val rejection = if (stores) CouponCampaignRules.storeRejection(discountPercent, durationCycles, covered, maxUses, validUntil, now) else null
         val rows = covered.map { product ->
             val siteList = ValidateCoupon.listPriceCents(product.plan, product.cycle)
             val target = CouponCampaignRules.appStoreTargetCents(product, discountPercent)

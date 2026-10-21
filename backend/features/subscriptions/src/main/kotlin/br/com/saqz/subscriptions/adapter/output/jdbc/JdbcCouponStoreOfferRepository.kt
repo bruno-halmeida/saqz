@@ -64,10 +64,12 @@ class JdbcCouponStoreOfferRepository(dataSource: DataSource) : CouponStoreOfferR
     override fun findWork(now: Instant, limit: Int): List<CouponStoreOffer> =
         jdbc.sql(
             """
-            SELECT * FROM coupon_store_offers
-            WHERE state IN ('PENDING', 'CREATING', 'WAITING_STORE', 'DEACTIVATING')
-              AND (next_attempt_at IS NULL OR next_attempt_at <= :now)
-            ORDER BY created_at, id
+            SELECT o.* FROM coupon_store_offers o JOIN coupons c ON c.id = o.coupon_id
+            WHERE (o.state IN ('PENDING', 'CREATING', 'WAITING_STORE', 'DEACTIVATING')
+                   -- Ativa de cupom vencido sem "Encerrar": o job desativa na loja também.
+                   OR (o.state = 'ACTIVE' AND (c.valid_until <= :now OR c.ended_at <= :now)))
+              AND (o.next_attempt_at IS NULL OR o.next_attempt_at <= :now)
+            ORDER BY o.created_at, o.id
             LIMIT :limit
             """.trimIndent(),
         )
