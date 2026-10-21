@@ -103,9 +103,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
   os botões "Baixar na App Store" e "Baixar no Google Play".
 - Ler o QR com a câmera do celular: abre o mesmo link (`links.saqz.app/?saqz_invite=…`, código sem hífen e em maiúscula) e o
   celular segue o fluxo dele (Android: Play com o `referrer`; iPhone: "Baixar o app e continuar" copia o link e abre a App Store).
-- Com o web app no ar (`saqz.app/app/disponivel.json` responde) e navegador com WasmGC (Chrome ou Safari atuais), aparece
-  também o link discreto "Continuar no computador", que leva a `saqz.app/app/?saqz_invite=…` com o mesmo código.
-- Com o web app fora do ar ou sem WasmGC: só o QR e as duas lojas, sem o link "Continuar no computador".
+- **Não** aparece "Continuar no computador" nem qualquer link para o web app, com o web app no ar ou fora dele.
 - Link de **onboarding** (`saqz_onboarding=…`) e o link **sem código** (`links.saqz.app` puro) no computador também não vão ao web app: mesmo cartão, com o QR do próprio link e as duas lojas ("Continue no app Saqz" / "Este link abre no app Saqz").
 - Janela estreita (menos de 780 px): coluna única, QR acima dos botões, sem rolagem lateral.
 

@@ -214,13 +214,6 @@
       drawQr("https://links.saqz.app/" + (route || ""));
       link(primary, appStore, "Baixar na App Store");
       link(secondary, googlePlay, "Baixar no Google Play");
-      if (supportsWasmGc() && typeof fetch === "function") {
-        fetch(webApp + "disponivel.json", { cache: "no-store" })
-          .then(function (response) {
-            if (response.ok) link(tertiary, webApp + webQuery, "Continuar no computador");
-          })
-          .catch(function () {});
-      }
     }
 
     // O QR é desenhado aqui mesmo (assets/qrcode.js): o link nunca sai do navegador. Sem a lib, só as lojas.

@@ -208,8 +208,8 @@ test('desktop onboarding shows the QR and the stores, never opens the web app by
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_onboarding=' + code);
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.href, 'https://saqz.app/app/?saqz_onboarding=' + code);
-  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+  assert.equal(result.tertiary.hidden, true);
+  assert.deepEqual(result.requests, []);
 });
 
 test('desktop without a link code shows the QR and the stores, never opens the web app by itself', async () => {
@@ -222,8 +222,7 @@ test('desktop without a link code shows the QR and the stores, never opens the w
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/');
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.href, 'https://saqz.app/app/');
-  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+  assert.equal(result.tertiary.hidden, true);
   // Código malformado vale como link sem código: o computador também não segue ao web app.
   const bad = page(desktop, '/', '?saqz_invite=bad', { fetch: webUp });
   await settle();
@@ -231,10 +230,10 @@ test('desktop without a link code shows the QR and the stores, never opens the w
   assert.equal(bad.qr.attributes['data-link'], 'https://links.saqz.app/');
 });
 
-// Convite e presença no computador (DEB-118): QR com o link canônico, as duas lojas e, discreto, o web app.
+// Computador (DEB-118): QR com o link canônico e as duas lojas; nunca o web app, nem sozinho nem por link.
 const qrDrawn = result => result.qr.hidden === false && /<svg[\s\S]*<path d="M/.test(result.qr.innerHTML);
 
-test('desktop invite: QR with the canonical link, both stores and "Continuar no computador", no redirect', async () => {
+test('desktop invite: QR with the canonical link and both stores, no redirect and no web app link', async () => {
   const result = page(desktop, '/', '?saqz_invite=' + code, { fetch: webUp });
   await settle();
   assert.equal(result.location.replaced, undefined);
@@ -244,32 +243,32 @@ test('desktop invite: QR with the canonical link, both stores and "Continuar no 
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_invite=' + code);
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.href, 'https://saqz.app/app/?saqz_invite=' + code);
-  assert.equal(result.tertiary.textContent, 'Continuar no computador');
-  assert.equal(result.tertiary.hidden, false);
+  assert.equal(result.tertiary.hidden, true);
+  assert.deepEqual(result.requests, []);
 });
 
-test('desktop attendance: QR and "Continuar no computador" carry the token, decline included', async () => {
+test('desktop attendance: the QR carries the token, decline included', async () => {
   const confirm = page(desktop, '/attendance/' + code, '', { fetch: webUp });
   await settle();
   assert.equal(confirm.heading.textContent, 'Responda no Saqz');
   assert.equal(confirm.qr.attributes['data-link'], 'https://links.saqz.app/attendance/' + code);
-  assert.equal(confirm.tertiary.href, 'https://saqz.app/app/?saqz_attendance=' + code);
+  assert.equal(confirm.tertiary.hidden, true);
   assert.equal(confirm.location.replaced, undefined);
   const decline = page(desktop, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
   await settle();
   assert.ok(qrDrawn(decline));
   assert.equal(decline.qr.attributes['data-link'], `https://links.saqz.app/attendance/${code}?saqz_intent=decline`);
-  assert.equal(decline.tertiary.href, `https://saqz.app/app/?saqz_attendance=${code}&saqz_intent=decline`);
+  assert.equal(decline.tertiary.hidden, true);
   assert.equal(decline.location.replaced, undefined);
 });
 
-test('desktop without the web app (down, failing or no WasmGC): QR and stores, no "Continuar no computador"', async () => {
-  const cases = [{ fetch: webDown }, { fetch: () => Promise.reject(new Error('rede')) }, { fetch: webUp, wasm: { validate: () => false } }];
+test('desktop never asks for the web app, whatever the web app or WasmGC state', async () => {
+  const cases = [{ fetch: webUp }, { fetch: webDown }, { fetch: () => Promise.reject(new Error('rede')) }, { fetch: webUp, wasm: { validate: () => false } }];
   for (const options of cases) {
     const result = page(desktop, '/', '?saqz_invite=' + code, options);
     await settle();
     assert.equal(result.tertiary.hidden, true);
+    assert.deepEqual(result.requests, []);
     assert.ok(qrDrawn(result));
     assert.equal(result.primary.href, appStore);
     assert.equal(result.secondary.href, play);
@@ -277,13 +276,13 @@ test('desktop without the web app (down, failing or no WasmGC): QR and stores, n
   }
 });
 
-test('desktop without the QR library hides the QR and keeps the stores and the web app link', async () => {
+test('desktop without the QR library hides the QR and keeps the stores', async () => {
   const result = page(desktop, '/', '?saqz_invite=' + code, { fetch: webUp, qr: false });
   await settle();
   assert.equal(result.qr.hidden, true);
   assert.equal(result.primary.href, appStore);
   assert.equal(result.secondary.href, play);
-  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+  assert.equal(result.tertiary.hidden, true);
   assert.equal(result.location.replaced, undefined);
 });
 
@@ -383,12 +382,12 @@ test('short invite code is normalized: lowercase and hyphen open the same invite
   assert.equal(phone.secondary.href, 'saqz:///?saqz_invite=44DF8SA8');
 });
 
-test('short invite code on the desktop: QR and web app link carry the normalized code', async () => {
+test('short invite code on the desktop: the QR carries the normalized code', async () => {
   const result = page(desktop, '/', '?saqz_invite=44df-8sa8', { fetch: () => Promise.resolve({ ok: true }) });
   await settle();
   assert.equal(result.location.replaced, undefined);
   assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_invite=44DF8SA8');
-  assert.equal(result.tertiary.href, 'https://saqz.app/app/?saqz_invite=44DF8SA8');
+  assert.equal(result.tertiary.hidden, true);
 });
 
 test('short invite codes with ambiguous characters or wrong size are not invites', () => {
