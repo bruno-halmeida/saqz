@@ -10,16 +10,21 @@ import kotlinx.coroutines.CoroutineScope
 internal data class AndroidGroupPhotoAdapters(
     val selection: AndroidPhotoSelectionAdapter,
     val encoder: AndroidPhotoEncoder,
+    val profileEncoder: AndroidPhotoEncoder,
     val previews: GroupPhotoPreviewPort,
 ) {
     fun attach(activity: ComponentActivity) = selection.attach(activity)
 
     companion object {
+        /** O servidor grava a foto de perfil com 512 px; basta enviar até 1024. */
+        const val PROFILE_DIMENSION = 1024
+
         fun create(context: Context, scope: CoroutineScope): AndroidGroupPhotoAdapters {
             val files = AndroidPhotoFiles(context)
             return AndroidGroupPhotoAdapters(
                 AndroidPhotoSelectionAdapter(files, scope),
                 AndroidPhotoEncoder(files),
+                AndroidPhotoEncoder(files, PROFILE_DIMENSION),
                 AndroidPhotoPreviewAdapter(files),
             )
         }

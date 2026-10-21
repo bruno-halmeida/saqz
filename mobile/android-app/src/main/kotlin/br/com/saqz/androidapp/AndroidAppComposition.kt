@@ -71,7 +71,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
         val inviteShare = AndroidInviteShareAdapter(context.applicationContext)
         val photos = AndroidGroupPhotoAdapters.create(context.applicationContext, scope)
         val drafts = AndroidGroupDraftAdapters.create(context.applicationContext)
-        val profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.encoder, scope)
+        val profilePhoto = AndroidProfilePhotoAdapter(photos.selection, photos.profileEncoder, scope)
         val documents = br.com.saqz.androidapp.receivables.AndroidReceiptDocumentPicker(context.applicationContext, scope)
         val dependencies = SaqzPlatformDependencies(
                 notifications = AndroidNotificationPort(context.applicationContext),

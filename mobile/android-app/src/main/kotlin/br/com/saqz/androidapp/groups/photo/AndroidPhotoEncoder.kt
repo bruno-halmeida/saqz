@@ -2,6 +2,7 @@ package br.com.saqz.androidapp.groups.photo
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
 import br.com.saqz.groups.domain.photo.GroupPhotoByteSource
 import br.com.saqz.groups.domain.photo.GroupPhotoCrop
@@ -11,7 +12,6 @@ import br.com.saqz.groups.domain.photo.GroupPhotoMediaType
 import br.com.saqz.groups.domain.photo.GroupPhotoSourceHandle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -27,19 +27,27 @@ internal object AndroidSquareCrop {
     }
 }
 
-internal class AndroidPhotoEncoder(private val files: AndroidPhotoFiles) : GroupPhotoEncoderPort {
+internal class AndroidPhotoEncoder(
+    private val files: AndroidPhotoFiles,
+    private val maxDimension: Int = AndroidPhotoFiles.MAX_DIMENSION,
+) : GroupPhotoEncoderPort {
     override suspend fun encode(
         source: String,
         crop: GroupPhotoCrop,
     ): GroupPhotoEncodingResult = withContext(Dispatchers.IO) {
         val file = files.file(GroupPhotoSourceHandle(source)) ?: return@withContext GroupPhotoEncodingResult.Failed
-        files.metadata(file) ?: return@withContext GroupPhotoEncodingResult.Failed
-        val bitmap = BitmapFactory.decodeFile(file.path) ?: return@withContext GroupPhotoEncodingResult.Failed
+        val metadata = files.metadata(file) ?: return@withContext GroupPhotoEncodingResult.Failed
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize(metadata.width, metadata.height, maxDimension)
+        }
+        val bitmap = BitmapFactory.decodeFile(file.path, options) ?: return@withContext GroupPhotoEncodingResult.Failed
         try {
             val region = AndroidSquareCrop.calculate(bitmap.width, bitmap.height, crop)
-            val square = Bitmap.createBitmap(bitmap, region.left, region.top, region.side, region.side)
+            val side = min(region.side, maxDimension)
+            val scale = Matrix().apply { setScale(side.toFloat() / region.side, side.toFloat() / region.side) }
+            val square = Bitmap.createBitmap(bitmap, region.left, region.top, region.side, region.side, scale, true)
             try {
-                val bytes = encodeBounded(square) ?: return@withContext GroupPhotoEncodingResult.Failed
+                val bytes = encodeJpegBounded(square) ?: return@withContext GroupPhotoEncodingResult.Failed
                 GroupPhotoEncodingResult.Encoded(
                     EncodedGroupPhoto(
                         GroupPhotoMediaType.JPEG,
@@ -56,13 +64,4 @@ internal class AndroidPhotoEncoder(private val files: AndroidPhotoFiles) : Group
     }
 
     override fun cancel(source: String) = Unit
-
-    private fun encodeBounded(bitmap: Bitmap): ByteArray? {
-        for (quality in listOf(92, 85, 75, 65)) {
-            val output = ByteArrayOutputStream()
-            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)) continue
-            if (output.size().toLong() <= EncodedGroupPhoto.MAX_GROUP_PHOTO_BYTES) return output.toByteArray()
-        }
-        return null
-    }
 }

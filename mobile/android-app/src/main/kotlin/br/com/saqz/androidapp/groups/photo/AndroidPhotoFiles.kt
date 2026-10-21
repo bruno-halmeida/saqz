@@ -1,7 +1,10 @@
 package br.com.saqz.androidapp.groups.photo
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import androidx.core.content.FileProvider
 import br.com.saqz.groups.domain.photo.EncodedGroupPhoto
@@ -22,14 +25,42 @@ internal class AndroidPhotoFiles(private val context: Context) {
     }
 
     fun copySelected(uri: Uri): File? = runCatching {
+        val original = createSource()
+        try {
+            context.contentResolver.openInputStream(uri)?.use { source -> copyBounded(source, original) }
+                ?: error("selected item unavailable")
+            reduce(original)
+        } finally {
+            original.delete()
+        }
+    }.getOrNull()
+
+    /**
+     * A original vem como o celular salva (HEIC, 50 ou 200 MP, até 50 MB) e nunca é decodificada
+     * na resolução cheia: lê com `inSampleSize`, aplica a rotação do EXIF e guarda um JPEG de até
+     * [MAX_DIMENSION]. Os limites de [metadata] valem sobre esse resultado. A câmera passa a
+     * original por aqui também; o arquivo dela não tem o limite de bytes da saída.
+     */
+    fun reduce(original: File): File? = runCatching {
+        require(original.length() in 1..MAX_SOURCE_BYTES)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(original.path, bounds)
+        require(bounds.outWidth > 0 && bounds.outHeight > 0)
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, MAX_DIMENSION)
+        }
+        val sampled = requireNotNull(BitmapFactory.decodeFile(original.path, options))
+        val upright = upright(sampled, original)
         val target = createSource()
         try {
-            context.contentResolver.openInputStream(uri)?.use { source -> copyBounded(source, target) }
-                ?: error("selected item unavailable")
+            val bytes = requireNotNull(encodeJpegBounded(upright))
+            target.writeBytes(bytes)
             target
         } catch (failure: Throwable) {
             target.delete()
             throw failure
+        } finally {
+            upright.recycle()
         }
     }.getOrNull()
 
@@ -78,6 +109,27 @@ internal class AndroidPhotoFiles(private val context: Context) {
             ?.forEach(File::delete)
     }
 
+    private fun upright(bitmap: Bitmap, original: File): Bitmap {
+        val degrees = runCatching { ExifInterface(original.path).rotationDegrees() }.getOrDefault(0)
+        val scale = MAX_DIMENSION.toFloat() / maxOf(bitmap.width, bitmap.height)
+        if (degrees == 0 && scale >= 1f) return bitmap
+        val matrix = Matrix().apply {
+            postRotate(degrees.toFloat())
+            if (scale < 1f) postScale(scale, scale)
+        }
+        val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (rotated !== bitmap) bitmap.recycle()
+        return rotated
+    }
+
+    private fun ExifInterface.rotationDegrees(): Int =
+        when (getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+            ExifInterface.ORIENTATION_ROTATE_90, ExifInterface.ORIENTATION_TRANSPOSE -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270, ExifInterface.ORIENTATION_TRANSVERSE -> 270
+            else -> 0
+        }
+
     private fun copyBounded(source: InputStream, target: File) {
         FileOutputStream(target).use { output ->
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -86,14 +138,31 @@ internal class AndroidPhotoFiles(private val context: Context) {
                 val read = source.read(buffer)
                 if (read < 0) break
                 total += read
-                require(total <= EncodedGroupPhoto.MAX_GROUP_PHOTO_BYTES)
+                require(total <= MAX_SOURCE_BYTES)
                 output.write(buffer, 0, read)
             }
         }
     }
 
-    private companion object {
+    internal companion object {
         const val MAX_DIMENSION = 4096
+        const val MAX_SOURCE_BYTES = 50L * 1024 * 1024
         val ACCEPTED_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
+}
+
+/** Menor potência de 2 que deixa o lado maior decodificado em até [target]. */
+internal fun sampleSize(width: Int, height: Int, target: Int): Int {
+    var sample = 1
+    while (maxOf(width, height) / sample > target) sample *= 2
+    return sample
+}
+
+internal fun encodeJpegBounded(bitmap: Bitmap): ByteArray? {
+    for (quality in listOf(92, 85, 75, 65)) {
+        val output = java.io.ByteArrayOutputStream()
+        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)) continue
+        if (output.size().toLong() <= EncodedGroupPhoto.MAX_GROUP_PHOTO_BYTES) return output.toByteArray()
+    }
+    return null
 }

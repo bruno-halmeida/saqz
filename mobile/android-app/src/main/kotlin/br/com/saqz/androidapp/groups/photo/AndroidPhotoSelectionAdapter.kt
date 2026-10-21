@@ -89,8 +89,13 @@ internal class AndroidPhotoSelectionAdapter(
         }
     }
 
+    // A câmera grava a original em `file`; o que segue é a versão reduzida.
     private fun inspect(file: java.io.File) {
-        scope.launch(Dispatchers.IO) { inspectNow(file) }
+        scope.launch(Dispatchers.IO) {
+            val reduced = files.reduce(file)
+            files.remove(file)
+            if (reduced == null) finish(GroupPhotoSelectionResult.Failed) else inspectNow(reduced)
+        }
     }
 
     private fun inspectNow(file: java.io.File) {
