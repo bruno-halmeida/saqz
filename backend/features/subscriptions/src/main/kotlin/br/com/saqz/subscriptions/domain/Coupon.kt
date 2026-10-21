@@ -47,6 +47,7 @@ data class Coupon(
     /** Tem ofertas no Google Play e na App Store. */
     val stores: Boolean = false,
     val endedAt: Instant? = null,
+    val partnerId: UUID? = null,
 ) {
     init {
         require(discountPercent in 1..100) { "discountPercent must be between 1 and 100" }

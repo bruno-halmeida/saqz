@@ -14,6 +14,7 @@ data class TrialCoupon(
     val maxUses: Int?,
     val active: Boolean,
     val uses: Long,
+    val partnerId: UUID? = null,
 ) {
     fun isAvailable(now: Instant) = active && (validUntil == null || now < validUntil) && (maxUses == null || uses < maxUses)
 }
@@ -37,7 +38,7 @@ interface TrialCampaignStore : TrialOffer {
     fun mode(): TrialOfferMode
     fun setMode(mode: TrialOfferMode)
     fun list(): List<TrialCoupon>
-    fun create(code: String, campaign: String?, trialDays: Int, validUntil: Instant?, maxUses: Int?): TrialCoupon?
+    fun create(code: String, campaign: String?, trialDays: Int, validUntil: Instant?, maxUses: Int?, partnerId: UUID? = null): TrialCoupon?
     fun deactivate(id: UUID): Boolean
     fun selected(ownerId: UUID): TrialCoupon?
     fun select(ownerId: UUID, code: String, eligible: () -> Boolean): TrialCouponSelection

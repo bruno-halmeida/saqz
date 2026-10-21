@@ -30,18 +30,19 @@ class JdbcTrialCampaignStore(dataSource: DataSource, private val clock: Clock) :
     override fun list(): List<TrialCoupon> = jdbc.sql("$projection ORDER BY c.created_at DESC,c.id")
         .query { rs, _ -> rs.coupon() }.list()
 
-    override fun create(code: String, campaign: String?, trialDays: Int, validUntil: Instant?, maxUses: Int?): TrialCoupon? {
+    override fun create(code: String, campaign: String?, trialDays: Int, validUntil: Instant?, maxUses: Int?, partnerId: UUID?): TrialCoupon? {
         val normalized = code.trim().uppercase(Locale.ROOT)
         require(normalized.matches(Regex("[A-Z0-9]{1,32}")))
         require(trialDays in 1..365 && (maxUses == null || maxUses > 0))
         require(campaign == null || campaign.length <= 120)
         val id = UUID.randomUUID()
-        val inserted = jdbc.sql("""INSERT INTO trial_coupons (id,code,campaign,trial_days,valid_until,max_uses,created_at)
-            VALUES (:id,:code,:campaign,:days,:until,:max,:now) ON CONFLICT(code) DO NOTHING""")
+        val inserted = jdbc.sql("""INSERT INTO trial_coupons (id,code,campaign,trial_days,valid_until,max_uses,created_at,partner_id)
+            VALUES (:id,:code,:campaign,:days,:until,:max,:now,:partner) ON CONFLICT(code) DO NOTHING""")
+            .param("partner", partnerId)
             .param("id", id).param("code", normalized).param("campaign", campaign).param("days", trialDays)
             .param("until", validUntil?.let(Timestamp::from)).param("max", maxUses)
             .param("now", Timestamp.from(clock.instant())).update()
-        return if (inserted == 1) TrialCoupon(id, normalized, campaign, trialDays, validUntil, maxUses, true, 0) else null
+        return if (inserted == 1) TrialCoupon(id, normalized, campaign, trialDays, validUntil, maxUses, true, 0, partnerId) else null
     }
 
     override fun deactivate(id: UUID) = jdbc.sql("UPDATE trial_coupons SET active=false WHERE id=:id")
@@ -116,5 +117,6 @@ class JdbcTrialCampaignStore(dataSource: DataSource, private val clock: Clock) :
     private fun ResultSet.coupon() = TrialCoupon(
         getObject("id", UUID::class.java), getString("code"), getString("campaign"), getInt("trial_days"),
         getTimestamp("valid_until")?.toInstant(), getObject("max_uses")?.let { (it as Number).toInt() }, getBoolean("active"), getLong("uses"),
+        getObject("partner_id", UUID::class.java),
     )
 }

@@ -68,7 +68,7 @@ class JdbcCouponRepository(
 
     companion object {
         internal const val COLUMNS =
-            "id, code, discount_percent, duration_cycles, valid_until, campaign, max_uses, eligibility, products, stores, ended_at"
+            "id, code, discount_percent, duration_cycles, valid_until, campaign, max_uses, eligibility, products, stores, ended_at, partner_id"
 
         internal fun ResultSet.toCoupon(): Coupon = Coupon(
             id = getObject("id", UUID::class.java),
@@ -84,6 +84,7 @@ class JdbcCouponRepository(
             products = strings("products").mapNotNull(CouponProduct::parse).toSet(),
             stores = getBoolean("stores"),
             endedAt = getTimestamp("ended_at")?.toInstant(),
+            partnerId = getObject("partner_id", UUID::class.java),
         )
 
         private fun ResultSet.strings(column: String): List<String> =

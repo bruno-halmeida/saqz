@@ -17,6 +17,7 @@ class TrialCouponRequest {
     var trialDays: BigDecimal? = null
     var validUntil: Instant? = null
     var maxUses: BigDecimal? = null
+    var partnerId: UUID? = null
 }
 data class TrialModeResponse(val mode: TrialOfferMode)
 
@@ -49,7 +50,7 @@ class AdminTrialCampaignsController(private val store: TrialCampaignStore, priva
             (body.maxUses != null && (max == null || max < 1)) || (campaign?.length ?: 0) > 120 ||
             (body.validUntil != null && !requireNotNull(body.validUntil).isAfter(clock.instant()))
         ) return ResponseEntity.badRequest().build<Void>()
-        val created = store.create(code, campaign, days, body.validUntil, max)
+        val created = store.create(code, campaign, days, body.validUntil, max, body.partnerId)
             ?: return ResponseEntity.status(409).build<Void>()
         return ResponseEntity.status(201).body(created)
     }

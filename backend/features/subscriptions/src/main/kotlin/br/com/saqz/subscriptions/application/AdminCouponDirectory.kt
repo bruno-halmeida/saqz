@@ -32,6 +32,7 @@ data class AdminCoupon(
     val redemptionsByPlatform: Map<CouponPlatform, Long> = emptyMap(),
     /** ANDROID e IOS; ausente quando o cupom é só do site. */
     val platforms: Map<CouponPlatform, AdminCouponPlatformState> = emptyMap(),
+    val partnerId: UUID? = null,
 )
 
 data class AdminCouponCreate(
@@ -44,6 +45,7 @@ data class AdminCouponCreate(
     val eligibility: Set<CouponEligibility> = emptySet(),
     val products: Set<CouponProduct> = emptySet(),
     val stores: Boolean = false,
+    val partnerId: UUID? = null,
 )
 
 sealed interface AdminCouponCreateResult {

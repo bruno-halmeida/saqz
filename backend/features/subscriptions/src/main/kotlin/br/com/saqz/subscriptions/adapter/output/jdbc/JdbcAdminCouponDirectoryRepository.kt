@@ -61,6 +61,7 @@ class JdbcAdminCouponDirectoryRepository(
                 stores = coupon.stores,
                 endedAt = coupon.endedAt,
                 redemptionsByPlatform = usesByPlatform[coupon.id].orEmpty().toMap(),
+                partnerId = coupon.partnerId,
                 platforms = if (coupon.stores) platformStates(offers.findByCoupon(coupon.id)) else emptyMap(),
             )
         }
@@ -74,9 +75,9 @@ class JdbcAdminCouponDirectoryRepository(
             val inserted = jdbc.sql(
                 """
                 INSERT INTO coupons (id, code, discount_percent, duration_cycles, valid_until, created_at,
-                    campaign, max_uses, eligibility, products, stores)
+                    campaign, max_uses, eligibility, products, stores, partner_id)
                 SELECT :id, :code, :discount, :cycles, :validUntil, now(),
-                    :campaign, :maxUses, string_to_array(:eligibility, ',')::varchar[], string_to_array(:products, ',')::varchar[], :stores
+                    :campaign, :maxUses, string_to_array(:eligibility, ',')::varchar[], string_to_array(:products, ',')::varchar[], :stores, :partnerId
                 WHERE NOT EXISTS (SELECT 1 FROM coupons x WHERE lower(x.code) = lower(:code))
                 ON CONFLICT (code) DO NOTHING
                 """.trimIndent(),
@@ -91,6 +92,7 @@ class JdbcAdminCouponDirectoryRepository(
                 .param("eligibility", command.eligibility.joinToString(",") { it.name })
                 .param("products", command.products.joinToString(",") { it.key() })
                 .param("stores", command.stores)
+                .param("partnerId", command.partnerId)
                 .update()
             if (inserted == 0) {
                 status.setRollbackOnly()
@@ -100,6 +102,7 @@ class JdbcAdminCouponDirectoryRepository(
                 id = id, code = command.code, discountPercent = command.discountPercent,
                 durationCycles = command.durationCycles, validUntil = command.validUntil, campaign = command.campaign,
                 maxUses = command.maxUses, eligibility = command.eligibility, products = command.products, stores = command.stores,
+                partnerId = command.partnerId,
             )
             offers.insertAll(CouponCampaignRules.offersFor(coupon))
             AdminCouponCreateResult.Created(coupon)

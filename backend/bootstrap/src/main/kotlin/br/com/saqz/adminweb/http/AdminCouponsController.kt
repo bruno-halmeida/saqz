@@ -33,6 +33,9 @@ class CreateCouponRequest {
 
     /** PLANO:CICLO (ex.: ORGANIZADOR:MONTHLY). Ausente ou vazio = todos. */
     var products: List<String>? = null
+
+    /** Parceiro dono do cupom (seção Parceiros); opcional. */
+    var partnerId: UUID? = null
 }
 
 data class CreatedCouponResponse(
@@ -140,6 +143,7 @@ class AdminCouponsController(
                 eligibility = eligibility.orEmpty(),
                 products = products.takeIf { it.size < CouponProduct.ALL.size }.orEmpty(),
                 stores = stores,
+                partnerId = request.partnerId,
             ),
         )
     }
