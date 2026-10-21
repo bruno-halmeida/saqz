@@ -31,7 +31,7 @@
 .cc-help{margin:0;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cc-prev{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:6px 10px;font-size:12.5px;border-top:1px solid var(--saqz-border);padding-top:12px}
 .cc-prev strong{font-size:11px;letter-spacing:.05em;color:var(--saqz-muted)}
-.pt-row{display:grid;grid-template-columns:1.6fr 1.4fr 0.7fr 0.7fr 0.7fr 1fr 0.8fr 120px;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px}
+.pt-row{display:grid;grid-template-columns:1.5fr 1.2fr 0.6fr 0.6fr 0.6fr 0.9fr 0.9fr 0.9fr 0.7fr 120px;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px}
 .pt-row>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pt-head{font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)}
 .pt-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -39,6 +39,11 @@
 .pt-kpi span{display:block;font-size:12px;color:var(--saqz-muted)}.pt-kpi strong{display:block;font-size:22px;font-weight:800;margin-top:4px}
 .pt-pay{display:grid;grid-template-columns:1.3fr 1.6fr 1fr 0.8fr 0.9fr 0.9fr 0.9fr 0.8fr;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13px}
 .pt-pay>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-head{display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--saqz-ice);border-bottom:1px solid var(--saqz-border);font-size:13.5px}
+.cm-head strong{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm-line{display:grid;grid-template-columns:1.6fr 0.9fr 0.9fr 0.9fr 0.9fr;gap:10px;padding:9px 20px;border-bottom:1px solid var(--saqz-border);font-size:13px}
+.cm-line>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-btn{display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:white;border:1px solid var(--saqz-border)}
 .trial-fields label{display:grid;gap:6px;font-size:13px}
 .trial-fields input{min-width:0;width:100%;box-sizing:border-box;border:1px solid var(--saqz-border);border-radius:8px;padding:10px;font:inherit}
 .trial-row{display:grid;grid-template-columns:1.4fr .5fr 1fr 1fr .8fr 110px;gap:10px;align-items:center;text-align:left;padding:12px 8px;border-bottom:1px solid var(--saqz-border)}
@@ -811,9 +816,9 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <sc-if value="{{ parErro }}" hint-placeholder-val="{{ false }}"><p style="color:var(--saqz-error)">Não deu para carregar os parceiros.</p></sc-if>
       <sc-if value="{{ parVazio }}" hint-placeholder-val="{{ false }}"><p>Nenhum parceiro ainda. Crie um e ligue cupons a ele em Cupons.</p></sc-if>
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-        <span class="pt-row pt-head"><span>PARCEIRO</span><span>CUPONS</span><span>USARAM</span><span>PAGARAM</span><span>ATIVOS</span><span>RECEITA BRUTA</span><span>STATUS</span><span></span></span>
+        <span class="pt-row pt-head"><span>PARCEIRO</span><span>CUPONS</span><span>USARAM</span><span>PAGARAM</span><span>ATIVOS</span><span>RECEITA BRUTA</span><span>COMISSÃO ABERTA</span><span>A PAGAR</span><span>STATUS</span><span></span></span>
         <sc-for list="{{ parRows }}" as="p" hint-placeholder-count="3">
-          <span class="pt-row"><strong title="{{ p.nome }}">{{ p.nome }}</strong><span style="color:var(--saqz-muted)" title="{{ p.cupons }}">{{ p.cupons }}</span><span>{{ p.usaram }}</span><span>{{ p.pagaram }}</span><span>{{ p.ativos }}</span><span>{{ p.receita }}</span><span><span style="{{ p.statusStyle }}">{{ p.statusTxt }}</span></span><span style="justify-self:end"><span sc-camel-on-click="{{ p.onAbrir }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:var(--saqz-ice)">Ver relatório</span></span></span>
+          <span class="pt-row"><strong title="{{ p.nome }}">{{ p.nome }}</strong><span style="color:var(--saqz-muted)" title="{{ p.cupons }}">{{ p.cupons }}</span><span>{{ p.usaram }}</span><span>{{ p.pagaram }}</span><span>{{ p.ativos }}</span><span>{{ p.receita }}</span><span>{{ p.comAberta }}</span><span>{{ p.comPagar }}</span><span><span style="{{ p.statusStyle }}">{{ p.statusTxt }}</span></span><span style="justify-self:end"><span sc-camel-on-click="{{ p.onAbrir }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:var(--saqz-ice)">Ver relatório</span></span></span>
         </sc-for>
       </div>
     </div>
@@ -838,6 +843,25 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       <div class="pt-kpis"><sc-for list="{{ prKpis }}" as="k"><div class="pt-kpi"><span>{{ k.rotulo }}</span><strong>{{ k.valor }}</strong></div></sc-for></div>
       <p class="cc-help">{{ prPorPlataforma }}</p>
       <p class="cc-help">Cupons: {{ prCupons }}</p>
+      <h2 style="font-size:18px;margin:8px 0 0">Comissão</h2>
+      <div style="display:grid;grid-template-columns:160px 1fr 200px auto;gap:12px;align-items:end">
+        <label class="cc-label">Percentual (%)<input class="cc-input" aria-label="Percentual da comissão" inputmode="decimal" value="{{ comPct }}" sc-camel-on-change="{{ onComPct }}" placeholder="Sem comissão"></label>
+        <div class="cc-label">Duração<div class="cc-seg" role="group" aria-label="Duração da comissão"><sc-for list="{{ comDuracoes }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.onClick }}">{{ o.txt }}</button></sc-for></div></div>
+        <sc-if value="{{ comMesesOn }}" hint-placeholder-val="{{ false }}"><div class="cc-label">Meses<div class="cc-count" role="group" aria-label="Meses de comissão"><button type="button" aria-label="Menos meses" disabled="{{ comMesesMenosOff }}" sc-camel-on-click="{{ onComMesesMenos }}">−</button><span>{{ comMesesTxt }}</span><button type="button" aria-label="Mais meses" disabled="{{ comMesesMaisOff }}" sc-camel-on-click="{{ onComMesesMais }}">+</button></div></div></sc-if>
+        <button class="trial-button" sc-camel-on-click="{{ onComSalvar }}">Salvar regra</button>
+      </div>
+      <p class="cc-help">Sobre o valor pago pelo cliente, por pagamento, arredondado ao centavo. Mudança vale só para meses ainda não fechados.</p>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <sc-if value="{{ comVazio }}" hint-placeholder-val="{{ false }}"><p style="padding:12px 20px;margin:0;color:var(--saqz-muted)">Nenhum pagamento gerou comissão ainda.</p></sc-if>
+        <sc-for list="{{ comLinhas }}" as="l">
+          <sc-if value="{{ l.cabecalho }}" hint-placeholder-val="{{ false }}"><div class="cm-head"><strong>{{ l.mes }}</strong><span style="{{ l.statusStyle }}">{{ l.statusTxt }}</span><span style="font-weight:800">{{ l.total }}</span>
+            <sc-if value="{{ l.podeFechar }}" hint-placeholder-val="{{ false }}"><span class="cm-btn" sc-camel-on-click="{{ l.onFechar }}">Fechar mês</span></sc-if>
+            <sc-if value="{{ l.podePagar }}" hint-placeholder-val="{{ false }}"><span class="cm-btn" sc-camel-on-click="{{ l.onPagar }}">Marcar como pago</span></sc-if>
+          </div></sc-if>
+          <sc-if value="{{ l.item }}" hint-placeholder-val="{{ false }}"><div class="cm-line"><span title="{{ l.cliente }}">{{ l.cliente }}</span><span>{{ l.plataforma }}</span><span>{{ l.data }}</span><span>{{ l.bruto }}</span><span style="{{ l.comStyle }}">{{ l.comissao }}</span></div></sc-if>
+        </sc-for>
+      </div>
+      <h2 style="font-size:18px;margin:8px 0 0">Quem pagou</h2>
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
         <span class="pt-pay pt-head"><span>NOME</span><span>E-MAIL</span><span>PLANO</span><span>PLATAFORMA</span><span>1º USO DO CUPOM</span><span>1º PAGAMENTO</span><span>TOTAL PAGO</span><span>SITUAÇÃO</span></span>
         <sc-if value="{{ prSemPagantes }}" hint-placeholder-val="{{ false }}"><p style="padding:12px 20px;margin:0;color:var(--saqz-muted)">Ninguém que veio do parceiro pagou no período.</p></sc-if>
@@ -845,6 +869,22 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       </div>
     </div>
   </div>
+  </sc-if>
+
+  <sc-if value="{{ comPagoOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onComPagoFechar }}">
+      <div style="width:440px;max-width:calc(100vw - 32px);background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box" sc-camel-on-click="{{ pare }}">
+        <strong style="display:block;font-size:18px;font-weight:800">{{ comPagoTitulo }}</strong>
+        <div style="display:grid;gap:12px;margin-top:16px">
+          <label class="cc-label">Pago em<input class="cc-input" aria-label="Data do pagamento da comissão" value="{{ comPagoData }}" sc-camel-on-change="{{ onComPagoData }}" placeholder="dd/mm/aaaa"></label>
+          <label class="cc-label">Observação (opcional)<input class="cc-input" aria-label="Observação do pagamento" maxlength="500" value="{{ comPagoNota }}" sc-camel-on-change="{{ onComPagoNota }}" placeholder="Ex.: Pix 21/10"></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+          <span sc-camel-on-click="{{ onComPagoFechar }}" style="display:inline-block;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;color:var(--saqz-navy)">Voltar</span>
+          <span sc-camel-on-click="{{ onComPagoSalvar }}" style="display:inline-block;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;background:var(--saqz-blue);color:#fff">Marcar como pago</span>
+        </div>
+      </div>
+    </div>
   </sc-if>
 
   <sc-if value="{{ parceiroOpen }}" hint-placeholder-val="{{ false }}">
@@ -1045,7 +1085,7 @@ class Component extends DCLogic {
     usersSort: null, groupsSort: null, subsSort: null,
     // Suporte segue mockado até o VUL-171
     resolvidas: {},
-    cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
+    cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", commission: null, comRegra: null, comPago: null, parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
     cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
     modal: null, toast: null
   };
@@ -1087,7 +1127,7 @@ class Component extends DCLogic {
             // ao próximo admin.
             modal: null, toast: null, cupomOpen: false,
             cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
-            nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
+            nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", commission: null, comRegra: null, comPago: null, parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
             page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
             periodo: "30d", rTab: "ass",
             uBusca: "", uPlano: "todos", uStatus: "todos",
@@ -1342,7 +1382,7 @@ class Component extends DCLogic {
     if (page === "receita" && (force || !st.revenueData)) this.carregarReceita();
     if (page === "cupons" && (force || !st.couponsData)) this.carregarCupons();
     if ((page === "cupons" || page === "parceiros") && (force || !st.partnersData || page === "parceiros")) this.carregarParceiros();
-    if (page === "parceiro" && st.partnerSel) this.carregarRelatorioParceiro();
+    if (page === "parceiro" && st.partnerSel) { this.carregarRelatorioParceiro(); this.carregarComissao(); }
     if (page === "cupons" && (force || !st.trialData)) this.trialLoad();
     if (page === "cupons" && (force || !st.analyticsData)) this.analyticsLoad();
     // Re-login com detalhe aberto: recarrega o registro selecionado.
@@ -2058,6 +2098,97 @@ class Component extends DCLogic {
     } } });
   }
 
+  carregarComissao() {
+    const id = this.state.partnerSel;
+    this.setState({ commission: null });
+    this.api(`/admin/partners/${id}/commission`)
+      .then((commission) => this.setState({ commission }))
+      .catch(() => this.setState({ commission: { erro: true } }));
+  }
+
+  /** Regra em edição: parte da salva no parceiro (lista) até o dono mudar algo. */
+  regraAtual() {
+    if (this.state.comRegra) return this.state.comRegra;
+    const pd = this.state.partnersData && !this.state.partnersData.erro ? this.state.partnersData : [];
+    const item = pd.find(x => x.partner.id === this.state.partnerSel);
+    const r = item && item.commissionRule;
+    return r ? { pct: String(r.percent).replace(".", ","), duracao: r.duration, meses: r.months || 12 } : { pct: "", duracao: "LIFETIME", meses: 12 };
+  }
+
+  salvarRegra() {
+    const r = this.regraAtual();
+    let body = { percent: null, duration: null };
+    if (r.pct.trim()) {
+      const n = r.pct.trim().replace(",", ".");
+      if (!/^\d{1,3}(\.\d{1,2})?$/.test(n) || Number(n) < 0.01 || Number(n) > 100) { this.aviso("Percentual de 0,01 a 100, com até duas casas."); return; }
+      body = { percent: Number(n), duration: r.duracao, ...(r.duracao === "MONTHS" ? { months: r.meses } : {}) };
+    }
+    this.mutacao(`/admin/partners/${this.state.partnerSel}/commission-rule`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((res) => {
+      if (res.ok) { this.setState({ comRegra: null }); this.carregarParceiros(); this.carregarComissao(); this.aviso("Regra de comissão salva. Meses fechados não mudam."); }
+      else res.json().then(d => this.aviso(d.message || "Não deu para salvar a regra.")).catch(() => this.aviso("Não deu para salvar a regra."));
+    });
+  }
+
+  fecharMesComissao(m) {
+    this.setState({ modal: { titulo: `Fechar ${this.nomeMes(m.month)}?`, texto: `O extrato de ${this.money(m.totalCents)} fica gravado e não muda mais. Pagamentos que chegarem depois entram no mês em aberto.`, confirm: "Fechar mês", acao: () => {
+      this.mutacao(`/admin/partners/${this.state.partnerSel}/commission/${m.month}/close`, { method: "POST" }).then((r) => {
+        this.setState({ modal: null });
+        if (r.ok) { this.carregarComissao(); this.carregarParceiros(); this.aviso("Mês fechado."); }
+        else this.aviso(r.status === 409 ? "Esse mês já foi fechado." : "Não deu para fechar o mês.");
+      });
+    } } });
+  }
+
+  salvarPago() {
+    const p = this.state.comPago;
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(p.data.trim());
+    if (!m) { this.aviso("Data no formato dd/mm/aaaa."); return; }
+    const body = { paidOn: `${m[3]}-${m[2]}-${m[1]}`, note: p.nota.trim() || null };
+    this.mutacao(`/admin/partners/${this.state.partnerSel}/commission/${p.month}/paid`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
+      if (r.ok) { this.setState({ comPago: null }); this.carregarComissao(); this.carregarParceiros(); this.aviso("Comissão marcada como paga."); }
+      else this.aviso("Não deu para marcar como pago.");
+    });
+  }
+
+  nomeMes(ym) {
+    const nomes = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    const [a, mm] = String(ym).split("-");
+    return `${nomes[Number(mm) - 1]} de ${a}`;
+  }
+
+  comissaoVals() {
+    const st = this.state;
+    const r = this.regraAtual();
+    const editar = patch => this.setState({ comRegra: { ...this.regraAtual(), ...patch } });
+    const fontes = { SITE: "Site", APP_STORE: "iPhone", GOOGLE_PLAY: "Android" };
+    const meses = st.commission && !st.commission.erro ? st.commission : [];
+    const linhas = [];
+    meses.forEach(m => {
+      const status = !m.closed ? ["Em aberto", "pendente"] : m.paidOn ? [`Pago em ${this.dataBr(m.paidOn + "T12:00:00Z")}${m.paidNote ? ` · ${m.paidNote}` : ""}`, "paga"] : ["Fechado · a pagar", "atrasada"];
+      const cs = this.chipStatus(status[1]);
+      linhas.push({ cabecalho: true, item: false, mes: this.nomeMes(m.month), statusTxt: status[0], statusStyle: cs.style, total: this.money(m.totalCents),
+        podeFechar: !m.closed && m.canClose, onFechar: () => this.fecharMesComissao(m),
+        podePagar: m.closed && !m.paidOn, onPagar: () => this.setState({ comPago: { month: m.month, data: "", nota: "" } }) });
+      m.lines.forEach(x => linhas.push({ cabecalho: false, item: true, cliente: x.customerName || "—", plataforma: fontes[x.line.source] || x.line.source,
+        data: this.dataBr(x.line.paidAt), bruto: this.money(x.line.grossCents), comissao: (x.line.kind === "REFUND" ? "Estorno " : "") + this.money(x.line.commissionCents),
+        comStyle: x.line.commissionCents < 0 ? "color:var(--saqz-error)" : "" }));
+    });
+    return {
+      comPct: r.pct, onComPct: e => editar({ pct: e.target.value }),
+      comDuracoes: [["FIRST_PAYMENT", "Só o 1º pagamento"], ["MONTHS", "Primeiros meses"], ["LIFETIME", "Enquanto pagar"]].map(([v, txt]) => ({ txt, on: r.duracao === v ? "true" : "false", onClick: () => editar({ duracao: v }) })),
+      comMesesOn: r.duracao === "MONTHS", comMesesTxt: `${r.meses} ${r.meses === 1 ? "mês" : "meses"}`,
+      comMesesMenosOff: r.meses <= 1, comMesesMaisOff: r.meses >= 60,
+      onComMesesMenos: () => editar({ meses: Math.max(1, r.meses - 1) }), onComMesesMais: () => editar({ meses: Math.min(60, r.meses + 1) }),
+      onComSalvar: () => this.salvarRegra(),
+      comVazio: !!(st.commission && !st.commission.erro && meses.length === 0), comLinhas: linhas,
+      comPagoOpen: !!st.comPago, comPagoTitulo: st.comPago ? `Pagamento de ${this.nomeMes(st.comPago.month)}` : "",
+      comPagoData: st.comPago ? st.comPago.data : "", comPagoNota: st.comPago ? st.comPago.nota : "",
+      onComPagoData: e => this.setState(s => ({ comPago: { ...s.comPago, data: e.target.value } })),
+      onComPagoNota: e => this.setState(s => ({ comPago: { ...s.comPago, nota: e.target.value } })),
+      onComPagoFechar: () => this.setState({ comPago: null }), onComPagoSalvar: () => this.salvarPago(),
+    };
+  }
+
   parceiroVals() {
     const st = this.state;
     const pd = st.partnersData && !st.partnersData.erro ? st.partnersData : null;
@@ -2066,7 +2197,7 @@ class Component extends DCLogic {
     const situacao = { ACTIVE: "ativa", PAST_DUE: "atrasada", CANCELED: "cancelada" };
     const parRows = pd ? pd.map(x => {
       const cs = this.chipStatus(x.partner.active ? "ativo" : "inativo");
-      return { nome: x.partner.name, cupons: x.coupons.map(c => c.code).join(", ") || "—", usaram: String(x.metrics.users), pagaram: String(x.metrics.payers), ativos: String(x.metrics.activeSubscribers), receita: this.money(x.metrics.revenueCents), statusTxt: cs.txt, statusStyle: cs.style, onAbrir: () => this.go("parceiro", { partnerSel: x.partner.id, partnerReport: null, prDe: "", prAte: "", prErroTxt: "" }) };
+      return { nome: x.partner.name, cupons: x.coupons.map(c => c.code).join(", ") || "—", usaram: String(x.metrics.users), pagaram: String(x.metrics.payers), ativos: String(x.metrics.activeSubscribers), receita: this.money(x.metrics.revenueCents), comAberta: this.money(x.commission ? x.commission.openCents : 0), comPagar: this.money(x.commission ? x.commission.closedUnpaidCents : 0), statusTxt: cs.txt, statusStyle: cs.style, onAbrir: () => this.go("parceiro", { partnerSel: x.partner.id, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", commission: null, comRegra: null, comPago: null }) };
     }) : [];
     const r = st.partnerReport;
     const m = r ? r.metrics : null;
@@ -2416,6 +2547,7 @@ class Component extends DCLogic {
       cupomOpen: st.cupomOpen,
       ...this.cupomFormVals(),
       ...this.parceiroVals(),
+      ...this.comissaoVals(),
       onCriarCupom: () => this.criarCupom(),
       denRows, supResumo: `Prévia — fluxo de denúncias ainda não existe (VUL-171)`,
       dd: dSel, ddStatusTxt: ddStatus.txt, ddStatusStyle: ddStatus.style, ddAberta,
