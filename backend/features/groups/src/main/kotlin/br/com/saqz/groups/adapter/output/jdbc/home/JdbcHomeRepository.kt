@@ -145,6 +145,7 @@ class JdbcHomeRepository(
 
     private fun mapRosterMember(result: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int) = RosterRow(
         displayName = result.getString("display_name"),
+        userId = result.getObject("user_id", UUID::class.java),
         status = AttendanceStatus.valueOf(result.getString("status")),
         waitlistPosition = result.getObject("waitlist_position", Long::class.javaObjectType),
     )
@@ -233,14 +234,15 @@ class JdbcHomeRepository(
     private fun HomeNextGame.withRoster(rows: List<RosterRow>) = copy(
         rosterPreview = HomeRosterPreview(
             confirmed = rows.filter { it.status == AttendanceStatus.CONFIRMED }
-                .map { HomeRosterMember(it.displayName, null) },
+                .map { HomeRosterMember(it.displayName, null, it.userId) },
             waitlisted = rows.filter { it.status == AttendanceStatus.WAITLISTED }
-                .map { HomeRosterMember(it.displayName, it.waitlistPosition) },
+                .map { HomeRosterMember(it.displayName, it.waitlistPosition, it.userId) },
         ),
     )
 
     private data class RosterRow(
         val displayName: String,
+        val userId: UUID?,
         val status: AttendanceStatus,
         val waitlistPosition: Long?,
     )
@@ -388,10 +390,13 @@ class JdbcHomeRepository(
         // Mesma ordem de promoção do elenco do jogo (WaitlistPositionSql): a posição mostrada é o lugar na fila.
         val NEXT_GAME_ROSTER = """
             SELECT member_display_name AS display_name,
+                   CASE WHEN guest_seq = 0 THEN member_user_id END AS user_id,
                    status,
                    CASE WHEN status = 'WAITLISTED' THEN position END AS waitlist_position
             FROM (
                 SELECT attendance.member_display_name,
+                       attendance.member_user_id,
+                       attendance.guest_seq,
                        attendance.status,
                        row_number() OVER (
                            PARTITION BY attendance.status

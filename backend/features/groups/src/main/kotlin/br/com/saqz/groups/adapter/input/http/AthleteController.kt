@@ -1,5 +1,8 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.photo.MemberPhotoDirectory
+import br.com.saqz.groups.application.photo.NoMemberPhotos
+import br.com.saqz.groups.application.photo.tagsOf
 import br.com.saqz.groups.application.athlete.AthleteMembership
 import br.com.saqz.groups.application.athlete.AthleteRosterEntry
 import br.com.saqz.groups.application.athlete.AthleteRosterFilter
@@ -100,6 +103,8 @@ data class AthleteRosterEntryResponse(
     val monthlyDueDay: Int?,
     val joinedAt: Instant,
     val monthlyFeeExempt: Boolean,
+    /** Resumo da foto de perfil para `/members/{userId}/photo?v=` (MEM-006); nulo sem foto ou bloqueado. */
+    val photoTag: String? = null,
 )
 
 data class AthleteRosterResponse(val athletes: List<AthleteRosterEntryResponse>)
@@ -143,6 +148,7 @@ class AthleteController(
     private val removeAthlete: RemoveAthlete,
     private val getOwnAthleteProfile: GetOwnAthleteProfile,
     private val getAthleteStats: GetAthleteStats,
+    private val photos: MemberPhotoDirectory = NoMemberPhotos,
 ) {
     @GetMapping("/api/groups/{groupId}/athletes")
     fun roster(
@@ -161,16 +167,16 @@ class AthleteController(
             financialStatus = financialStatus?.let { parseEnum<FinancialStatus>(it, "financialStatus") },
             includeInactive = includeInactive,
         )
-        return when (val result = listAthletes.execute(actor(identity), parseId(groupId), filter)) {
+        val actorId = actor(identity)
+        val group = parseId(groupId)
+        val (athletes, role) = when (val result = listAthletes.execute(actorId, group, filter)) {
             ListAthletesResult.GroupNotFound -> throw GroupNotFoundException()
             ListAthletesResult.AccessForbidden -> throw AccessForbiddenException()
-            is ListAthletesSuccess -> AthleteRosterResponse(
-                result.athletes.map { it.toResponse(result.role) },
-            )
-            is ListAthletesResult.Success -> AthleteRosterResponse(
-                result.athletes.map { it.toResponse(null) },
-            )
+            is ListAthletesSuccess -> result.athletes to result.role
+            is ListAthletesResult.Success -> result.athletes to null
         }
+        val tags = photos.tagsOf(actorId, group, athletes.map { it.userId })
+        return AthleteRosterResponse(athletes.map { it.toResponse(role).copy(photoTag = tags[it.userId]) })
     }
 
     @PatchMapping("/api/groups/{groupId}/athletes/me")

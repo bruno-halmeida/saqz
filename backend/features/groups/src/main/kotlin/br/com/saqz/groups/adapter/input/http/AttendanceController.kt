@@ -1,5 +1,8 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.photo.MemberPhotoDirectory
+import br.com.saqz.groups.application.photo.NoMemberPhotos
+import br.com.saqz.groups.application.photo.tagsOf
 import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.context.request.RequestContextHolder
 import br.com.saqz.sharedkernel.subscription.PLAN_READ_ONLY_REQUEST_ATTRIBUTE
@@ -87,6 +90,8 @@ data class AttendanceRosterMemberResponse(
     val hostDisplayName: String?,
     val position: String? = null,
     val forced: Boolean = false,
+    /** Foto de perfil do membro (MEM-006); convidado (guestSeq > 0) não tem. */
+    val photoTag: String? = null,
 )
 data class AttendanceRosterResponse(
     val confirmed: List<AttendanceRosterMemberResponse>,
@@ -131,6 +136,7 @@ class AttendanceController(
     private val details: AttendanceDetailQuery,
     private val rosters: AttendanceRosterQuery,
     private val guests: GameGuests,
+    private val photos: MemberPhotoDirectory = NoMemberPhotos,
 ) {
     @GetMapping("/api/groups/{groupId}/games/{gameId}/attendance")
     fun read(
@@ -144,8 +150,14 @@ class AttendanceController(
         @AuthenticationPrincipal identity: RequestIdentity,
         @PathVariable groupId: String,
         @PathVariable gameId: String,
-    ): AttendanceRosterResponse =
-        rosters.roster(actors.resolve(identity), uuid(groupId), uuid(gameId))?.response() ?: throw GameNotFoundException()
+    ): AttendanceRosterResponse {
+        val actor = actors.resolve(identity)
+        val group = uuid(groupId)
+        val roster = rosters.roster(actor, group, uuid(gameId)) ?: throw GameNotFoundException()
+        val members = (roster.confirmed + roster.waitlisted + roster.declined).filter { it.guestSeq == 0 }
+        val tags = photos.tagsOf(actor, group, members.map { it.memberId })
+        return roster.response(tags)
+    }
 
     @PutMapping("/api/groups/{groupId}/games/{gameId}/attendance")
     fun respond(
@@ -317,7 +329,10 @@ private fun AttendanceDetail.response() = AttendanceDetailResponse(
 )
 private fun List<br.com.saqz.groups.domain.attendance.PositionLoad>.summary() =
     takeIf { it.isNotEmpty() }?.map { PositionSummaryResponse(it.position.name, it.slots, it.confirmed, it.missing, it.waitlisted) }
-private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition, guestSeq, hostDisplayName, position?.name, forced)
-private fun AttendanceRoster.response() = AttendanceRosterResponse(
-    confirmed.map { it.response() }, waitlisted.map { it.response() }, positions.summary(), declined.map { it.response() },
+private fun AttendanceRosterMember.response(tags: Map<UUID, String>) = AttendanceRosterMemberResponse(
+    memberId, displayName, waitlistPosition, guestSeq, hostDisplayName, position?.name, forced,
+    photoTag = tags[memberId].takeIf { guestSeq == 0 },
+)
+private fun AttendanceRoster.response(tags: Map<UUID, String>) = AttendanceRosterResponse(
+    confirmed.map { it.response(tags) }, waitlisted.map { it.response(tags) }, positions.summary(), declined.map { it.response(tags) },
 )

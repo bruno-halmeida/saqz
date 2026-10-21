@@ -1,5 +1,8 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.photo.MemberPhotoDirectory
+import br.com.saqz.groups.application.photo.NoMemberPhotos
+import br.com.saqz.groups.application.photo.tagsOf
 import br.com.saqz.groups.application.home.HomeAdminGroup
 import br.com.saqz.groups.application.home.HomeGameToReview
 import br.com.saqz.groups.application.home.HomeGameToSettle
@@ -36,6 +39,9 @@ data class HomeGroupResponse(
 data class HomeRosterMemberResponse(
     val displayName: String,
     val waitlistPosition: Long?,
+    val userId: UUID? = null,
+    /** Foto de perfil do membro (MEM-006); nulo para convidado, sem foto ou bloqueado. */
+    val photoTag: String? = null,
 )
 
 data class HomeRosterPreviewResponse(
@@ -177,10 +183,22 @@ data class HomeResponse(
 class MyHomeController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val query: HomeQuery,
+    private val photos: MemberPhotoDirectory = NoMemberPhotos,
 ) {
     @GetMapping("/api/me/home")
-    fun home(@AuthenticationPrincipal identity: RequestIdentity): HomeResponse =
-        query.execute(actorResolver.resolve(identity)).toResponse()
+    fun home(@AuthenticationPrincipal identity: RequestIdentity): HomeResponse {
+        val actor = actorResolver.resolve(identity)
+        val response = query.execute(actor).toResponse()
+        val next = response.member.nextGame ?: return response
+        val preview = next.rosterPreview
+        val tags = photos.tagsOf(actor, next.groupId, (preview.confirmed + preview.waitlisted).map { it.userId })
+        fun List<HomeRosterMemberResponse>.tagged() = map { it.copy(photoTag = it.userId?.let(tags::get)) }
+        return response.copy(
+            member = response.member.copy(
+                nextGame = next.copy(rosterPreview = HomeRosterPreviewResponse(preview.confirmed.tagged(), preview.waitlisted.tagged())),
+            ),
+        )
+    }
 }
 
 private fun HomeReadModel.toResponse() = HomeResponse(
@@ -259,7 +277,7 @@ private fun HomeNextGame.toResponse() = HomeNextGameResponse(
 
 private fun HomeOwnAttendance.toResponse() = HomeOwnAttendanceResponse(status.name, waitlistPosition)
 
-private fun HomeRosterMember.toResponse() = HomeRosterMemberResponse(displayName, waitlistPosition)
+private fun HomeRosterMember.toResponse() = HomeRosterMemberResponse(displayName, waitlistPosition, userId)
 
 private fun HomeLastCompletedGame.toResponse() = HomeLastCompletedGameResponse(
     groupId = groupId,

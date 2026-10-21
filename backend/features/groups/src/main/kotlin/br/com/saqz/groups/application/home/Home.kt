@@ -21,6 +21,8 @@ data class HomeMemberGroup(
 data class HomeRosterMember(
     val displayName: String,
     val waitlistPosition: Long?,
+    /** Nulo para convidado sem conta. */
+    val userId: UUID? = null,
 )
 
 data class HomeRosterPreview(

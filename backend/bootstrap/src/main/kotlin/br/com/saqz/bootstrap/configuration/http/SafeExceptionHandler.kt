@@ -2,6 +2,7 @@ package br.com.saqz.bootstrap.configuration.http
 
 import br.com.saqz.groups.adapter.input.http.AccessForbiddenException
 import br.com.saqz.groups.adapter.input.http.GroupNotFoundException
+import br.com.saqz.groups.adapter.input.http.MemberPhotoNotFoundException
 import br.com.saqz.access.adapter.input.http.InvalidDisplayNameException as AccessInvalidDisplayNameException
 import br.com.saqz.access.adapter.input.http.InvalidPhoneException
 import br.com.saqz.access.adapter.input.http.InvalidSessionProfileFieldException
@@ -564,7 +565,7 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 400, ErrorCode.PHOTO_INVALID)
     }
 
-    @ExceptionHandler(UserPhotoNotFoundException::class)
+    @ExceptionHandler(UserPhotoNotFoundException::class, MemberPhotoNotFoundException::class)
     fun photoNotFound(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 404, ErrorCode.PHOTO_NOT_FOUND)
     }

@@ -1,5 +1,8 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.photo.MemberPhotoDirectory
+import br.com.saqz.groups.application.photo.NoMemberPhotos
+import br.com.saqz.groups.application.photo.tagsOf
 import br.com.saqz.groups.application.membership.AccessMembership
 import br.com.saqz.groups.application.membership.ChangeMemberRole
 import br.com.saqz.groups.application.membership.ChangeMemberRoleResult
@@ -26,6 +29,8 @@ data class AccessMembershipResponse(
     val userId: UUID,
     val displayName: String,
     val role: GroupRole,
+    /** Foto de perfil do membro (MEM-006); nulo sem foto ou bloqueado por quem lê. */
+    val photoTag: String? = null,
 )
 
 @RestController
@@ -33,6 +38,7 @@ class AccessMembershipController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val listAccessMemberships: ListAccessMemberships,
     private val changeMemberRole: ChangeMemberRole,
+    private val photos: MemberPhotoDirectory = NoMemberPhotos,
 ) {
     @GetMapping("/api/groups/{groupId}/memberships")
     fun list(
@@ -40,11 +46,14 @@ class AccessMembershipController(
         @PathVariable("groupId") groupId: String,
     ): List<AccessMembershipResponse> {
         val parsedGroupId = parseId(groupId)
-        return when (val result = listAccessMemberships.execute(actor(identity), parsedGroupId)) {
+        val actorId = actor(identity)
+        val memberships = when (val result = listAccessMemberships.execute(actorId, parsedGroupId)) {
             ListAccessMembershipsResult.GroupNotFound -> throw GroupNotFoundException()
             ListAccessMembershipsResult.AccessForbidden -> throw AccessForbiddenException()
             is ListAccessMembershipsResult.Success -> result.memberships.map(AccessMembership::toResponse)
         }
+        val tags = photos.tagsOf(actorId, parsedGroupId, memberships.map { it.userId })
+        return memberships.map { it.copy(photoTag = tags[it.userId]) }
     }
 
     @PutMapping("/api/groups/{groupId}/memberships/{userId}/role")

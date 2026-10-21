@@ -1,5 +1,11 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.communication.CommunicationPage
+import br.com.saqz.groups.application.communication.GroupMessage
+import br.com.saqz.groups.application.communication.GroupNotification
+import br.com.saqz.groups.application.photo.MemberPhotoDirectory
+import br.com.saqz.groups.application.photo.NoMemberPhotos
+import br.com.saqz.groups.application.photo.tagsOf
 import br.com.saqz.groups.application.communication.CommunicationError
 import br.com.saqz.groups.application.communication.CommunicationResult
 import br.com.saqz.groups.application.communication.GroupCommunicationService
@@ -48,6 +54,7 @@ data class WhatsAppPreferencesRequest @JsonCreator constructor(
 class GroupCommunicationController(
     private val actors: VerifiedGroupActorResolver,
     private val service: GroupCommunicationService,
+    private val photos: MemberPhotoDirectory = NoMemberPhotos,
 ) {
     @GetMapping("/api/groups/{groupId}/messages")
     fun messages(
@@ -55,7 +62,12 @@ class GroupCommunicationController(
         @PathVariable groupId: UUID,
         @RequestParam channel: String,
         @RequestParam(required = false) before: Long?,
-    ) = service.messages(actors.resolve(identity), groupId, channel(channel), before).value()
+    ): CommunicationPage<GroupMessage> {
+        val actor = actors.resolve(identity)
+        val page = service.messages(actor, groupId, channel(channel), before).value()
+        val tags = photos.tagsOf(actor, groupId, page.items.map { it.authorId })
+        return page.copy(items = page.items.map { it.copy(photoTag = tags[it.authorId]) })
+    }
 
     @PostMapping("/api/groups/{groupId}/messages")
     fun publish(
@@ -77,7 +89,17 @@ class GroupCommunicationController(
     fun inbox(
         @AuthenticationPrincipal identity: RequestIdentity,
         @RequestParam(required = false) before: Long?,
-    ) = service.inbox(actors.resolve(identity), before).value()
+    ): CommunicationPage<GroupNotification> {
+        val actor = actors.resolve(identity)
+        val page = service.inbox(actor, before).value()
+        val tags = page.items.groupBy { it.message.groupId }
+            .mapValues { (group, items) -> photos.tagsOf(actor, group, items.map { it.message.authorId }) }
+        return page.copy(
+            items = page.items.map {
+                it.copy(message = it.message.copy(photoTag = tags[it.message.groupId]?.get(it.message.authorId)))
+            },
+        )
+    }
 
     @PutMapping("/api/me/notifications/{sequence}/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)

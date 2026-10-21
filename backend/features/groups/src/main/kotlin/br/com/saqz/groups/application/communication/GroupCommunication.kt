@@ -31,6 +31,8 @@ data class GroupMessage(
     val gameId: UUID?,
     val recipientCount: Int,
     val createdAt: Instant,
+    /** Foto de perfil do autor para quem lê (MEM-006); preenchida na borda HTTP. */
+    val photoTag: String? = null,
 )
 
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)

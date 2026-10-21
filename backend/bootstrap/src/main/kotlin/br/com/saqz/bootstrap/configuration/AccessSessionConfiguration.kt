@@ -42,6 +42,9 @@ import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupSummariesReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.group.settings.JdbcGroupSettingsRepository
 import br.com.saqz.groups.adapter.output.jdbc.photo.JdbcGroupPhotoRepository
+import br.com.saqz.groups.adapter.output.jdbc.photo.JdbcMemberPhotoDirectory
+import br.com.saqz.groups.adapter.input.http.MemberPhotoController
+import br.com.saqz.groups.application.photo.MemberPhotoDirectory
 import br.com.saqz.groups.adapter.output.media.GroupPhotoValidator
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteManagementRepository
 import br.com.saqz.groups.adapter.output.jdbc.invite.JdbcInviteRedemptionRepository
@@ -608,6 +611,11 @@ class AccessSessionConfiguration {
     ) = AccessGroupSettingsController(verifiedGroupActorResolver, updateGroupSettings, getGroup)
 
     @Bean fun groupPhotoRepository(dataSource: DataSource) = JdbcGroupPhotoRepository(dataSource)
+    @Bean fun memberPhotoDirectory(dataSource: DataSource) = JdbcMemberPhotoDirectory(dataSource)
+    @Bean fun memberPhotoController(
+        verifiedGroupActorResolver: VerifiedGroupActorResolver,
+        photos: MemberPhotoDirectory,
+    ) = MemberPhotoController(verifiedGroupActorResolver, photos)
     @Bean fun groupPhotoValidator() = GroupPhotoValidator()
     @Bean fun groupPhotoService(
         getGroup: GetGroup,
@@ -649,7 +657,8 @@ class AccessSessionConfiguration {
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         listAccessMemberships: ListAccessMemberships,
         changeMemberRole: ChangeMemberRole,
-    ) = AccessMembershipController(verifiedGroupActorResolver, listAccessMemberships, changeMemberRole)
+        photos: MemberPhotoDirectory,
+    ) = AccessMembershipController(verifiedGroupActorResolver, listAccessMemberships, changeMemberRole, photos)
 
     @Bean
     fun listEntryRequests(
@@ -1020,7 +1029,7 @@ class AccessSessionConfiguration {
         br.com.saqz.groups.application.attendance.ReleaseMemberAttendance(repository, charges, Instant::now)
     @Bean fun gameGuests(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, responses: RespondAttendance) = GameGuests(transaction, repository, responses, Instant::now)
     @Bean fun adjustGameCapacity(transaction: JdbcTransactionRunner, repository: JdbcAttendanceCommandRepository, charges: AttendanceChargeAdapter) = AdjustGameCapacity(transaction, repository, charges, Instant::now)
-    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery, guests: GameGuests) = AttendanceController(actor, responses, capacities, details, rosters, guests)
+    @Bean fun attendanceController(actor: VerifiedGroupActorResolver, responses: RespondAttendance, capacities: AdjustGameCapacity, details: AttendanceDetailQuery, rosters: AttendanceRosterQuery, guests: GameGuests, photos: MemberPhotoDirectory) = AttendanceController(actor, responses, capacities, details, rosters, guests, photos)
     @Bean fun autoConfirmationController() = AutoConfirmationController()
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
@@ -1042,7 +1051,7 @@ class AccessSessionConfiguration {
         repository: JdbcHomeRepository,
         @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
     ) = HomeQuery(repository, Clock.systemUTC(), ZoneId.of(zone))
-    @Bean fun homeController(actor: VerifiedGroupActorResolver, query: HomeQuery) = MyHomeController(actor, query)
+    @Bean fun homeController(actor: VerifiedGroupActorResolver, query: HomeQuery, photos: MemberPhotoDirectory) = MyHomeController(actor, query, photos)
     @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
     @Bean fun financeStatementService(repository: JdbcFinanceStatementRepository) = FinanceStatementService(repository)
     @Bean fun financeStatementController(actor: VerifiedGroupActorResolver, service: FinanceStatementService) = FinanceStatementController(actor, service)
@@ -1080,5 +1089,5 @@ class AccessSessionConfiguration {
     @Bean fun listAthletes(readRepository: JdbcGroupReadRepository, roster: JdbcAthleteRosterRepository) = ListAthletes(readRepository, roster, GroupAccessPolicy())
     @Bean fun getOwnAthleteProfile(roster: JdbcAthleteRosterRepository) = GetOwnAthleteProfile(roster)
     @Bean fun getAthleteStats(readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, stats: JdbcAthleteStatsRepository) = GetAthleteStats(readRepository, athletes, stats)
-    @Bean fun athleteController(actor: VerifiedGroupActorResolver, list: ListAthletes, updateOwn: UpdateOwnAthleteProfile, update: UpdateAthlete, remove: RemoveAthlete, ownProfile: GetOwnAthleteProfile, stats: GetAthleteStats) = AthleteController(actor, list, updateOwn, update, remove, ownProfile, stats)
+    @Bean fun athleteController(actor: VerifiedGroupActorResolver, list: ListAthletes, updateOwn: UpdateOwnAthleteProfile, update: UpdateAthlete, remove: RemoveAthlete, ownProfile: GetOwnAthleteProfile, stats: GetAthleteStats, photos: MemberPhotoDirectory) = AthleteController(actor, list, updateOwn, update, remove, ownProfile, stats, photos)
 }
