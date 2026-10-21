@@ -187,6 +187,7 @@ data class AttendanceRoster(
     val confirmed: List<AttendanceRosterMember>,
     val waitlisted: List<AttendanceRosterMember>,
     val positions: List<PositionLoad> = emptyList(),
+    val declined: List<AttendanceRosterMember> = emptyList(),
 )
 
 fun interface AttendanceRosterQuery {

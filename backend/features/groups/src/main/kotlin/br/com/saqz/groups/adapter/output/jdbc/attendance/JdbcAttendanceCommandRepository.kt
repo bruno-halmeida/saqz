@@ -439,8 +439,20 @@ class JdbcAttendanceCommandRepository(
                 waiting.map { row -> row.member(position = seen.merge(row.position, 1L, Long::plus)) }
             },
             positionLoads(gameId),
+            declined(groupId, gameId),
         )
     }
+
+    // Consulta à parte para não mexer na ordem de confirmados e espera do ROSTER (DEB-116).
+    // Só quem ainda é membro: quem saiu do grupo tem a linha de group_memberships apagada.
+    private fun declined(groupId: UUID, gameId: UUID): List<AttendanceRosterMember> =
+        jdbc.sql(DECLINED_ROSTER).param("group", groupId).param("game", gameId).query { rs, _ ->
+            AttendanceRosterMember(
+                memberId = rs.getObject("member_user_id", UUID::class.java),
+                displayName = rs.getString("member_display_name"),
+                position = rs.position("position"),
+            )
+        }.list()
 
     // Uma consulta para todos os jogos: a lista de jogos chamava isto com o histórico inteiro do grupo.
     override fun counts(gameIds: Set<UUID>): Map<UUID, GameAttendanceCounts> {
@@ -716,6 +728,13 @@ class JdbcAttendanceCommandRepository(
             JOIN game_attendance a ON a.game_id=g.id AND a.member_user_id=:actor AND a.guest_seq=0
             LEFT JOIN group_memberships am ON am.group_id=g.group_id AND am.user_id=:actor
             WHERE g.group_id=:group
+        """
+        const val DECLINED_ROSTER = """
+            SELECT a.member_user_id,a.member_display_name,a.position
+            FROM game_attendance a
+            JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
+            WHERE a.group_id=:group AND a.game_id=:game AND a.status='DECLINED' AND a.guest_seq=0
+            ORDER BY lower(a.member_display_name),a.member_display_name,a.member_user_id
         """
         const val ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,

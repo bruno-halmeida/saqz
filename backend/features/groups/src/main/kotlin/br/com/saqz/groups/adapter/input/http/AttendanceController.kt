@@ -92,6 +92,7 @@ data class AttendanceRosterResponse(
     val confirmed: List<AttendanceRosterMemberResponse>,
     val waitlisted: List<AttendanceRosterMemberResponse>,
     val positions: List<PositionSummaryResponse>? = null,
+    val declined: List<AttendanceRosterMemberResponse> = emptyList(),
 )
 data class AttendanceMutationResponse(
     val attendance: AttendanceEntryResponse,
@@ -317,4 +318,6 @@ private fun AttendanceDetail.response() = AttendanceDetailResponse(
 private fun List<br.com.saqz.groups.domain.attendance.PositionLoad>.summary() =
     takeIf { it.isNotEmpty() }?.map { PositionSummaryResponse(it.position.name, it.slots, it.confirmed, it.missing, it.waitlisted) }
 private fun AttendanceRosterMember.response() = AttendanceRosterMemberResponse(memberId, displayName, waitlistPosition, guestSeq, hostDisplayName, position?.name, forced)
-private fun AttendanceRoster.response() = AttendanceRosterResponse(confirmed.map { it.response() }, waitlisted.map { it.response() }, positions.summary())
+private fun AttendanceRoster.response() = AttendanceRosterResponse(
+    confirmed.map { it.response() }, waitlisted.map { it.response() }, positions.summary(), declined.map { it.response() },
+)
