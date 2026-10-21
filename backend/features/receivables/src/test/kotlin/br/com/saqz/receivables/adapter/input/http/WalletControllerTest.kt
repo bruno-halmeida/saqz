@@ -71,7 +71,10 @@ class WalletControllerTest {
         }.andExpect { status { isBadRequest() } }.andReturn().response.contentAsString.also {
             assertContains(it, "INVALID_INPUT")
         }
-        val tampered = cursor.encode(otherAccount, 20).dropLast(1) + "A"
+        // Troca um caractere do meio por outro sempre diferente: o último pode já ser "A" ou só ter bits de sobra.
+        val encoded = cursor.encode(otherAccount, 20)
+        val middle = encoded.length / 2
+        val tampered = encoded.substring(0, middle) + (if (encoded[middle] == 'A') 'B' else 'A') + encoded.substring(middle + 1)
         mvc.get("/api/receivables/accounts/$otherAccount/wallet/statement") { param("cursor", tampered) }
             .andExpect { status { isBadRequest() } }
     }
