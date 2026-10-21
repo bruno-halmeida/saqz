@@ -136,8 +136,7 @@
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
     if (kind === "attendance") heading.textContent = "Responda no Saqz";
 
-    // Nenhum aparelho usa o web app (saqz.app/app/) a partir desta página: o celular vai à loja do sistema e o app
-    // retoma o link; o computador mostra o QR do link e as duas lojas. Nada de redirecionamento nem link para o web app.
+    // O celular vai à loja do sistema e o app retoma o link; o computador mostra o QR do link e as duas lojas.
     if (!isIOS && !isAndroid) return desktopFlow();
     appFlow();
 

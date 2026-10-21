@@ -30,7 +30,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 4. No celular, entrar no app com a mesma conta e tocar "Criar meu grupo".
 
 **Conferir**
-- O selo do Google Play leva à página do Saqz no Play; o da App Store leva à página do Saqz na App Store (id6812743525). No iPhone, os dois selos aparecem, App Store primeiro (sem "Continuar no Saqz" nem dica de Tela de Início); no computador, "Continuar no Saqz" fica como principal.
+- O selo do Google Play leva à página do Saqz no Play; o da App Store leva à página do Saqz na App Store (id6812743525). No iPhone, os dois selos aparecem, App Store primeiro (sem "Continuar no Saqz" nem dica de Tela de Início); no computador, os dois selos também são a ação principal e nada leva a `saqz.app/app/`.
 - O site diz que o teste está liberado e que o prazo começa no primeiro grupo.
 - No app, a conta entra sem cadastro novo, e "Criar meu grupo" abre direto o formulário "Criar grupo",
   sem a tela do teste. Fechar sem criar: o prazo só começa no primeiro grupo.

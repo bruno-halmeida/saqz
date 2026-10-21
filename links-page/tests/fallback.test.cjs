@@ -180,7 +180,9 @@ test('malformed codes cannot inject an Android intent or a destination', () => {
   }
 });
 
-// Web app (saqz.app/app/): só computador; o Android vai ao Google Play e o iPhone à App Store.
+// Web app (saqz.app/app/): fora do ar desde 21/10/2026; a página nunca o consultou nem levou a ele. Os testes abaixo
+// garantem que nenhum aparelho volta a perguntar por ele: o Android vai ao Google Play, o iPhone à App Store e o
+// computador mostra o QR e as lojas.
 const webUp = () => Promise.resolve({ ok: true });
 const webDown = () => Promise.resolve({ ok: false });
 const settle = () => new Promise(resolve => setImmediate(resolve));
