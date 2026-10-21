@@ -2,10 +2,12 @@ package br.com.saqz.subscriptions.adapter.output.jdbc
 
 import br.com.saqz.subscriptions.application.AdminRevenueReader
 import br.com.saqz.subscriptions.application.AdminRevenueCourtesyRow
+import br.com.saqz.subscriptions.application.AdminRevenueOriginRow
 import br.com.saqz.subscriptions.application.AdminRevenueReport
 import br.com.saqz.subscriptions.application.AdminRevenueRow
 import br.com.saqz.subscriptions.domain.Plan
 import org.springframework.jdbc.core.simple.JdbcClient
+import java.util.UUID
 import javax.sql.DataSource
 
 class JdbcAdminRevenueReader(dataSource: DataSource) : AdminRevenueReader {
@@ -44,6 +46,39 @@ class JdbcAdminRevenueReader(dataSource: DataSource) : AdminRevenueReader {
             courtesy = courtesy(months),
         )
     }
+
+    override fun byOrigin(months: Int): List<AdminRevenueOriginRow> = jdbc.sql(
+        """
+        SELECT to_char(date_trunc('month', p.paid_at AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM') AS month,
+               a.coupon_type, a.coupon_id, a.coupon_code, a.campaign, p.source, p.currency,
+               count(*) AS payments,
+               CASE WHEN count(p.gross_cents) > 0 THEN sum(p.gross_cents)::bigint END AS gross_cents,
+               count(*) - count(p.gross_cents) AS without_value
+        FROM subscription_payments p
+        -- Pagamento antes do primeiro uso do cupom continua "Sem cupom".
+        LEFT JOIN customer_acquisition a ON a.owner_user_id = p.owner_user_id AND a.first_used_at <= p.paid_at
+        WHERE NOT p.test AND NOT p.refunded
+          AND p.paid_at >= (date_trunc('month', now() AT TIME ZONE 'America/Sao_Paulo') - make_interval(months => :back)) AT TIME ZONE 'America/Sao_Paulo'
+        GROUP BY 1, a.coupon_type, a.coupon_id, a.coupon_code, a.campaign, p.source, p.currency
+        ORDER BY 1 DESC, a.coupon_code NULLS FIRST, a.coupon_type, p.source, p.currency
+        """.trimIndent(),
+    )
+        .param("back", months - 1)
+        .query { rs, _ ->
+            AdminRevenueOriginRow(
+                month = rs.getString("month"),
+                couponType = rs.getString("coupon_type"),
+                couponId = rs.getObject("coupon_id", UUID::class.java),
+                couponCode = rs.getString("coupon_code"),
+                campaign = rs.getString("campaign"),
+                source = rs.getString("source"),
+                currency = rs.getString("currency"),
+                payments = rs.getLong("payments"),
+                grossCents = rs.getObject("gross_cents")?.let { (it as Number).toLong() },
+                paymentsWithoutValue = rs.getLong("without_value"),
+            )
+        }
+        .list()
 
     /**
      * Cortesia ativa no mês: criada antes do fim do mês, não revogada antes do início e sem fim antes do início. Preço mensal de
