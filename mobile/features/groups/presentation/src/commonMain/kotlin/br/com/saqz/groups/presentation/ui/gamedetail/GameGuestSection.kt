@@ -82,89 +82,12 @@ internal object GameGuestTags {
     fun row(rowId: String) = "game-guest-row-$rowId"
 }
 
-/** Botão "Levar convidado" + a dica do porquê (regras A e C). Some fora de jogo publicado. */
-@Composable
-internal fun GameGuestAction(
-    guest: GameGuestUi,
-    onIntent: (GameDetailIntent) -> Unit,
-    modifier: Modifier = Modifier,
-    /** O jogo já começou: o cartão de resposta explica, então a dica "Fale com o gestor" não aparece. */
-    gameStarted: Boolean = false,
-) {
-    if (!guest.visible) return
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        SaqzButton(
-            label = stringResource(Res.string.game_guest_add),
-            onClick = { onIntent(GameDetailIntent.OpenGuestSheet) },
-            modifier = Modifier.testTag(GameGuestTags.Add),
-            variant = SaqzButtonVariant.Secondary,
-            fullWidth = true,
-            enabled = guest.enabled,
-            leadingContent = { tint -> SaqzIcon(SaqzIcons.Users, tint = tint, size = GuestButtonIconSize) },
-        )
-        // Jogo em andamento: o cartão de resposta já diz "Em andamento"; repetir aqui só duplicaria o texto.
-        if (!(gameStarted && guest.hint == GameGuestHint.Closed)) {
-            Text(
-                text = stringResource(
-                    when (guest.hint) {
-                        GameGuestHint.Default -> Res.string.game_guest_hint_default
-                        GameGuestHint.NeedAnswer -> Res.string.game_guest_hint_need_answer
-                        GameGuestHint.Closed -> Res.string.game_guest_hint_closed
-                    },
-                ),
-                color = SaqzTheme.colors.textSecondary,
-                style = SaqzTheme.typography.caption,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.testTag(GameGuestTags.Hint),
-            )
-        }
-    }
-}
-
 /** A segunda linha de uma pessoa da lista quando ela é convidada. `null` = não é convidado. */
 @Composable
 internal fun GameGuestRowUi.metaLabel(feeLabel: String?, confirmed: Boolean): String = when {
     isYours && confirmed && feeLabel != null -> stringResource(Res.string.game_guest_yours_fee, feeLabel)
     isYours -> stringResource(Res.string.game_guest_yours)
     else -> stringResource(Res.string.game_guest_of, hostName)
-}
-
-/** Avatar do convidado: círculo tracejado na cor da marca, para não se passar por membro. */
-@Composable
-internal fun GameGuestAvatar(modifier: Modifier = Modifier) {
-    val color = SaqzTheme.colors.primary
-    Box(
-        modifier = modifier.size(GuestAvatarSize).drawBehind {
-            drawCircle(
-                color = color,
-                radius = size.minDimension / 2 - GuestAvatarStroke.toPx(),
-                style = Stroke(
-                    width = GuestAvatarStroke.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(GuestAvatarDash.toPx(), GuestAvatarDash.toPx())),
-                ),
-            )
-        },
-        contentAlignment = Alignment.Center,
-    ) {
-        SaqzIcon(SaqzIcons.Users, tint = color, size = GuestButtonIconSize)
-    }
-}
-
-@Composable
-internal fun GameGuestRemoveAction(rowId: String, guest: GameGuestRowUi, onIntent: (GameDetailIntent) -> Unit) {
-    if (!guest.canRemove) return
-    SaqzButton(
-        label = stringResource(Res.string.game_guest_remove),
-        onClick = { onIntent(GameDetailIntent.RequestRemoveGuest(rowId)) },
-        modifier = Modifier.testTag(GameGuestTags.remove(rowId)),
-        variant = SaqzButtonVariant.Ghost,
-        size = SaqzButtonSize.Sm,
-        contentColor = SaqzTheme.colors.textSecondary,
-    )
 }
 
 @Composable
@@ -290,6 +213,4 @@ internal fun GameGuestNotice(guest: GameGuestUi, onIntent: (GameDetailIntent) ->
 }
 
 private val GuestButtonIconSize = 20.dp
-private val GuestAvatarSize = 40.dp
-private val GuestAvatarStroke = 1.5.dp
-private val GuestAvatarDash = 4.dp
+

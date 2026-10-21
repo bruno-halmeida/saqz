@@ -63,6 +63,9 @@
     <string name="game_declined_empty_title">Ninguém avisou que não vai.</string>
     <string name="game_declined_empty_body">Quem responder Não vou aparece aqui.</string>
     <string name="game_waitlist_place">Colocar</string>
+    <string name="game_queue_ordinal">%1$dº</string>
+    <string name="game_person_remove">Tirar do jogo</string>
+    <string name="game_person_remove_guest">Tirar convidado(a)</string>
     <string name="game_position_complete">%1$s · completo</string>
     <plurals name="game_menu_capacity_hint">
         <item quantity="one">Hoje é %1$d vaga</item>

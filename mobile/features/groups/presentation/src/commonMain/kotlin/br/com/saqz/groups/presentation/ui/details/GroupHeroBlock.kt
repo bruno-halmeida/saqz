@@ -40,6 +40,7 @@ import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoard
 import br.com.saqz.groups.presentation.ui.components.AttendanceScoreBoardTags
 import br.com.saqz.groups.presentation.ui.components.HeroAlertLine
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceControls
+import br.com.saqz.groups.presentation.ui.components.HeroFeeNote
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTags
 import br.com.saqz.groups.presentation.ui.components.HeroAttendanceTexts
 import br.com.saqz.groups.presentation.ui.components.HeroIconGap
@@ -59,7 +60,6 @@ import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.resources.game_response_confirmed
 import br.com.saqz.groups.resources.game_detail_confirmed_over_capacity
 import br.com.saqz.groups.resources.game_response_confirmed_summary
-import br.com.saqz.groups.resources.game_response_day_member_fee
 import br.com.saqz.groups.resources.game_response_declined
 import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_request_failed
@@ -193,7 +193,7 @@ private fun GroupGameHero(
             ),
             tags = GroupHeroAttendanceTags,
         )
-        if (state.membershipType == AthleteMembershipType.AVULSO && game.hasGameFee && game.canRespond) HeroFeeNote()
+        if (state.membershipType == AthleteMembershipType.AVULSO && game.hasGameFee && game.canRespond) HeroFeeNote(GroupDetailsTags.HeroFeeNote)
         if (state.rosterStale) {
             HeroRosterStale(
                 refreshing = state.rosterRefreshing,
@@ -289,24 +289,6 @@ private fun HeroAddress(
                 tag = GroupDetailsTags.HeroMapFailure,
             )
         }
-    }
-}
-
-/** Avulso em jogo com taxa e respostas abertas: confirmar gera cobrança, e ele precisa saber ANTES de tocar. */
-@Composable
-private fun HeroFeeNote() {
-    val color = SaqzTheme.colors.onPrimary.copy(alpha = HeroAddressAlpha)
-    Row(
-        modifier = Modifier.testTag(GroupDetailsTags.HeroFeeNote),
-        horizontalArrangement = Arrangement.spacedBy(HeroIconGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SaqzIcon(SaqzIcons.CreditCard, tint = color, size = HeroLineIconSize)
-        Text(
-            text = stringResource(Res.string.game_response_day_member_fee),
-            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-            color = color,
-        )
     }
 }
 

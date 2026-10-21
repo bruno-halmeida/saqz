@@ -8,6 +8,9 @@ import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.gamedetail.GameDetailEffect
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
 import br.com.saqz.groups.presentation.gamedetail.GameDetailViewModel
+import br.com.saqz.groups.domain.map.GroupMapPort
+import br.com.saqz.groups.presentation.ui.details.venueMapUrl
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -21,6 +24,7 @@ fun GameDetailRoot(
     onCancel: () -> Unit = onBack,
     /** "Vou" em jogo com posições: a tela de escolher posição (DEB-107). */
     onPickPosition: () -> Unit = {},
+    mapPort: GroupMapPort = koinInject(),
     viewModel: GameDetailViewModel = koinViewModel(
         key = "game-detail/$groupId/$gameId",
         parameters = { parametersOf(groupId, gameId) },
@@ -35,6 +39,10 @@ fun GameDetailRoot(
             GameDetailEffect.OpenSettlement -> onOpenSettlement()
             GameDetailEffect.Cancelled -> onCancel()
             GameDetailEffect.PickPosition -> onPickPosition()
+            // O mesmo caminho do "Ver no mapa" do grupo: falhar deixa o aviso colado na linha da quadra.
+            is GameDetailEffect.OpenMap -> mapPort.open(venueMapUrl(effect.address)) { opened ->
+                if (!opened) viewModel.onIntent(GameDetailIntent.MapOpenFailed)
+            }
         }
     }
     GameDetailScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent)

@@ -35,6 +35,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.game_response_day_member_fee
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.resources.game_response_closed_by_deadline
 import br.com.saqz.groups.resources.game_response_deadline_closed
@@ -82,6 +83,30 @@ internal data class HeroAttendanceTags(
     val error: String,
     val lateNotice: String = "hero-late-notice",
 )
+
+/**
+ * Avulso em jogo com taxa e respostas abertas: confirmar gera cobrança, e ele precisa saber ANTES de tocar.
+ * Nasceu no hero do grupo; a tela do jogo (DEB-116) é o segundo uso.
+ */
+@Composable
+internal fun HeroFeeNote(tag: String, modifier: Modifier = Modifier) {
+    val color = SaqzTheme.colors.onPrimary.copy(alpha = HeroFeeAlpha)
+    Row(
+        modifier = modifier.testTag(tag),
+        horizontalArrangement = Arrangement.spacedBy(HeroIconGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SaqzIcon(SaqzIcons.CreditCard, tint = color, size = HeroLineIconSize)
+        Text(
+            text = stringResource(Res.string.game_response_day_member_fee),
+            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+            color = color,
+        )
+    }
+}
+
+/** Endereço e nota da taxa: branco a 82%, um degrau abaixo do prazo (90%). */
+internal const val HeroFeeAlpha = 0.82f
 
 /** Linha do prazo do RSVP: relógio + texto; com o prazo encerrado fica mais apagada. */
 @Composable

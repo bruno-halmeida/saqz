@@ -71,27 +71,6 @@ internal object GameOrganizerTags {
     fun candidate(memberId: String) = "game-place-candidate-$memberId"
 }
 
-/** "Tirar" à direita da linha de um membro (confirmado ou na espera), só para o gestor. */
-@Composable
-internal fun GameMemberRemoveAction(rowId: String, onIntent: (GameDetailIntent) -> Unit) = SaqzButton(
-    label = stringResource(Res.string.game_member_remove),
-    onClick = { onIntent(GameDetailIntent.RequestRemoveMember(rowId)) },
-    modifier = Modifier.testTag(GameOrganizerTags.remove(rowId)),
-    variant = SaqzButtonVariant.Ghost,
-    size = SaqzButtonSize.Sm,
-    contentColor = SaqzTheme.colors.textSecondary,
-)
-
-/** Botão abaixo da lista de confirmados. */
-@Composable
-internal fun GamePlaceAction(onIntent: (GameDetailIntent) -> Unit, modifier: Modifier = Modifier) = SaqzButton(
-    label = stringResource(Res.string.game_place_action),
-    onClick = { onIntent(GameDetailIntent.OpenPlaceSheet) },
-    modifier = modifier.testTag(GameOrganizerTags.PlaceAction),
-    variant = SaqzButtonVariant.Secondary,
-    fullWidth = true,
-)
-
 @Composable
 private fun GameOrganizerFailure.message() = stringResource(
     when (this) {

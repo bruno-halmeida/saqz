@@ -103,7 +103,7 @@ data class GameDetailState(
             ((attendance?.pending ?: 0) > 0 || reminder.notifiedCount != null)
 
     /** A linha verde-limão do que falta (DEB-116). */
-    val limeLine: GameLimeLine? get() = limeLine()
+    val limeLine: GameLimeLine? get() = resolveLimeLine()
 
     /** O gestor coloca da espera no jogo: escolha manual e jogo por começar (DEB-018). */
     val canPromote: Boolean
