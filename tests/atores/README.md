@@ -112,7 +112,7 @@ estados globais que alguns cenários mexem (travas de reenvio de e-mail/senha, m
 - **WhatsApp** (grupo vinculado, botões do lembrete, mensagem particular) e **pagamento** (Asaas, Apple, Google): sem
   chave no stack local. `NOT-007`, `ASS-004` e a parte de pagamento de `ASS-005` não têm cenário; a assinatura é
   **simulada no banco** (`c.assinar`) para provar o que o backend faz com ela (limites, carência, congelamento).
-- **Horário dos jobs diários**: lembrete de presença às 9h/18h, "jogo liberado" às 14h, mensalidade automática às 3h10,
+- **Horário dos jobs diários**: lembrete de presença às 9h/12h30/18h, "jogo liberado" às 14h, mensalidade automática às 3h10,
   avisos do fim do teste (3, 1 e 0 dias) e segundo aviso de pedido parado (2 dias) disparam por cron em horário fixo de
   São Paulo e não há como chamá-los por API. Ficam sem cenário (`NOT-003` prova o lembrete **manual** e a publicação;
   `FIN-003`, `ASS-002` marcos de 3/1/0 dias e o pedido parado dependem de teste de integração do backend ou de rodar o job).

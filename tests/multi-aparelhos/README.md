@@ -43,7 +43,7 @@ coisas: por isso os builds apontam para 18080 em vez do default de `gradle.prope
 - **Push.** Não há FCM nem APNs: os cartões e contadores atualizam ao reabrir a tela, mas o push
   "O jogo está liberado" (PROD-JG01) e os botões da notificação (PROD-JG03) não aparecem. O stack
   liga `saqz.notifications.reminder.enabled` (desligada por padrão), então os avisos "Jogo liberado"
-  (só para o próximo jogo do grupo) e o lembrete automático (9h e 18h) existem na central de
+  (só para o próximo jogo do grupo) e o lembrete automático (9h, 12h30 e 18h) existem na central de
   notificações e em `group_messages`, sem push.
 - **Links.** O backend gera `https://links.saqz.app/?saqz_invite=…`, mas os builds de dev não têm
   App Links verificados. Entregar o link ao outro aparelho direto no app:

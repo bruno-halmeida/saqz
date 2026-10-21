@@ -62,7 +62,7 @@ N() { $PSQL "select m.channel,left(m.body,60),n.read_at is not null from group_n
 
 ## NOT-003 · Avisos do jogo [CRÍTICO] [MULTI] [push: só produção]
 
-Os horários reais do lembrete são 9h e 18h (São Paulo). Para não esperar o relógio, o roteiro usa o botão **Avisar** do organizador (lembrete manual) e, se a rodada cair perto de 9h ou 18h, a conferência do disparo automático. Estado: J1 publicado amanhã, ATL e ATL2 e ATL3 sem resposta.
+Os horários reais do lembrete são 9h, 12h30 e 18h (São Paulo). Para não esperar o relógio, o roteiro usa o botão **Avisar** do organizador (lembrete manual) e, se a rodada cair perto de 9h ou 18h, a conferência do disparo automático. Estado: J1 publicado amanhã, ATL e ATL2 e ATL3 sem resposta.
 
 | # | Aparelho | Faça | Espere | Banco | iOS | Android |
 | --- | --- | --- | --- | --- | --- | --- |

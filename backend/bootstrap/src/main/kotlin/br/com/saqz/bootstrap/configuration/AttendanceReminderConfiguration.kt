@@ -14,9 +14,10 @@ class AttendanceReminderConfiguration {
 }
 
 /**
- * A lista de convocados vai 2 vezes por dia, às 9h e às 18h de São Paulo (DEB-066), do jogo publicado até
- * o início dele. O horário vem de `saqz.notifications.reminder.cron` (cron do Spring, seis
- * campos). A chave antiga `SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS` (fixedDelay de 7 h) deixou de valer: quem a
+ * A lista de convocados vai 3 vezes por dia, às 9h, às 12h30 e às 18h de São Paulo (DEB-066), do jogo publicado
+ * até o início dele. 9h e 18h vêm de `saqz.notifications.reminder.cron` e 12h30 de
+ * `saqz.notifications.reminder.midday-cron` (cron do Spring, seis campos; um cron só não junta minutos diferentes).
+ * As duas execuções são o mesmo lembrete: lista no grupo do WhatsApp e push só para quem ainda não respondeu. A chave antiga `SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS` (fixedDelay de 7 h) deixou de valer: quem a
  * define em produção deve apagá-la e, para outro horário, definir `SAQZ_NOTIFICATIONS_REMINDER_CRON`.
  */
 class AutomaticAttendanceReminder(private val reminders: GroupCommunicationService) {
@@ -27,4 +28,10 @@ class AutomaticAttendanceReminder(private val reminders: GroupCommunicationServi
     fun run() {
         JobLog.cron("attendance_reminder", { reminders.remindAutomatically() }) { mapOf("published" to it) }
     }
+
+    @Scheduled(
+        cron = "\${saqz.notifications.reminder.midday-cron:0 30 12 * * *}",
+        zone = "America/Sao_Paulo",
+    )
+    fun runMidday() = run()
 }
