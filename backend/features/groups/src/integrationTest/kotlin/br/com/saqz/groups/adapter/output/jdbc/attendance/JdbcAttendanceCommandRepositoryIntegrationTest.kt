@@ -7,6 +7,7 @@ import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.finance.charge.ChargeTransactions
 import br.com.saqz.groups.application.game.ListGames
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.testing.*
 import br.com.saqz.postgrestesting.TestPostgres
@@ -275,6 +276,57 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
         assertEquals(listOf("Mensalista2", "Mensalista3", "Avulso1"), roster.waitlisted.map { it.displayName })
         // A posição é o lugar na fila como o app mostra, não a sequência gravada (2, 3, 1).
         assertEquals(listOf(1L, 2L, 3L), roster.waitlisted.map { it.waitlistPosition })
+    }
+
+    @Test fun `roster lists declined members alphabetically with their position`() {
+        val f = fixture()
+        attendance(f, f.member, "CONFIRMED", "Ana")
+        val zeca = member(f.group, "declined-z"); attendance(f, zeca, "DECLINED", "Zeca")
+        val bia = member(f.group, "declined-b"); attendance(f, bia, "DECLINED", "bia")
+        execute("UPDATE game_attendance SET position='PONTA' WHERE member_user_id='$bia'")
+        attendance(f, f.owner, "DECLINED", "Dono")
+        val declined = requireNotNull(rosterOf(f, f.member)).declined
+        assertEquals(listOf("bia", "Dono", "Zeca"), declined.map { it.displayName })
+        assertEquals(listOf(AthletePosition.PONTA, null, null), declined.map { it.position })
+        assertEquals(listOf(null, null, null), declined.map { it.waitlistPosition })
+        assertEquals(listOf(false, false, false), declined.map { it.forced })
+        assertEquals(listOf("Ana"), requireNotNull(rosterOf(f, f.owner)).confirmed.map { it.displayName })
+    }
+
+    @Test fun `roster declined leaves out guests and members who left the group`() {
+        val f = fixture()
+        attendance(f, f.member, "DECLINED", "Ana")
+        execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,guest_seq,status,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','${f.member}',1,'DECLINED',now(),now(),'Convidado')")
+        val left = member(f.group, "left"); attendance(f, left, "DECLINED", "Saiu")
+        execute("DELETE FROM group_memberships WHERE user_id='$left'")
+        assertEquals(listOf("Ana"), requireNotNull(rosterOf(f, f.member)).declined.map { it.displayName })
+    }
+
+    @Test fun `roster declined drops a member who changes nao vou to vou`() {
+        val f = fixture()
+        success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE))
+        assertEquals(1, requireNotNull(rosterOf(f, f.member)).declined.size)
+        success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM))
+        val roster = requireNotNull(rosterOf(f, f.member))
+        assertEquals(emptyList(), roster.declined)
+        assertEquals(listOf(f.member), roster.confirmed.map { it.memberId })
+    }
+
+    @Test fun `declined members do not change confirmed and waitlist order with priority and positions`() {
+        val f = fixture(capacity = 2)
+        attendance(f, member(f.group, "confirmed-b"), "CONFIRMED", "bruno"); attendance(f, member(f.group, "confirmed-a"), "CONFIRMED", "Ana")
+        val avulso = member(f.group, "avulso", "AVULSO"); waitlist(f, avulso, 1, "Avulso1")
+        val mensalista = member(f.group, "mensalista"); waitlist(f, mensalista, 2, "Mensalista2")
+        val ponta = member(f.group, "ponta"); waitlist(f, ponta, 3, "Ponta3")
+        execute("UPDATE game_attendance SET position='PONTA' WHERE member_user_id IN ('$avulso','$ponta')")
+        val before = requireNotNull(rosterOf(f, f.member))
+        attendance(f, member(f.group, "declined-a"), "DECLINED", "Aaa"); attendance(f, member(f.group, "declined-z"), "DECLINED", "Zzz")
+        val after = requireNotNull(rosterOf(f, f.member))
+        assertEquals(before.confirmed, after.confirmed)
+        assertEquals(before.waitlisted, after.waitlisted)
+        assertEquals(before.positions, after.positions)
+        assertEquals(listOf("Mensalista2", "Ponta3", "Avulso1"), after.waitlisted.map { it.displayName })
+        assertEquals(listOf("Aaa", "Zzz"), after.declined.map { it.displayName })
     }
 
     @Test fun `roster with priority off collapses to single fifo tier`() {

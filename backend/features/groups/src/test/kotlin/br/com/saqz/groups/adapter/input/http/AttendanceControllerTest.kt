@@ -3,11 +3,13 @@ package br.com.saqz.groups.adapter.input.http
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.AthleteMembershipType
+import br.com.saqz.groups.domain.AthletePosition
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.RequestIdentity
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
@@ -183,6 +185,33 @@ class AttendanceControllerTest {
     }
 
     @Test
+    fun rosterJsonListsDeclinedWithMemberFields() {
+        actor = member
+        repository.record(member, AttendanceStatus.CONFIRMED, name = "Bruno")
+        repository.record(second, AttendanceStatus.DECLINED, name = "Rafa Dias")
+        repository.positions[second] = AthletePosition.PONTA
+        val json = ObjectMapper().readTree(ObjectMapper().writeValueAsString(controller.roster(ID, "$group", "$game")))
+        val declined = json["declined"].single()
+        assertEquals("$second", declined["memberId"].asText())
+        assertEquals("Rafa Dias", declined["displayName"].asText())
+        assertTrue(declined["waitlistPosition"].isNull)
+        assertEquals(0, declined["guestSeq"].asInt())
+        assertTrue(declined["hostDisplayName"].isNull)
+        assertEquals("PONTA", declined["position"].asText())
+        assertFalse(declined["forced"].asBoolean())
+        assertEquals(listOf("Bruno"), json["confirmed"].map { it["displayName"].asText() })
+    }
+
+    @Test
+    fun rosterJsonHasEmptyDeclinedWhenNobodyDeclined() {
+        actor = member
+        repository.record(member, AttendanceStatus.CONFIRMED, name = "Bruno")
+        val json = ObjectMapper().readTree(ObjectMapper().writeValueAsString(controller.roster(ID, "$group", "$game")))
+        assertTrue(json["declined"].isArray)
+        assertEquals(0, json["declined"].size())
+    }
+
+    @Test
     fun rosterIncludesGuestFields() {
         actor = member
         repository.record(member, AttendanceStatus.WAITLISTED, 1, "Rafa Moreira", guestSeq = 1, hostName = "Bruno")
@@ -292,8 +321,11 @@ class AttendanceControllerTest {
             return AttendanceRoster(
                 entries(AttendanceStatus.CONFIRMED).sortedBy { it.displayName.lowercase() },
                 entries(AttendanceStatus.WAITLISTED).sortedBy { it.waitlistPosition },
+                declined = entries(AttendanceStatus.DECLINED).filter { it.guestSeq == 0 }
+                    .map { it.copy(waitlistPosition = null, position = positions[it.memberId]) }.sortedBy { it.displayName.lowercase() },
             )
         }
+        val positions = mutableMapOf<UUID, AthletePosition>()
         fun record(memberId: UUID, status: AttendanceStatus, sequence: Long? = null, name: String? = null, guestSeq: Int = 0, hostName: String? = null) { records[memberId] = AttendanceRecord(game, group, memberId, status, sequence, NOW, NOW, 1, guestSeq); name?.let { names[memberId] = it }; hostName?.let { hostNames[memberId] = it }; if (sequence != null) allocator = maxOf(allocator, sequence) }
         private fun confirmed() = records.values.count { it.status == AttendanceStatus.CONFIRMED }
         private fun role(actorId: UUID) = when (actorId) { owner -> GroupRole.OWNER; in members -> GroupRole.ATHLETE; else -> null }
