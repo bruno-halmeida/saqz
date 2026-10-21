@@ -222,7 +222,7 @@ class GameDetailScreenTest {
             setScreen(state = manual)
             onNodeWithTag(GameDetailTags.TabWaiting).performClick()
             onAllNodesWithText("Colocar").assertCountEquals(2)
-            onNodeWithText("Você escolhe quem entra. Em posição completa, quem você colocar fica acima das vagas.").assertExists()
+            onNodeWithText("Você escolhe quem entra. Em posição completa, fica acima das vagas.").assertExists()
         }
     }
 
@@ -371,7 +371,7 @@ class GameDetailScreenTest {
     fun `game in progress does not show the confirmation deadline anywhere`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberStarted)
 
-        onAllNodesWithText("Confirmações até 17h30").assertCountEquals(0)
+        onAllNodesWithText("Prioridade dos mensalistas até hoje às 17h30.").assertCountEquals(0)
         onNodeWithText("Em andamento. Não dá mais para responder.").assertExists()
     }
 
@@ -386,7 +386,7 @@ class GameDetailScreenTest {
     fun `open confirmation shows the deadline once in the header`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberPending)
 
-        onAllNodesWithText("Confirmações até 17h30").assertCountEquals(1)
+        onAllNodesWithText("Prioridade dos mensalistas até hoje às 17h30.").assertCountEquals(1)
         onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
     }
 

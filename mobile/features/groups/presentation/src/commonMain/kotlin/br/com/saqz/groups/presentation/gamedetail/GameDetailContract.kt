@@ -137,6 +137,11 @@ data class GameDetailHeroUi(
     val address: String,
     /** "Jogo de terça, 28/07" (título do menu ⋯). */
     val menuTitle: String,
+    /**
+     * "Prioridade dos mensalistas até hoje às 17h30.", a mesma frase da Início e do grupo; vazia quando o jogo não tem
+     * janela de prioridade, e a linha some.
+     */
+    val deadlineLine: String = "",
 )
 
 @Immutable

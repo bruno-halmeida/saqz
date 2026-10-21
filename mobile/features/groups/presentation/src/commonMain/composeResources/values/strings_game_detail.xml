@@ -50,15 +50,13 @@
     <string name="game_person_actions">Ações de %1$s</string>
     <string name="game_menu_edit_hint">Data, hora, quadra e valor</string>
     <string name="game_menu_cancel_hint">Pede confirmação antes</string>
-    <string name="game_row_mensalista">Mensalista</string>
-    <string name="game_row_avulso">Avulso</string>
     <string name="game_slot_open">Vaga aberta</string>
     <string name="game_slot_position">Vaga de %1$s</string>
     <string name="game_slot_yours">Pode ser a sua</string>
     <string name="game_slot_place">Toque para colocar alguém</string>
     <string name="game_guest_row_hint">Entra na lista de espera.</string>
     <string name="game_waitlist_note_fifo">Se alguém desistir, a fila anda pela ordem.</string>
-    <string name="game_waitlist_note_organizer">Você escolhe quem entra. Em posição completa, quem você colocar fica acima das vagas.</string>
+    <string name="game_waitlist_note_organizer">Você escolhe quem entra. Em posição completa, fica acima das vagas.</string>
     <string name="game_waitlist_empty">Ninguém na lista de espera.</string>
     <string name="game_declined_empty_title">Ninguém avisou que não vai.</string>
     <string name="game_declined_empty_body">Quem responder Não vou aparece aqui.</string>

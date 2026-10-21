@@ -56,6 +56,7 @@ import br.com.saqz.groups.domain.communication.CommunicationGateway
 import br.com.saqz.groups.presentation.game.gameHeroDisplay
 import br.com.saqz.groups.presentation.game.gameLongDateLabel
 import br.com.saqz.groups.presentation.game.gameMenuTitle
+import br.com.saqz.groups.presentation.game.gamePrioritySentence
 import br.com.saqz.groups.presentation.game.gameTimeLabel
 import br.com.saqz.groups.presentation.game.gameTimeZone
 import kotlinx.coroutines.launch
@@ -297,7 +298,11 @@ class GameDetailViewModel(
         update { it.copy(reminder = GameReminderUi(sending = true)) }
         viewModelScope.launch {
             val result = gateway.remind(GroupId(groupId), gameId, requestId)
-            if (loadAtStart != loadGeneration) return@launch
+            // A carga mudou no meio do envio: o resultado não vale para a tela nova, mas o "Avisar" tem de voltar.
+            if (loadAtStart != loadGeneration) {
+                update { it.copy(reminder = it.reminder.copy(sending = false)) }
+                return@launch
+            }
             when (result) {
                 is SaqzResult.Success -> {
                     reminderRequestId = null
@@ -394,7 +399,7 @@ class GameDetailViewModel(
         val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
         if (generation != loadGeneration) return
         val profileResult = athleteGateway.ownProfile()
-        val hero = game.toHero()
+        val hero = game.toHero(AttendanceRule.priorityWindow(groupMensalistaPriority, game.confirmationDeadline, game.startsAt))
         if (generation != loadGeneration) return
         when {
             detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError(), softRefresh)
@@ -1050,16 +1055,20 @@ class GameDetailViewModel(
     )
 
     /** "Terça, 19h30", "28 de julho", o fim do jogo e o endereço, no fuso do jogo. */
-    private suspend fun Game.toHero(): GameDetailHeroUi? {
+    private suspend fun Game.toHero(priority: Boolean): GameDetailHeroUi? {
         val zone = gameTimeZone(zoneId)
         val start = runCatching { Instant.parse(startsAt) }.getOrNull() ?: return null
         val local = start.toLocalDateTime(zone)
+        // O prazo só importa como fim da prioridade de mensalista: sem janela, a linha some (como na Início e no grupo).
+        val deadline = runCatching { Instant.parse(confirmationDeadline).toLocalDateTime(zone) }.getOrNull()
         return GameDetailHeroUi(
             title = local.gameHeroDisplay(),
             date = local.date.gameLongDateLabel(),
             endTime = (start + durationMinutes.minutes).toLocalDateTime(zone).gameTimeLabel(),
             address = venue.address.trim(),
             menuTitle = local.date.gameMenuTitle(),
+            deadlineLine = deadline?.takeIf { priority }
+                ?.gamePrioritySentence(Clock.System.now().toLocalDateTime(zone).date).orEmpty(),
         )
     }
 

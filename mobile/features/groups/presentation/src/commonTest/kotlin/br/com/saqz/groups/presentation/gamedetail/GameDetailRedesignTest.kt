@@ -12,6 +12,7 @@ import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.communication.CommunicationError
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameVenue
+import br.com.saqz.groups.domain.group.GroupGameConfig
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeCommunicationGateway
@@ -60,11 +61,18 @@ class GameDetailRedesignTest {
         role: GroupRole = GroupRole.ADMIN,
         game: Game = openGame(),
         communications: FakeCommunicationGateway? = FakeCommunicationGateway(),
+        mensalistaPriority: Boolean = false,
     ) = GameDetailViewModel(
         "group-1",
         "game-1",
         FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(game))),
-        FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = role)))),
+        FakeGroupGateway(
+            SaqzResult.Success(
+                sampleVersionedGroup(
+                    sampleGroup(role = role).copy(gameConfig = GroupGameConfig(mensalistaPriority = mensalistaPriority)),
+                ),
+            ),
+        ),
         FakeAttendanceGateway(readResult = SaqzResult.Success(detail), rosterResult = SaqzResult.Success(roster)),
         FakeAthleteGateway(),
         communications = communications,
@@ -118,6 +126,15 @@ class GameDetailRedesignTest {
         assertTrue(waiting.waitlist.single().isYou)
 
         assertEquals(GameDetailTab.Going, viewModel().state.value.initialTab)
+    }
+
+    @Test
+    fun `the deadline line is the mensalista priority sentence and only shows with a priority window`() = runTest {
+        val withWindow = viewModel(mensalistaPriority = true).state.value.hero?.deadlineLine.orEmpty()
+        assertTrue(withWindow.startsWith("Prioridade dos mensalistas até"), withWindow)
+        assertTrue(withWindow.contains("12h00"), withWindow)
+
+        assertEquals("", viewModel(mensalistaPriority = false).state.value.hero?.deadlineLine)
     }
 
     // ---- linha verde-limão
@@ -217,6 +234,20 @@ class GameDetailRedesignTest {
         gate.complete(SaqzResult.Success(sampleCommunicationMessage().copy(recipientCount = 3)))
 
         assertEquals(1, communications.reminders.size)
+    }
+
+    @Test
+    fun `a reload in the middle of the send releases the notify button`() = runTest {
+        val gate = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.communication.CommunicationMessage, CommunicationError>>()
+        val communications = FakeCommunicationGateway().apply { remindBlock = { gate.await() } }
+        val viewModel = viewModel(communications = communications)
+
+        viewModel.onIntent(GameDetailIntent.NotifyPending)
+        viewModel.onIntent(GameDetailIntent.Retry)
+        gate.complete(SaqzResult.Success(sampleCommunicationMessage().copy(recipientCount = 3)))
+
+        assertFalse(viewModel.state.value.reminder.sending)
+        assertNull(viewModel.state.value.reminder.notifiedCount)
     }
 
     @Test

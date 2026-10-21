@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -56,7 +57,6 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.communication_failure
 import br.com.saqz.groups.resources.communication_remind_refused
 import br.com.saqz.groups.resources.communication_reminded
-import br.com.saqz.groups.resources.game_detail_confirmation_deadline
 import br.com.saqz.groups.resources.game_detail_duration
 import br.com.saqz.groups.resources.game_detail_duration_hours
 import br.com.saqz.groups.resources.game_detail_duration_minutes
@@ -214,27 +214,35 @@ private fun GameHeroInfo(state: GameDetailState, header: GameDetailHeaderUi, onI
             stringResource(Res.string.game_detail_duration, durationLabel(header.durationMinutes)),
             extra = hero?.endTime?.let { stringResource(Res.string.game_hero_until, it) },
         )
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(InfoIconGap)) {
-                SaqzIcon(SaqzIcons.Pin, tint = muted, size = InfoIconSize)
-                Text(text = header.venue, style = infoStyle(), color = colors.onPrimary, modifier = Modifier.weight(1f))
+        // Quadra e endereço numa coluna, colados; o "Ver no mapa" fica à direita, centrado nas duas linhas, e o recuo
+        // vertical do botão não entra na conta: o espaço entre duração e quadra é o mesmo das outras linhas.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(InfoIconGap)) {
+                    SaqzIcon(SaqzIcons.Pin, tint = muted, size = InfoIconSize)
+                    Text(text = header.venue, style = infoStyle(), color = colors.onPrimary)
+                }
                 if (address.isNotEmpty()) {
-                    SaqzButton(
-                        label = stringResource(Res.string.group_details_venue_map),
-                        onClick = { onIntent(GameDetailIntent.OpenVenueMap) },
-                        modifier = Modifier.testTag(GameDetailTags.Map),
-                        variant = SaqzButtonVariant.Ghost,
-                        size = SaqzButtonSize.Sm,
-                        contentColor = colors.onPrimary,
+                    Text(
+                        text = address,
+                        style = SaqzTheme.typography.support,
+                        color = muted,
+                        modifier = Modifier.padding(start = InfoIconSize + InfoIconGap),
                     )
                 }
             }
             if (address.isNotEmpty()) {
-                Text(
-                    text = address,
-                    style = SaqzTheme.typography.support,
-                    color = muted,
-                    modifier = Modifier.padding(start = InfoIconSize + InfoIconGap),
+                SaqzButton(
+                    label = stringResource(Res.string.group_details_venue_map),
+                    onClick = { onIntent(GameDetailIntent.OpenVenueMap) },
+                    modifier = Modifier.layout { measurable, constraints ->
+                        // Mantém a área de toque, mas mede só a altura do conteúdo ao lado.
+                        val placeable = measurable.measure(constraints)
+                        layout(placeable.width, 0) { placeable.place(0, -placeable.height / 2) }
+                    }.testTag(GameDetailTags.Map),
+                    variant = SaqzButtonVariant.Ghost,
+                    size = SaqzButtonSize.Sm,
+                    contentColor = colors.onPrimary,
                 )
             }
         }
@@ -279,7 +287,7 @@ private fun ColumnScope.GamePublishedBlock(
             confirmationOpen = header.confirmationOpen,
             responseOpen = header.responseOpen,
             closedByDeadline = header.closedByDeadline,
-            openText = stringResource(Res.string.game_detail_confirmation_deadline, header.deadlineLabel()),
+            openText = state.hero?.deadlineLine.orEmpty(),
         )
         HeroAttendanceControls(
             status = response.status,

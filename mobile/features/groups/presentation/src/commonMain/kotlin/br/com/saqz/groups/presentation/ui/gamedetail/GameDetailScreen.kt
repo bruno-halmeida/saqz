@@ -48,7 +48,6 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameGuestRowUi
 import br.com.saqz.groups.presentation.gamedetail.GamePositionUi
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
-import br.com.saqz.groups.presentation.ui.shortLabel
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_detail_cancel
 import br.com.saqz.groups.resources.game_detail_cancel_body
@@ -211,11 +210,6 @@ private fun GameFinanceReviewNotice(onIntent: (GameDetailIntent) -> Unit, modifi
     )
 }
 
-/** "Qua, 17:30" quando o prazo cai noutro dia que o jogo; só a hora quando é no mesmo dia. */
-@Composable
-internal fun GameDetailHeaderUi.deadlineLabel(): String =
-    confirmationDeadlineWeekday?.shortLabel()?.let { "$it, $confirmationDeadline" } ?: confirmationDeadline
-
 @Composable
 private fun GameDetailCancelSheet(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) = SaqzBottomSheet(
     open = true,
@@ -260,6 +254,7 @@ internal object GameDetailPreviewData {
         endTime = "21h30",
         address = "R. Canuto Abreu, s/n · Tatuapé",
         menuTitle = "Jogo de terça, 28/07",
+        deadlineLine = "Prioridade dos mensalistas até hoje às 17h30.",
     )
     val attendance = GameDetailAttendanceUi(9, 12, 3, 3, 4)
     val confirmed = listOf(
