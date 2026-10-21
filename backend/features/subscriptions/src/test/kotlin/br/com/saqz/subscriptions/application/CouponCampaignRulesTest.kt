@@ -46,7 +46,9 @@ class CouponCampaignRulesTest {
         val offers = CouponCampaignRules.offersFor(coupon)
         assertEquals(12, offers.size)
         assertEquals(6, offers.count { it.store == CouponStore.APP_STORE })
-        assertEquals(12, offers.map { it.customCode ?: it.offerId }.toSet().size + 5)
+        // Apple: um código personalizado por produto (único no app); Play: o mesmo offerId em cada plano base.
+        assertEquals(6, offers.mapNotNull { it.customCode }.toSet().size)
+        assertEquals(setOf("cupom-volei30"), offers.mapNotNull { it.offerId }.toSet())
         assertEquals(emptyList(), CouponCampaignRules.offersFor(coupon.copy(stores = false)))
     }
 }

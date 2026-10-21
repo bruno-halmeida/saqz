@@ -29,7 +29,7 @@ class CouponControllerTest {
             ),
         )
 
-        val response = controller.validate(ValidateCouponRequest("SAVE10", "TITULAR"))
+        val response = controller.validate(null, ValidateCouponRequest("SAVE10", "TITULAR"))
 
         assertEquals("APPLIED", response.status)
         assertEquals(Plan.TITULAR, response.planId)
@@ -50,7 +50,7 @@ class CouponControllerTest {
             ),
         )
 
-        val response = controller.validate(
+        val response = controller.validate(null,
             ValidateCouponRequest("SAVE10", "TITULAR", "ANNUAL"),
         )
 
@@ -63,7 +63,7 @@ class CouponControllerTest {
     @Test
     fun `maps not found`() {
         val controller = CouponController(ValidateCoupon(FixedCoupons(null), clock))
-        val response = controller.validate(ValidateCouponRequest("NOPE", "TITULAR"))
+        val response = controller.validate(null, ValidateCouponRequest("NOPE", "TITULAR"))
         assertEquals("NOT_FOUND", response.status)
         assertNull(response.discountPercent)
     }
@@ -85,7 +85,7 @@ class CouponControllerTest {
             ),
         )
 
-        val response = controller.validate(ValidateCouponRequest("OLD", "ORGANIZADOR"))
+        val response = controller.validate(null, ValidateCouponRequest("OLD", "ORGANIZADOR"))
         assertEquals("EXPIRED", response.status)
         assertEquals(validUntil, response.validUntil)
     }
@@ -94,7 +94,7 @@ class CouponControllerTest {
     fun `missing code is validation error`() {
         val controller = CouponController(ValidateCoupon(FixedCoupons(null), clock))
         assertThrows<InvalidCouponRequestException> {
-            controller.validate(ValidateCouponRequest(null, "TITULAR"))
+            controller.validate(null, ValidateCouponRequest(null, "TITULAR"))
         }
     }
 

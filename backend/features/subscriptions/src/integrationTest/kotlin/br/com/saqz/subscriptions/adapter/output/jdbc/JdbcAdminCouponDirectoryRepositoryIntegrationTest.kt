@@ -1,6 +1,15 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
+import br.com.saqz.subscriptions.application.AdminCouponCreate
 import br.com.saqz.subscriptions.application.AdminCouponCreateResult
+import br.com.saqz.subscriptions.domain.CouponEligibility
+import br.com.saqz.subscriptions.domain.CouponPlatform
+import br.com.saqz.subscriptions.domain.CouponProduct
+import br.com.saqz.subscriptions.domain.CouponRedemption
+import br.com.saqz.subscriptions.domain.CouponStore
+import br.com.saqz.subscriptions.domain.CouponStoreOfferState
+import br.com.saqz.subscriptions.domain.Plan
+import br.com.saqz.subscriptions.domain.SubscriptionCycle
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
 import org.junit.jupiter.api.BeforeAll
@@ -29,7 +38,7 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
 
     @BeforeEach
     fun clearData() {
-        execute("TRUNCATE subscription_events, coupon_redemptions, subscriptions, coupons, access_users CASCADE")
+        execute("TRUNCATE subscription_events, coupon_store_offers, coupon_redemptions, subscriptions, coupons, access_users CASCADE")
     }
 
     @Test
@@ -88,6 +97,74 @@ class JdbcAdminCouponDirectoryRepositoryIntegrationTest {
         assertEquals(now, repository.list().single().validUntil)
 
         assertFalse(repository.deactivate(UUID.randomUUID(), now))
+    }
+
+    @Test
+    fun `campanha nas lojas - ofertas pendentes, encerrar, tentar de novo e usos por plataforma`() {
+        val created = repository.create(
+            AdminCouponCreate(
+                code = "VOLEI30", campaign = "Vôlei", discountPercent = 30, durationCycles = 3, validUntil = null, maxUses = 10,
+                eligibility = setOf(CouponEligibility.NEVER_SUBSCRIBED),
+                products = setOf(CouponProduct(Plan.ORGANIZADOR, SubscriptionCycle.MONTHLY), CouponProduct(Plan.ORGANIZADOR, SubscriptionCycle.ANNUAL)),
+                stores = true,
+            ),
+        ) as AdminCouponCreateResult.Created
+        val id = created.coupon.id
+        val offers = JdbcCouponStoreOfferRepository(database.dataSource)
+        val coupons = JdbcCouponRepository(database.dataSource)
+        assertEquals(4, offers.findByCoupon(id).size)
+        val stored = coupons.findById(id)!!
+        assertEquals(setOf(CouponEligibility.NEVER_SUBSCRIBED), stored.eligibility)
+        assertEquals(2, stored.products.size)
+        assertEquals("Vôlei", stored.campaign)
+        assertTrue(stored.stores)
+
+        // Uma falha e uma ativa; o pior estado é o da plataforma.
+        val apple = offers.find(id, CouponStore.APP_STORE, "ORGANIZADOR", "MONTHLY")!!
+        offers.save(apple.copy(state = CouponStoreOfferState.FAILED, message = "App Store: recusou", ascOfferCodeId = "oc-1"))
+        val play = offers.find(id, CouponStore.GOOGLE_PLAY, "ORGANIZADOR", "MONTHLY")!!
+        offers.save(play.copy(state = CouponStoreOfferState.ACTIVE, storeCreatedAt = now))
+        val row = repository.list().single()
+        assertEquals(CouponStoreOfferState.FAILED, row.platforms[CouponPlatform.IOS]?.state)
+        assertEquals("App Store: recusou", row.platforms[CouponPlatform.IOS]?.message)
+        assertEquals(CouponStoreOfferState.PENDING, row.platforms[CouponPlatform.ANDROID]?.state)
+        assertEquals(1, repository.retryFailedOffers(id))
+        assertEquals(CouponStoreOfferState.PENDING, offers.find(id, CouponStore.APP_STORE, "ORGANIZADOR", "MONTHLY")!!.state)
+
+        val user = insertUser()
+        coupons.saveRedemption(CouponRedemption(id, user, now, CouponPlatform.IOS))
+        coupons.saveRedemption(CouponRedemption(id, user, now, CouponPlatform.WEB))
+        assertEquals(1, coupons.countRedemptions(id))
+        assertEquals(mapOf(CouponPlatform.IOS to 1L), repository.list().single().redemptionsByPlatform)
+        assertEquals(id, offers.findByAppStoreOffer("app.saqz.organizador.mensal", "volei30om")?.couponId)
+        assertEquals(id, offers.findByGooglePlayOffer("app.saqz.organizador", "mensal", "cupom-volei30")?.couponId)
+
+        // Encerrar: o que chegou à loja vai a DEACTIVATING; o que nunca saiu do backend, DEACTIVATED.
+        assertTrue(repository.deactivate(id, now))
+        val after = offers.findByCoupon(id).associate { "${it.store}:${it.product.cycle}" to it.state }
+        assertEquals(CouponStoreOfferState.DEACTIVATING, after["GOOGLE_PLAY:MONTHLY"])
+        assertEquals(CouponStoreOfferState.DEACTIVATING, after["APP_STORE:MONTHLY"])
+        assertEquals(CouponStoreOfferState.DEACTIVATED, after["GOOGLE_PLAY:ANNUAL"])
+        assertEquals(CouponStoreOfferState.DEACTIVATED, after["APP_STORE:ANNUAL"])
+        assertEquals(0, repository.retryFailedOffers(id))
+    }
+
+    @Test
+    fun `job acha oferta ACTIVE de cupom vencido, e não a de cupom em vigor`() {
+        val offers = JdbcCouponStoreOfferRepository(database.dataSource)
+        fun campaign(code: String, until: Instant) = (
+            repository.create(
+                AdminCouponCreate(code, "C", 30, 3, until, products = setOf(CouponProduct(Plan.TITULAR, SubscriptionCycle.MONTHLY)), stores = true),
+            ) as AdminCouponCreateResult.Created
+            ).coupon.id
+        val vigente = campaign("VIGENTE", now.plusSeconds(86_400))
+        val vencido = campaign("VENCIDO", now.plusSeconds(3_600))
+        (offers.findByCoupon(vigente) + offers.findByCoupon(vencido)).forEach { offers.save(it.copy(state = CouponStoreOfferState.ACTIVE)) }
+
+        assertEquals(emptyList(), offers.findWork(now, 50))
+        val work = offers.findWork(now.plusSeconds(7_200), 50)
+        assertEquals(setOf(vencido), work.map { it.couponId }.toSet())
+        assertEquals(2, work.size)
     }
 
     private fun insertUser(): UUID {

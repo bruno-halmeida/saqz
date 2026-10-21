@@ -31,7 +31,7 @@ internal class InMemoryOffers(offers: List<CouponStoreOffer> = emptyList()) : Co
         it.couponId == couponId && it.store == store && it.product.plan.name == plan && it.product.cycle.name == cycle
     }
     override fun findWork(now: Instant, limit: Int) = offers.values.filter {
-        it.state in setOf(CouponStoreOfferState.PENDING, CouponStoreOfferState.CREATING, CouponStoreOfferState.WAITING_STORE, CouponStoreOfferState.DEACTIVATING) &&
+        it.state in setOf(CouponStoreOfferState.ACTIVE, CouponStoreOfferState.PENDING, CouponStoreOfferState.CREATING, CouponStoreOfferState.WAITING_STORE, CouponStoreOfferState.DEACTIVATING) &&
             (it.nextAttemptAt == null || !it.nextAttemptAt!!.isAfter(now))
     }.take(limit)
     override fun save(offer: CouponStoreOffer) {

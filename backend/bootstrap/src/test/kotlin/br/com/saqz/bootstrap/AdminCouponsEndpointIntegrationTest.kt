@@ -7,6 +7,7 @@ import br.com.saqz.identity.application.TokenVerification
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.subscriptions.application.AdminCoupon
+import br.com.saqz.subscriptions.application.AdminCouponCreate
 import br.com.saqz.subscriptions.application.AdminCouponCreateResult
 import br.com.saqz.subscriptions.application.AdminCouponDirectory
 import br.com.saqz.subscriptions.domain.Coupon
@@ -28,6 +29,7 @@ import java.net.http.HttpResponse
 import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(AdminCouponsEndpointIntegrationTest.AdminCouponsTestConfiguration::class)
@@ -84,6 +86,55 @@ class AdminCouponsEndpointIntegrationTest {
         assertEquals(403, get("/admin/coupons", token = "user-token").statusCode())
     }
 
+    @Test
+    fun `campanha com duração vai às lojas e o que a loja não aceita volta 400 com o motivo`() {
+        val created = post(
+            "/admin/coupons",
+            """{"code":"VOLEI30","campaign":"Vôlei","discountPercent":30,"durationCycles":3,
+               "eligibility":["NEVER_SUBSCRIBED"],"products":["ORGANIZADOR:MONTHLY"],"maxUses":100}""",
+        )
+        assertEquals(201, created.statusCode())
+        assertEquals(true, objectMapper.readTree(created.body())["stores"].booleanValue())
+
+        val annual = post(
+            "/admin/coupons",
+            """{"code":"ANUAL30","campaign":"Anual","discountPercent":30,"durationCycles":2,
+               "eligibility":["NEVER_SUBSCRIBED"],"products":["ORGANIZADOR:ANNUAL"]}""",
+        )
+        assertEquals(400, annual.statusCode())
+        assertTrue(objectMapper.readTree(annual.body())["message"].stringValue().contains("anual"))
+
+        val longValidity = post(
+            "/admin/coupons",
+            """{"code":"LONGO30","campaign":"Longo","discountPercent":30,"durationCycles":2,
+               "eligibility":["NEVER_SUBSCRIBED"],"validUntil":"2027-06-01T00:00:00Z"}""",
+        )
+        assertEquals(400, longValidity.statusCode())
+        assertEquals(400, post("/admin/coupons", """{"code":"SEMQUEM","campaign":"X","discountPercent":10,"eligibility":[]}""").statusCode())
+        assertEquals(400, post("/admin/coupons", """{"code":"SEMNOME","discountPercent":10,"eligibility":["NEVER_SUBSCRIBED"]}""").statusCode())
+    }
+
+    @Test
+    fun `prévia mostra preço do site e das lojas por produto, e tentar de novo responde`() {
+        val response = post(
+            "/admin/coupons/preview",
+            """{"discountPercent":30,"durationCycles":3,"products":["ORGANIZADOR:MONTHLY","ORGANIZADOR:ANNUAL"]}""",
+        )
+        assertEquals(400, response.statusCode())
+        val ok = post("/admin/coupons/preview", """{"discountPercent":30,"durationCycles":1,"products":["ORGANIZADOR:MONTHLY","ORGANIZADOR:ANNUAL"]}""")
+        assertEquals(200, ok.statusCode())
+        val rows = objectMapper.readTree(ok.body())["rows"]
+        assertEquals(4_193, rows[0]["sitePriceCents"].intValue())
+        assertEquals(4_193, rows[0]["googlePlayPriceCents"].intValue())
+        assertEquals(true, rows[0]["appStoreEstimated"].booleanValue())
+        assertEquals(37_793, rows[1]["googlePlayPriceCents"].intValue())
+        val siteOnly = objectMapper.readTree(post("/admin/coupons/preview", """{"discountPercent":30}""").body())
+        assertEquals(false, siteOnly["stores"].booleanValue())
+        assertEquals(6, siteOnly["rows"].size())
+
+        assertEquals(2, objectMapper.readTree(post("/admin/coupons/$COUPON_ID/retry", "").body())["retried"].intValue())
+    }
+
     private fun get(path: String, token: String = "admin-token"): HttpResponse<String> =
         client.send(
             HttpRequest.newBuilder(URI.create("http://localhost:$port$path")).GET()
@@ -113,17 +164,20 @@ class AdminCouponsEndpointIntegrationTest {
             ),
         )
 
-        override fun create(
-            code: String,
-            discountPercent: Int,
-            durationCycles: Int?,
-            validUntil: Instant?,
-        ): AdminCouponCreateResult =
-            if (code == "GALERA10") {
+        val created = mutableListOf<AdminCouponCreate>()
+
+        override fun create(command: AdminCouponCreate): AdminCouponCreateResult =
+            if (command.code == "GALERA10") {
                 AdminCouponCreateResult.DuplicateCode
             } else {
-                AdminCouponCreateResult.Created(Coupon(UUID.randomUUID(), code, discountPercent, durationCycles, validUntil))
+                created += command
+                AdminCouponCreateResult.Created(
+                    Coupon(UUID.randomUUID(), command.code, command.discountPercent, command.durationCycles, command.validUntil,
+                        campaign = command.campaign, stores = command.stores),
+                )
             }
+
+        override fun retryFailedOffers(couponId: UUID) = if (couponId == COUPON_ID) 2 else 0
 
         override fun deactivate(couponId: UUID, now: Instant) = couponId == COUPON_ID
     }

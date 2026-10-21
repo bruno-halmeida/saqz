@@ -49,10 +49,14 @@ class SyncCouponStoreOffers(
     private fun step(offer: CouponStoreOffer, coupon: Coupon, now: Instant): CouponStoreOffer {
         // Cupom vencido sem ninguém clicar "Encerrar": as lojas também param de aceitar.
         val closed = CouponCampaignRules.isClosed(coupon, now)
-        val current = if (closed && offer.state in CREATABLE) offer.copy(state = CouponStoreOfferState.DEACTIVATING) else offer
+        val current = when {
+            closed && offer.state in CREATABLE -> offer.copy(state = CouponStoreOfferState.DEACTIVATING)
+            offer.state == CouponStoreOfferState.PENDING -> offer.copy(state = CouponStoreOfferState.CREATING)
+            else -> offer
+        }
         return try {
             when (current.state) {
-                CouponStoreOfferState.PENDING, CouponStoreOfferState.CREATING -> create(current.copy(state = CouponStoreOfferState.CREATING), coupon, now)
+                CouponStoreOfferState.CREATING -> create(current, coupon, now)
                 CouponStoreOfferState.WAITING_STORE -> waiting(current, now)
                 CouponStoreOfferState.DEACTIVATING -> deactivate(current, now)
                 else -> current

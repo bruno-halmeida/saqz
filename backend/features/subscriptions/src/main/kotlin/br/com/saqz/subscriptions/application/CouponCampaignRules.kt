@@ -24,6 +24,7 @@ object CouponCampaignRules {
 
     /** Limite de resgates por código personalizado da Apple (`numberOfCodes`). */
     const val APPLE_MAX_CUSTOM_CODE_USES = 25_000
+    private const val MAX_OFFER_TAG = 20
 
     /** Validade máxima de um código personalizado da Apple. */
     const val APPLE_MAX_CODE_MONTHS = 6L
@@ -74,11 +75,13 @@ object CouponCampaignRules {
         code.uppercase() + product.plan.name.first() + (if (product.cycle == SubscriptionCycle.MONTHLY) "M" else "A")
 
     /** Tag de oferta do Play (RFC-1034): começa com letra; minúsculas, números e hífen, até 20. */
-    fun offerTag(raw: String): String =
-        ("c-" + raw).lowercase().let { java.text.Normalizer.normalize(it, java.text.Normalizer.Form.NFD) }
-            .replace(Regex("\\p{M}"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-').take(20).trim('-')
-            .removePrefix("c-").let { if (it.firstOrNull()?.isLetter() == true) it else "c-$it".take(20).trim('-') }
-            .ifEmpty { "campanha" }
+    fun offerTag(raw: String): String {
+        val slug = java.text.Normalizer.normalize(raw.lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}"), "").replace(Regex("[^a-z0-9]+"), "-").trim('-')
+        val tag = if (slug.firstOrNull()?.isLetter() == true) slug else "c-$slug"
+        // Nome sem letra nem número vira "c-", que sozinho não diz nada.
+        return tag.take(MAX_OFFER_TAG).trim('-').takeIf { it != "c" } ?: "campanha"
+    }
 
     /** Google aplica o desconto relativo sobre o preço do plano base e arredonda para o centavo. */
     fun googlePlayPriceCents(product: CouponProduct, discountPercent: Int): Long =
