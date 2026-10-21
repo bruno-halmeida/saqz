@@ -1,6 +1,8 @@
 package br.com.saqz.subscriptions.adapter.output.jdbc
 
 import br.com.saqz.subscriptions.application.GooglePlayNotificationStore
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmount
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmountStore
 import br.com.saqz.subscriptions.application.GooglePlayOrderRecord
 import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.domain.GooglePlayProduct
@@ -15,7 +17,7 @@ import java.time.Instant
 import java.util.UUID
 import javax.sql.DataSource
 
-class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlaySubscriptionRepository {
+class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlaySubscriptionRepository, GooglePlayOrderAmountStore {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun insertIfAbsent(subscription: GooglePlaySubscription) {
@@ -105,6 +107,43 @@ class JdbcGooglePlaySubscriptionRepository(dataSource: DataSource) : GooglePlayS
             recordedAt = rs.getTimestamp("recorded_at").toInstant(),
         )
     }.list()
+
+    override fun orderAmountMissing(orderId: String): Boolean = jdbc.sql(
+        "SELECT EXISTS (SELECT 1 FROM google_play_orders WHERE order_id = :orderId AND gross_cents IS NULL)",
+    ).param("orderId", orderId).query(Boolean::class.java).single()
+
+    override fun ordersWithoutAmount(checkedBefore: Instant, limit: Int): List<String> = jdbc.sql(
+        """
+        SELECT order_id FROM google_play_orders
+        WHERE gross_cents IS NULL AND test_purchase = false
+          AND (amount_checked_at IS NULL OR amount_checked_at < :checkedBefore)
+        ORDER BY amount_checked_at NULLS FIRST, recorded_at
+        LIMIT :limit
+        """.trimIndent(),
+    ).param("checkedBefore", Timestamp.from(checkedBefore)).param("limit", limit).query { rs, _ -> rs.getString("order_id") }.list()
+
+    override fun saveOrderAmount(amount: GooglePlayOrderAmount, at: Instant) {
+        jdbc.sql(
+            """
+            UPDATE google_play_orders SET gross_cents = :gross, tax_cents = :tax, currency = :currency,
+                order_state = :state, amount_checked_at = :at
+            WHERE order_id = :orderId
+            """.trimIndent(),
+        )
+            .param("orderId", amount.orderId)
+            .param("gross", amount.grossCents)
+            .param("tax", amount.taxCents)
+            .param("currency", amount.currency)
+            .param("state", amount.state)
+            .param("at", Timestamp.from(at))
+            .update()
+    }
+
+    override fun markOrderAmountChecked(orderIds: List<String>, at: Instant) {
+        if (orderIds.isEmpty()) return
+        jdbc.sql("UPDATE google_play_orders SET amount_checked_at = :at WHERE order_id IN (:ids) AND gross_cents IS NULL")
+            .param("ids", orderIds).param("at", Timestamp.from(at)).update()
+    }
 
     private fun JdbcClient.StatementSpec.bind(subscription: GooglePlaySubscription): JdbcClient.StatementSpec = this
         .param("purchaseToken", subscription.purchaseToken)

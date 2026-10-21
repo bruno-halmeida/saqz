@@ -1,6 +1,9 @@
 package br.com.saqz.subscriptions.adapter.output.googleplay
 
 import br.com.saqz.subscriptions.application.GooglePlayLookup
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmount
+import br.com.saqz.subscriptions.application.GooglePlayOrdersApi
+import br.com.saqz.subscriptions.application.GooglePlayOrdersRejectedException
 import br.com.saqz.subscriptions.application.GooglePlayPurchasesApi
 import br.com.saqz.subscriptions.application.GooglePlayUnavailableException
 import br.com.saqz.subscriptions.domain.GooglePlayPurchase
@@ -8,6 +11,8 @@ import br.com.saqz.subscriptions.domain.GooglePlayState
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.IOException
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
@@ -26,7 +31,7 @@ class HttpGooglePlayPurchasesApi(
     private val accessToken: () -> String,
     private val baseUrl: String = DEFAULT_BASE_URL,
     private val http: HttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
-) : GooglePlayPurchasesApi {
+) : GooglePlayPurchasesApi, GooglePlayOrdersApi {
     private val mapper = ObjectMapper()
 
     override fun subscription(purchaseToken: String): GooglePlayLookup {
@@ -49,6 +54,18 @@ class HttpGooglePlayPurchasesApi(
         )
         if (response.statusCode() !in 200..299) {
             throw GooglePlayUnavailableException("acknowledge respondeu ${response.statusCode()}")
+        }
+    }
+
+    override fun orders(orderIds: List<String>): List<GooglePlayOrderAmount> {
+        require(orderIds.size in 1..MAX_ORDERS_PER_BATCH) { "orders.batchGet aceita de 1 a $MAX_ORDERS_PER_BATCH ids" }
+        val query = orderIds.distinct().joinToString("&") { "orderIds=${encode(it)}" }
+        val response = send(HttpRequest.newBuilder(URI.create("${uri("orders:batchGet")}?$query")).GET())
+        return when (response.statusCode()) {
+            in 200..299 -> mapper.readTree(response.body()).path("orders").mapNotNull(::parseOrder)
+            // 401/403 é credencial ou permissão ("Ver dados financeiros"): tentar de novo depois, não um a um.
+            400, 404 -> throw GooglePlayOrdersRejectedException("orders.batchGet respondeu ${response.statusCode()}")
+            else -> throw GooglePlayUnavailableException("orders.batchGet respondeu ${response.statusCode()}")
         }
     }
 
@@ -108,10 +125,34 @@ class HttpGooglePlayPurchasesApi(
         )
     }
 
+    /** Total do pedido; sem `Order.total`, o da única linha (assinatura tem uma). Sem valor, nada a gravar. */
+    private fun parseOrder(order: JsonNode): GooglePlayOrderAmount? {
+        val orderId = order.text("orderId") ?: return null
+        val line = order.path("lineItems").firstOrNull()
+        val total = order.path("total").takeIf { it.isObject } ?: line?.path("total")?.takeIf { it.isObject } ?: return null
+        val tax = order.path("tax").takeIf { it.isObject } ?: line?.path("tax")?.takeIf { it.isObject }
+        return GooglePlayOrderAmount(
+            orderId = orderId,
+            grossCents = total.cents() ?: return null,
+            taxCents = tax?.cents(),
+            currency = total.text("currencyCode") ?: return null,
+            state = order.text("state"),
+        )
+    }
+
+    /** `Money` (units em string int64, nanos em bilionésimos) em centavos, arredondado. */
+    private fun JsonNode.cents(): Long? {
+        val units = path("units").asText("0").ifBlank { "0" }.toBigDecimalOrNull() ?: return null
+        val nanos = BigDecimal.valueOf(path("nanos").asLong(0), NANOS_SCALE)
+        return units.add(nanos).movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact()
+    }
+
     private fun JsonNode.text(field: String): String? = path(field).takeIf { it.isTextual }?.asText()?.takeIf(String::isNotBlank)
 
     companion object {
         const val DEFAULT_BASE_URL = "https://androidpublisher.googleapis.com"
+        const val MAX_ORDERS_PER_BATCH = 1000
+        private const val NANOS_SCALE = 9
         const val SCOPE = "https://www.googleapis.com/auth/androidpublisher"
     }
 }
