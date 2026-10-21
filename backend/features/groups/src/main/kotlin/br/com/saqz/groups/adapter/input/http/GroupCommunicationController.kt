@@ -75,7 +75,12 @@ class GroupCommunicationController(
         @PathVariable groupId: UUID,
         @RequestParam channel: String,
         @RequestBody request: PublishGroupMessageRequest,
-    ) = service.publish(actors.resolve(identity), groupId, channel(channel), requestId(request.requestId), request.body ?: invalid("body", "is required")).value()
+    ): GroupMessage {
+        val actor = actors.resolve(identity)
+        val message = service.publish(actor, groupId, channel(channel), requestId(request.requestId), request.body ?: invalid("body", "is required")).value()
+        // Quem publica é membro: o aviso volta já com a foto dele, sem esperar o Atualizar.
+        return message.copy(photoTag = photos.tagsOf(actor, groupId, listOf(message.authorId))[message.authorId])
+    }
 
     @PostMapping("/api/groups/{groupId}/games/{gameId}/notify-pending")
     fun remind(

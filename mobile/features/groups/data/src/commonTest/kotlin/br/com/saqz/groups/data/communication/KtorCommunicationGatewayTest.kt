@@ -159,6 +159,13 @@ class KtorCommunicationGatewayTest {
         assertEquals(listOf("abc123", null), thread.items.map { it.photoTag })
     }
 
+    @Test fun publishedNoticeCarriesTheAuthorPhotoTag() = runTest {
+        val tagged = message.replace("\"recipientCount\":1", "\"recipientCount\":1,\"photoTag\":\"abc123\"")
+        val published = gateway { respond(tagged, headers = jsonHeaders) }
+            .publish(GroupId("group-1"), CommunicationChannel.NOTICE, "request-1", "Treino amanhã").success()
+        assertEquals("abc123", published.photoTag)
+    }
+
     private fun gateway(response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): KtorCommunicationGateway {
         val network = NetworkClient(MockEngine { response(it) }, NetworkConfig(NetworkEnvironment.Test, "https://api.test/"))
         return KtorCommunicationGateway(AuthenticatedNetworkClient(network, object : IdTokenProvider {

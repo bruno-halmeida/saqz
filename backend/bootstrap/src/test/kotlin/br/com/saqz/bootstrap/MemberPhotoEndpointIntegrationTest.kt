@@ -177,6 +177,7 @@ class MemberPhotoEndpointIntegrationTest {
     @Test fun `notices and the inbox carry the author's photo tag`() {
         val posted = text("/api/groups/$group/messages?channel=NOTICE", owner, """{"requestId":"${UUID.randomUUID()}","body":"Treino confirmado"}""")
         assertEquals(200, posted.statusCode(), posted.body())
+        assertEquals(hex(ownerPhoto), json.readTree(posted.body())["photoTag"].stringValue())
 
         val notices = json.readTree(text("/api/groups/$group/messages?channel=NOTICE", member).body())["items"]
         assertEquals(hex(ownerPhoto), notices[0]["photoTag"].stringValue())
