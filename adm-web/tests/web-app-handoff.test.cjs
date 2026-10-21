@@ -1,6 +1,6 @@
 // Cadastro (/comecar/): a tela final só manda baixar o app, em qualquer aparelho (selos da App Store e do Google Play;
-// o Android só vê o do Google Play), e o web app não é oferecido. Assinatura (/assinar/): segue oferecendo o web app
-// no computador.
+// o Android só vê o do Google Play). Assinatura (/assinar/): no computador, depois do pagamento, o mesmo "Baixe o app"
+// com um QR de links.saqz.app; no celular, "Volte ao app". O web app (saqz.app/app/) saiu do ar.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
@@ -94,14 +94,66 @@ test('cadastro: o botão "Continuar no Saqz" e a consulta ao web app não existe
   assert.match(html, /id="app-link"/);
 });
 
-test('assinatura: sucesso e "já é assinante" oferecem o web app (só computador)', () => {
+function assinar(userAgent, storeConfig) {
   const html = fs.readFileSync(require.resolve('../assinar/index.html'), 'utf8');
-  for (const id of ['sucesso-web-app', 'assinante-web-app']) {
-    assert.match(html, new RegExp(`<a class="btn" id="${id}" href="/app/" hidden>Continuar no Saqz</a>`));
-  }
   const source = fs.readFileSync(require.resolve('../assinar/assinar.js'), 'utf8');
-  assert.match(source, /estado === "sucesso" \|\| estado === "assinante"/);
-  assert.match(source, /Continue no Saqz e crie seu grupo\./);
+  const elements = elementsOf(html);
+  const { ctx } = context(userAgent, elements, false, storeConfig);
+  ctx.qrcode = () => ({ addData() {}, make() {}, createSvgTag: () => '<svg></svg>' });
+  const auth = { currentUser: null, useEmulator() {}, onAuthStateChanged() {} };
+  ctx.firebase = { initializeApp() {}, auth: Object.assign(() => auth, { GoogleAuthProvider: function () {} }) };
+  ctx.history = { replaceState() {} };
+  ctx.window.location = { search: '', pathname: '/assinar/', hash: '' };
+  // O resto da página (planos, formulários) liga eventos na carga: aqui só importam os estados finais.
+  ctx.document.querySelectorAll = () => [];
+  ctx.window.SaqzCartao = new Proxy({}, { get: () => () => '' });
+  const spare = elementsOf('<i id="x">').get('x');
+  ctx.document.getElementById = (id) => elements.get(id) || { ...spare, append() {}, appendChild() {}, style: {} };
+  vm.runInContext(source.replace('  function identify(user)', `
+  window.assinarTest = { mostrar: function (estado) { mostrar(estado); } };
+  function identify(user)`), ctx);
+  return { mostrar: ctx.window.assinarTest.mostrar, el: (id) => elements.get(id) };
+}
+
+test('assinatura: no computador, sucesso e "já é assinante" mostram os selos das lojas e o QR do links.saqz.app', () => {
+  for (const estado of ['sucesso', 'assinante']) {
+    const page = assinar(DESKTOP);
+    page.el(`${estado}-sub`).textContent = estado === 'sucesso'
+      ? 'Pagamento confirmado. Volte ao app Saqz e crie seu grupo.'
+      : 'Sua assinatura está ativa. Volte ao app para continuar.';
+    page.mostrar(estado);
+    assert.equal(page.el(`${estado}-baixar`).hidden, false);
+    assert.equal(page.el(`${estado}-ios-store`).hidden, false);
+    assert.equal(page.el(`${estado}-ios-store`).href, APP_STORE);
+    assert.equal(page.el(`${estado}-android-store`).hidden, false);
+    assert.equal(page.el(`${estado}-android-store`).href, PLAY);
+    assert.equal(page.el(`${estado}-qr`).hidden, false);
+    assert.equal(page.el(`${estado}-qr`).attrs['data-link'], 'https://links.saqz.app/');
+    assert.doesNotMatch(page.el(`${estado}-sub`).textContent, /Volte ao app/);
+    assert.match(page.el(`${estado}-sub`).textContent, /Baixe o app no celular/);
+  }
+});
+
+test('assinatura: no celular, o "Volte ao app" fica e o bloco de baixar não aparece', () => {
+  for (const userAgent of [IPHONE, ANDROID]) {
+    const page = assinar(userAgent);
+    page.el('sucesso-sub').textContent = 'Pagamento confirmado. Volte ao app Saqz e crie seu grupo.';
+    page.mostrar('sucesso');
+    assert.equal(page.el('sucesso-baixar').hidden, true);
+    assert.equal(page.el('sucesso-sub').textContent, 'Pagamento confirmado. Volte ao app Saqz e crie seu grupo.');
+  }
+});
+
+test('assinatura: nada aponta para o web app (/app/)', () => {
+  const html = fs.readFileSync(require.resolve('../assinar/index.html'), 'utf8');
+  const source = fs.readFileSync(require.resolve('../assinar/assinar.js'), 'utf8');
+  assert.doesNotMatch(html, /href="\/app\/|Continuar no Saqz|-web-app"/);
+  assert.doesNotMatch(source, /\/app\/|disponivel\.json|offerWebApp|-web-app|via: "web"/);
+  for (const estado of ['sucesso', 'assinante']) {
+    assert.match(html, new RegExp(`id="${estado}-baixar" hidden`));
+    assert.match(html, new RegExp(`id="${estado}-qr"`));
+  }
+  assert.match(html, /<script src="qrcode\.js"><\/script>/);
 });
 
 test('selos: App Store vem antes do Google Play; Android só vê o do Google Play', async () => {
@@ -125,11 +177,6 @@ test('computador: os dois selos oficiais aparecem', async () => {
   assert.equal(page.el('android-store').hidden, false);
   assert.equal(page.el('ios-store').hidden, false);
   assert.equal(page.el('ios-store').href, APP_STORE);
-});
-
-test('assinatura: o iPhone não é oferecido ao web app (App Store primeiro)', () => {
-  const source = fs.readFileSync(require.resolve('../assinar/assinar.js'), 'utf8');
-  assert.match(source, /\/Android\/i\.test\(navigator\.userAgent\) \|\| isIPhone\(\)\) return resolve\(false\)/);
 });
 
 test('sem link da App Store configurado, o selo da App Store fica escondido no iPhone', async () => {

@@ -70,27 +70,60 @@
   // Funil de medição (deploy/medicao-web.md): sem o carregador da landing, vira no-op.
   function track(name, params) { try { if (window.saqzTrack) window.saqzTrack(name, params || {}); } catch (ignored) {} }
 
-  // Computador: o web app em saqz.app/app/ é onde o organizador cria o grupo, logado com a mesma conta
-  // (mesmo domínio e mesmo Firebase). iPhone e Android seguem nas lojas (App Store e Google Play). Só
-  // oferece se o navegador roda o web app (WasmGC) e ele responde: fora do ar, a página fica como era.
+  // Computador: depois do pagamento, o mesmo "Baixe o app" do /comecar/ (selos da App Store e do Google Play) e
+  // um QR de links.saqz.app para abrir no celular, que leva à loja ou ao app. No celular fica o "Volte ao app".
+  var LINKS_URL = "https://links.saqz.app/";
   function isIPhone() {
     return typeof navigator !== "undefined" && (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
   }
-  var webAppOffer = null;
-  function offerWebApp() {
-    if (webAppOffer) return webAppOffer;
-    webAppOffer = new Promise(function (resolve) {
-      if (typeof navigator === "undefined" || typeof fetch !== "function") return resolve(false);
-      if (/Android/i.test(navigator.userAgent) || isIPhone()) return resolve(false);
-      try {
-        if (!(typeof WebAssembly === "object" && WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 127, 0])))) return resolve(false);
-      } catch (e) { return resolve(false); }
-      fetch("/app/disponivel.json", { cache: "no-store" })
-        .then(function (response) { resolve(response.ok); })
-        .catch(function () { resolve(false); });
-    });
-    return webAppOffer;
+  function isAndroid() {
+    return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  }
+  function storeUrl(value) {
+    return typeof value === "string" && /^https:\/\//.test(value.trim()) ? value.trim() : "";
+  }
+  // Selo oficial só com link publicado: a Apple e o Google não permitem selo alterado nem "em breve".
+  function ligarSelo(id, url) {
+    var element = $(id);
+    var href = storeUrl(url);
+    element.hidden = !href;
+    if (!href) return false;
+    element.href = href;
+    element.target = "_blank";
+    element.rel = "noopener noreferrer";
+    element.setAttribute("aria-label", element.getAttribute("data-label") || "");
+    return true;
+  }
+  // O QR é desenhado aqui mesmo (qrcode.js): o link nunca sai do navegador. Sem a lib, só as lojas.
+  function desenharQr(id, text) {
+    var box = $(id);
+    try {
+      if (typeof qrcode !== "function") return false;
+      var code = qrcode(0, "M");
+      code.addData(text);
+      code.make();
+      box.innerHTML = code.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+      box.setAttribute("data-link", text);
+      box.hidden = false;
+      return true;
+    } catch (e) {
+      box.hidden = true;
+      return false;
+    }
+  }
+  function mostrarBaixarApp(estado) {
+    if (isIPhone() || isAndroid()) return;
+    var ios = ligarSelo(estado + "-ios-store", config.iosAppStoreUrl);
+    var android = ligarSelo(estado + "-android-store", config.androidPlayStoreUrl);
+    var qr = desenharQr(estado + "-qr", LINKS_URL);
+    $(estado + "-qr-legenda").hidden = !qr;
+    if (!ios && !android && !qr) return;
+    $(estado + "-baixar").hidden = false;
+    var sub = $(estado + "-sub");
+    sub.textContent = sub.textContent
+      .replace("Volte ao app Saqz e crie seu grupo.", "Baixe o app no celular e crie seu grupo com esta mesma conta.")
+      .replace("Volte ao app para continuar.", "Baixe o app no celular e entre com esta mesma conta.");
   }
   function identify(user) { try { if (user && window.saqzIdentifyFirebase) window.saqzIdentifyFirebase(user.uid); } catch (ignored) {} }
   var ultimoValorPendente = null;
@@ -107,15 +140,7 @@
     ["carregando", "login", "assinante", "planos", "dados", "pix", "cartao", "sucesso", "erro"].forEach(function (nome) {
       $("estado-" + nome).hidden = nome !== estado;
     });
-    if (estado === "sucesso" || estado === "assinante") {
-      offerWebApp().then(function (available) {
-        if (!available || $("estado-" + estado).hidden) return;
-        $(estado + "-web-app").hidden = false;
-        var sub = $(estado + "-sub");
-        sub.textContent = sub.textContent.replace("Volte ao app Saqz e crie seu grupo.", "Continue no Saqz e crie seu grupo.")
-          .replace("Volte ao app para continuar.", "Continue no Saqz.");
-      });
-    }
+    if (estado === "sucesso" || estado === "assinante") mostrarBaixarApp(estado);
     var user = auth.currentUser;
     var rodape = $("rodape-sessao");
     if (user && estado !== "carregando") {
@@ -784,8 +809,12 @@
     pagar();
   });
   $("botao-tentar-novamente").addEventListener("click", iniciar);
-  ["sucesso-web-app", "assinante-web-app"].forEach(function (id) {
-    $(id).addEventListener("click", function () { track("app_open", { via: "web", origem: id.split("-")[0] }); });
+  ["sucesso", "assinante"].forEach(function (estado) {
+    ["ios-store", "android-store"].forEach(function (loja) {
+      $(estado + "-" + loja).addEventListener("click", function () {
+        track("store_click", { store: loja === "ios-store" ? "ios" : "android", origem: estado });
+      });
+    });
   });
 
   if (loginPorLink) entrarComLink(loginPorLink);

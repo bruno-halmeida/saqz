@@ -359,6 +359,15 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
 @keyframes pulso { 50% { opacity: .25; } }
 
 .centro { text-align: center; padding: 36px 20px; }
+/* Computador depois do pagamento: o "Baixe o app" do /comecar/ (selos oficiais, sem recolorir) e o QR de links.saqz.app.
+   .qr-app, e não .qr: o .qr é o do Pix. */
+.baixar-app { margin-top: 18px; }
+.lojas { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.loja { display: inline-flex; line-height: 0; border-radius: 8px; }
+.loja img { display: block; height: 44px; width: auto; }
+.qr-app { width: 168px; margin: 18px auto 0; padding: 12px; background: #fff; border-radius: 12px; }
+.qr-app svg { display: block; width: 100%; height: auto; }
+.qr-legenda { margin-top: 8px; }
 .marca {
   width: 56px;
   height: 56px;
@@ -457,7 +466,18 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
     <div class="marca" aria-hidden="true"></div>
     <h1>Você já é assinante</h1>
     <p class="sub" id="assinante-sub">Sua assinatura está ativa. Volte ao app para continuar.</p>
-    <a class="btn" id="assinante-web-app" href="/app/" hidden>Continuar no Saqz</a>
+    <div class="baixar-app" id="assinante-baixar" hidden>
+      <div class="lojas">
+        <a class="loja" id="assinante-ios-store" data-label="Baixar na App Store" hidden>
+          <img src="../comecar/badges/app-store-pt-br.svg" alt="Baixar na App Store" width="132" height="44">
+        </a>
+        <a class="loja" id="assinante-android-store" data-label="Disponível no Google Play" hidden>
+          <img src="../comecar/badges/google-play-pt-br.png" alt="Disponível no Google Play" width="148" height="44">
+        </a>
+      </div>
+      <div class="qr-app" id="assinante-qr" role="img" aria-label="QR code para abrir o Saqz no celular" hidden></div>
+      <p class="sub qr-legenda" id="assinante-qr-legenda" hidden>Aponte a câmera do celular para abrir o Saqz.</p>
+    </div>
   </div>
 </section>
 
@@ -561,7 +581,18 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
     <h1 id="sucesso-titulo">Assinatura ativa.</h1>
     <p class="sub" id="sucesso-sub">Pagamento confirmado. Volte ao app Saqz e crie seu grupo.</p>
     <p class="sub" id="sucesso-reembolso">Quer cancelar a compra? Em até 7 dias da primeira cobrança, escreva para <a href="mailto:contato@egysis.com">contato@egysis.com</a> e devolvemos o valor.</p>
-    <a class="btn" id="sucesso-web-app" href="/app/" hidden>Continuar no Saqz</a>
+    <div class="baixar-app" id="sucesso-baixar" hidden>
+      <div class="lojas">
+        <a class="loja" id="sucesso-ios-store" data-label="Baixar na App Store" hidden>
+          <img src="../comecar/badges/app-store-pt-br.svg" alt="Baixar na App Store" width="132" height="44">
+        </a>
+        <a class="loja" id="sucesso-android-store" data-label="Disponível no Google Play" hidden>
+          <img src="../comecar/badges/google-play-pt-br.png" alt="Disponível no Google Play" width="148" height="44">
+        </a>
+      </div>
+      <div class="qr-app" id="sucesso-qr" role="img" aria-label="QR code para abrir o Saqz no celular" hidden></div>
+      <p class="sub qr-legenda" id="sucesso-qr-legenda" hidden>Aponte a câmera do celular para abrir o Saqz.</p>
+    </div>
   </div>
 </section>
 
@@ -577,6 +608,7 @@ a.btn { display: flex; align-items: center; justify-content: center; text-decora
 <p class="rodape-sessao" id="rodape-sessao" hidden></p>
 <p class="rodape-sessao"><a href="#cookies" data-saqz-cookies>Cookies</a></p>
 </main>
+<script src="qrcode.js"></script>
 <script src="cartao.js?v=confirm"></script>
-<script src="assinar.js?v=auth-log"></script>
+<script src="assinar.js?v=baixe-o-app"></script>
 </body></html>

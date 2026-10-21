@@ -39,6 +39,7 @@ quando há consentimento; os demais vão como evento customizado.
 | 13 | `begin_checkout` | assinar | tocou "Gerar Pix" ou "Pagar com cartão" | InitiateCheckout |
 | 14 | `payment_pending` / `payment_refused` | assinar | Pix gerado ou cartão autorizado; cartão recusado | |
 | 15 | `purchase` | assinar | `/subscriptions/me` confirmou; uma vez por checkout (`transaction_id` = requestId) | Purchase |
+| 16 | `store_click` | assinar | no computador, selo da loja depois do pagamento ou em "já é assinante"; `store`, `origem` | |
 | — | `plan_change_requested` / `plan_changed` | assinar | troca de plano de quem já assina | |
 | — | `faq_open` | landing | abriu uma pergunta | |
 
