@@ -139,6 +139,7 @@ internal fun AthleteMembership.toOwnProfileGroupUi() = OwnProfileGroupUi(
         .takeIf(String::isNotBlank),
     membershipLabel = membershipType.toMembershipLabel(),
     isMonthly = membershipType.equals("MENSALISTA", ignoreCase = true),
+    photoUrl = groupPhotoVersion?.let { "/api/groups/${groupId.value}/photo?v=$it" },
 )
 
 private fun String.toPositionLabel(): String? = when (uppercase()) {

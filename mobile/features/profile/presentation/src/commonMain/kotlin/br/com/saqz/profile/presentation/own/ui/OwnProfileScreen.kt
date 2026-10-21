@@ -45,6 +45,7 @@ import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import br.com.saqz.designsystem.SaqzAvatar
+import br.com.saqz.designsystem.SaqzAvatarInitials
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
@@ -121,6 +122,7 @@ internal object OwnProfileTags {
     const val AppVersion = "own-profile-app-version"
 
     fun group(id: String) = "own-profile-group-$id"
+    fun groupAvatar(id: String) = "own-profile-group-avatar-$id"
 }
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -217,6 +219,7 @@ fun OwnProfileScreen(
                             ) { _, group ->
                                 OwnProfileGroupRow(
                                     group = group,
+                                    imageLoader = imageLoader,
                                     onClick = { onIntent(OwnProfileIntent.OpenGroup(group.id)) },
                                     modifier = Modifier.testTag(OwnProfileTags.group(group.id)),
                                 )
@@ -456,10 +459,15 @@ private fun OwnProfileStat(
 @Composable
 private fun OwnProfileGroupRow(
     group: OwnProfileGroupUi,
+    imageLoader: ImageLoader,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val metrics = SaqzTheme.metrics
+    val context = LocalPlatformContext.current
+    val imageRequest = group.photoUrl?.let { photoUrl ->
+        remember(context, photoUrl) { profilePhotoImageRequest(context, photoUrl) }
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -472,6 +480,21 @@ private fun OwnProfileGroupRow(
             name = group.name,
             size = metrics.iconButtonSize,
             initialsColor = SaqzTheme.colors.primary,
+            modifier = Modifier.testTag(OwnProfileTags.groupAvatar(group.id)),
+            // Foto do grupo, com as iniciais enquanto carrega e quando falha.
+            photo = imageRequest?.let { request ->
+                {
+                    SubcomposeAsyncImage(
+                        model = request,
+                        contentDescription = null,
+                        imageLoader = imageLoader,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = { SaqzAvatarInitials(group.name, size = metrics.iconButtonSize, color = SaqzTheme.colors.primary) },
+                        error = { SaqzAvatarInitials(group.name, size = metrics.iconButtonSize, color = SaqzTheme.colors.primary) },
+                    )
+                }
+            },
         )
         Column(
             modifier = Modifier.weight(1f),

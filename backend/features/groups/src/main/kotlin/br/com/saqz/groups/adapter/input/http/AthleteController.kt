@@ -124,6 +124,8 @@ data class OwnAthleteMembershipResponse(
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
     val joinedAt: Instant,
+    /** Versão da foto do grupo para `/api/groups/{id}/photo?v=`; nula sem foto. */
+    val photoVersion: Long? = null,
 )
 
 data class OwnAthleteProfileResponse(
@@ -286,6 +288,7 @@ class AthleteController(
                         monthlyFeeCents = it.monthlyFeeCents,
                         monthlyDueDay = it.monthlyDueDay,
                         joinedAt = it.joinedAt,
+                        photoVersion = it.photoVersion,
                     )
                 },
             )

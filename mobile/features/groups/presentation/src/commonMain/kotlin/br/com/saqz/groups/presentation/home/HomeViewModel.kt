@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.home
 
+import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
@@ -673,6 +674,7 @@ class HomeViewModel(
             getPluralString(Res.plurals.home_group_games_played, gamesPlayed, gamesPlayed),
         ),
         isAdmin = role == GroupRole.OWNER || role == GroupRole.ADMIN,
+        photoUrl = photoVersion?.let { groupPhotoUrl(id.value, it) },
     )
 
     private suspend fun HomeUpcomingGame.toUi(): HomeUpcomingGameUi {

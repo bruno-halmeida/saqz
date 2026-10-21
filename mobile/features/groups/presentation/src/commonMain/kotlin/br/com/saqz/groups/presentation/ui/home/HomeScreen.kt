@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.home
 
+import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -125,6 +126,7 @@ internal object HomeTags {
     fun step(number: Int) = "home-step-$number"
 
     fun group(id: String) = "home-group-$id"
+    fun groupPhoto(id: String) = "home-group-photo-$id"
 
     fun ownCharge(id: String) = "home-own-charge-$id"
 
@@ -586,11 +588,16 @@ private fun HomeGroupRow(group: HomeGroupUi, onClick: () -> Unit) {
                 .background(SaqzTheme.colors.surfaceSoft),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = saqzInitials(group.name),
-                style = SaqzTheme.typography.label,
-                color = SaqzTheme.colors.primary,
-            )
+            GroupRemotePhotoRoot(
+                photoUrl = group.photoUrl,
+                modifier = Modifier.fillMaxSize().testTag(HomeTags.groupPhoto(group.id)),
+            ) {
+                Text(
+                    text = saqzInitials(group.name),
+                    style = SaqzTheme.typography.label,
+                    color = SaqzTheme.colors.primary,
+                )
+            }
         }
         // Chip ao lado do nome, meta embaixo: no fim da linha ele espremia a coluna e a
         // meta quebrava em duas linhas.

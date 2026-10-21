@@ -175,6 +175,8 @@ data class HomeGroupUi(
     val name: String,
     val meta: String,
     val isAdmin: Boolean = false,
+    /** Foto do grupo, a mesma da lista Grupos; nula sem foto (fica nas iniciais). */
+    val photoUrl: String? = null,
 )
 
 enum class HomeUpcomingStatus { Pending, Going, Out, Waitlisted }

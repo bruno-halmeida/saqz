@@ -14,6 +14,8 @@ data class HomeMemberGroup(
     val role: GroupRole,
     val memberCount: Int,
     val gamesPlayed: Int,
+    /** Versão da foto do grupo; nula sem foto. */
+    val photoVersion: Long? = null,
 )
 
 data class HomeRosterMember(

@@ -81,6 +81,7 @@ internal data class AthleteMembershipTransport(
     val position: String? = null,
     val membershipType: String = "",
     val active: Boolean? = null,
+    val photoVersion: Long? = null,
 )
 
 @Serializable
@@ -244,6 +245,7 @@ private fun AthleteMembershipTransport.toDomain(): AthleteMembership? {
         position = position,
         membershipType = membershipType,
         active = active ?: return null,
+        groupPhotoVersion = photoVersion,
     )
 }
 

@@ -53,6 +53,8 @@ data class AthleteMembership(
     val position: String?,
     val membershipType: String,
     val active: Boolean,
+    /** Versão da foto do grupo; nula sem foto. */
+    val groupPhotoVersion: Long? = null,
 )
 
 data class AthleteProfile(

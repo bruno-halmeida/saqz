@@ -116,6 +116,7 @@ class JdbcHomeRepository(
         role = GroupRole.valueOf(result.getString("role")),
         memberCount = result.getInt("member_count"),
         gamesPlayed = result.getInt("games_played"),
+        photoVersion = result.getObject("photo_version", Long::class.javaObjectType),
     )
 
     private fun mapNextGame(result: ResultSet, @Suppress("UNUSED_PARAMETER") row: Int) = HomeNextGame(
@@ -275,7 +276,8 @@ class JdbcHomeRepository(
                        FROM games played
                        WHERE played.group_id = groups.id
                          AND played.status = 'COMPLETED'
-                   ) AS games_played
+                   ) AS games_played,
+                   (SELECT photos.version FROM group_photos photos WHERE photos.group_id = groups.id) AS photo_version
             FROM access_groups groups
             LEFT JOIN group_memberships memberships
                 ON memberships.group_id = groups.id

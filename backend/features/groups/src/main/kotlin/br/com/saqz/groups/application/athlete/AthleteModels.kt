@@ -139,6 +139,8 @@ data class OwnAthleteMembership(
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
     val joinedAt: Instant = Instant.EPOCH,
+    /** Versão da foto do grupo; nula sem foto. */
+    val photoVersion: Long? = null,
 )
 
 data class OwnAthleteProfile(

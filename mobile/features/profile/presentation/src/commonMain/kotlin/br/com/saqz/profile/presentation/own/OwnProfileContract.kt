@@ -38,6 +38,8 @@ data class OwnProfileGroupUi(
     val details: String?,
     val membershipLabel: String,
     val isMonthly: Boolean,
+    /** Foto do grupo, a mesma da lista Grupos; nula sem foto (fica nas iniciais). */
+    val photoUrl: String? = null,
 )
 
 sealed interface OwnProfileIntent {

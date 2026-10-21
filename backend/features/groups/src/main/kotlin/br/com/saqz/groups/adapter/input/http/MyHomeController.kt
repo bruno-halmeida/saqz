@@ -34,6 +34,8 @@ data class HomeGroupResponse(
     val role: String,
     val memberCount: Int,
     val gamesPlayed: Int,
+    /** Versão da foto do grupo para `/api/groups/{id}/photo?v=`; nula sem foto. */
+    val photoVersion: Long? = null,
 )
 
 data class HomeRosterMemberResponse(
@@ -248,6 +250,7 @@ private fun HomeMemberGroup.toResponse() = HomeGroupResponse(
     role = role.name,
     memberCount = memberCount,
     gamesPlayed = gamesPlayed,
+    photoVersion = photoVersion,
 )
 
 private fun HomeNextGame.toResponse() = HomeNextGameResponse(

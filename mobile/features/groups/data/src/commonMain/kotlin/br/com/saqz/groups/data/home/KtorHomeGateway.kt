@@ -41,6 +41,7 @@ internal data class HomeGroupTransport(
     val role: String,
     val memberCount: Int,
     val gamesPlayed: Int,
+    val photoVersion: Long? = null,
 )
 
 @Serializable
@@ -308,6 +309,7 @@ private fun HomeGroupTransport.toDomain() = role.toGroupRole()?.let { roleDomain
         role = roleDomain,
         memberCount = memberCount,
         gamesPlayed = gamesPlayed,
+        photoVersion = photoVersion,
     )
 }
 

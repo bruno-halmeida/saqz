@@ -143,7 +143,8 @@ class JdbcAthleteRosterRepository(
                 m.monthly_due_day,
                 m.membership_type,
                 m.active,
-                m.created_at
+                m.created_at,
+                (SELECT photos.version FROM group_photos photos WHERE photos.group_id = m.group_id) AS photo_version
             FROM group_memberships m
             JOIN access_groups g ON g.id = m.group_id
                 AND g.deleted_at IS NULL
@@ -168,6 +169,7 @@ class JdbcAthleteRosterRepository(
                     membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
                     active = rs.getBoolean("active"),
                     joinedAt = rs.getTimestamp("created_at").toInstant(),
+                    photoVersion = rs.getObject("photo_version", Long::class.javaObjectType),
                 )
             }
             .list()
