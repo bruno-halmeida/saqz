@@ -67,17 +67,19 @@ final class IOSPhotoFiles {
     }
 
     /// Decodifica já reduzida (nunca na resolução cheia), aplica a rotação do EXIF e guarda JPEG.
+    /// Se nem a menor qualidade cabe nos bytes da saída, tenta com metade do lado.
     private func storeReduced(_ source: CGImageSource) throws -> URL {
-        guard CGImageSourceGetCount(source) >= 1,
-              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+        guard CGImageSourceGetCount(source) >= 1 else { throw IOSPhotoFileError.invalid }
+        for side in [Self.maximumDimension, Self.maximumDimension / 2] {
+            guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceCreateThumbnailWithTransform: true,
                 kCGImageSourceShouldCacheImmediately: true,
-                kCGImageSourceThumbnailMaxPixelSize: Self.maximumDimension
-              ] as CFDictionary),
-              let data = IOSJPEG.encodeBounded(image, maximumBytes: Self.maximumBytes)
-        else { throw IOSPhotoFileError.invalid }
-        return try store(data)
+                kCGImageSourceThumbnailMaxPixelSize: side
+            ] as CFDictionary) else { break }
+            if let data = IOSJPEG.encodeBounded(image, maximumBytes: Self.maximumBytes) { return try store(data) }
+        }
+        throw IOSPhotoFileError.invalid
     }
 
     func file(_ handle: GroupPhotoSourceHandle) -> URL? {

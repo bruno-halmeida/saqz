@@ -53,7 +53,7 @@ internal class AndroidPhotoFiles(private val context: Context) {
         val upright = upright(sampled, original)
         val target = createSource()
         try {
-            val bytes = requireNotNull(encodeJpegBounded(upright))
+            val bytes = requireNotNull(encodeJpegBounded(upright) ?: encodeJpegBounded(halved(upright)))
             target.writeBytes(bytes)
             target
         } catch (failure: Throwable) {
@@ -121,6 +121,10 @@ internal class AndroidPhotoFiles(private val context: Context) {
         if (rotated !== bitmap) bitmap.recycle()
         return rotated
     }
+
+    // Nem a menor qualidade coube nos bytes da saída (foto com muito detalhe): metade do lado.
+    private fun halved(bitmap: Bitmap): Bitmap =
+        Bitmap.createScaledBitmap(bitmap, maxOf(1, bitmap.width / 2), maxOf(1, bitmap.height / 2), true)
 
     private fun ExifInterface.rotationDegrees(): Int =
         when (getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
