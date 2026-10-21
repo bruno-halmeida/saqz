@@ -5,6 +5,8 @@ import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.subscriptions.application.GooglePlayLookup
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmount
+import br.com.saqz.subscriptions.application.GooglePlayOrdersApi
 import br.com.saqz.subscriptions.application.GooglePlayPurchasesApi
 import br.com.saqz.subscriptions.domain.GooglePlayPurchase
 import br.com.saqz.subscriptions.domain.GooglePlayState
@@ -17,6 +19,7 @@ import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
+import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -30,6 +33,7 @@ import java.time.Instant
 import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import javax.sql.DataSource
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -42,6 +46,7 @@ class GooglePlaySubscriptionEndpointIntegrationTest {
     @LocalServerPort private var port: Int = 0
     @Autowired private lateinit var mapper: ObjectMapper
     @Autowired private lateinit var google: FakeGooglePlay
+    @Autowired private lateinit var dataSource: DataSource
     private val client = HttpClient.newHttpClient()
     private lateinit var token: String
 
@@ -65,6 +70,23 @@ class GooglePlaySubscriptionEndpointIntegrationTest {
         assertTrue(body["entitled"].booleanValue())
         assertTrue(purchaseToken in google.acknowledged)
         assertEquals("SUBSCRIBED", mapper.readTree(request("GET", "/subscriptions/trial").body())["status"].stringValue())
+    }
+
+    @Test
+    fun `the order amount comes from the Orders API when the purchase is recorded and stays empty when it fails`() {
+        val paid = "tok-${System.nanoTime()}"
+        google.purchases[paid] = purchase(paid, accountId())
+        google.orders["GPA.$paid"] = GooglePlayOrderAmount("GPA.$paid", 5_990, 540, "BRL", "PROCESSED")
+        assertEquals(200, submit(paid).statusCode())
+
+        token = UUID.randomUUID().toString()
+        assertEquals(200, request("PUT", "/api/session").statusCode())
+        val unpaid = "tok-${System.nanoTime()}"
+        google.purchases[unpaid] = purchase(unpaid, accountId())
+        assertEquals(200, submit(unpaid).statusCode())
+
+        assertEquals(listOf(5_990L, 540L, "BRL"), order("GPA.$paid"))
+        assertEquals(listOf(null, null, null), order("GPA.$unpaid"))
     }
 
     @Test
@@ -100,6 +122,11 @@ class GooglePlaySubscriptionEndpointIntegrationTest {
     fun `the webhook refuses a wrong token`() {
         assertEquals(401, notify("qualquer", "errado").statusCode())
     }
+
+    private fun order(orderId: String): List<Any?> = JdbcClient.create(dataSource)
+        .sql("SELECT gross_cents, tax_cents, currency FROM google_play_orders WHERE order_id = :id").param("id", orderId)
+        .query { rs, _ -> listOf(rs.getObject(1)?.let { (it as Number).toLong() }, rs.getObject(2)?.let { (it as Number).toLong() }, rs.getString(3)) }
+        .single()
 
     private fun accountId(): String =
         mapper.readTree(request("GET", "/subscriptions/app-store/account-token").body())["appAccountToken"].stringValue()
@@ -142,8 +169,9 @@ class GooglePlaySubscriptionEndpointIntegrationTest {
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
 
-    class FakeGooglePlay : GooglePlayPurchasesApi {
+    class FakeGooglePlay : GooglePlayPurchasesApi, GooglePlayOrdersApi {
         val purchases = ConcurrentHashMap<String, GooglePlayPurchase>()
+        val orders = ConcurrentHashMap<String, GooglePlayOrderAmount>()
         val acknowledged: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
         override fun subscription(purchaseToken: String) =
@@ -152,6 +180,8 @@ class GooglePlaySubscriptionEndpointIntegrationTest {
         override fun acknowledge(productId: String, purchaseToken: String) {
             acknowledged += purchaseToken
         }
+
+        override fun orders(orderIds: List<String>) = orderIds.mapNotNull { orders[it] }
     }
 
     @TestConfiguration(proxyBeanMethods = false)

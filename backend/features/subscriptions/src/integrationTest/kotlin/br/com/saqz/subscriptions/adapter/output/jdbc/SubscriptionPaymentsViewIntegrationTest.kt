@@ -3,6 +3,7 @@ package br.com.saqz.subscriptions.adapter.output.jdbc
 import br.com.saqz.postgrestesting.TestPostgres
 import br.com.saqz.subscriptions.application.AdminRevenueCourtesyRow
 import br.com.saqz.subscriptions.application.AdminRevenueRow
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmount
 import br.com.saqz.subscriptions.domain.Plan
 import br.com.saqz.subscriptions.testing.allSubscriptionsFeatureMigrationLocations
 import org.junit.jupiter.api.BeforeEach
@@ -20,6 +21,7 @@ class SubscriptionPaymentsViewIntegrationTest {
     private lateinit var jdbc: JdbcClient
     private lateinit var reader: JdbcAdminRevenueReader
     private lateinit var stats: JdbcAdminRevenueStatsRepository
+    private lateinit var repo: JdbcGooglePlaySubscriptionRepository
 
     private data class Pay(val source: String, val gross: Long?, val net: Long?, val currency: String?, val test: Boolean, val refunded: Boolean)
 
@@ -29,6 +31,7 @@ class SubscriptionPaymentsViewIntegrationTest {
         jdbc = JdbcClient.create(dataSource)
         reader = JdbcAdminRevenueReader(dataSource)
         stats = JdbcAdminRevenueStatsRepository(dataSource)
+        repo = JdbcGooglePlaySubscriptionRepository(dataSource)
     }
 
     @Test
@@ -125,7 +128,7 @@ class SubscriptionPaymentsViewIntegrationTest {
     }
 
     @Test
-    fun `Google Play test_purchase e teste, o resto e real, sem valor`() {
+    fun `Google Play test_purchase e teste, o resto e real, sem valor enquanto a Orders API nao responde`() {
         val dono = user()
         googlePlaySubscription(dono, "tok-1")
         googlePlayOrder(dono, "tok-1", "GPA.1", test = false)
@@ -138,6 +141,100 @@ class SubscriptionPaymentsViewIntegrationTest {
         val relatorio = reader.monthly(12)
         assertEquals(listOf(AdminRevenueRow(currentMonth(), "GOOGLE_PLAY", null, 1, null, null)), relatorio.real)
         assertEquals(1, relatorio.test.size)
+    }
+
+    @Test
+    fun `Google Play com valor da Orders API entra no bruto e pedido REFUNDED vira estorno`() {
+        val dono = user()
+        googlePlaySubscription(dono, "tok-1")
+        googlePlayOrder(dono, "tok-1", "GPA.1", test = false)
+        googlePlayOrder(dono, "tok-1", "GPA.2", test = false)
+        googlePlayOrder(dono, "tok-1", "GPA.3", test = false)
+        repo.saveOrderAmount(GooglePlayOrderAmount("GPA.1", 5_990, 540, "BRL", "PROCESSED"), Instant.now())
+        repo.saveOrderAmount(GooglePlayOrderAmount("GPA.2", 5_990, 540, "BRL", "REFUNDED"), Instant.now())
+
+        assertEquals(
+            setOf(
+                Pay("GOOGLE_PLAY", 5_990, null, "BRL", test = false, refunded = false),
+                Pay("GOOGLE_PLAY", 5_990, null, "BRL", test = false, refunded = true),
+                Pay("GOOGLE_PLAY", null, null, null, test = false, refunded = false),
+            ),
+            payments(dono).toSet(),
+        )
+        assertEquals(
+            setOf(AdminRevenueRow(currentMonth(), "GOOGLE_PLAY", "BRL", 1, 5_990, null), AdminRevenueRow(currentMonth(), "GOOGLE_PLAY", null, 1, null, null)),
+            reader.monthly(12).real.toSet(),
+        )
+        assertEquals(5_990, stats.revenueCents(null, Instant.now().plusSeconds(60)))
+    }
+
+    @Test
+    fun `pedidos sem valor voltam ao job depois do intervalo, os nunca tentados primeiro e sem os de teste`() {
+        val dono = user()
+        googlePlaySubscription(dono, "tok-1")
+        googlePlayOrder(dono, "tok-1", "GPA.tentado", test = false)
+        googlePlayOrder(dono, "tok-1", "GPA.novo", test = false)
+        googlePlayOrder(dono, "tok-1", "GPA.teste", test = true)
+        googlePlayOrder(dono, "tok-1", "GPA.pago", test = false)
+        val agora = Instant.now()
+        repo.saveOrderAmount(GooglePlayOrderAmount("GPA.pago", 100, null, "BRL", "PROCESSED"), agora)
+        repo.markOrderAmountChecked(listOf("GPA.tentado"), agora.minusSeconds(7_200))
+
+        assertEquals(listOf("GPA.novo", "GPA.tentado"), repo.ordersWithoutAmount(agora.minusSeconds(3_600), 10))
+        assertEquals(listOf("GPA.novo"), repo.ordersWithoutAmount(agora.minusSeconds(10_800), 10))
+        assertEquals(true, repo.orderAmountMissing("GPA.novo"))
+        assertEquals(false, repo.orderAmountMissing("GPA.pago"))
+        assertEquals(false, repo.orderAmountMissing("GPA.nao-existe"))
+    }
+
+    @Test
+    fun `primeira origem vence e pagamento antes do primeiro cupom e sem cupom`() {
+        val dono = user()
+        val semCupom = user()
+        val trial = trialCoupon("ARENA", "Quadra A")
+        val desconto = discountCoupon("VOLTA")
+        // Desconto antes do trial: a primeira origem (desconto) vence.
+        redeem(desconto, dono, "now() - interval '2 hours'")
+        startTrial(trial, dono, "now() - interval '1 hour'")
+        event(dono, "PAYMENT_CONFIRMED", "pay_antes", value = "10.00", processedAt = "now() - interval '3 hours'")
+        event(dono, "PAYMENT_CONFIRMED", "pay_depois", value = "20.00", processedAt = "now() - interval '30 minutes'")
+        googlePlaySubscription(dono, "tok-1")
+        googlePlayOrder(dono, "tok-1", "GPA.1", test = false)
+        googlePlayOrder(dono, "tok-1", "GPA.teste", test = true)
+        event(dono, "PAYMENT_CONFIRMED", "pay_estornado", value = "99.00")
+        event(dono, "PAYMENT_REFUNDED", "pay_estornado", value = "99.00")
+        event(semCupom, "PAYMENT_CONFIRMED", "pay_outro", value = "5.00")
+
+        val origem = jdbc.sql("SELECT coupon_type, coupon_id, coupon_code, campaign FROM customer_acquisition WHERE owner_user_id = :o")
+            .param("o", dono).query { rs, _ -> listOf(rs.getString(1), rs.getObject(2, UUID::class.java), rs.getString(3), rs.getString(4)) }.list()
+        assertEquals(listOf(listOf("DISCOUNT", desconto, "VOLTA", null)), origem)
+        assertEquals(0, jdbc.sql("SELECT count(*) FROM customer_acquisition WHERE owner_user_id = :o").param("o", semCupom).query(Int::class.java).single())
+
+        val mes = currentMonth()
+        val linhas = reader.byOrigin(12).map { Triple(it.couponCode, it.source, Triple(it.payments, it.grossCents, it.paymentsWithoutValue)) }.toSet()
+        assertEquals(
+            setOf(
+                Triple(null, "SITE", Triple(2L, 1_500L, 0L)),
+                Triple("VOLTA", "SITE", Triple(1L, 2_000L, 0L)),
+                Triple("VOLTA", "GOOGLE_PLAY", Triple(1L, null, 1L)),
+            ),
+            linhas,
+        )
+        assertEquals(setOf(mes), reader.byOrigin(12).map { it.month }.toSet())
+        assertEquals(setOf("DISCOUNT"), reader.byOrigin(12).mapNotNull { it.couponType }.toSet())
+    }
+
+    @Test
+    fun `trial e desconto no mesmo instante, o trial vence e leva a campanha`() {
+        val dono = user()
+        val trial = trialCoupon("ARENA", "Quadra A")
+        val desconto = discountCoupon("VOLTA")
+        redeem(desconto, dono, "'2026-10-01T12:00:00Z'")
+        startTrial(trial, dono, "'2026-10-01T12:00:00Z'")
+
+        val origem = jdbc.sql("SELECT coupon_type, coupon_code, campaign FROM customer_acquisition WHERE owner_user_id = :o")
+            .param("o", dono).query { rs, _ -> listOf(rs.getString(1), rs.getString(2), rs.getString(3)) }.single()
+        assertEquals(listOf("TRIAL", "ARENA", "Quadra A"), origem)
     }
 
     @Test
@@ -264,6 +361,27 @@ class SubscriptionPaymentsViewIntegrationTest {
                 "price_millis, currency, revoked_at, environment) " +
                 "VALUES (:id, :orig, :o, 'p', now(), $priceMillis, '$currency', ${if (revoked) "now()" else "NULL"}, '$environment')",
         ).param("id", id).param("orig", original).param("o", dono).update()
+    }
+
+    private fun trialCoupon(code: String, campaign: String?): UUID = UUID.randomUUID().also {
+        jdbc.sql("INSERT INTO trial_coupons (id, code, campaign, trial_days, created_at) VALUES (:id, :code, :campaign, 30, now())")
+            .param("id", it).param("code", code).param("campaign", campaign).update()
+    }
+
+    private fun discountCoupon(code: String): UUID = UUID.randomUUID().also {
+        jdbc.sql("INSERT INTO coupons (id, code, discount_percent, created_at) VALUES (:id, :code, 20, now())")
+            .param("id", it).param("code", code).update()
+    }
+
+    private fun redeem(coupon: UUID, dono: UUID, at: String) {
+        jdbc.sql("INSERT INTO coupon_redemptions (coupon_id, user_id, redeemed_at) VALUES (:c, :o, ($at)::timestamptz)").param("c", coupon).param("o", dono).update()
+    }
+
+    private fun startTrial(coupon: UUID, dono: UUID, at: String) {
+        jdbc.sql(
+            "INSERT INTO organizer_trials (owner_user_id, coupon_id, coupon_code, started_at, ends_at) " +
+                "VALUES (:o, :c, 'X', ($at)::timestamptz, ($at)::timestamptz + interval '30 days')",
+        ).param("c", coupon).param("o", dono).update()
     }
 
     private fun googlePlaySubscription(dono: UUID, token: String) {

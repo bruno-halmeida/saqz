@@ -5,6 +5,8 @@ import br.com.saqz.access.application.admin.PlatformAdminView
 import br.com.saqz.adminweb.http.AdminRevenueController
 import br.com.saqz.adminweb.http.AdminSubscriptionsController
 import br.com.saqz.subscriptions.application.AdminRevenueCourtesyRow
+import br.com.saqz.subscriptions.application.AdminRevenueOriginRow
+import br.com.saqz.subscriptions.application.AdminRevenueReader
 import br.com.saqz.subscriptions.application.AdminRevenueReport
 import br.com.saqz.subscriptions.application.AdminSubscriptionCourtesy
 import br.com.saqz.subscriptions.application.AdminRevenueRow
@@ -95,6 +97,20 @@ class AdminSubscriptionsEndpointIntegrationTest {
         assertEquals(400, exchange("GET", "/admin/revenue?months=0").statusCode())
         assertEquals(400, exchange("GET", "/admin/revenue?months=61").statusCode())
         assertEquals(403, exchange("GET", "/admin/revenue", token = "user-token").statusCode())
+    }
+
+    @Test
+    fun `receita por origem responde por mes e plataforma e recusa meses fora do limite`() {
+        val response = exchange("GET", "/admin/revenue/origins?months=3")
+        val body = objectMapper.readTree(response.body())
+
+        assertEquals(200, response.statusCode(), response.body())
+        assertEquals(true, body.isArray)
+        val appStore = body.first { it["source"].stringValue() == "APP_STORE" }
+        assertEquals("2026-10", appStore["month"].stringValue())
+        assertEquals(5_990, appStore["grossCents"].intValue())
+        assertEquals(400, exchange("GET", "/admin/revenue/origins?months=0").statusCode())
+        assertEquals(403, exchange("GET", "/admin/revenue/origins", token = "user-token").statusCode())
     }
 
     @Test
@@ -194,13 +210,19 @@ class AdminSubscriptionsEndpointIntegrationTest {
         }
 
         @Bean
-        fun adminRevenueController() = AdminRevenueController {
-            AdminRevenueReport(
-                real = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 1, 5_990, null)),
-                test = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 46, 276_000, null)),
-                courtesy = listOf(AdminRevenueCourtesyRow("2026-10", 2, 15_980)),
-            )
-        }
+        fun adminRevenueController() = AdminRevenueController(
+            object : AdminRevenueReader {
+                override fun monthly(months: Int) = AdminRevenueReport(
+                    real = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 1, 5_990, null)),
+                    test = listOf(AdminRevenueRow("2026-10", "APP_STORE", "BRL", 46, 276_000, null)),
+                    courtesy = listOf(AdminRevenueCourtesyRow("2026-10", 2, 15_980)),
+                )
+
+                override fun byOrigin(months: Int) = listOf(
+                    AdminRevenueOriginRow("2026-10", null, null, null, null, "APP_STORE", "BRL", 1, 5_990, 0),
+                )
+            },
+        )
 
         @Bean
         fun adminSubscriptionsController() = AdminSubscriptionsController(

@@ -94,6 +94,32 @@ As mesmas da App Store: assinante vigente pelo Play recebe 409 `SUBSCRIPTION_CON
 no checkout web; troca e cancelamento só no Play; recibos incluem as cobranças do
 Play; excluir a conta não cancela a assinatura do Play (o app avisa).
 
+### Valor dos pedidos (receita)
+
+A `subscriptionsv2` não traz preço. O valor de cada pedido (`google_play_orders`, colunas
+da V182) vem da **Orders API** do Android Publisher:
+`GET /androidpublisher/v3/applications/{packageName}/orders:batchGet?orderIds=…` (1 a 1000
+ids; um id desconhecido derruba o lote com 4xx).
+
+| Coluna | Campo do `Order` |
+| --- | --- |
+| `gross_cents` | `total` (`Money`: `units` + `nanos`; o que o comprador pagou, com descontos e impostos); sem `total`, o `total` da única linha |
+| `tax_cents` | `tax` (imposto contido no total) |
+| `currency` | `total.currencyCode` |
+| `order_state` | `state` (`PROCESSED`, `REFUNDED`…); `REFUNDED` vira estorno na receita |
+
+- Ao registrar um pedido (compra pelo app ou RTDN), o backend busca o valor na hora. Se a
+  API falhar, o pedido fica sem valor e marca `amount_checked_at`.
+- `GooglePlayOrderAmountsJob` (a cada 10 min, `saqz.google-play.order-amounts-delay-ms`)
+  pega até 100 pedidos reais sem valor, os nunca tentados primeiro, e só repete um pedido
+  1 h depois da última tentativa. Lote recusado (4xx) → um a um. Assim os pedidos antigos
+  (anteriores à V182) também ganham valor. Compras de teste não são buscadas pelo job.
+- A view `subscription_payments` usa `gross_cents` como bruto do Play; líquido continua
+  nulo (o Play não informa o repasse final). Pedido sem valor aparece como "a definir":
+  nunca se infere pelo preço do plano.
+- Precisa da permissão "Ver dados financeiros" da conta de serviço; sem ela a API responde
+  401/403 e tudo fica para o job.
+
 ## Roteiro (Google Cloud e Play Console)
 
 1. **Perfil de pagamentos** no Play Console (Configurar → Perfil de pagamentos), sem o

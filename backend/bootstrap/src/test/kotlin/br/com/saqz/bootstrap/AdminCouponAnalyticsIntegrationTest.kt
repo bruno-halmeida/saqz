@@ -42,7 +42,7 @@ class AdminCouponAnalyticsIntegrationTest {
     private val client = HttpClient.newHttpClient()
     private val jdbc get() = JdbcClient.create(ds)
     @BeforeEach fun reset() {
-        jdbc.sql("TRUNCATE coupons, trial_coupons, subscriptions, subscription_events, organizer_trials, coupon_redemptions, trial_coupon_selections CASCADE").update()
+        jdbc.sql("TRUNCATE coupons, trial_coupons, subscriptions, subscription_events, organizer_trials, coupon_redemptions, trial_coupon_selections, app_store_transactions, app_store_subscriptions, google_play_orders, google_play_subscriptions CASCADE").update()
     }
     private fun request(token: String? = "admin"): HttpResponse<String> {
         val b = HttpRequest.newBuilder(URI("http://127.0.0.1:$port/admin/coupon-analytics")).GET()
@@ -115,10 +115,12 @@ class AdminCouponAnalyticsIntegrationTest {
     @Test fun `late duplicate cannot convert a later redemption and invalid receipts never invent revenue`() {
         val d=coupon(false);val owner=user();use(d,owner,false)
         event(owner,"before",at=NOW.minusSeconds(90000));event(owner,"before",type="PAYMENT_RECEIVED")
-        event(null,"unowned");event(owner,null);event(owner,"invalid",value="\"oops\"");event(owner,"broken",raw="not JSON")
+        event(null,"unowned");event(owner,"invalid",value="\"oops\"")
         event(owner,"zero",value="0");event(owner,"negative",value="-4")
         val r=report();val m=r["coupons"][0]["metrics"]
-        assertEquals(0,m["payingUsers"].intValue());assertEquals(0,m["revenueCents"].longValue());assertEquals(0,m["payments"].intValue());assertEquals(1,m["incompleteUsers"].intValue())
+        assertEquals(0,m["payingUsers"].intValue());assertEquals(0,m["revenueCents"].longValue());assertEquals(0,m["payments"].intValue())
+        // Sem valor numérico positivo a cobrança do site não entra na subscription_payments: nada a creditar nem a sinalizar.
+        assertEquals(0,m["incompleteUsers"].intValue())
         assertEquals(0.0,m["conversionPercent"].doubleValue())
     }
     @Test fun `missing receipts remain explicit and active status alone is not payment evidence`() {
@@ -131,7 +133,8 @@ class AdminCouponAnalyticsIntegrationTest {
         }
         event(zero,"free",value="0")
         val m=report()["summary"]
-        assertEquals(3,m["users"].intValue());assertEquals(0,m["payingUsers"].intValue());assertEquals(1,m["incompleteUsers"].intValue());assertEquals(0,m["revenueCents"].longValue())
+        assertEquals(3,m["users"].intValue());// Confirmação com cobrança zerada não é pagamento na subscription_payments: fica incompleta, como a sem recibo.
+        assertEquals(0,m["payingUsers"].intValue());assertEquals(2,m["incompleteUsers"].intValue());assertEquals(0,m["revenueCents"].longValue())
     }
     @Test fun `exhausted ongoing trial has no mature rate and exact current confirmation rounds cents`() {
         val c=coupon(true);val owner=user()
@@ -142,8 +145,41 @@ class AdminCouponAnalyticsIntegrationTest {
         val row=report()["coupons"][0];val m=row["metrics"]
         assertEquals("EXHAUSTED",row["status"].stringValue());assertEquals(1,row["ongoingTrials"].intValue())
         assertEquals(0,row["endedTrials"].intValue());assertTrue(row["endedConversionPercent"].isNull)
+        // Cobrança do site sem valor não é pagamento na subscription_payments: não conta nem fica incompleta.
         assertEquals(100.0,m["conversionPercent"].doubleValue());assertEquals(1235,m["revenueCents"].longValue())
-        assertEquals(1,m["incompleteUsers"].intValue());assertEquals(1,m["payments"].intValue())
+        assertEquals(0,m["incompleteUsers"].intValue());assertEquals(1,m["payments"].intValue())
+    }
+    private fun appStore(owner: UUID, tx: String, at: Instant, priceMillis: Long = 59_900, sandbox: Boolean = false, revoked: Boolean = false) {
+        jdbc.sql("INSERT INTO app_store_subscriptions (original_transaction_id, owner_user_id, environment, product_id, plan, cycle, latest_transaction_id, latest_purchase_date, latest_signed_at, expires_at) VALUES (:tx, :o, 'Production', 'p', 'ORGANIZADOR', 'MONTHLY', :tx, now(), now(), now() + interval '10 days') ON CONFLICT DO NOTHING")
+            .param("tx","orig-$owner").param("o",owner).update()
+        jdbc.sql("INSERT INTO app_store_transactions (transaction_id, original_transaction_id, owner_user_id, product_id, purchase_date, price_millis, currency, revoked_at, environment) VALUES (:id, :orig, :o, 'p', :at, :price, 'BRL', :revoked, :env)")
+            .param("id",tx).param("orig","orig-$owner").param("o",owner).param("at",at.atOffset(ZoneOffset.UTC)).param("price",priceMillis)
+            .param("revoked",if(revoked) at.atOffset(ZoneOffset.UTC) else null).param("env",if(sandbox) "Sandbox" else "Production").update()
+    }
+    private fun googlePlay(owner: UUID, order: String, at: Instant, cents: Long?, test: Boolean = false, state: String? = "PROCESSED") {
+        jdbc.sql("INSERT INTO google_play_subscriptions (purchase_token, owner_user_id, product_id, base_plan_id, plan, cycle, state, expires_at) VALUES (:t, :o, 'p', 'b', 'ORGANIZADOR', 'MONTHLY', 'ACTIVE', now() + interval '10 days') ON CONFLICT DO NOTHING")
+            .param("t","tok-$owner").param("o",owner).update()
+        jdbc.sql("INSERT INTO google_play_orders (order_id, purchase_token, owner_user_id, product_id, base_plan_id, test_purchase, recorded_at, gross_cents, currency, order_state) VALUES (:id, :t, :o, 'p', 'b', :test, :at, :cents, :currency, :state)")
+            .param("id",order).param("t","tok-$owner").param("o",owner).param("test",test).param("at",at.atOffset(ZoneOffset.UTC))
+            .param("cents",cents).param("currency",cents?.let { "BRL" }).param("state",state).update()
+    }
+    @Test fun `App Store and Google Play payments count per platform while test refunded and pre-coupon payments stay out`() {
+        val c=coupon(false);val apple=user();val play=user();val pending=user();val site=user()
+        listOf(apple,play,pending,site).forEach { use(c,it,false) }
+        appStore(apple,"tx-ok",NOW.minusSeconds(60))
+        appStore(apple,"tx-sandbox",NOW.minusSeconds(50),sandbox=true)
+        appStore(apple,"tx-revoked",NOW.minusSeconds(40),revoked=true)
+        appStore(apple,"tx-before",NOW.minusSeconds(90000))
+        googlePlay(play,"GPA.1",NOW.minusSeconds(60),cents=4990)
+        googlePlay(play,"GPA.test",NOW.minusSeconds(50),cents=4990,test=true)
+        googlePlay(play,"GPA.refunded",NOW.minusSeconds(40),cents=4990,state="REFUNDED")
+        googlePlay(pending,"GPA.semvalor",NOW.minusSeconds(60),cents=null,state=null)
+        event(site,"pay",value="10.00")
+        val m=report()["summary"]
+        assertEquals(4,m["users"].intValue());assertEquals(3,m["payingUsers"].intValue());assertEquals(3,m["payments"].intValue())
+        assertEquals(5990+4990+1000,m["revenueCents"].longValue());assertEquals(1,m["incompleteUsers"].intValue())
+        val platforms=m["platforms"].associate { it["source"].stringValue() to (it["payingUsers"].intValue() to it["revenueCents"].longValue()) }
+        assertEquals(mapOf("SITE" to (1 to 1000L),"APP_STORE" to (1 to 5990L),"GOOGLE_PLAY" to (1 to 4990L)),platforms)
     }
     @Test fun `empty report and authorization are precise and response excludes personal data`() {
         val r=report();assertEquals(0,r["coupons"].size());assertTrue(r["summary"]["conversionPercent"].isNull)

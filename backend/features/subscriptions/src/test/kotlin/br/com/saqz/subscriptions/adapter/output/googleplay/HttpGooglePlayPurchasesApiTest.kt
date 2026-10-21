@@ -1,6 +1,8 @@
 package br.com.saqz.subscriptions.adapter.output.googleplay
 
 import br.com.saqz.subscriptions.application.GooglePlayLookup
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmount
+import br.com.saqz.subscriptions.application.GooglePlayOrdersRejectedException
 import br.com.saqz.subscriptions.application.GooglePlayUnavailableException
 import br.com.saqz.subscriptions.domain.GooglePlayState
 import okhttp3.mockwebserver.MockResponse
@@ -134,5 +136,60 @@ class HttpGooglePlayPurchasesApiTest {
         server.enqueue(MockResponse().setResponseCode(500))
 
         assertFailsWith<GooglePlayUnavailableException> { api.acknowledge("app.saqz.organizador", "tok") }
+    }
+
+    @Test
+    fun `orders batchGet reads total, tax, currency and state of each order`() {
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {
+                  "orders": [
+                    {
+                      "orderId": "GPA.1",
+                      "state": "PROCESSED",
+                      "total": { "currencyCode": "BRL", "units": "59", "nanos": 900000000 },
+                      "tax": { "currencyCode": "BRL", "units": "5", "nanos": 390000000 },
+                      "lineItems": [{ "productId": "app.saqz.organizador", "total": { "currencyCode": "BRL", "units": "59", "nanos": 900000000 } }]
+                    },
+                    {
+                      "orderId": "GPA.2",
+                      "state": "REFUNDED",
+                      "lineItems": [{ "total": { "currencyCode": "USD", "units": "9", "nanos": 995000000 } }]
+                    },
+                    { "orderId": "GPA.3", "state": "PENDING" }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        val orders = api.orders(listOf("GPA.1", "GPA.2", "GPA.3"))
+
+        val request = server.takeRequest()
+        assertEquals(
+            "/androidpublisher/v3/applications/app.saqz/orders:batchGet?orderIds=GPA.1&orderIds=GPA.2&orderIds=GPA.3",
+            request.path,
+        )
+        assertEquals("GET", request.method)
+        assertEquals("Bearer token-de-acesso", request.getHeader("Authorization"))
+        assertEquals(
+            listOf(
+                GooglePlayOrderAmount("GPA.1", 5_990, 539, "BRL", "PROCESSED"),
+                // Sem Order.total, vale o total da única linha; sem imposto informado, nulo.
+                GooglePlayOrderAmount("GPA.2", 1_000, null, "USD", "REFUNDED"),
+            ),
+            orders,
+        )
+    }
+
+    @Test
+    fun `orders batchGet with an unknown id is rejected and a server error is unavailable`() {
+        server.enqueue(MockResponse().setResponseCode(404))
+        assertFailsWith<GooglePlayOrdersRejectedException> { api.orders(listOf("GPA.x")) }
+        server.enqueue(MockResponse().setResponseCode(403))
+        assertFailsWith<GooglePlayUnavailableException> { api.orders(listOf("GPA.x")) }
+        server.enqueue(MockResponse().setResponseCode(503))
+        assertFailsWith<GooglePlayUnavailableException> { api.orders(listOf("GPA.x")) }
     }
 }
