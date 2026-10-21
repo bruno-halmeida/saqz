@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Gera os artboards (.dc.html) do canvas da tela de jogo (claude.ai/artifact/EMQMpFSFJFoxhdg4YTU8Z9): versão cartão,
-versão tela cheia (prefixo Cheia-, a escolhida, com a barra de cima no cinza do fundo do app) e os testes da barra
+versão tela cheia (prefixo Cheia-, a escolhida, com a barra de cima no padrão do SaqzTopAppBar) e os testes da barra
 (Topo-), além das prévias em HTML puro.
 
 Uso: python3 gerar.py '{"Main": 1352, "Cinco-um-atleta": 1480, "Confirmado-nao-vao": 696, "Na-espera": 796, "Organizador": 1244, "Organizador-espera": 896, "Rascunho": 412, "Encerrado": 692, "Menu-do-jogo": 844, "Cheia-Main": 1320, "Cheia-Cinco-um-atleta": 1444, "Cheia-Confirmado-nao-vao": 844, "Cheia-Na-espera": 844, "Cheia-Organizador": 1216, "Cheia-Organizador-espera": 868, "Cheia-Rascunho": 844, "Cheia-Encerrado": 844, "Cheia-Menu-do-jogo": 844, "Topo-escura": 560, "Topo-marinho": 560, "Topo-fundo": 560}' fundo
@@ -116,8 +116,8 @@ def appbar(menu=False):
         f'<button aria-label="Voltar" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; '
         f'justify-content: center; padding: 0; border: 0; border-radius: 22px; background: transparent; color: {BLUE};">'
         f'{icon("back", 24)}</button>'
-        f'<span style="flex-grow: 1; min-width: 0; font-size: 22px; line-height: 27px; font-weight: 700; '
-        f'letter-spacing: -0.02em; color: {NAVY};">Jogo</span>'
+        f'<span style="flex-grow: 1; min-width: 0; font-size: 18px; line-height: 23px; font-weight: 600; '
+        f'color: {NAVY};">Jogo</span>'
         f'{trailing}</div>'
     )
 
@@ -125,15 +125,15 @@ def appbar(menu=False):
 def appbar_band(menu=False, title="Vôlei do CERET"):
     """Barra de cima com fundo próprio, acima do cabeçalho azul."""
     if TOPBAR in ("branca", "fundo"):
-        fg, size, weight, track = BLUE, "22px", "700", " letter-spacing: -0.02em;"
+        fg, size, weight, track = BLUE, "18px", "600", ""
         bg = WHITE if TOPBAR == "branca" else CANVAS
         title_color = NAVY
         line = f" border-bottom: 1px solid {BORDER};" if TOPBAR == "branca" else ""
     else:
-        fg, bg, size, weight, track = WHITE, (BLUE_DARK if TOPBAR == "escura" else NAVY_BAR), "17px", "600", ""
+        fg, bg, size, weight, track = WHITE, (BLUE_DARK if TOPBAR == "escura" else NAVY_BAR), "18px", "600", ""
         title_color = WHITE
         line = ""
-    lh = "27px" if size == "22px" else "22px"
+    lh = "23px"
     trailing = ""
     if menu:
         trailing = (f'<button aria-label="Mais ações do jogo" style="width: 44px; height: 44px; flex: none; '
