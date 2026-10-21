@@ -222,6 +222,7 @@ class JdbcFinanceOverviewRepository(
                         FROM group_memberships memberships
                         WHERE memberships.group_id = groups.id
                           AND memberships.membership_type = 'MENSALISTA'
+                          AND NOT memberships.monthly_fee_exempt
                           AND memberships.active = true
                           AND COALESCE(memberships.monthly_fee_cents, groups.monthly_fee_cents) IS NOT NULL
                           AND COALESCE(memberships.monthly_due_day, groups.monthly_due_day) IS NOT NULL

@@ -175,6 +175,57 @@ class MonthlyChargeScheduleIntegrationTest{
         assertTrue(query("SELECT mensalista_since IS NULL FROM group_memberships WHERE group_id='${f.group}' AND user_id='${f.member}'"){it.getBoolean(1)})
     }
 
+    // DEB-115: isenção da mensalidade (FIN-003).
+    private fun exempt(f:Fixture,on:Boolean){execute("UPDATE group_memberships SET monthly_fee_exempt=$on WHERE group_id='${f.group}' AND user_id='${f.member}'")}
+
+    @Test fun `the job never generates for an exempt mensalista`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=TODAY.dayOfMonth);exempt(f,true)
+        assertEquals(emptyList(),schedule().run())
+        assertEquals(0,count("group_charges"))
+    }
+
+    @Test fun `lifting the exemption stamps mensalista since today and follows the late join policy`(){
+        val f=fixture();groupDefaults(f.group,feeCents=3000,dueDay=10);monthly(f.group,f.member,feeCents=null,dueDay=null)
+        execute("UPDATE group_memberships SET mensalista_since='2026-01-05' WHERE group_id='${f.group}'")
+        exempt(f,true);exempt(f,false)
+        assertTrue(query("SELECT mensalista_since=(now() AT TIME ZONE 'America/Sao_Paulo')::date FROM group_memberships WHERE group_id='${f.group}'"){it.getBoolean(1)})
+        // Isenção saiu no dia 20 com "mês seguinte": nada neste mês, volta no próximo.
+        execute("UPDATE access_groups SET monthly_late_join_policy='NEXT_MONTH' WHERE id='${f.group}'")
+        execute("UPDATE group_memberships SET mensalista_since='2026-08-20' WHERE group_id='${f.group}'")
+        assertEquals(emptyList(),schedule(today=LocalDate.of(2026,8,21)).run())
+        assertEquals(listOf(f.member),schedule(today=LocalDate.of(2026,9,10)).run().map{it.memberId})
+        // Isenção saiu no dia 3 com vencimento dia 10: mensalidade inteira, no dia 10.
+        reset();val g=fixture();groupDefaults(g.group,feeCents=3000,dueDay=10);monthly(g.group,g.member,feeCents=null,dueDay=null)
+        execute("UPDATE access_groups SET monthly_late_join_policy='NEXT_MONTH' WHERE id='${g.group}'")
+        execute("UPDATE group_memberships SET mensalista_since='2026-08-03' WHERE group_id='${g.group}'")
+        assertEquals(listOf(g.member),schedule(today=LocalDate.of(2026,8,10)).run().map{it.memberId})
+        assertEquals(LocalDate.of(2026,8,10),date("SELECT due_date FROM group_charges"))
+        assertEquals(3000,int("SELECT amount_cents FROM group_charges"))
+    }
+
+    @Test fun `exempting and lifting in the same month keeps the waived charge and generates nothing new`(){
+        val f=fixture();monthly(f.group,f.member,feeCents=3000,dueDay=TODAY.dayOfMonth)
+        schedule().run().single()
+        exempt(f,true)
+        execute("UPDATE group_charges SET status='WAIVED',version=version+1")
+        exempt(f,false)
+        assertEquals(emptyList<UUID>(),schedule().run().filter{it.status==br.com.saqz.groups.domain.finance.charge.ChargeStatus.PENDING}.map{it.memberId})
+        assertEquals(1,count("group_charges"))
+        assertEquals("WAIVED",string("SELECT status FROM group_charges"))
+    }
+
+    @Test fun `manual generation skips the exempt member without error`(){
+        val f=fixture();val other=user("other")
+        execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at) VALUES ('${f.group}','$other','ATHLETE',now(),now())")
+        monthly(f.group,f.member,feeCents=3000,dueDay=10);monthly(f.group,other,feeCents=3000,dueDay=10);exempt(f,true)
+        val repository=JdbcChargeTransactionRepository(dataSource)
+        val result=ChargeTransactions(JdbcTransactionRunner(dataSource),repository){NOW}.generate(MonthlyGenerationCommand(UUID.randomUUID(),f.group,f.owner,java.time.YearMonth.of(2026,8),3000,LocalDate.of(2026,8,10),setOf(f.member,other)))
+        val success=kotlin.test.assertIs<MonthlyGenerationResult.Success>(result)
+        assertEquals(listOf(other),success.charges.map{it.memberId})
+        assertEquals(0,success.excludedInactiveCount)
+        assertEquals(1,count("group_charges"))
+    }
+
     private fun schedule(today:LocalDate=TODAY,onSkipped:(MonthlyDueMembership,String)->Unit={_,_->}):MonthlyChargeSchedule{
         val repository=JdbcChargeTransactionRepository(dataSource)
         return MonthlyChargeSchedule(repository,ChargeTransactions(JdbcTransactionRunner(dataSource),repository){NOW},{today},onSkipped)

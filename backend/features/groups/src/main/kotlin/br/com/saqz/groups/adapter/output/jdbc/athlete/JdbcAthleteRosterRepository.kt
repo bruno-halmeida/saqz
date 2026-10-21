@@ -76,7 +76,7 @@ class JdbcAthleteRosterRepository(
                    CASE WHEN groups.modality IN ('BEACH_VOLLEYBALL', 'FOOTVOLLEY') THEN m.preferred_side END AS preferred_side,
                    CASE WHEN groups.modality = 'COURT_VOLLEYBALL' THEN m.height_cm END AS height_cm,
                    m.nickname, m.monthly_fee_cents, m.monthly_due_day,
-                   m.membership_type, m.active, m.created_at
+                   m.membership_type, m.active, m.monthly_fee_exempt, m.created_at
             FROM group_memberships m
             JOIN access_users u ON u.id = m.user_id
             JOIN access_groups groups ON groups.id = m.group_id AND groups.deleted_at IS NULL
@@ -112,6 +112,7 @@ class JdbcAthleteRosterRepository(
                 heightCm = row.heightCm,
                 monthlyFeeCents = row.monthlyFeeCents,
                 monthlyDueDay = row.monthlyDueDay,
+                monthlyFeeExempt = row.monthlyFeeExempt,
                 joinedAt = row.joinedAt,
                 role = row.role,
             )
@@ -222,6 +223,7 @@ class JdbcAthleteRosterRepository(
         monthlyDueDay = rs.getNullableInt("monthly_due_day"),
         membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
         active = rs.getBoolean("active"),
+        monthlyFeeExempt = rs.getBoolean("monthly_fee_exempt"),
         joinedAt = rs.getTimestamp("created_at").toInstant(),
         role = GroupRole.valueOf(rs.getString("role")),
     )
@@ -240,6 +242,7 @@ class JdbcAthleteRosterRepository(
         val monthlyDueDay: Int?,
         val membershipType: AthleteMembershipType,
         val active: Boolean,
+        val monthlyFeeExempt: Boolean,
         val joinedAt: Instant,
         val role: GroupRole,
     )

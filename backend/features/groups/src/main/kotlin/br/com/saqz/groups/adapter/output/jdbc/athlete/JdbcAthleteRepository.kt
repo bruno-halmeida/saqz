@@ -43,7 +43,8 @@ class JdbcAthleteRepository(
             m.monthly_fee_cents,
             m.monthly_due_day,
             m.membership_type,
-            m.active
+            m.active,
+            m.monthly_fee_exempt
         FROM group_memberships m
         JOIN access_users u ON u.id = m.user_id
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
@@ -75,7 +76,7 @@ class JdbcAthleteRepository(
               )
             RETURNING user_id, group_id, role, position, secondary_position, level,
                       preferred_side, height_cm, nickname, monthly_fee_cents,
-                      monthly_due_day, membership_type, active
+                      monthly_due_day, membership_type, active, monthly_fee_exempt
         )
         SELECT
             updated.user_id,
@@ -90,7 +91,8 @@ class JdbcAthleteRepository(
             updated.monthly_fee_cents,
             updated.monthly_due_day,
             updated.membership_type,
-            updated.active
+            updated.active,
+            updated.monthly_fee_exempt
         FROM updated
         JOIN access_users u ON u.id = updated.user_id
         JOIN access_groups g ON g.id = updated.group_id AND g.deleted_at IS NULL
@@ -135,6 +137,7 @@ class JdbcAthleteRepository(
                 monthly_due_day = :monthlyDueDay,
                 membership_type = :membershipType,
                 active = :active,
+                monthly_fee_exempt = :monthlyFeeExempt,
                 updated_at = now()
             WHERE group_id = :groupId AND user_id = :userId
               AND EXISTS (
@@ -143,7 +146,7 @@ class JdbcAthleteRepository(
               )
             RETURNING user_id, group_id, role, position, secondary_position, level,
                       preferred_side, height_cm, nickname, monthly_fee_cents,
-                      monthly_due_day, membership_type, active
+                      monthly_due_day, membership_type, active, monthly_fee_exempt
         )
         SELECT
             updated.user_id,
@@ -158,7 +161,8 @@ class JdbcAthleteRepository(
             updated.monthly_fee_cents,
             updated.monthly_due_day,
             updated.membership_type,
-            updated.active
+            updated.active,
+            updated.monthly_fee_exempt
         FROM updated
         JOIN access_users u ON u.id = updated.user_id
         JOIN access_groups g ON g.id = updated.group_id AND g.deleted_at IS NULL
@@ -176,6 +180,7 @@ class JdbcAthleteRepository(
         .param("monthlyDueDay", command.monthlyDueDay, Types.SMALLINT)
         .param("membershipType", command.membershipType.name, Types.OTHER)
         .param("active", command.active)
+        .param("monthlyFeeExempt", command.monthlyFeeExempt ?: false)
         .query(::mapAthlete)
         .single()
 
@@ -224,6 +229,7 @@ class JdbcAthleteRepository(
         monthlyDueDay = rs.getNullableInt("monthly_due_day"),
         membershipType = AthleteMembershipType.valueOf(rs.getString("membership_type")),
         active = rs.getBoolean("active"),
+        monthlyFeeExempt = rs.getBoolean("monthly_fee_exempt"),
     )
 
     private fun ResultSet.getNullableInt(column: String): Int? {

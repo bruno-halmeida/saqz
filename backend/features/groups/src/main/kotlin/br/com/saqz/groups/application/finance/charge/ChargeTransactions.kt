@@ -11,7 +11,8 @@ import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 enum class AttendanceBillingOutcome { CONFIRMED, PROMOTED, WAITLISTED, DECLINED, NO_RESPONSE, WITHDRAWN }
 data class GameChargeInput(val groupId:UUID,val gameId:UUID,val memberId:UUID,val gameFeeCents:Long?,val dueDate:LocalDate,val outcome:AttendanceBillingOutcome,val guestSeq:Int=0)
 data class MonthlyGenerationCommand(val requestId:UUID,val groupId:UUID,val actorId:UUID,val month:YearMonth,val amountCents:Long,val dueDate:LocalDate,val selectedMemberIds:Set<UUID>)
-data class GroupMembers(val all:Set<UUID>,val active:Set<UUID>)
+// exempt: mensalistas com isenção da mensalidade (DEB-115); a geração os pula sem erro.
+data class GroupMembers(val all:Set<UUID>,val active:Set<UUID>,val exempt:Set<UUID> = emptySet())
 sealed interface MonthlyGenerationResult{data class Success(val charges:List<Charge>,val excludedInactiveCount:Int=0):MonthlyGenerationResult;data class Invalid(val fields:Set<String>):MonthlyGenerationResult;data object Hidden:MonthlyGenerationResult}
 interface ChargeTransactionRepository{
     fun createGameCharge(input:GameChargeInput,actorId:UUID,now:Instant):Charge
@@ -40,7 +41,7 @@ class ChargeTransactions(private val transaction:TransactionRunner,private val r
         if(fields.isNotEmpty())return@inTransaction MonthlyGenerationResult.Invalid(fields)
         val members=repository.members(command.groupId)?:return@inTransaction MonthlyGenerationResult.Hidden
         if(!members.all.containsAll(command.selectedMemberIds))return@inTransaction MonthlyGenerationResult.Invalid(setOf("memberIds"))
-        val (active,inactive)=command.selectedMemberIds.partition{it in members.active}
+        val (active,inactive)=command.selectedMemberIds.filterNot{it in members.exempt}.partition{it in members.active}
         MonthlyGenerationResult.Success(active.sortedBy(UUID::toString).map{repository.createMonthlyCharge(command,it,now())},inactive.size)
     }
 }

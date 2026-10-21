@@ -1075,7 +1075,7 @@ class AccessSessionConfiguration {
     @Bean fun athleteRosterRepository(dataSource: DataSource) = JdbcAthleteRosterRepository(dataSource)
     @Bean fun athleteStatsRepository(dataSource: DataSource) = JdbcAthleteStatsRepository(dataSource)
     @Bean fun updateOwnAthleteProfile(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateOwnAthleteProfile(transaction, readRepository, athletes)
-    @Bean fun updateAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository) = UpdateAthlete(transaction, readRepository, athletes, GroupAccessPolicy())
+    @Bean fun updateAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, charges: JdbcChargeManagementRepository) = UpdateAthlete(transaction, readRepository, athletes, GroupAccessPolicy(), charges)
     @Bean fun removeAthlete(transaction: JdbcTransactionRunner, readRepository: JdbcGroupReadRepository, athletes: JdbcAthleteRepository, administrationRevocation: GroupAdministrationRevocation, attendanceRelease: br.com.saqz.groups.application.attendance.AttendanceRelease) = RemoveAthlete(transaction, readRepository, athletes, GroupAccessPolicy(), administrationRevocation, attendanceRelease)
     @Bean fun listAthletes(readRepository: JdbcGroupReadRepository, roster: JdbcAthleteRosterRepository) = ListAthletes(readRepository, roster, GroupAccessPolicy())
     @Bean fun getOwnAthleteProfile(roster: JdbcAthleteRosterRepository) = GetOwnAthleteProfile(roster)

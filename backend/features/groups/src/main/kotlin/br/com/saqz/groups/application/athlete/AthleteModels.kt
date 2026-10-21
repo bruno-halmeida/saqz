@@ -23,6 +23,7 @@ data class AthleteMembership(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val monthlyFeeExempt: Boolean = false,
 )
 
 data class UpdateAthleteCommand(
@@ -38,6 +39,8 @@ data class UpdateAthleteCommand(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    // Nulo mantém o valor atual: os apps das lojas não mandam o campo e não podem apagar a isenção (DEB-115).
+    val monthlyFeeExempt: Boolean? = null,
 )
 
 data class UpdateOwnAthleteProfileCommand(
@@ -108,6 +111,7 @@ data class AthleteRosterEntry(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val monthlyFeeExempt: Boolean = false,
     val joinedAt: Instant = Instant.EPOCH,
     val role: GroupRole = GroupRole.ATHLETE,
 )

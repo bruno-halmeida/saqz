@@ -61,6 +61,8 @@ data class UpdateAthleteRequest @JsonCreator constructor(
     @JsonProperty("active") val active: Boolean,
     @JsonProperty("monthlyFeeCents") val monthlyFeeCents: Long?,
     @JsonProperty("monthlyDueDay") val monthlyDueDay: Int?,
+    // Opcional: ausente mantém a isenção atual (apps das lojas não mandam o campo).
+    @JsonProperty("monthlyFeeExempt") val monthlyFeeExempt: Boolean? = null,
 )
 
 data class AthleteResponse(
@@ -77,6 +79,7 @@ data class AthleteResponse(
     val heightCm: Int?,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+    val monthlyFeeExempt: Boolean,
 )
 
 data class AthleteRosterEntryResponse(
@@ -96,6 +99,7 @@ data class AthleteRosterEntryResponse(
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
     val joinedAt: Instant,
+    val monthlyFeeExempt: Boolean,
 )
 
 data class AthleteRosterResponse(val athletes: List<AthleteRosterEntryResponse>)
@@ -212,6 +216,7 @@ class AthleteController(
             heightCm = request.heightCm,
             monthlyFeeCents = request.monthlyFeeCents,
             monthlyDueDay = request.monthlyDueDay,
+            monthlyFeeExempt = request.monthlyFeeExempt,
         )
         return when (val result = updateAthlete.execute(actor(identity), command)) {
             UpdateAthleteResult.GroupNotFound -> throw GroupNotFoundException()
@@ -317,6 +322,7 @@ private fun AthleteMembership.toResponse() = AthleteResponse(
     heightCm = heightCm,
     monthlyFeeCents = monthlyFeeCents,
     monthlyDueDay = monthlyDueDay,
+    monthlyFeeExempt = monthlyFeeExempt,
 )
 
 private fun AthleteRosterEntry.toResponse(viewerRole: GroupRole?): AthleteRosterEntryResponse {
@@ -337,6 +343,8 @@ private fun AthleteRosterEntry.toResponse(viewerRole: GroupRole?): AthleteRoster
         monthlyFeeCents = monthlyFeeCents.takeIf { canReadFinancial },
         monthlyDueDay = monthlyDueDay.takeIf { canReadFinancial },
         joinedAt = joinedAt,
+        // Como valor e dia, a isenção é dado financeiro: só dono e admin a veem.
+        monthlyFeeExempt = monthlyFeeExempt && canReadFinancial,
         financialStatus = when (viewerRole) {
             GroupRole.OWNER, GroupRole.ADMIN -> financialStatus.name
             GroupRole.ATHLETE, null -> FinancialStatus.DESCONHECIDO.name

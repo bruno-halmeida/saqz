@@ -346,6 +346,46 @@ class AthleteEndpointIntegrationTest {
     }
 
     @Test
+    fun `patch with monthly fee exempt grants it, absent field keeps it and avulso with it is refused`() {
+        val granted = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf("membershipType" to "MENSALISTA", "active" to true, "monthlyFeeCents" to 12000, "monthlyDueDay" to 8, "monthlyFeeExempt" to true),
+        )
+        assertEquals(200, granted.statusCode())
+        assertTrue(json(granted)["monthlyFeeExempt"].booleanValue())
+        assertEquals(true, athletes.updates.last().monthlyFeeExempt)
+
+        // App das lojas (1.0.8/1.0.10) não manda o campo: o comando chega nulo e a isenção fica.
+        val legacy = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf("membershipType" to "MENSALISTA", "active" to true, "monthlyFeeCents" to 12000, "monthlyDueDay" to 8),
+        )
+        assertEquals(200, legacy.statusCode())
+        assertTrue(json(legacy)["monthlyFeeExempt"].booleanValue())
+
+        val refused = patch(
+            "/api/groups/$groupId/athletes/$memberId",
+            mapOf("membershipType" to "AVULSO", "active" to true, "monthlyFeeExempt" to true),
+        )
+        assertProblem(refused, 422, "VALIDATION_FAILED")
+        assertTrue(json(refused)["fieldErrors"].has("monthlyFeeExempt"))
+    }
+
+    @Test
+    fun `roster shows monthly fee exempt to the organizer only`() {
+        roster.entries = listOf(
+            AthleteRosterEntry(
+                memberId, AccessName.from("Pessoa"), null, null, AthleteMembershipType.MENSALISTA, true,
+                FinancialStatus.EM_DIA, monthlyFeeExempt = true,
+            ),
+        )
+        assertTrue(json(getRoster(groupId))["athletes"][0]["monthlyFeeExempt"].booleanValue())
+
+        read.role = GroupRole.ATHLETE
+        assertFalse(json(getRoster(groupId))["athletes"][0]["monthlyFeeExempt"].booleanValue())
+    }
+
+    @Test
     fun `organizer patch accepts all new attributes and overrides`() {
         val response = patch(
             "/api/groups/$groupId/athletes/$memberId",
@@ -680,6 +720,7 @@ class AthleteEndpointIntegrationTest {
                     heightCm = command.heightCm,
                     monthlyFeeCents = command.monthlyFeeCents,
                     monthlyDueDay = command.monthlyDueDay,
+                    monthlyFeeExempt = command.monthlyFeeExempt ?: false,
                 )
             members[command.userId] = changed
             return changed
