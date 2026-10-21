@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Gera os artboards (.dc.html) do canvas da tela de jogo (claude.ai/artifact/EMQMpFSFJFoxhdg4YTU8Z9), nas versões
-cartão e tela cheia (prefixo Cheia-), e as prévias em HTML puro.
+"""Gera os artboards (.dc.html) do canvas da tela de jogo (claude.ai/artifact/EMQMpFSFJFoxhdg4YTU8Z9): versão cartão,
+versão tela cheia (prefixo Cheia-, a escolhida) e os testes da barra de cima (Topo-), além das prévias em HTML puro.
 
-Uso: python3 gerar.py '{"Main":1352,"Cinco-um-atleta":1480,"Confirmado-nao-vao":696,"Na-espera":796,"Organizador":1244,"Organizador-espera":896,"Rascunho":412,"Encerrado":692,"Menu-do-jogo":844,"Cheia-Main":1308,"Cheia-Cinco-um-atleta":1432,"Cheia-Confirmado-nao-vao":844,"Cheia-Na-espera":844,"Cheia-Organizador":1204,"Cheia-Organizador-espera":852,"Cheia-Rascunho":844,"Cheia-Encerrado":844,"Cheia-Menu-do-jogo":844}'
+Uso: python3 gerar.py '{"Main": 1352, "Cinco-um-atleta": 1480, "Confirmado-nao-vao": 696, "Na-espera": 796, "Organizador": 1244, "Organizador-espera": 896, "Rascunho": 412, "Encerrado": 692, "Menu-do-jogo": 844, "Cheia-Main": 1320, "Cheia-Cinco-um-atleta": 1444, "Cheia-Confirmado-nao-vao": 844, "Cheia-Na-espera": 844, "Cheia-Organizador": 1216, "Cheia-Organizador-espera": 868, "Cheia-Rascunho": 844, "Cheia-Encerrado": 844, "Cheia-Menu-do-jogo": 844, "Topo-escura": 560, "Topo-marinho": 560, "Topo-branca": 560}' branca
 
 Tokens e medidas copiados de mobile/core/design-system (SaqzColorTokens, SaqzTypography,
 SaqzMetrics, SaqzHeroCard, AttendanceScoreBoard, SaqzMemberRow, SaqzStatusChip).
@@ -86,8 +86,13 @@ ICONS = {
 
 # Tela cheia: o azul vira o cabeçalho da tela (de borda a borda, com a barra de cima) e a lista ocupa a largura toda.
 FULL = False
+# Barra de cima na tela cheia: "azul" (some no cabeçalho), "escura" (azul pressionado), "marinho" ou "branca".
+TOPBAR = "azul"
 APPBAR_MARK = "<!--appbar-->"
+NAVY_BAR = NAVY
+BLUE_DARK = "#052BB3"
 BALL_FULL = BALL.replace("right: -58px; top: -62px;", "right: -58px; top: -6px;")
+BALL_FULL_BAND = BALL.replace("right: -58px; top: -62px;", "right: -58px; top: 0px;")
 
 
 def icon(name, size=20, color="currentColor", extra=""):
@@ -115,6 +120,34 @@ def appbar(menu=False):
     )
 
 
+def appbar_band(menu=False, title="Vôlei do CERET"):
+    """Barra de cima com fundo próprio, acima do cabeçalho azul."""
+    if TOPBAR == "branca":
+        fg, bg, size, weight, track = BLUE, WHITE, "22px", "700", " letter-spacing: -0.02em;"
+        title_color = NAVY
+        line = f" border-bottom: 1px solid {BORDER};"
+    else:
+        fg, bg, size, weight, track = WHITE, (BLUE_DARK if TOPBAR == "escura" else NAVY_BAR), "17px", "600", ""
+        title_color = WHITE
+        line = ""
+    lh = "27px" if size == "22px" else "22px"
+    trailing = ""
+    if menu:
+        trailing = (f'<button aria-label="Mais ações do jogo" style="width: 44px; height: 44px; flex: none; '
+                    f'display: flex; align-items: center; justify-content: center; padding: 0; border: 0; '
+                    f'border-radius: 22px; background: transparent; color: {fg};">{icon("more", 24)}</button>')
+    return (
+        f'<div style="position: relative; display: flex; align-items: center; gap: 4px; min-height: 56px; '
+        f'box-sizing: border-box; padding: 6px 8px 6px 4px; background: {bg};{line} flex: none;">'
+        f'<button aria-label="Voltar" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; '
+        f'justify-content: center; padding: 0; border: 0; border-radius: 22px; background: transparent; color: {fg};">'
+        f'{icon("back", 24)}</button>'
+        f'<span style="flex-grow: 1; min-width: 0; font-size: {size}; line-height: {lh}; font-weight: {weight};{track} '
+        f'color: {title_color}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{title}</span>'
+        f'{trailing}</div>'
+    )
+
+
 def appbar_blue(menu=False, title="Vôlei do CERET"):
     trailing = ""
     if menu:
@@ -133,12 +166,20 @@ def appbar_blue(menu=False, title="Vôlei do CERET"):
     )
 
 
+def full_inner(inner, menu):
+    """Na tela cheia a barra fica dentro do azul ("azul") ou numa faixa própria acima dele."""
+    if TOPBAR == "azul":
+        return inner.replace(APPBAR_MARK, appbar_blue(menu))
+    body_html = inner.replace(BALL_FULL, BALL_FULL_BAND).replace(APPBAR_MARK, '<span style="height: 8px; flex: none;"></span>')
+    return appbar_band(menu) + body_html
+
+
 def screen(inner, height, menu=False):
     if FULL:
         return (
             f'<div style="width: 390px; height: {height}px; box-sizing: border-box; background: {WHITE}; {UI}; '
             f'color: {NAVY}; display: flex; flex-direction: column; overflow: hidden; position: relative;">'
-            f'{inner.replace(APPBAR_MARK, appbar_blue(menu))}</div>'
+            f'{full_inner(inner, menu)}</div>'
         )
     return (
         f'<div style="width: 390px; height: {height}px; box-sizing: border-box; background: {CANVAS}; {UI}; '
@@ -654,7 +695,7 @@ def board_e():
                 f'{sub_html}</span></button>')
 
     sheet = (
-        f'<div style="position: absolute; inset: 0; background: {SCRIM}; display: flex; flex-direction: column; '
+        f'<div style="position: absolute; inset: 0; z-index: 2; background: {SCRIM}; display: flex; flex-direction: column; '
         f'justify-content: flex-end;">'
         f'<div role="dialog" aria-label="Ações do jogo" style="background: {WHITE}; border-radius: 28px 28px 0 0; '
         f'padding: 10px 16px 28px; box-shadow: 0 -12px 40px rgba(14,23,56,0.12); display: flex; flex-direction: column;">'
@@ -767,7 +808,7 @@ def menu_root(h):
         return (
             f'<div style="width: 390px; height: {h}px; box-sizing: border-box; background: {WHITE}; {UI}; color: {NAVY}; '
             f'display: flex; flex-direction: column; overflow: hidden; position: relative;">'
-            f'{behind.replace(APPBAR_MARK, appbar_blue(True))}{sheet}</div>'
+            f'{full_inner(behind, True)}{sheet}</div>'
         )
     return (
         f'<div style="width: 390px; height: {h}px; box-sizing: border-box; background: {CANVAS}; {UI}; color: {NAVY}; '
@@ -795,7 +836,16 @@ def write_set(heights, prefix="", suffix=""):
 
 if __name__ == "__main__":
     heights = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
+    topbar = sys.argv[2] if len(sys.argv) > 2 else "escura"
     write_set(heights)
     FULL = True
+    for variant in ("escura", "marinho", "branca"):
+        TOPBAR = variant
+        h = heights.get(f"Topo-{variant}", 1308)
+        with open(os.path.join(PROJECT, f"Topo-{variant}.dc.html"), "w") as f:
+            f.write(dc_html(f"Tela de jogo · barra de cima {variant}", BOARDS["Main"][1](h), h))
+        with open(os.path.join(RENDER, f"Topo-{variant}.html"), "w") as f:
+            f.write(preview_html(BOARDS["Main"][1](h)))
+    TOPBAR = topbar
     write_set(heights, prefix="Cheia-", suffix=" · tela cheia")
     print("ok")
