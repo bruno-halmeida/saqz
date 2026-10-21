@@ -68,3 +68,8 @@ Ver a seção "Ambiente" no começo: `adb` fora do PATH, `GID` no zsh, ANR do em
 ## Tempo
 
 De 22:40 a 23:08 (cerca de 28 min), incluindo builds e o reboot do emulador.
+## Análise da sessão principal (20/10, 23h10)
+
+- **I17 não é defeito.** Repeti no iPhone o caminho exato do I16 (atleta mensalista → `Dar isenção` → `Por jogo` → `Salvar alterações`) com a máquina já aliviada (load 7) e, uns 6 s depois de voltar, a linha era `QA Atl 20/10 · Avulso`, sem "com isenção". O mesmo sem isenção (mensalista → `Por jogo` → salvar). A lista recarrega ao reaparecer, mas por baixo, mantendo as linhas antigas até a resposta chegar; com load de 180 a 340 a captura saiu antes. Conta como PASSOU: **18 de 18 passos executados passaram**.
+- **Observações, todas anteriores ao DEB-115 e fora do escopo:** o atleta vê a cobrança dispensada como `Isenta` e o organizador vê `Dispensada` (mesmo estado `WAIVED`, rótulos de antes); o contador `0/3 mensalidades recebidas` do caixa conta a dispensada no total; a lista de membros mostra o nome da conta, não o apelido. O PATCH exige `active`, e o app sempre manda (só o corpo montado à mão no I12 não tinha).
+- **Ambiente:** no zsh a receita `GID=` do roteiro 10 colide com a variável do shell; quem rodar em zsh deve trocar o nome (como o executor fez, `GRP`).
