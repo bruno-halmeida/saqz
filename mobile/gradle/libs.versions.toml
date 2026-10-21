@@ -25,7 +25,6 @@ junit = "4.13.2"
 kotlin = "2.4.10"
 kotlinx-coroutines = "1.10.2"
 kotlinx-datetime = "0.8.0"
-kotlinx-browser = "0.5.0"
 kotlin-qrcode = "4.5.0"
 koin-bom = "4.2.2"
 ktor = "3.5.1"
@@ -93,7 +92,6 @@ firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "fir
 google-id = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "google-id" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
-kotlinx-browser = { module = "org.jetbrains.kotlinx:kotlinx-browser", version.ref = "kotlinx-browser" }
 kotlin-qrcode = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "kotlin-qrcode" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
@@ -108,7 +106,6 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
-ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 icons-lucide = { module = "com.composables:icons-lucide", version.ref = "lucide" }
@@ -120,7 +117,6 @@ lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:l
 navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "navigation3-ui" }
 navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3-runtime" }
 # Web: o host liga o voltar do navegador ao dispatcher do Compose (mesma versão que o navigation3-ui puxa).
-navigationevent-compose = { module = "org.jetbrains.androidx.navigationevent:navigationevent-compose", version = "1.0.1" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
