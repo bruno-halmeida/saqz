@@ -63,6 +63,12 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.member_editor_absences
 import br.com.saqz.groups.resources.member_editor_admin
 import br.com.saqz.groups.resources.member_editor_admin_hint
+import br.com.saqz.groups.resources.member_editor_exemption
+import br.com.saqz.groups.resources.member_editor_exemption_back
+import br.com.saqz.groups.resources.member_editor_exemption_body
+import br.com.saqz.groups.resources.member_editor_exemption_confirm
+import br.com.saqz.groups.resources.member_editor_exemption_hint
+import br.com.saqz.groups.resources.member_editor_exemption_title
 import br.com.saqz.groups.resources.member_editor_advanced
 import br.com.saqz.groups.resources.member_editor_attendance
 import br.com.saqz.groups.resources.member_editor_attendance_value
@@ -135,6 +141,8 @@ object MemberEditorTags {
     const val Height = "member-editor-height"
     const val Admin = "member-editor-admin"
     const val Billing = "member-editor-billing"
+    const val Exemption = "member-editor-exemption"
+    const val ExemptionConfirm = "member-editor-exemption-confirm"
     const val MonthlyPendingNotice = "member-editor-monthly-pending-notice"
     const val Remove = "member-editor-remove"
     const val Save = "member-editor-save"
@@ -211,6 +219,7 @@ fun MemberEditorScreen(
         }
         MemberEditorBillingSheet(state, onIntent)
         MemberEditorRemoveSheet(state, onIntent)
+        MemberEditorExemptionSheet(state, onIntent)
         HeightPickerSheet(
             open = heightPickerOpen && !state.isLoading && !state.loadFailed,
             heightCm = state.heightCm,
@@ -393,7 +402,7 @@ private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEd
                 modifier = Modifier.testTag(MemberEditorTags.MonthlyPendingNotice),
             )
         }
-        if (state.membershipType == AthleteMembershipType.MENSALISTA) {
+        if (state.membershipType == AthleteMembershipType.MENSALISTA && !state.monthlyFeeExempt) {
             SaqzCard(tone = br.com.saqz.designsystem.SaqzCardTone.Soft) {
                 Text(
                     text = stringResource(
@@ -414,7 +423,7 @@ private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEd
                     modifier = Modifier.testTag(MemberEditorTags.Billing),
                 )
             }
-        } else {
+        } else if (state.membershipType != AthleteMembershipType.MENSALISTA) {
             SaqzButton(
                 label = stringResource(Res.string.member_editor_make_monthly),
                 onClick = openBilling,
@@ -423,6 +432,22 @@ private fun MemberEditorMembership(state: MemberEditorState, onIntent: (MemberEd
                 enabled = state.operation == null,
                 modifier = Modifier.testTag(MemberEditorTags.Billing),
             )
+        }
+        if (state.showsExemption) {
+            Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
+                SaqzSwitch(
+                    checked = state.monthlyFeeExempt,
+                    onCheckedChange = { onIntent(MemberEditorIntent.ExemptionChanged(it)) },
+                    label = stringResource(Res.string.member_editor_exemption),
+                    enabled = state.operation == null,
+                    modifier = Modifier.testTag(MemberEditorTags.Exemption),
+                )
+                Text(
+                    text = stringResource(Res.string.member_editor_exemption_hint),
+                    style = SaqzTheme.typography.support,
+                    color = SaqzTheme.colors.textSecondary,
+                )
+            }
         }
         Spacer(Modifier.size(metrics.subGrid))
     }
@@ -644,6 +669,36 @@ private fun MemberEditorRemoveSheet(state: MemberEditorState, onIntent: (MemberE
                 tone = br.com.saqz.designsystem.SaqzChipTone.Warning,
             )
         }
+    }
+}
+
+@Composable
+private fun MemberEditorExemptionSheet(state: MemberEditorState, onIntent: (MemberEditorIntent) -> Unit) {
+    SaqzBottomSheet(
+        open = state.exemptionConfirmOpen,
+        onClose = { onIntent(MemberEditorIntent.DismissExemption) },
+        title = stringResource(Res.string.member_editor_exemption_title),
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.member_editor_exemption_back),
+                onClick = { onIntent(MemberEditorIntent.DismissExemption) },
+                variant = SaqzButtonVariant.Ghost,
+                modifier = Modifier.weight(1f),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.member_editor_exemption_confirm),
+                onClick = { onIntent(MemberEditorIntent.ConfirmExemption) },
+                loading = state.operation == MemberEditorOperation.Exemption,
+                enabled = state.operation == null,
+                modifier = Modifier.weight(1f).testTag(MemberEditorTags.ExemptionConfirm),
+            )
+        },
+    ) {
+        Text(
+            text = stringResource(Res.string.member_editor_exemption_body, state.name),
+            style = SaqzTheme.typography.body,
+            color = SaqzTheme.colors.textSecondary,
+        )
     }
 }
 

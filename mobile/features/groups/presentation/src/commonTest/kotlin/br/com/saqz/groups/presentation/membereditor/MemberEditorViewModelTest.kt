@@ -629,6 +629,97 @@ class MemberEditorViewModelTest {
         audit = emptyList(),
     )
 
+    // DEB-115: chave "Isenção da mensalidade".
+    private fun mensalista(exempt: Boolean = false) = FakeAthleteGateway(
+        rosterResult = SaqzResult.Success(
+            listOf(
+                sampleRosterEntry().copy(
+                    membershipType = AthleteMembershipType.MENSALISTA,
+                    monthlyFeeCents = 9000,
+                    monthlyDueDay = 5,
+                    monthlyFeeExempt = exempt,
+                ),
+            ),
+        ),
+    )
+
+    @Test
+    fun `turning the exemption on asks first and confirming sends true`() = runTest {
+        val athlete = mensalista()
+        val viewModel = editor(athlete)
+        assertTrue(viewModel.state.value.showsExemption)
+
+        viewModel.onIntent(MemberEditorIntent.ExemptionChanged(true))
+        assertTrue(viewModel.state.value.exemptionConfirmOpen)
+        assertEquals(null, athlete.lastUpdateCommand)
+
+        viewModel.onIntent(MemberEditorIntent.ConfirmExemption)
+        val sent = athlete.lastUpdateCommand
+        assertEquals(true, sent?.monthlyFeeExempt)
+        assertEquals(AthleteMembershipType.MENSALISTA, sent?.membershipType)
+        assertEquals(9000, sent?.monthlyFeeCents)
+        assertEquals(5, sent?.monthlyDueDay)
+        assertTrue(viewModel.state.value.monthlyFeeExempt)
+        assertFalse(viewModel.state.value.exemptionConfirmOpen)
+        assertEquals(null, viewModel.state.value.operation)
+    }
+
+    @Test
+    fun `backing out of the exemption confirmation sends nothing`() = runTest {
+        val athlete = mensalista()
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.ExemptionChanged(true))
+        viewModel.onIntent(MemberEditorIntent.DismissExemption)
+
+        assertEquals(null, athlete.lastUpdateCommand)
+        assertFalse(viewModel.state.value.monthlyFeeExempt)
+        assertFalse(viewModel.state.value.exemptionConfirmOpen)
+    }
+
+    @Test
+    fun `turning the exemption off saves false right away`() = runTest {
+        val athlete = mensalista(exempt = true)
+        val viewModel = editor(athlete)
+        assertTrue(viewModel.state.value.monthlyFeeExempt)
+
+        viewModel.onIntent(MemberEditorIntent.ExemptionChanged(false))
+
+        assertFalse(viewModel.state.value.exemptionConfirmOpen)
+        assertEquals(false, athlete.lastUpdateCommand?.monthlyFeeExempt)
+        assertFalse(viewModel.state.value.monthlyFeeExempt)
+    }
+
+    @Test
+    fun `saving the form keeps the exemption and single game members have no switch`() = runTest {
+        val exempt = mensalista(exempt = true)
+        editor(exempt).onIntent(MemberEditorIntent.Save)
+        assertEquals(true, exempt.lastUpdateCommand?.monthlyFeeExempt)
+
+        val single = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry().copy(membershipType = AthleteMembershipType.AVULSO))),
+        )
+        val viewModel = editor(single)
+        assertFalse(viewModel.state.value.showsExemption)
+        viewModel.onIntent(MemberEditorIntent.ExemptionChanged(true))
+        assertFalse(viewModel.state.value.exemptionConfirmOpen)
+        assertEquals(null, single.lastUpdateCommand)
+    }
+
+    @Test
+    fun `a failed exemption keeps it off and shows the warning`() = runTest {
+        val athlete = mensalista()
+        athlete.updateResult = SaqzResult.Failure(AthleteError.DataFailure(DataError.Conflict))
+        val viewModel = editor(athlete)
+
+        viewModel.onIntent(MemberEditorIntent.ExemptionChanged(true))
+        viewModel.onIntent(MemberEditorIntent.ConfirmExemption)
+
+        assertFalse(viewModel.state.value.monthlyFeeExempt)
+        assertEquals(null, viewModel.state.value.operation)
+        assertTrue(viewModel.state.value.error != null)
+    }
+
     private fun editor(
         athlete: FakeAthleteGateway,
         membership: FakeGroupMembershipGateway = FakeGroupMembershipGateway(

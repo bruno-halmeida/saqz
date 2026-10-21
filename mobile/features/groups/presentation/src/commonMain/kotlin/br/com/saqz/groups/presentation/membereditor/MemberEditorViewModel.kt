@@ -83,21 +83,25 @@ class MemberEditorViewModel(
             }
             MemberEditorIntent.SaveBilling -> saveBilling()
             is MemberEditorIntent.AdminChanged -> changeRole(intent.value)
+            is MemberEditorIntent.ExemptionChanged -> changeExemption(intent.value)
+            MemberEditorIntent.ConfirmExemption -> saveExemption(true)
             MemberEditorIntent.Save -> save()
             MemberEditorIntent.OpenRemove -> openRemove()
             MemberEditorIntent.ConfirmRemove -> remove()
             MemberEditorIntent.DismissBilling,
             MemberEditorIntent.DismissRemove,
+            MemberEditorIntent.DismissExemption,
             MemberEditorIntent.DismissSubscriptionRequired,
             -> dismissSheet(intent)
         }
     }
 
-    /** As três folhas que a tela abre por cima do formulário fecham da mesma forma: baixando a bandeira. */
+    /** As folhas que a tela abre por cima do formulário fecham da mesma forma: baixando a bandeira. */
     private fun dismissSheet(intent: MemberEditorIntent) = update {
         when (intent) {
             MemberEditorIntent.DismissBilling -> it.copy(billingSheetOpen = false)
             MemberEditorIntent.DismissRemove -> it.copy(removeSheetOpen = false)
+            MemberEditorIntent.DismissExemption -> it.copy(exemptionConfirmOpen = false)
             else -> it.copy(subscriptionRequired = false)
         }
     }
@@ -195,6 +199,7 @@ class MemberEditorViewModel(
                 active = entry.active,
                 monthlyFeeOverrideCents = entry.monthlyFeeCents,
                 monthlyDueDayOverride = entry.monthlyDueDay,
+                monthlyFeeExempt = entry.monthlyFeeExempt,
                 defaultMonthlyFeeCents = defaultFee,
                 defaultMonthlyDueDay = defaultDueDay,
                 billingAmountText = formatCents(currentFee),
@@ -246,6 +251,22 @@ class MemberEditorViewModel(
         )
     }
 
+    private fun changeExemption(value: Boolean) {
+        val current = state.value
+        if (!current.showsExemption || current.operation != null || value == current.monthlyFeeExempt) return
+        if (value) update { it.copy(exemptionConfirmOpen = true, error = null) } else saveExemption(false)
+    }
+
+    /** Grava só a isenção sobre o membro gravado, como o "Alterar cobrança": o rascunho do formulário fica. */
+    private fun saveExemption(value: Boolean) {
+        val persisted = member ?: return
+        if (persisted.membershipType != AthleteMembershipType.MENSALISTA) return
+        patch(
+            operation = MemberEditorOperation.Exemption,
+            command = persisted.toPersistedUpdateCommand().copy(monthlyFeeExempt = value),
+        )
+    }
+
     private fun save() {
         val current = state.value
         // O seletor só entrega 1,00 m a 2,50 m; sobra a altura antiga carregada do servidor fora da faixa.
@@ -286,9 +307,17 @@ class MemberEditorViewModel(
             active = athlete.active,
             monthlyFeeCents = athlete.monthlyFeeCents,
             monthlyDueDay = athlete.monthlyDueDay,
+            monthlyFeeExempt = athlete.monthlyFeeExempt,
         )
         update {
-            if (operation == MemberEditorOperation.Billing) {
+            if (operation == MemberEditorOperation.Exemption) {
+                it.copy(
+                    operation = null,
+                    error = null,
+                    monthlyFeeExempt = athlete.monthlyFeeExempt,
+                    exemptionConfirmOpen = false,
+                )
+            } else if (operation == MemberEditorOperation.Billing) {
                 it.copy(
                     operation = null,
                     error = null,
@@ -296,6 +325,7 @@ class MemberEditorViewModel(
                     persistedMembershipType = athlete.membershipType,
                     monthlyFeeOverrideCents = athlete.monthlyFeeCents,
                     monthlyDueDayOverride = athlete.monthlyDueDay,
+                    monthlyFeeExempt = athlete.monthlyFeeExempt,
                     billingSheetOpen = false,
                 )
             } else {
@@ -314,6 +344,7 @@ class MemberEditorViewModel(
                     active = athlete.active,
                     monthlyFeeOverrideCents = athlete.monthlyFeeCents,
                     monthlyDueDayOverride = athlete.monthlyDueDay,
+                    monthlyFeeExempt = athlete.monthlyFeeExempt,
                     billingSheetOpen = it.billingSheetOpen,
                 )
             }
@@ -407,12 +438,20 @@ class MemberEditorViewModel(
         heightCm = heightCm,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
+        // Avulso não tem isenção; o backend zera de qualquer forma.
+        monthlyFeeExempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
+    )
+
+    private fun AthleteRosterEntry.toPersistedUpdateCommand() = toBillingUpdateCommand(
+        membershipType = membershipType,
+        monthlyFeeCents = monthlyFeeCents,
+        monthlyDueDay = monthlyDueDay,
     )
 
     private fun AthleteRosterEntry.toBillingUpdateCommand(
         membershipType: AthleteMembershipType,
-        monthlyFeeCents: Long,
-        monthlyDueDay: Int,
+        monthlyFeeCents: Long?,
+        monthlyDueDay: Int?,
     ) = UpdateAthleteCommand(
         groupId = GroupId(groupId),
         userId = userId,
@@ -426,6 +465,7 @@ class MemberEditorViewModel(
         heightCm = heightCm,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
+        monthlyFeeExempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
     )
 
     private fun clearDraft() {

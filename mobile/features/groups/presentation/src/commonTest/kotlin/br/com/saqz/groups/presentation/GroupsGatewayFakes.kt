@@ -215,6 +215,7 @@ class FakeAthleteGateway(
                 heightCm = command.heightCm,
                 monthlyFeeCents = command.monthlyFeeCents,
                 monthlyDueDay = command.monthlyDueDay,
+                monthlyFeeExempt = command.monthlyFeeExempt,
             ),
         )
     }

@@ -10,7 +10,7 @@ import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 
-enum class MemberEditorOperation { Save, Billing, Role, Remove }
+enum class MemberEditorOperation { Save, Billing, Role, Exemption, Remove }
 
 @Immutable
 data class MemberEditorState(
@@ -41,6 +41,10 @@ data class MemberEditorState(
     val active: Boolean = true,
     val monthlyFeeOverrideCents: Long? = null,
     val monthlyDueDayOverride: Int? = null,
+    /** Isenção da mensalidade gravada (DEB-115): continua mensalista, sem mensalidade. */
+    val monthlyFeeExempt: Boolean = false,
+    /** Confirmação de "Dar isenção da mensalidade?" aberta (só ao ligar; desligar salva direto). */
+    val exemptionConfirmOpen: Boolean = false,
     val defaultMonthlyFeeCents: Long? = null,
     val defaultMonthlyDueDay: Int? = null,
     val billingAmountText: String = "",
@@ -65,6 +69,10 @@ data class MemberEditorState(
     val monthlyPendingNotice: Boolean
         get() = hasPendingMonthly && membershipType == AthleteMembershipType.AVULSO &&
             persistedMembershipType == AthleteMembershipType.MENSALISTA
+    /** A chave só existe para quem é mensalista gravado e continua mensalista no formulário. */
+    val showsExemption: Boolean
+        get() = membershipType == AthleteMembershipType.MENSALISTA &&
+            persistedMembershipType == AthleteMembershipType.MENSALISTA
     val isOwner: Boolean get() = role == GroupRole.OWNER
     /** Dono nunca sai; admin só o dono remove (SAI-003). `canManageRoles` é o dono quem vê. */
     val canRemove: Boolean get() = !isOwner && (role != GroupRole.ADMIN || canManageRoles)
@@ -87,6 +95,10 @@ sealed interface MemberEditorIntent {
     data class BillingDueDaySelected(val value: Int) : MemberEditorIntent
     data object SaveBilling : MemberEditorIntent
     data class AdminChanged(val value: Boolean) : MemberEditorIntent
+    /** Ligar abre a confirmação; desligar salva na hora. */
+    data class ExemptionChanged(val value: Boolean) : MemberEditorIntent
+    data object ConfirmExemption : MemberEditorIntent
+    data object DismissExemption : MemberEditorIntent
     data object Save : MemberEditorIntent
     data object OpenRemove : MemberEditorIntent
     data object DismissRemove : MemberEditorIntent

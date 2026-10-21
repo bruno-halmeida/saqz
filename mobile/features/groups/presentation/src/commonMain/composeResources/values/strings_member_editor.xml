@@ -26,6 +26,12 @@
     <string name="member_editor_make_monthly">Tornar mensalista</string>
     <string name="member_editor_admin">Pode administrar o grupo</string>
     <string name="member_editor_admin_hint">Cria jogos, avisa a galera e edita o grupo.</string>
+    <string name="member_editor_exemption">Isenção da mensalidade</string>
+    <string name="member_editor_exemption_hint">Continua mensalista, sem mensalidade.</string>
+    <string name="member_editor_exemption_title">Dar isenção da mensalidade?</string>
+    <string name="member_editor_exemption_body">%1$s continua mensalista e não recebe mais mensalidade. A pendente deste mês será dispensada.</string>
+    <string name="member_editor_exemption_confirm">Dar isenção</string>
+    <string name="member_editor_exemption_back">Voltar</string>
     <string name="member_editor_stats">Estatísticas</string>
     <string name="member_editor_games">Jogos</string>
     <string name="member_editor_attendance">Presença</string>

@@ -96,6 +96,61 @@ class MemberEditorScreenTest {
     }
 
     @Test
+    fun `exemption switch only for monthly members and the billing card goes away when it is on`() = runComposeUiTest {
+        var state by mutableStateOf(
+            memberEditorPreviewState.copy(
+                persistedMembershipType = AthleteMembershipType.MENSALISTA,
+                membershipType = AthleteMembershipType.MENSALISTA,
+                monthlyFeeExempt = false,
+            ),
+        )
+        setContent { SaqzTheme { MemberEditorScreen(state = state, onIntent = {}, onBack = {}) } }
+
+        onNodeWithTag(MemberEditorTags.Exemption).performScrollTo().assertExists()
+        onNodeWithText("Continua mensalista, sem mensalidade.").assertExists()
+        onNodeWithTag(MemberEditorTags.Billing).assertExists()
+
+        state = state.copy(monthlyFeeExempt = true)
+        waitForIdle()
+        onNodeWithTag(MemberEditorTags.Exemption).assertExists()
+        onNodeWithTag(MemberEditorTags.Billing).assertDoesNotExist()
+
+        state = state.copy(
+            persistedMembershipType = AthleteMembershipType.AVULSO,
+            membershipType = AthleteMembershipType.AVULSO,
+            monthlyFeeExempt = false,
+        )
+        waitForIdle()
+        onNodeWithTag(MemberEditorTags.Exemption).assertDoesNotExist()
+    }
+
+    @Test
+    fun `exemption confirmation names the person and confirms with Dar isencao`() = runComposeUiTest {
+        val intents = mutableListOf<MemberEditorIntent>()
+        setContent {
+            SaqzTheme {
+                MemberEditorScreen(
+                    state = memberEditorPreviewState.copy(
+                        persistedMembershipType = AthleteMembershipType.MENSALISTA,
+                        membershipType = AthleteMembershipType.MENSALISTA,
+                        exemptionConfirmOpen = true,
+                    ),
+                    onIntent = { intents += it },
+                    onBack = {},
+                )
+            }
+        }
+
+        onNodeWithText("Dar isenção da mensalidade?").assertExists()
+        onNodeWithText(
+            "${memberEditorPreviewState.name} continua mensalista e não recebe mais mensalidade. A pendente deste mês será dispensada.",
+        ).assertExists()
+        onNodeWithText("Voltar").assertExists()
+        onNodeWithTag(MemberEditorTags.ExemptionConfirm).performClick()
+        assertEquals(MemberEditorIntent.ConfirmExemption, intents.last())
+    }
+
+    @Test
     fun `owner editor hides the remove action`() = runComposeUiTest {
         setContent {
             SaqzTheme {
