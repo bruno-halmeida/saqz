@@ -31,6 +31,14 @@
 .cc-help{margin:0;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cc-prev{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:6px 10px;font-size:12.5px;border-top:1px solid var(--saqz-border);padding-top:12px}
 .cc-prev strong{font-size:11px;letter-spacing:.05em;color:var(--saqz-muted)}
+.pt-row{display:grid;grid-template-columns:1.6fr 1.4fr 0.7fr 0.7fr 0.7fr 1fr 0.8fr 120px;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px}
+.pt-row>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt-head{font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)}
+.pt-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.pt-kpi{background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 18px}
+.pt-kpi span{display:block;font-size:12px;color:var(--saqz-muted)}.pt-kpi strong{display:block;font-size:22px;font-weight:800;margin-top:4px}
+.pt-pay{display:grid;grid-template-columns:1.3fr 1.6fr 1fr 0.8fr 0.9fr 0.9fr 0.9fr 0.8fr;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13px}
+.pt-pay>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trial-fields label{display:grid;gap:6px;font-size:13px}
 .trial-fields input{min-width:0;width:100%;box-sizing:border-box;border:1px solid var(--saqz-border);border-radius:8px;padding:10px;font:inherit}
 .trial-row{display:grid;grid-template-columns:1.4fr .5fr 1fr 1fr .8fr 110px;gap:10px;align-items:center;text-align:left;padding:12px 8px;border-bottom:1px solid var(--saqz-border)}
@@ -345,6 +353,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 <button type="button" aria-label="Recebimentos" title="Recebimentos" sc-camel-on-click="{{ goRecebimentos }}" style="{{ sRecebimentos }}"><span style="{{ bRecebimentos }}"></span><span class="msr" style="font-size:20px">account_balance</span></button>
     <button type="button" aria-label="Receita" title="Receita" sc-camel-on-click="{{ goRec }}" style="{{ sRec }}"><span style="{{ bRec }}"></span><span class="msr" style="font-size:20px">payments</span></button>
     <button type="button" aria-label="Cupons" title="Cupons" sc-camel-on-click="{{ goCup }}" style="{{ sCup }}"><span style="{{ bCup }}"></span><span class="msr" style="font-size:20px">sell</span></button>
+    <button type="button" aria-label="Parceiros" title="Parceiros" sc-camel-on-click="{{ goPar }}" style="{{ sPar }}"><span style="{{ bPar }}"></span><span class="msr" style="font-size:20px">handshake</span></button>
     <button type="button" aria-label="Suporte" title="Suporte" sc-camel-on-click="{{ goSup }}" style="{{ sSup }}"><span style="{{ bSup }}"></span><span class="msr" style="font-size:20px">support</span><span style="{{ supDot }}"></span></button>
     <span style="margin-top:auto;width:34px;height:34px;border-radius:50%;background:var(--saqz-ice);color:var(--saqz-navy);font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)" title="Lucas Prado · Fundador">LP</span>
   </aside>
@@ -765,7 +774,9 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         <strong>Criar cupom de trial</strong>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px" class="trial-fields">
           <label>Código<input aria-label="Código do cupom de trial" maxlength="32" value="{{ trial.code }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onCode }}" /></label>
-          <label>Campanha ou parceiro<input aria-label="Campanha" maxlength="120" value="{{ trial.campaign }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onCampaign }}" /></label>
+          <label>Campanha<input aria-label="Campanha" maxlength="120" value="{{ trial.campaign }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onCampaign }}" /></label>
+          <label>Parceiro (opcional)<sc-raw-select aria-label="Parceiro do cupom de trial" value="{{ trial.partner }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onPartner }}"><option value="">Sem parceiro</option><sc-for list="{{ parceiroOpcoes }}" as="o"><option value="{{ o.id }}">{{ o.nome }}</option></sc-for><option value="NOVO">+ Novo parceiro</option></sc-raw-select></label>
+          <sc-if value="{{ trial.partnerNewOn }}" hint-placeholder-val="{{ false }}"><label>Nome do novo parceiro<input aria-label="Nome do novo parceiro do trial" maxlength="120" value="{{ trial.partnerNew }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onPartnerNew }}" /></label></sc-if>
           <label>Dias de trial<input aria-label="Dias de trial" type="number" min="1" max="365" step="1" value="{{ trial.days }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onDays }}" /></label>
           <label>Limite de usos (opcional)<input aria-label="Limite de usos" type="number" min="1" step="1" value="{{ trial.max }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onMax }}" /></label>
           <label>Válido até (UTC, opcional)<input aria-label="Validade do cupom" type="date" value="{{ trial.until }}" disabled="{{ trial.busy }}" sc-camel-on-change="{{ trial.onUntil }}" /></label>
@@ -787,6 +798,74 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       </div>
     </div>
   </div>
+  </sc-if>
+
+  <sc-if value="{{ isPar }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;flex:1">Parceiros</strong>
+      <span sc-camel-on-click="{{ onNovoParceiro }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">Novo parceiro</span>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <p class="cc-help" style="margin:0 0 12px">Quem veio do parceiro: o primeiro cupom de parceiro que a pessoa usou. Pagamentos contam a partir desse uso, em todas as plataformas.</p>
+      <sc-if value="{{ parErro }}" hint-placeholder-val="{{ false }}"><p style="color:var(--saqz-error)">Não deu para carregar os parceiros.</p></sc-if>
+      <sc-if value="{{ parVazio }}" hint-placeholder-val="{{ false }}"><p>Nenhum parceiro ainda. Crie um e ligue cupons a ele em Cupons.</p></sc-if>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span class="pt-row pt-head"><span>PARCEIRO</span><span>CUPONS</span><span>USARAM</span><span>PAGARAM</span><span>ATIVOS</span><span>RECEITA BRUTA</span><span>STATUS</span><span></span></span>
+        <sc-for list="{{ parRows }}" as="p" hint-placeholder-count="3">
+          <span class="pt-row"><strong title="{{ p.nome }}">{{ p.nome }}</strong><span style="color:var(--saqz-muted)" title="{{ p.cupons }}">{{ p.cupons }}</span><span>{{ p.usaram }}</span><span>{{ p.pagaram }}</span><span>{{ p.ativos }}</span><span>{{ p.receita }}</span><span><span style="{{ p.statusStyle }}">{{ p.statusTxt }}</span></span><span style="justify-self:end"><span sc-camel-on-click="{{ p.onAbrir }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:var(--saqz-ice)">Ver relatório</span></span></span>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isParDet }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border)">
+      <span sc-camel-on-click="{{ goPar }}" style="cursor:pointer;color:var(--saqz-blue);font-weight:700;font-size:13.5px">← Parceiros</span>
+      <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ prNome }}</strong>
+      <sc-if value="{{ prPodeEncerrar }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ onEncerrarParceiro }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-error);background:rgba(229,72,77,.08)">Encerrar parceria</span></sc-if>
+    </div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
+      <p class="cc-help">{{ prContato }}</p>
+      <div style="display:flex;gap:12px;align-items:end">
+        <label class="cc-label">De<input class="cc-input" aria-label="Período de" value="{{ prDe }}" sc-camel-on-change="{{ onPrDe }}" placeholder="Desde o início"></label>
+        <label class="cc-label">Até<input class="cc-input" aria-label="Período até" value="{{ prAte }}" sc-camel-on-change="{{ onPrAte }}" placeholder="Hoje"></label>
+        <button class="trial-button" sc-camel-on-click="{{ onPrAplicar }}">Aplicar período</button>
+      </div>
+      <sc-if value="{{ prErro }}" hint-placeholder-val="{{ false }}"><p style="color:var(--saqz-error);margin:0">{{ prErroTxt }}</p></sc-if>
+      <div class="pt-kpis"><sc-for list="{{ prKpis }}" as="k"><div class="pt-kpi"><span>{{ k.rotulo }}</span><strong>{{ k.valor }}</strong></div></sc-for></div>
+      <p class="cc-help">{{ prPorPlataforma }}</p>
+      <p class="cc-help">Cupons: {{ prCupons }}</p>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span class="pt-pay pt-head"><span>NOME</span><span>E-MAIL</span><span>PLANO</span><span>PLATAFORMA</span><span>1º USO DO CUPOM</span><span>1º PAGAMENTO</span><span>TOTAL PAGO</span><span>SITUAÇÃO</span></span>
+        <sc-if value="{{ prSemPagantes }}" hint-placeholder-val="{{ false }}"><p style="padding:12px 20px;margin:0;color:var(--saqz-muted)">Ninguém que veio do parceiro pagou no período.</p></sc-if>
+        <sc-for list="{{ prPagantes }}" as="r"><span class="pt-pay"><span title="{{ r.nome }}">{{ r.nome }}</span><span title="{{ r.email }}">{{ r.email }}</span><span>{{ r.plano }}</span><span>{{ r.plataforma }}</span><span>{{ r.uso }}</span><span>{{ r.pagamento }}</span><span title="{{ r.totalTitulo }}">{{ r.total }}</span><span><span style="{{ r.statusStyle }}">{{ r.statusTxt }}</span></span></span></sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ parceiroOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onParceiroFechar }}">
+      <div style="width:520px;max-width:calc(100vw - 32px);background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
+        <strong style="display:block;font-size:18px;font-weight:800">Novo parceiro</strong>
+        <div style="display:grid;gap:12px;margin-top:16px">
+          <label class="cc-label">Nome<input class="cc-input" aria-label="Nome do parceiro" maxlength="120" value="{{ npNome }}" sc-camel-on-change="{{ onNpNome }}" placeholder="Ex.: Arena Beach Moema"></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label class="cc-label">Contato (opcional)<input class="cc-input" aria-label="Pessoa de contato" maxlength="120" value="{{ npContato }}" sc-camel-on-change="{{ onNpContato }}"></label>
+            <label class="cc-label">Telefone (opcional)<input class="cc-input" aria-label="Telefone do parceiro" inputmode="numeric" maxlength="15" value="{{ npTelefone }}" sc-camel-on-change="{{ onNpTelefone }}" placeholder="11 dígitos"></label>
+          </div>
+          <label class="cc-label">E-mail (opcional)<input class="cc-input" aria-label="E-mail do parceiro" maxlength="254" value="{{ npEmail }}" sc-camel-on-change="{{ onNpEmail }}"></label>
+          <label class="cc-label">Observação (opcional)<input class="cc-input" aria-label="Observação" maxlength="2000" value="{{ npObs }}" sc-camel-on-change="{{ onNpObs }}"></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+          <span sc-camel-on-click="{{ onParceiroFechar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;color:var(--saqz-navy)">Voltar</span>
+          <span sc-camel-on-click="{{ onCriarParceiro }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;background:var(--saqz-blue);color:#fff">Criar parceiro</span>
+        </div>
+      </div>
+    </div>
   </sc-if>
 
   <sc-if value="{{ isSup }}" hint-placeholder-val="{{ false }}">
@@ -915,6 +994,10 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <div class="cc-label">Ciclos<div class="cc-seg" role="group" aria-label="Ciclos"><sc-for list="{{ ncCiclos }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.onClick }}">{{ o.txt }}</button></sc-for></div></div>
           <div class="cc-label">Quem pode usar<div class="cc-seg" role="group" aria-label="Quem pode usar"><sc-for list="{{ ncQuem }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.onClick }}">{{ o.txt }}</button></sc-for></div></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label class="cc-label">Parceiro (opcional)<sc-raw-select class="cc-input" aria-label="Parceiro do cupom" value="{{ ncParceiro }}" sc-camel-on-change="{{ onNcParceiro }}"><option value="">Sem parceiro</option><sc-for list="{{ parceiroOpcoes }}" as="o"><option value="{{ o.id }}">{{ o.nome }}</option></sc-for><option value="NOVO">+ Novo parceiro</option></sc-raw-select></label>
+            <sc-if value="{{ ncParceiroNovoOn }}" hint-placeholder-val="{{ false }}"><label class="cc-label">Nome do novo parceiro<input class="cc-input" aria-label="Nome do novo parceiro" maxlength="120" value="{{ ncParceiroNovo }}" sc-camel-on-change="{{ onNcParceiroNovo }}" placeholder="Ex.: Arena Beach Moema"></label></sc-if>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <label class="cc-label">Limite de usos (opcional)<input class="cc-input" aria-label="Limite de usos" inputmode="numeric" value="{{ ncLimite }}" sc-camel-on-change="{{ onNcLimite }}" placeholder="Sem limite"></label>
             <label class="cc-label">Válido até (opcional)<input class="cc-input" aria-label="Válido até" value="{{ ncVal }}" sc-camel-on-change="{{ onNcVal }}" placeholder="dd/mm/aaaa"></label>
           </div>
@@ -962,7 +1045,7 @@ class Component extends DCLogic {
     usersSort: null, groupsSort: null, subsSort: null,
     // Suporte segue mockado até o VUL-171
     resolvidas: {},
-    cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "" }, ncPrev: null,
+    cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
     cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
     modal: null, toast: null
   };
@@ -1004,7 +1087,7 @@ class Component extends DCLogic {
             // ao próximo admin.
             modal: null, toast: null, cupomOpen: false,
             cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
-            nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "" }, ncPrev: null,
+            nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
             page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
             periodo: "30d", rTab: "ass",
             uBusca: "", uPlano: "todos", uStatus: "todos",
@@ -1258,6 +1341,8 @@ class Component extends DCLogic {
     if (page === "receita" && (force || !st.subsPage)) this.carregarAssinaturas();
     if (page === "receita" && (force || !st.revenueData)) this.carregarReceita();
     if (page === "cupons" && (force || !st.couponsData)) this.carregarCupons();
+    if ((page === "cupons" || page === "parceiros") && (force || !st.partnersData || page === "parceiros")) this.carregarParceiros();
+    if (page === "parceiro" && st.partnerSel) this.carregarRelatorioParceiro();
     if (page === "cupons" && (force || !st.trialData)) this.trialLoad();
     if (page === "cupons" && (force || !st.analyticsData)) this.analyticsLoad();
     // Re-login com detalhe aberto: recarrega o registro selecionado.
@@ -1731,7 +1816,7 @@ class Component extends DCLogic {
 
   trialInitial() {
     return { trialData: null, trialCoupons: [], trialBusy: false, trialError: "", trialModeDraft: "ON",
-      trialForm: { code: "", campaign: "", days: "14", max: "", until: "" } };
+      trialForm: { code: "", campaign: "", days: "14", max: "", until: "", partner: "", partnerNew: "" } };
   }
   async trialLoad() {
     if (this.state.trialBusy) return;
@@ -1782,7 +1867,12 @@ class Component extends DCLogic {
       }
       body.validUntil = date.toISOString();
     }
-    return this.trialWrite("/admin/trial-coupons", "POST", body, true);
+    // Sem parceiro novo o pedido sai na hora, como antes; com "+ Novo parceiro", depois de criá-lo.
+    if (f.partner !== "NOVO") return this.trialWrite("/admin/trial-coupons", "POST", f.partner ? { ...body, partnerId: f.partner } : body, true);
+    return this.garantirParceiro(f.partner, f.partnerNew).then((parceiro) => {
+      if (parceiro && parceiro.erro) { this.setState({ trialError: parceiro.erro }); return; }
+      return this.trialWrite("/admin/trial-coupons", "POST", parceiro ? { ...body, partnerId: parceiro.id } : body, true);
+    });
   }
   trialDeactivate(id) { return this.trialWrite(`/admin/trial-coupons/${id}/deactivate`, "POST"); }
   trialVals() {
@@ -1792,7 +1882,9 @@ class Component extends DCLogic {
       onMode:e => { if (!this.state.trialBusy) this.setState({trialModeDraft:e.target.value}); },
       onSave:()=>this.trialSaveMode(), onReload:()=>this.trialLoad(), onCreate:()=>this.trialCreate(),
       onCode:e=>this.trialEdit("code",e.target.value), onCampaign:e=>this.trialEdit("campaign",e.target.value),
-      onDays:e=>this.trialEdit("days",e.target.value), onMax:e=>this.trialEdit("max",e.target.value), onUntil:e=>this.trialEdit("until",e.target.value)},
+      onDays:e=>this.trialEdit("days",e.target.value),
+      onPartner:e=>this.trialEdit("partner",e.target.value), onPartnerNew:e=>this.trialEdit("partnerNew",e.target.value),
+      partnerNewOn: st.trialForm.partner === "NOVO", onMax:e=>this.trialEdit("max",e.target.value), onUntil:e=>this.trialEdit("until",e.target.value)},
       trialEmpty:!!st.trialData && st.trialCoupons.length === 0,
       trialRows:st.trialCoupons.map(c=>({code:c.code, campaign:c.campaign || "—", days:c.trialDays, uses:c.uses,
         max:c.maxUses || "Sem limite", until:c.validUntil ? this.dataBr(c.validUntil) : "Sem validade",
@@ -1852,9 +1944,14 @@ class Component extends DCLogic {
       }).catch(() => this.aviso("Não deu para calcular os preços agora."));
       return;
     }
-    this.mutacao("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: chave }).then((r) => {
+    this.garantirParceiro(this.state.nc.parceiro, this.state.nc.parceiroNovo).then((parceiro) => {
+      if (parceiro && parceiro.erro) { this.aviso(parceiro.erro); return null; }
+      const final = parceiro ? { ...body, partnerId: parceiro.id } : body;
+      return this.mutacao("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(final) });
+    }).then((r) => {
+      if (!r) return;
       if (r.status === 201) {
-        this.setState({ cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "" }, ncPrev: null });
+        this.setState({ cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null });
         this.carregarCupons();
         this.aviso(body.durationCycles ? `Cupom ${body.code} criado. As lojas são configuradas em seguida.` : `Cupom ${body.code} criado (só site).`);
       } else if (r.status === 409) {
@@ -1894,6 +1991,113 @@ class Component extends DCLogic {
     } } });
   }
 
+  carregarParceiros() {
+    this.api("/admin/partners")
+      .then((partnersData) => this.setState({ partnersData }))
+      .catch(() => this.setState({ partnersData: { erro: true } }));
+  }
+
+  /** dd/mm/aaaa → ISO no início (ou fim) do dia em São Paulo; "" = sem limite; null = inválida. */
+  dataPeriodo(txt, fim) {
+    if (!txt.trim()) return "";
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(txt.trim());
+    if (!m) return null;
+    const [dia, mes, ano] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const dia0 = new Date(Date.UTC(ano, mes - 1, dia));
+    if (dia0.getUTCDate() !== dia || dia0.getUTCMonth() !== mes - 1) return null;
+    // São Paulo é UTC-3 (sem horário de verão desde 2019).
+    return new Date(dia0.getTime() + 3 * 3600e3 + (fim ? 86400e3 - 1 : 0)).toISOString();
+  }
+
+  carregarRelatorioParceiro() {
+    const st = this.state;
+    const de = this.dataPeriodo(st.prDe, false), ate = this.dataPeriodo(st.prAte, true);
+    if (de === null || ate === null) { this.setState({ prErroTxt: "Datas no formato dd/mm/aaaa (ou vazias)." }); return; }
+    const q = [de && `from=${encodeURIComponent(de)}`, ate && `to=${encodeURIComponent(ate)}`].filter(Boolean).join("&");
+    this.setState({ partnerReport: null, prErroTxt: "" });
+    this.api(`/admin/partners/${st.partnerSel}/report${q ? `?${q}` : ""}`)
+      .then((partnerReport) => this.setState({ partnerReport }))
+      .catch(() => this.setState({ prErroTxt: "Não deu para carregar o relatório." }));
+  }
+
+  /** Parceiro escolhido no formulário: "" = nenhum; "NOVO" cria com o nome digitado. */
+  garantirParceiro(sel, nome) {
+    if (!sel) return Promise.resolve(null);
+    if (sel !== "NOVO") return Promise.resolve({ id: sel });
+    if (!nome || nome.trim().length < 2) return Promise.resolve({ erro: "Dê o nome do novo parceiro." });
+    return this.mutacao("/admin/partners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: nome.trim() }) })
+      .then((r) => {
+        if (r.status === 201) return r.json().then((p) => { this.carregarParceiros(); return { id: p.id }; });
+        return { erro: r.status === 409 ? "Já existe um parceiro com esse nome: escolha na lista." : "Não deu para criar o parceiro." };
+      });
+  }
+
+  criarParceiro() {
+    const n = this.state.np;
+    if (n.nome.trim().length < 2) { this.aviso("Dê um nome ao parceiro."); return; }
+    const body = { name: n.nome.trim(), contactName: n.contato.trim() || null, contactPhone: n.telefone.replace(/\D/g, "") || null, contactEmail: n.email.trim() || null, notes: n.obs.trim() || null };
+    this.mutacao("/admin/partners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
+      if (r.status === 201) {
+        this.setState({ parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" } });
+        this.carregarParceiros();
+        this.aviso(`Parceiro ${body.name} criado.`);
+      } else if (r.status === 409) {
+        this.aviso("Já existe um parceiro com esse nome.");
+      } else {
+        r.json().then(d => this.aviso(d.message || "Confira os campos do parceiro.")).catch(() => this.aviso("Confira os campos do parceiro."));
+      }
+    });
+  }
+
+  encerrarParceiro(p) {
+    this.setState({ modal: { titulo: `Encerrar parceria com ${p.name}?`, texto: "O parceiro sai das opções ao criar cupom. Os cupons dele seguem como estão (encerre-os em Cupons) e o relatório continua disponível.", confirm: "Encerrar parceria", danger: true, acao: () => {
+      this.mutacao(`/admin/partners/${p.id}/end`, { method: "POST" }).then((r) => {
+        this.setState({ modal: null });
+        if (r.ok) { this.carregarParceiros(); this.carregarRelatorioParceiro(); this.aviso("Parceria encerrada."); } else { this.aviso("Não deu para encerrar agora."); }
+      });
+    } } });
+  }
+
+  parceiroVals() {
+    const st = this.state;
+    const pd = st.partnersData && !st.partnersData.erro ? st.partnersData : null;
+    const fontes = { SITE: "Site", APP_STORE: "iPhone", GOOGLE_PLAY: "Android" };
+    const nomes = { TITULAR: "Titular", ORGANIZADOR: "Organizador", ILIMITADO: "Ilimitado" };
+    const situacao = { ACTIVE: "ativa", PAST_DUE: "atrasada", CANCELED: "cancelada" };
+    const parRows = pd ? pd.map(x => {
+      const cs = this.chipStatus(x.partner.active ? "ativo" : "inativo");
+      return { nome: x.partner.name, cupons: x.coupons.map(c => c.code).join(", ") || "—", usaram: String(x.metrics.users), pagaram: String(x.metrics.payers), ativos: String(x.metrics.activeSubscribers), receita: this.money(x.metrics.revenueCents), statusTxt: cs.txt, statusStyle: cs.style, onAbrir: () => this.go("parceiro", { partnerSel: x.partner.id, partnerReport: null, prDe: "", prAte: "", prErroTxt: "" }) };
+    }) : [];
+    const r = st.partnerReport;
+    const m = r ? r.metrics : null;
+    const p = r ? r.partner : null;
+    return {
+      parRows, parErro: !!(st.partnersData && st.partnersData.erro), parVazio: !!(pd && pd.length === 0),
+      parceiroOpcoes: pd ? pd.filter(x => x.partner.active).map(x => ({ id: x.partner.id, nome: x.partner.name })) : [],
+      onNovoParceiro: () => this.setState({ parceiroOpen: true }), onParceiroFechar: () => this.setState({ parceiroOpen: false }),
+      parceiroOpen: st.parceiroOpen, onCriarParceiro: () => this.criarParceiro(),
+      npNome: st.np.nome, npContato: st.np.contato, npTelefone: st.np.telefone, npEmail: st.np.email, npObs: st.np.obs,
+      onNpNome: e => this.setState(s => ({ np: { ...s.np, nome: e.target.value } })), onNpContato: e => this.setState(s => ({ np: { ...s.np, contato: e.target.value } })),
+      onNpTelefone: e => this.setState(s => ({ np: { ...s.np, telefone: e.target.value } })), onNpEmail: e => this.setState(s => ({ np: { ...s.np, email: e.target.value } })),
+      onNpObs: e => this.setState(s => ({ np: { ...s.np, obs: e.target.value } })),
+      prNome: p ? p.name : "Carregando…", prPodeEncerrar: !!(p && p.active), onEncerrarParceiro: () => p && this.encerrarParceiro(p),
+      prContato: p ? ([p.contactName, p.contactPhone, p.contactEmail].filter(Boolean).join(" · ") || "Sem contato") + (p.active ? "" : " · parceria encerrada") : "",
+      prDe: st.prDe, prAte: st.prAte, onPrDe: e => this.setState({ prDe: e.target.value }), onPrAte: e => this.setState({ prAte: e.target.value }),
+      onPrAplicar: () => this.carregarRelatorioParceiro(), prErro: !!st.prErroTxt, prErroTxt: st.prErroTxt,
+      prKpis: m ? [
+        { rotulo: "Usaram o cupom", valor: String(m.users) }, { rotulo: "Assinaram (pagaram)", valor: String(m.payers) },
+        { rotulo: "Assinantes ativos hoje", valor: String(m.activeSubscribers) }, { rotulo: "Receita bruta", valor: this.money(m.revenueCents) },
+      ] : [],
+      prPorPlataforma: m ? ["SITE", "GOOGLE_PLAY", "APP_STORE"].map(k => `${fontes[k]} ${this.money(m.revenueBySource[k] || 0)}`).join(" · ") + (m.paymentsWithoutValue ? ` · ${m.paymentsWithoutValue} pagamento(s) sem valor informado pela loja` : "") : "",
+      prCupons: r ? (r.coupons.map(c => `${c.code} (${c.type === "TRIAL" ? "teste" : "desconto"})`).join(", ") || "nenhum") : "",
+      prSemPagantes: !!(r && r.payers.length === 0),
+      prPagantes: r ? r.payers.map(x => {
+        const cs = this.chipStatus(situacao[x.status] || "cancelada");
+        return { nome: x.name || "—", email: x.email || "—", plano: x.plan ? `${nomes[x.plan] || x.plan} ${x.cycle === "ANNUAL" ? "anual" : "mensal"}` : "—", plataforma: fontes[x.source] || x.source, uso: this.dataBr(x.firstCouponUseAt), pagamento: this.dataBr(x.firstPaymentAt), total: this.money(x.totalPaidCents) + (x.paymentsWithoutValue ? " +?" : ""), totalTitulo: x.paymentsWithoutValue ? `${x.paymentsWithoutValue} pagamento(s) sem valor informado` : "", statusTxt: cs.txt, statusStyle: cs.style };
+      }) : [],
+    };
+  }
+
   cupomFormVals() {
     const n = this.state.nc;
     const prev = this.state.ncPrev;
@@ -1907,6 +2111,9 @@ class Component extends DCLogic {
     })) : [];
     return {
       ncCampanha: n.campanha, ncCod: n.cod, ncVal: n.val, ncLimite: n.limite,
+      ncParceiro: n.parceiro, ncParceiroNovo: n.parceiroNovo, ncParceiroNovoOn: n.parceiro === "NOVO",
+      onNcParceiro: e => this.editarCupom({ parceiro: e.target.value }),
+      onNcParceiroNovo: e => this.editarCupom({ parceiroNovo: e.target.value }),
       onNcCampanha: e => this.editarCupom({ campanha: e.target.value }),
       onNcCod: e => this.editarCupom({ cod: e.target.value.toUpperCase() }),
       onNcVal: e => this.editarCupom({ val: e.target.value }),
@@ -2017,7 +2224,7 @@ class Component extends DCLogic {
     const st = this.state;
     const navS = on => `position:relative;width:42px;height:42px;border-radius:12px;border:0;display:grid;place-items:center;cursor:pointer;font-family:inherit;background:${on ? "var(--saqz-ice)" : "transparent"};color:${on ? "var(--saqz-blue)" : "var(--saqz-navy)"}`;
     const navB = on => on ? "position:absolute;left:-11px;top:11px;bottom:11px;width:3px;border-radius:3px;background:#C7F300" : "display:none";
-    const pageKey = { visao: "vis", usuarios: "usu", usuario: "usu", grupos: "gru", grupo: "gru", receita: "rec", assinatura: "rec", cupons: "cup", suporte: "sup", denuncia: "sup" }[st.page];
+    const pageKey = { visao: "vis", usuarios: "usu", usuario: "usu", grupos: "gru", grupo: "gru", receita: "rec", assinatura: "rec", cupons: "cup", parceiros: "par", parceiro: "par", suporte: "sup", denuncia: "sup" }[st.page];
 
     // ---- Visão geral (API) ----
     const ov = st.overview && !st.overview.erro ? st.overview : null;
@@ -2154,12 +2361,12 @@ class Component extends DCLogic {
       ...this.recebimentosVals(),
       ...this.conditionsVals(),
       sRecebimentos: navS(st.page === "recebimentos"), bRecebimentos: navB(st.page === "recebimentos"),
-      sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sSup: navS(pageKey === "sup"),
-      bVis: navB(pageKey === "vis"), bUsu: navB(pageKey === "usu"), bGru: navB(pageKey === "gru"), bRec: navB(pageKey === "rec"), bCup: navB(pageKey === "cup"), bSup: navB(pageKey === "sup"),
+      sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sPar: navS(pageKey === "par"), sSup: navS(pageKey === "sup"),
+      bVis: navB(pageKey === "vis"), bUsu: navB(pageKey === "usu"), bGru: navB(pageKey === "gru"), bRec: navB(pageKey === "rec"), bCup: navB(pageKey === "cup"), bPar: navB(pageKey === "par"), bSup: navB(pageKey === "sup"),
       supDot: denAbertas ? "position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--saqz-error);box-shadow:0 0 0 2px #fff" : "display:none",
-      goVis: () => this.go("visao"), goUsu: () => this.go("usuarios"), goGru: () => this.go("grupos"), goRec: () => this.go("receita"), goCup: () => this.go("cupons"), goSup: () => this.go("suporte"),
+      goVis: () => this.go("visao"), goUsu: () => this.go("usuarios"), goGru: () => this.go("grupos"), goRec: () => this.go("receita"), goCup: () => this.go("cupons"), goPar: () => this.go("parceiros"), goSup: () => this.go("suporte"),
       goRecCob: () => this.go("receita", { rTab: "cob" }),
-      isVis: st.page === "visao", isUsu: st.page === "usuarios", isUsuDet: st.page === "usuario", isGru: st.page === "grupos", isGruDet: st.page === "grupo", isRec: st.page === "receita", isAssDet: st.page === "assinatura", isCup: st.page === "cupons", isSup: st.page === "suporte", isDenDet: st.page === "denuncia",
+      isVis: st.page === "visao", isUsu: st.page === "usuarios", isUsuDet: st.page === "usuario", isGru: st.page === "grupos", isGruDet: st.page === "grupo", isRec: st.page === "receita", isAssDet: st.page === "assinatura", isCup: st.page === "cupons", isPar: st.page === "parceiros", isParDet: st.page === "parceiro", isSup: st.page === "suporte", isDenDet: st.page === "denuncia",
       periodo: st.periodo,
       onPeriodo: (e) => this.setState({ periodo: e.target.value }, () => this.carregarVisao()),
       perNota, atualizadoEm,
@@ -2208,6 +2415,7 @@ class Component extends DCLogic {
       onCupomFechar: () => this.setState({ cupomOpen: false }),
       cupomOpen: st.cupomOpen,
       ...this.cupomFormVals(),
+      ...this.parceiroVals(),
       onCriarCupom: () => this.criarCupom(),
       denRows, supResumo: `Prévia — fluxo de denúncias ainda não existe (VUL-171)`,
       dd: dSel, ddStatusTxt: ddStatus.txt, ddStatusStyle: ddStatus.style, ddAberta,
