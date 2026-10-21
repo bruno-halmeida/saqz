@@ -24,8 +24,10 @@ import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.ChevronUp
 import com.composables.icons.lucide.CircleAlert
+import com.composables.icons.lucide.CircleX
 import com.composables.icons.lucide.Clock
 import com.composables.icons.lucide.CreditCard
+import com.composables.icons.lucide.Ellipsis
 import com.composables.icons.lucide.EllipsisVertical
 import com.composables.icons.lucide.Eye
 import com.composables.icons.lucide.EyeOff
@@ -38,13 +40,16 @@ import com.composables.icons.lucide.Mail
 import com.composables.icons.lucide.MapPin
 import com.composables.icons.lucide.Megaphone
 import com.composables.icons.lucide.MessageSquare
+import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Minus
 import com.composables.icons.lucide.Phone
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.Star
+import com.composables.icons.lucide.Timer
 import com.composables.icons.lucide.Trash
 import com.composables.icons.lucide.User
+import com.composables.icons.lucide.UserPlus
 import com.composables.icons.lucide.Users
 import com.composables.icons.lucide.X
 
