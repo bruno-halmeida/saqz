@@ -123,6 +123,9 @@ class PendingCheckoutMismatchException : RuntimeException()
 class CouponNotFoundException : RuntimeException()
 class CouponExpiredException : RuntimeException()
 class CouponAlreadyRedeemedException : RuntimeException()
+class CouponNotEligibleException : RuntimeException()
+class CouponExhaustedException : RuntimeException()
+class CouponNotValidForPlanException : RuntimeException()
 class DowngradeBlockedException : RuntimeException()
 
 /**
@@ -207,6 +210,9 @@ class SubscriptionCommandController(
             CreateSubscriptionResult.CouponNotFound -> throw CouponNotFoundException()
             CreateSubscriptionResult.CouponExpired -> throw CouponExpiredException()
             CreateSubscriptionResult.CouponAlreadyRedeemed -> throw CouponAlreadyRedeemedException()
+            CreateSubscriptionResult.CouponNotEligible -> throw CouponNotEligibleException()
+            CreateSubscriptionResult.CouponExhausted -> throw CouponExhaustedException()
+            CreateSubscriptionResult.CouponNotValidForPlan -> throw CouponNotValidForPlanException()
             CreateSubscriptionResult.InvalidCustomerDetails -> throw InvalidSubscriptionRequestException(
                 mapOf(
                     "name" to listOf("is required"),

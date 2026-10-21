@@ -44,6 +44,9 @@ sealed interface CreateSubscriptionResult {
     data object CouponNotFound : CreateSubscriptionResult
     data object CouponExpired : CreateSubscriptionResult
     data object CouponAlreadyRedeemed : CreateSubscriptionResult
+    data object CouponNotEligible : CreateSubscriptionResult
+    data object CouponExhausted : CreateSubscriptionResult
+    data object CouponNotValidForPlan : CreateSubscriptionResult
     data object InvalidCustomerDetails : CreateSubscriptionResult
     data class InvalidCreditCardDetails(val fieldErrors: Map<String, List<String>>) : CreateSubscriptionResult
 
@@ -71,6 +74,7 @@ class CreateSubscription(
     private val creditCardTokens: CreditCardTokenStore = CreditCardTokenStore { _, _, _, _ -> },
     private val appStoreSubscriptions: AppStoreSubscriptionRepository? = null,
     private val googlePlaySubscriptions: GooglePlaySubscriptionRepository? = null,
+    private val couponEligibility: CouponEligibilityLookup? = null,
 ) {
     private val recoverUnconfirmed = RecoverUnconfirmedPayment(
         subscriptions,
@@ -167,7 +171,7 @@ class CreateSubscription(
         if ((command.plan.maxGroups != null && usage.ownedGroupCount > command.plan.maxGroups) ||
             (command.plan.maxAthletes != null && usage.largestGroupAthleteCount > command.plan.maxAthletes)
         ) return CommitOutcome.Rejected(CreateSubscriptionResult.PlanDoesNotFitUsage)
-        val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now)
+        val couponOutcome = resolveCoupon(command.couponCode, command.ownerUserId, now, command.plan, command.cycle)
         if (couponOutcome is CouponOutcome.Failure) return CommitOutcome.Rejected(couponOutcome.result)
         val coupon = (couponOutcome as CouponOutcome.Ok).coupon
         val valueCents = discountedPriceCents(command.plan, command.cycle, coupon)
@@ -372,7 +376,7 @@ class CreateSubscription(
         if (existing.couponId != null) {
             return CouponOutcome.Ok(coupons.findById(existing.couponId))
         }
-        return resolveCoupon(command.couponCode, command.ownerUserId, now)
+        return resolveCoupon(command.couponCode, command.ownerUserId, now, command.plan, command.cycle)
     }
 
     private fun blankSubscription(
@@ -409,16 +413,24 @@ class CreateSubscription(
         data class Failure(val result: CreateSubscriptionResult) : CouponOutcome
     }
 
-    private fun resolveCoupon(code: String?, ownerUserId: UUID, now: Instant): CouponOutcome {
+    private fun resolveCoupon(code: String?, ownerUserId: UUID, now: Instant, plan: Plan, cycle: SubscriptionCycle): CouponOutcome {
         if (code.isNullOrBlank()) return CouponOutcome.Ok(null)
         val coupon = coupons.findByCode(code.trim())
             ?: return CouponOutcome.Failure(CreateSubscriptionResult.CouponNotFound)
         val validUntil = coupon.validUntil
-        if (validUntil != null && validUntil.isBefore(now)) {
+        if ((validUntil != null && validUntil.isBefore(now)) || coupon.endedAt?.isAfter(now) == false) {
             return CouponOutcome.Failure(CreateSubscriptionResult.CouponExpired)
         }
+        if (!coupon.covers(plan, cycle)) return CouponOutcome.Failure(CreateSubscriptionResult.CouponNotValidForPlan)
         if (coupons.hasRedemption(coupon.id, ownerUserId)) {
             return CouponOutcome.Failure(CreateSubscriptionResult.CouponAlreadyRedeemed)
+        }
+        val max = coupon.maxUses
+        if (max != null && coupons.countRedemptions(coupon.id) >= max) {
+            return CouponOutcome.Failure(CreateSubscriptionResult.CouponExhausted)
+        }
+        if (CouponCampaignRules.eligibility(coupon, ownerUserId, couponEligibility) == CouponCampaignRules.Eligibility.NotEligible) {
+            return CouponOutcome.Failure(CreateSubscriptionResult.CouponNotEligible)
         }
         return CouponOutcome.Ok(coupon)
     }

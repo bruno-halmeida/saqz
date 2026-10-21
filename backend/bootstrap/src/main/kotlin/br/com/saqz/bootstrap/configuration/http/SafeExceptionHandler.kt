@@ -63,7 +63,10 @@ import br.com.saqz.subscriptions.adapter.input.http.GooglePlayPurchaseOwnedByAno
 import br.com.saqz.subscriptions.adapter.input.http.AsaasWebhookUnauthorizedException
 import br.com.saqz.subscriptions.adapter.input.http.CheckoutLoginTokenInvalidException
 import br.com.saqz.subscriptions.adapter.input.http.CouponAlreadyRedeemedException
+import br.com.saqz.subscriptions.adapter.input.http.CouponExhaustedException
 import br.com.saqz.subscriptions.adapter.input.http.CouponExpiredException
+import br.com.saqz.subscriptions.adapter.input.http.CouponNotEligibleException
+import br.com.saqz.subscriptions.adapter.input.http.CouponNotValidForPlanException
 import br.com.saqz.subscriptions.adapter.input.http.CouponNotFoundException
 import br.com.saqz.subscriptions.adapter.input.http.CreditCardDeclinedException
 import br.com.saqz.subscriptions.adapter.input.http.PaymentMethodUnavailableHttpException
@@ -723,6 +726,21 @@ class SafeExceptionHandler(
     @ExceptionHandler(CouponAlreadyRedeemedException::class)
     fun couponAlreadyRedeemed(request: HttpServletRequest, response: HttpServletResponse) {
         problemWriter.write(request, response, 409, ErrorCode.COUPON_ALREADY_REDEEMED)
+    }
+
+    @ExceptionHandler(CouponNotEligibleException::class)
+    fun couponNotEligible(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.COUPON_NOT_ELIGIBLE)
+    }
+
+    @ExceptionHandler(CouponExhaustedException::class)
+    fun couponExhausted(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 409, ErrorCode.COUPON_EXHAUSTED)
+    }
+
+    @ExceptionHandler(CouponNotValidForPlanException::class)
+    fun couponNotValidForPlan(request: HttpServletRequest, response: HttpServletResponse) {
+        problemWriter.write(request, response, 422, ErrorCode.COUPON_NOT_VALID_FOR_PLAN)
     }
 
     @ExceptionHandler(DowngradeBlockedException::class)

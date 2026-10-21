@@ -1,12 +1,16 @@
 package br.com.saqz.bootstrap.configuration
 
+import org.springframework.beans.factory.annotation.Value
+import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
+import br.com.saqz.subscriptions.application.CouponEligibilityLookup
+import br.com.saqz.subscriptions.application.CouponStoreOfferRepository
 import br.com.saqz.access.application.session.BootstrapSession
 import br.com.saqz.access.application.session.SessionActorResult
 import br.com.saqz.access.adapter.input.http.AccountSuspendedException
 import br.com.saqz.groups.adapter.input.http.InvalidDisplayNameException
 import br.com.saqz.sharedkernel.RequestIdentity
 import br.com.saqz.sharedkernel.actor.AuthenticatedActor
-import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
+import AuthenticatedActorResolver
 import br.com.saqz.sharedkernel.subscription.OwnedGroupCounter
 import br.com.saqz.subscriptions.adapter.input.http.CouponController
 import br.com.saqz.subscriptions.adapter.input.http.PlanController
@@ -59,7 +63,12 @@ class SubscriptionsReadConfiguration {
     fun listPlans() = ListPlans()
 
     @Bean
-    fun validateCoupon(coupons: CouponRepository, clock: Clock) = ValidateCoupon(coupons, clock)
+    fun validateCoupon(
+        coupons: CouponRepository,
+        clock: Clock,
+        offers: CouponStoreOfferRepository,
+        eligibility: CouponEligibilityLookup,
+    ) = ValidateCoupon(coupons, clock, offers, eligibility)
 
     @Bean
     fun getMySubscription(
@@ -108,7 +117,11 @@ class SubscriptionsReadConfiguration {
     fun planController(listPlans: ListPlans) = PlanController(listPlans)
 
     @Bean
-    fun couponController(validateCoupon: ValidateCoupon) = CouponController(validateCoupon)
+    fun couponController(
+        validateCoupon: ValidateCoupon,
+        actors: AuthenticatedActorResolver,
+        @Value("\${saqz.app-store.app-apple-id:}") appAppleId: String,
+    ) = CouponController(validateCoupon, actors, appAppleId)
 
     @Bean
     fun subscriptionQueryController(

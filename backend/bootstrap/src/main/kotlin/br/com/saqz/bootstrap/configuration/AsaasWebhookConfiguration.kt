@@ -18,6 +18,7 @@ import br.com.saqz.subscriptions.application.AsaasIdempotencyStore
 import br.com.saqz.subscriptions.application.CancelSubscription
 import br.com.saqz.subscriptions.application.ReactivateSubscription
 import br.com.saqz.subscriptions.application.ChangePlan
+import br.com.saqz.subscriptions.application.CouponEligibilityLookup
 import br.com.saqz.subscriptions.application.CouponRepository
 import br.com.saqz.subscriptions.application.CreateSubscription
 import br.com.saqz.subscriptions.application.CreditCardTokenStore
@@ -117,6 +118,7 @@ class AsaasWebhookConfiguration {
         usageLookup: OwnerPlanUsageLookup,
         appStoreSubscriptions: AppStoreSubscriptionRepository,
         googlePlaySubscriptions: GooglePlaySubscriptionRepository,
+        couponEligibility: CouponEligibilityLookup,
     ) = CreateSubscription(
         subscriptions,
         coupons,
@@ -127,6 +129,7 @@ class AsaasWebhookConfiguration {
         creditCardTokens,
         appStoreSubscriptions,
         googlePlaySubscriptions,
+        couponEligibility,
     )
 
     @Bean
