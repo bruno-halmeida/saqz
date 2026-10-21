@@ -97,12 +97,17 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 1. Abrir o link do convite.
 
-**Conferir**
-- No navegador com WasmGC (Chrome ou Safari atuais), a página mostra "Abrindo o Saqz…" e vai sozinha ao web
-  app, `saqz.app/app/?saqz_invite=…`, já com o convite.
-- Só se o web app estiver fora do ar (`saqz.app/app/disponivel.json` não responde) ou o navegador não tiver
-  WasmGC vale o caminho antigo: "Entre no grupo no Saqz" e "Abra este link no celular para continuar no app.",
-  com o botão "Acessar site do Saqz", sem redirecionar.
+**Conferir** (DEB-118, regra em CONV-009)
+- A página **não redireciona** ao web app. Mostra "Entre no grupo no Saqz" (ou "Responda no Saqz" no link de presença) e
+  "Aponte a câmera do celular para o QR code e continue no app.", com o **QR code** à direita, num painel azul, e à esquerda
+  os botões "Baixar na App Store" e "Baixar no Google Play".
+- Ler o QR com a câmera do celular: abre o mesmo link (`links.saqz.app/?saqz_invite=…`, código sem hífen e em maiúscula) e o
+  celular segue o fluxo dele (Android: Play com o `referrer`; iPhone: "Baixar o app e continuar" copia o link e abre a App Store).
+- Com o web app no ar (`saqz.app/app/disponivel.json` responde) e navegador com WasmGC (Chrome ou Safari atuais), aparece
+  também o link discreto "Continuar no computador", que leva a `saqz.app/app/?saqz_invite=…` com o mesmo código.
+- Com o web app fora do ar ou sem WasmGC: só o QR e as duas lojas, sem o link "Continuar no computador".
+- Link de **onboarding** (`saqz_onboarding=…`) no computador continua indo direto ao web app.
+- Janela estreita (menos de 780 px): coluna única, QR acima dos botões, sem rolagem lateral.
 
 ## PROD-WEB07 · Página de exclusão de conta · P1
 
