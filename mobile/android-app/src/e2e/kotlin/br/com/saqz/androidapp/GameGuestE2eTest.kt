@@ -1,8 +1,9 @@
 package br.com.saqz.androidapp
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -70,12 +71,15 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         login("owner")
         openGroup()
         click("group-details-view-game", scroll = true)
+        // DEB-116: o gestor confirmado abre na aba Vão; os convidados estão na espera.
+        click("game-tab-waiting")
         waitTag("game-guest-row-$host#1")
         // Os dois convidados são do mesmo anfitrião: escopo pela linha do 1º para não colidir com o do 2º.
         ui.onNode(
             hasText("Convidado de E2E attendance-guest-athlete") and hasAnyAncestor(hasTestTag("game-guest-row-$host#1")),
         ).performScrollTo().assertIsDisplayed()
-        click("game-guest-remove-$host#2", scroll = true)
+        click("game-detail-more-$host#2", scroll = true)
+        click("game-guest-remove-$host#2")
         click("game-guest-remove-confirm")
         waitText("Ju Andrade saiu do jogo.")
         roster = api("owner", "$attendancePath/roster")
@@ -125,10 +129,9 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         val cancelled = (0 until after.length()).map { after.getJSONObject(it) }
             .single { it.optString("guestDisplayName", "") == "Rafa Moreira" }
         assertEquals("CANCELLED", cancelled.getString("status"))
-        // 7) sem resposta própria, o botão fica desabilitado (regra A)
+        // 7) sem "Vou", a linha "Levar convidado" não aparece (regra A; DEB-116 tirou o botão desabilitado)
         click("group-details-view-game", scroll = true)
-        waitText("Responda “Vou” para poder levar alguém.")
-        ui.onNodeWithText("Responda “Vou” para poder levar alguém.").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithTag("game-guest-add").assertIsNotEnabled()
+        waitTag("game-detail")
+        ui.onAllNodesWithTag("game-guest-add").assertCountEquals(0)
     }
 }

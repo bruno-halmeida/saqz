@@ -45,37 +45,50 @@ class GameOrganizerSectionTest {
 
     @Test
     fun tirarAparecePraGestorEForaDaLinhaDeQuemOlha() = runComposeUiTest {
-        setScreen(admin)
+        setScreen(admin.copy(confirmedRoster = admin.confirmedRoster.mapIndexed { i, p -> if (i == 0) p.copy(isYou = true, canRemove = false) else p }))
 
-        // "Lucas Prado" é quem olha (id 1): sem "Tirar". Os outros dois confirmados e os dois da espera têm.
-        onAllNodesWithTag(GameOrganizerTags.remove("1")).assertCountEquals(0)
-        listOf("2", "3", "wait-1", "wait-2").forEach {
-            onNodeWithTag(GameOrganizerTags.remove(it)).performScrollTo().assertExists()
-        }
+        // "Lucas Prado" é quem olha (id 1): sem ⋮. Os outros confirmados e os da espera têm.
+        onAllNodesWithTag(GameDetailTags.more("1")).assertCountEquals(0)
+        listOf("2", "3").forEach { onNodeWithTag(GameDetailTags.more(it)).performScrollTo().assertExists() }
+        onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+        listOf("wait-1", "wait-2").forEach { onNodeWithTag(GameDetailTags.more(it)).performScrollTo().assertExists() }
     }
 
     @Test
     fun tirarNaoAparecePraQuemNaoEGestor() = runComposeUiTest {
         setScreen(athlete)
 
-        listOf("1", "2", "3", "wait-1", "wait-2").forEach {
-            onAllNodesWithTag(GameOrganizerTags.remove(it)).assertCountEquals(0)
-        }
+        listOf("1", "2", "3").forEach { onAllNodesWithTag(GameDetailTags.more(it)).assertCountEquals(0) }
+        onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+        listOf("wait-1", "wait-2").forEach { onAllNodesWithTag(GameDetailTags.more(it)).assertCountEquals(0) }
         onAllNodesWithTag(GameOrganizerTags.PlaceAction).assertCountEquals(0)
     }
 
     @Test
-    fun tirarPedeAFolhaComOIdDaLinhaNosConfirmadosENaEspera() = runComposeUiTest {
-        val intents = mutableListOf<GameDetailIntent>()
-        setScreen(admin, intents::add)
+    fun tirarPedeAFolhaComOIdDaLinhaNosConfirmadosENaEspera() {
+        runComposeUiTest {
+            val intents = mutableListOf<GameDetailIntent>()
+            setScreen(admin, intents::add)
 
-        onNodeWithTag(GameOrganizerTags.remove("2")).performScrollTo().performClick()
-        onNodeWithTag(GameOrganizerTags.remove("wait-1")).performScrollTo().performClick()
+            onNodeWithTag(GameDetailTags.more("2")).performScrollTo().performClick()
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+            onNodeWithTag(GameDetailTags.more("wait-1")).performScrollTo().performClick()
 
-        assertEquals<List<GameDetailIntent>>(
-            listOf(GameDetailIntent.RequestRemoveMember("2"), GameDetailIntent.RequestRemoveMember("wait-1")),
-            intents,
-        )
+            assertEquals<List<GameDetailIntent>>(
+                listOf(GameDetailIntent.OpenPersonActions("2"), GameDetailIntent.OpenPersonActions("wait-1")),
+                intents,
+            )
+        }
+        runComposeUiTest {
+            val intents = mutableListOf<GameDetailIntent>()
+            setScreen(admin.copy(personActionsId = "wait-1"), intents::add)
+
+            onNodeWithTag(GameDetailTags.PersonSheet).assertExists()
+            onNodeWithText("Tirar do jogo").assertExists()
+            onNodeWithTag(GameOrganizerTags.remove("wait-1")).performClick()
+
+            assertEquals<List<GameDetailIntent>>(listOf(GameDetailIntent.RequestRemoveMember("wait-1")), intents)
+        }
     }
 
     @Test
@@ -300,7 +313,7 @@ class GameOrganizerSectionTest {
             GameOrganizerTags.RemoveReasonToggle,
             GameOrganizerTags.RemoveNotify,
             GameOrganizerTags.PlaceAction,
-            GameOrganizerTags.remove("3"),
+            GameDetailTags.more("3"),
         ).forEach { onAllNodesWithTag(it).assertCountEquals(1) }
     }
 

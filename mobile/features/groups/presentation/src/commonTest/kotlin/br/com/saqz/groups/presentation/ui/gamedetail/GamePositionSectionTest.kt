@@ -30,13 +30,16 @@ class GamePositionSectionTest {
     fun confirmadosVemAgrupadosPorPosicaoComOQueFalta() = runComposeUiTest {
         setScreen(game)
 
-        // 2/2 ponteiros(as) completo, 1/2 centrais falta 1, 1/1 levantador completo.
+        // Faixa por posição (DEB-116): plural com mais de uma vaga, singular com uma; completo com check ou "Falta 1".
         onNodeWithTag(GamePositionTags.header(AthletePosition.PONTA)).performScrollTo()
-        onNodeWithText("2/2 ponteiros(as)").assertExists()
-        onNodeWithText("1/2 centrais").assertExists()
-        onNodeWithText("falta 1").assertExists()
-        onNodeWithText("1/1 levantadores(as)").assertExists()
-        onNodeWithText("Rafa Dias").assertExists()
+        onNodeWithText("Ponteiros(as)").assertExists()
+        onNodeWithText("2/2 · completo").assertExists()
+        onNodeWithText("Centrais").assertExists()
+        onNodeWithText("1/2").assertExists()
+        onNodeWithText("Falta 1").assertExists()
+        onNodeWithText("Levantador(a)").assertExists()
+        onNodeWithText("Vaga de central").assertExists()
+        onNodeWithText("Felipe Nunes").assertExists()
     }
 
     @Test
@@ -49,7 +52,7 @@ class GamePositionSectionTest {
     fun posicaoCheiaMostraAEsperaNaLinhaDoSeletor() = runComposeUiTest {
         setScreen(game.copy(guest = GameGuestUi(visible = true, enabled = true, sheetOpen = true, name = "Rafa", position = AthletePosition.CENTRAL)))
         onNodeWithText("2/2 · cheia · 1 na espera").assertExists()
-        onNodeWithText("1/2 · falta 1").assertExists()
+        onNodeWithText("1/2 · falta 1 · 1 na espera").assertExists()
     }
 
     @Test
@@ -67,10 +70,24 @@ class GamePositionSectionTest {
     @Test
     fun forcarEntradaAparecePraGestorSoNaPosicaoCheia() = runComposeUiTest {
         val intents = mutableListOf<GameDetailIntent>()
-        setScreen(game.copy(header = game.header?.copy(responseOpen = true)), intents::add)
+        setScreen(game.copy(personActionsId = "wait-2"), intents::add)
 
-        onNodeWithTag(GamePositionTags.force("wait-2")).performScrollTo().performClick()
+        // Pelo ⋮ da pessoa (ponta cheia) e pelo "Colocar" em contorno da escolha manual, que leva à mesma confirmação.
+        onNodeWithTag(GamePositionTags.force("wait-2")).performClick()
         assertEquals<List<GameDetailIntent>>(listOf(GameDetailIntent.RequestForceEntry("wait-2")), intents)
+    }
+
+    @Test
+    fun colocarNaPosicaoCheiaAbreAEntradaForcada() = runComposeUiTest {
+        val intents = mutableListOf<GameDetailIntent>()
+        setScreen(game, intents::add)
+        onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+
+        onNodeWithTag(GameWaitlistTags.promote("wait-2")).performScrollTo().performClick()
+        onNodeWithTag(GameWaitlistTags.promote("wait-1")).performScrollTo().performClick()
+
+        assertEquals(GameDetailIntent.RequestForceEntry("wait-2"), intents[0])
+        assertEquals("wait-1", (intents[1] as GameDetailIntent.Promote).memberId)
     }
 
     @Test
@@ -105,8 +122,14 @@ class GamePositionSectionTest {
 
     @Test
     fun ajusteDeTotalContinuaEmJogoSemPosicoes() = runComposeUiTest {
-        setScreen(GameDetailPreviewData.admin)
-        onNodeWithTag(GameWaitlistTags.CapacityAction).performScrollTo().assertExists()
+        setScreen(GameDetailPreviewData.admin.copy(gameMenuOpen = true))
+        onNodeWithTag(GameDetailTags.MenuCapacity).assertExists()
+    }
+
+    @Test
+    fun jogoComPosicoesNaoAjustaOTotal() = runComposeUiTest {
+        setScreen(game.copy(gameMenuOpen = true))
+        onAllNodesWithTag(GameDetailTags.MenuCapacity).assertCountEquals(0)
     }
 
     private fun ComposeUiTest.setScreen(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit = {}) = setContent {

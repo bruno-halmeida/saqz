@@ -34,24 +34,15 @@ class GameGuestSectionTest {
     }
 
     @Test
-    fun disabledButtonShowsTheReason() {
+    fun withoutAnswerOrWithClosedConfirmationsTheRowDoesNotShow() {
+        // DEB-116: sem "Vou" (ou com as confirmações fechadas) a linha "Levar convidado" some, sem botão desabilitado.
         runComposeUiTest {
-            val intents = mutableListOf<GameDetailIntent>()
-            setScreen(GameGuestPreviewData.needAnswer, intents::add)
-
-            onNodeWithText("Responda “Vou” para poder levar alguém.").assertExists()
-            onNodeWithTag(GameGuestTags.Add).performScrollTo().performClick()
-
-            assertEquals(emptyList(), intents)
+            setScreen(GameGuestPreviewData.needAnswer)
+            onAllNodesWithTag(GameGuestTags.Add).assertCountEquals(0)
         }
         runComposeUiTest {
-            val intents = mutableListOf<GameDetailIntent>()
-            setScreen(GameGuestPreviewData.closed, intents::add)
-
-            onNodeWithText("As confirmações estão encerradas. Fale com o gestor.").assertExists()
-            onNodeWithTag(GameGuestTags.Add).performScrollTo().performClick()
-
-            assertEquals(emptyList(), intents)
+            setScreen(GameGuestPreviewData.closed)
+            onAllNodesWithTag(GameGuestTags.Add).assertCountEquals(0)
         }
     }
 
@@ -107,30 +98,45 @@ class GameGuestSectionTest {
     fun myGuestShowsRemoveAndOthersDoNot() {
         runComposeUiTest {
             setScreen(GameGuestPreviewData.inQueue)
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
 
-            onNodeWithTag(GameGuestTags.remove("1#1")).assertExists()
+            onNodeWithTag(GameDetailTags.more("1#1")).assertExists()
         }
         runComposeUiTest {
             setScreen(GameGuestPreviewData.othersView)
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
 
-            onAllNodesWithTag(GameGuestTags.remove("1#1")).assertCountEquals(0)
+            onAllNodesWithTag(GameDetailTags.more("1#1")).assertCountEquals(0)
         }
     }
 
     @Test
-    fun removeAsksWithTheRowId() = runComposeUiTest {
-        val intents = mutableListOf<GameDetailIntent>()
-        setScreen(GameGuestPreviewData.inQueue, intents::add)
+    fun removeAsksWithTheRowId() {
+        runComposeUiTest {
+            val intents = mutableListOf<GameDetailIntent>()
+            setScreen(GameGuestPreviewData.inQueue, intents::add)
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
 
-        onNodeWithTag(GameGuestTags.remove("1#1")).performScrollTo().performClick()
+            onNodeWithTag(GameDetailTags.more("1#1")).performScrollTo().performClick()
 
-        assertEquals(GameDetailIntent.RequestRemoveGuest("1#1"), intents.single())
+            assertEquals(GameDetailIntent.OpenPersonActions("1#1"), intents.single())
+        }
+        runComposeUiTest {
+            val intents = mutableListOf<GameDetailIntent>()
+            setScreen(GameGuestPreviewData.inQueue.copy(personActionsId = "1#1"), intents::add)
+
+            onNodeWithText("Tirar convidado(a)").assertExists()
+            onNodeWithTag(GameGuestTags.remove("1#1")).performClick()
+
+            assertEquals(GameDetailIntent.RequestRemoveGuest("1#1"), intents.single())
+        }
     }
 
     @Test
     fun promoteOnAGuestSendsHostIdAndSeq() = runComposeUiTest {
         val intents = mutableListOf<GameDetailIntent>()
         setScreen(GameGuestPreviewData.organizerQueue, intents::add)
+        onNodeWithTag(GameDetailTags.TabWaiting).performClick()
 
         onNodeWithTag(GameWaitlistTags.promote("1#1")).performScrollTo().performClick()
 
@@ -187,7 +193,9 @@ class GameGuestSectionTest {
 
     @Test
     fun everyGuestTagIsUnique() = runComposeUiTest {
+        // Quem olha está na espera: a aba abre nela e a linha do convidado aparece.
         val state = GameGuestPreviewData.inQueue.copy(
+            response = GameDetailResponsePreviewData.reserva,
             guest = GameGuestPreviewData.guestUi.copy(
                 sheetOpen = true,
                 name = "Rafa Moreira",
@@ -199,8 +207,6 @@ class GameGuestSectionTest {
         setScreen(state)
 
         listOf(
-            GameGuestTags.Add,
-            GameGuestTags.Hint,
             GameGuestTags.Sheet,
             GameGuestTags.Name,
             GameGuestTags.Submit,
@@ -208,7 +214,6 @@ class GameGuestSectionTest {
             GameGuestTags.RemoveSheet,
             GameGuestTags.RemoveConfirm,
             GameGuestTags.Notice,
-            GameGuestTags.remove("1#1"),
             GameGuestTags.row("1#1"),
         ).forEach { onAllNodesWithTag(it).assertCountEquals(1) }
     }

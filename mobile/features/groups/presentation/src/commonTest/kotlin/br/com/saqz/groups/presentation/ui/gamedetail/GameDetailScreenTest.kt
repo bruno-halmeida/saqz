@@ -31,7 +31,7 @@ import kotlin.test.assertEquals
 class GameDetailScreenTest {
     @Test
     fun `cancel action is hidden for cancelled games`() = runComposeUiTest {
-        setScreen(GameDetailStatusTone.Cancelled)
+        setScreen(GameDetailStatusTone.Cancelled, menuOpen = true)
 
         onAllNodesWithText("Cancelar jogo").assertCountEquals(0)
         onNodeWithText("Editar jogo").assertExists()
@@ -39,7 +39,7 @@ class GameDetailScreenTest {
 
     @Test
     fun `cancel action is hidden for completed games`() = runComposeUiTest {
-        setScreen(GameDetailStatusTone.Completed)
+        setScreen(GameDetailStatusTone.Completed, menuOpen = true)
 
         onAllNodesWithText("Cancelar jogo").assertCountEquals(0)
         onNodeWithText("Editar jogo").assertExists()
@@ -100,29 +100,8 @@ class GameDetailScreenTest {
     }
 
     @Test
-    fun `attendance with capacity one agrees with the singular`() = runComposeUiTest {
-        setScreen(state = GameDetailPreviewData.admin.copy(attendance = GameDetailAttendanceUi(confirmed = 0, capacity = 1, availableSpots = 1)))
-
-        onNodeWithText("0 de 1 confirmado · 1 vaga aberta").assertExists()
-    }
-
-    @Test
-    fun `full game with capacity one says confirmado in the singular`() = runComposeUiTest {
-        setScreen(state = GameDetailPreviewData.admin.copy(attendance = GameDetailAttendanceUi(confirmed = 1, capacity = 1, availableSpots = 0)))
-
-        onNodeWithText("1 de 1 confirmado · lotado").assertExists()
-    }
-
-    @Test
-    fun `attendance with several spots keeps the plural`() = runComposeUiTest {
-        setScreen(state = GameDetailPreviewData.admin.copy(attendance = GameDetailAttendanceUi(confirmed = 10, capacity = 12, availableSpots = 2)))
-
-        onNodeWithText("10 de 12 confirmados · 2 vagas abertas").assertExists()
-    }
-
-    @Test
     fun `cancel action is hidden for draft games`() = runComposeUiTest {
-        setScreen(GameDetailStatusTone.Draft)
+        setScreen(GameDetailStatusTone.Draft, menuOpen = true)
 
         onAllNodesWithText("Cancelar jogo").assertCountEquals(0)
         onNodeWithText("Editar jogo").assertExists()
@@ -190,59 +169,77 @@ class GameDetailScreenTest {
             }
         }
 
-        onNodeWithText("Lista de espera").assertExists()
-        onNodeWithText("1º na fila").assertExists()
-        onAllNodesWithText("Central").assertCountEquals(2)
-        onNodeWithText("Mensalista").assertExists()
-        onNodeWithText("Colocar no jogo").assertExists()
+        onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+        onNodeWithText("1º").assertExists()
+        onNodeWithText("Caio Lima").assertExists()
+        // O gestor vê o vínculo na linha; a posição sai da linha em jogo sem posições só para o atleta.
+        onAllNodesWithText("Mensalista").assertCountEquals(1)
+        onNodeWithText("Colocar").assertExists()
     }
 
     @Test
-    fun `fifo waitlist hides promote action while keeping capacity action`() = runComposeUiTest {
-        setScreen()
-
-        onNodeWithText("Lista de espera").assertExists()
-        onAllNodesWithText("Colocar no jogo").assertCountEquals(0)
-        onNodeWithText("Ajustar vagas").assertExists()
+    fun `fifo waitlist hides promote action while keeping capacity action`() {
+        runComposeUiTest {
+            setScreen(menuOpen = true)
+            onNodeWithText("Ajustar vagas").assertExists()
+        }
+        runComposeUiTest {
+            setScreen()
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+            onAllNodesWithText("Colocar").assertCountEquals(0)
+            onNodeWithText("Se alguém desistir, a fila anda pela ordem.").assertExists()
+        }
     }
 
     @Test
-    fun `after the game started the promote and capacity actions disappear and the reason stops promising`() = runComposeUiTest {
-        setScreen(
-            state = GameDetailPreviewData.admin.copy(
-                header = GameDetailPreviewData.header.copy(responseOpen = false, confirmationOpen = false),
-                promotionMode = PromotionMode.MANUAL,
-            ),
+    fun `after the game started the promote and capacity actions disappear and the reason stops promising`() {
+        val started = GameDetailPreviewData.admin.copy(
+            header = GameDetailPreviewData.header.copy(responseOpen = false, confirmationOpen = false),
+            promotionMode = PromotionMode.MANUAL,
         )
-
-        onNodeWithText("Lista de espera").assertExists()
-        onAllNodesWithText("Colocar no jogo").assertCountEquals(0)
-        onAllNodesWithText("Ajustar vagas").assertCountEquals(0)
-        onNodeWithTag(GameWaitlistTags.reason("wait-1")).assertTextEquals("O jogo já começou. A fila não anda mais.")
-        onAllNodesWithText("O organizador escolhe quem entra.").assertCountEquals(0)
+        runComposeUiTest {
+            setScreen(state = started.copy(gameMenuOpen = true))
+            onAllNodesWithText("Ajustar vagas").assertCountEquals(0)
+        }
+        runComposeUiTest {
+            setScreen(state = started)
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+            onAllNodesWithText("Colocar").assertCountEquals(0)
+            onNodeWithTag(GameDetailTags.WaitlistNote, useUnmergedTree = true).assertExists()
+            onNodeWithText("O jogo já começou. A fila não anda mais.").assertExists()
+            onAllNodesWithText("O organizador escolhe quem entra.").assertCountEquals(0)
+        }
     }
 
     @Test
-    fun `before the game starts the manual reason and both actions stay`() = runComposeUiTest {
-        setScreen(state = GameDetailPreviewData.admin.copy(promotionMode = PromotionMode.MANUAL))
-
-        onAllNodesWithText("Colocar no jogo").assertCountEquals(2)
-        onNodeWithText("Ajustar vagas").assertExists()
-        onNodeWithTag(GameWaitlistTags.reason("wait-1")).assertTextEquals("O organizador escolhe quem entra.")
+    fun `before the game starts the manual reason and both actions stay`() {
+        val manual = GameDetailPreviewData.admin.copy(promotionMode = PromotionMode.MANUAL)
+        runComposeUiTest {
+            setScreen(state = manual.copy(gameMenuOpen = true))
+            onNodeWithText("Ajustar vagas").assertExists()
+        }
+        runComposeUiTest {
+            setScreen(state = manual)
+            onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+            onAllNodesWithText("Colocar").assertCountEquals(2)
+            onNodeWithText("Você escolhe quem entra. Em posição completa, quem você colocar fica acima das vagas.").assertExists()
+        }
     }
 
     @Test
     fun `empty waitlist does not render its section`() = runComposeUiTest {
         setScreen(waitlist = emptyList())
 
-        onAllNodesWithText("Lista de espera").assertCountEquals(0)
+        onNodeWithTag(GameDetailTags.TabWaiting).performClick()
+        onNodeWithText("Ninguém na lista de espera.").assertExists()
+        onAllNodesWithTag(GameDetailTags.WaitlistNote).assertCountEquals(0)
     }
 
     @Test
     fun `response block stays hidden when the state does not offer it`() = runComposeUiTest {
-        setScreen(state = GameDetailPreviewData.admin.copy(isAdmin = false))
+        setScreen(state = GameDetailPreviewData.admin.copy(isAdmin = false, response = GameDetailResponseUi()))
 
-        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
         onAllNodesWithText("Você vai jogar?").assertCountEquals(0)
         onAllNodesWithText("Confirmar presença automaticamente").assertCountEquals(0)
     }
@@ -252,8 +249,7 @@ class GameDetailScreenTest {
         val intents = mutableListOf<GameDetailIntent>()
         setScreen(state = GameDetailResponsePreviewData.memberPending, onIntent = intents::add)
 
-        onNodeWithTag(GameDetailAttendanceTags.Block).assertExists()
-        onNodeWithText("Você vai jogar?").assertExists()
+        onNodeWithTag(GameDetailAttendanceTags.Going).assertExists()
         onNodeWithTag(GameDetailAttendanceTags.Going).assertIsEnabled().performClick()
         onNodeWithTag(GameDetailAttendanceTags.NotGoing).assertIsEnabled().performClick()
 
@@ -264,8 +260,8 @@ class GameDetailScreenTest {
             ),
             intents,
         )
-        // O convidado continua pedindo a resposta que o bloco acabou de oferecer.
-        onNodeWithText("Responda “Vou” para poder levar alguém.").assertExists()
+        // Sem "Vou" não há "Levar convidado" (DEB-116: sai o botão desabilitado com a dica).
+        onAllNodesWithTag(GameGuestTags.Add).assertCountEquals(0)
     }
 
     @Test
@@ -294,8 +290,7 @@ class GameDetailScreenTest {
         setScreen(state = GameDetailResponsePreviewData.memberDeclined)
 
         onNodeWithText("Você não vai jogar.").assertExists()
-        onAllNodesWithText("Você vai jogar?").assertCountEquals(0)
-        onNodeWithText("Sua resposta").assertExists()
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
         onNodeWithTag(GameDetailAttendanceTags.Change).assertExists()
     }
 
@@ -356,8 +351,8 @@ class GameDetailScreenTest {
         setScreen(state = GameDetailResponsePreviewData.memberClosedByDeadline)
 
         onNodeWithText("As confirmações deste jogo encerraram. Fale com o organizador.").assertExists()
-        onNodeWithText("Prazo encerrado").assertExists()
-        onAllNodesWithText("Em andamento").assertCountEquals(0)
+        onNodeWithText("PRAZO ENCERRADO").assertExists()
+        onAllNodesWithText("EM ANDAMENTO").assertCountEquals(0)
         onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
         onAllNodesWithText("O prazo acabou: quem confirmar agora entra na lista de espera e o gestor escolhe quem sobe.").assertCountEquals(0)
         onAllNodesWithText("Não foi possível salvar sua resposta. Tente novamente.").assertCountEquals(0)
@@ -388,10 +383,10 @@ class GameDetailScreenTest {
     }
 
     @Test
-    fun `open confirmation shows the deadline in the header and in the response card`() = runComposeUiTest {
+    fun `open confirmation shows the deadline once in the header`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberPending)
 
-        onAllNodesWithText("Confirmações até 17h30").assertCountEquals(2)
+        onAllNodesWithText("Confirmações até 17h30").assertCountEquals(1)
         onAllNodesWithText("Em andamento. Não dá mais para responder.").assertCountEquals(0)
     }
 
@@ -418,7 +413,7 @@ class GameDetailScreenTest {
             ),
         )
 
-        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
         onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
     }
 
@@ -430,7 +425,7 @@ class GameDetailScreenTest {
             ),
         )
 
-        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
     }
 
     @Test
@@ -441,14 +436,14 @@ class GameDetailScreenTest {
             ),
         )
 
-        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
     }
 
     @Test
     fun `a state that does not offer the answer hides the block on a published game`() = runComposeUiTest {
         setScreen(state = GameDetailResponsePreviewData.memberPending.copy(response = GameDetailResponseUi()))
 
-        onAllNodesWithTag(GameDetailAttendanceTags.Block).assertCountEquals(0)
+        onAllNodesWithTag(GameDetailAttendanceTags.Going).assertCountEquals(0)
     }
 
     @Test
@@ -464,7 +459,7 @@ class GameDetailScreenTest {
         }
 
         onNodeWithTag(GameWaitlistTags.CapacitySheet).assertExists()
-        onAllNodesWithText("Ajustar vagas").assertCountEquals(2)
+        onAllNodesWithText("Ajustar vagas").assertCountEquals(1)
         onNodeWithText("14").assertExists()
         onNodeWithText("Salvar vagas").assertExists()
     }
@@ -486,12 +481,12 @@ class GameDetailScreenTest {
         }
 
         onNodeWithText("Este jogo tem 2 vagas. O mínimo agora é 4, e salvar grava 4.").assertExists()
-        onNodeWithText("4").assertExists()
     }
 
     private fun ComposeUiTest.setScreen(
         status: GameDetailStatusTone = GameDetailStatusTone.Published,
         cancelDialogOpen: Boolean = false,
+        menuOpen: Boolean = false,
         waitlist: List<GameDetailWaitlistUi> = GameDetailPreviewData.admin.waitlist,
         state: GameDetailState? = null,
         onIntent: (GameDetailIntent) -> Unit = {},
@@ -501,6 +496,7 @@ class GameDetailScreenTest {
                 state = state ?: GameDetailPreviewData.admin.copy(
                     header = GameDetailPreviewData.header.copy(statusTone = status),
                     cancelDialogOpen = cancelDialogOpen,
+                    gameMenuOpen = menuOpen,
                     waitlist = waitlist,
                     promotionMode = PromotionMode.FIFO,
                 ),
