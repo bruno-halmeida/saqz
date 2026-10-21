@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tela de jogo</title>
+<meta name="description" content="Proposta de redesenho da tela de jogo do Saqz, com a lista de quem não vai, para aprovar antes de codar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Hallmark · scope: telas de app (sistema existente preservado) · genre: modern-minimal · theme: Saqz (export oficial do design system)
+ * pre-emit critique: P5 H5 E4 S5 R4 V4
+ * Tokens: cópia de design/convite-mensalistas/telas.html (que copia mobile/core/design-system/design-tokens) + extras do ingresso no fim do :root.
+ */
+:root {
+  /* ---- colors.css ---- */
+  --saqz-blue: #0638DF;
+  --saqz-blue-pressed: #052BB3;
+  --saqz-blue-tint: #F4F8FB;
+  --saqz-lime: #C7F300;
+  --saqz-navy: #0E1738;
+  --saqz-white: #FFFFFF;
+  --saqz-canvas: #F5F5F7;
+  --saqz-ice: #F4F8FB;
+  --saqz-border: #D8DDE8;
+  --saqz-muted: #667085;
+  --saqz-placeholder: #98A2B3;
+  --saqz-disabled-bg: #C9CED8;
+  --saqz-disabled-fg: #7A8291;
+  --saqz-success: #17B26A;
+  --saqz-warning: #F5A623;
+  --saqz-error: #C9363B;
+  --color-brand: var(--saqz-blue);
+  --color-accent: var(--saqz-lime);
+  --text-strong: var(--saqz-navy);
+  --text-body: var(--saqz-navy);
+  --text-muted: var(--saqz-muted);
+  --text-on-brand: var(--saqz-white);
+  --surface-page: var(--saqz-canvas);
+  --surface-card: var(--saqz-white);
+  --surface-soft: var(--saqz-ice);
+  --border-default: var(--saqz-border);
+  --brand-fill-08: rgba(6, 56, 223, 0.08);
+  --brand-fill-11: rgba(6, 56, 223, 0.11);
+  --lime-fill-32: rgba(199, 243, 0, 0.32);
+  --error-fill-10: rgba(201, 54, 59, 0.10);
+  --scrim: rgba(14, 23, 56, 0.46);
+  /* extras do app (SaqzColorTokens e chip Warning), nomeados aqui para nada ficar solto nas regras */
+  --saqz-warning-fg: #8F5600;
+  --warning-fill-14: rgba(245, 166, 35, 0.14);
+  --saqz-error-pressed: #A92B30;
+
+  /* ---- radius.css ---- */
+  --radius-input: 10px;
+  --radius-card: 12px;
+  --radius-large: 20px;
+  --radius-sheet: 28px;
+  --radius-pill: 999px;
+  --shadow-sheet: 0 -12px 40px rgba(14, 23, 56, 0.12);
+  --shadow-toast: 0 12px 40px rgba(14, 23, 56, 0.20);
+
+  /* ---- spacing.css (grade de 4) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --page-margin: 16px;
+  --section-gap: 24px;
+  --block-gap: 12px;
+  --touch-min: 44px;
+
+  /* ---- typography.css ---- */
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text-h2-size: 28px;  --text-h2-line: 34px;  --text-h2-weight: 700;  --text-h2-track: -0.02em;
+  --m-title-size: 22px;     --m-title-line: 28px;     --m-title-weight: 700;  --m-title-track: -0.02em;
+  --m-subtitle-size: 18px;  --m-subtitle-line: 24px;  --m-subtitle-weight: 600;
+  --m-body-size: 16px;      --m-body-line: 24px;      --m-body-weight: 400;
+  --m-support-size: 14px;   --m-support-line: 20px;   --m-support-weight: 400;
+  --m-label-size: 15px;     --m-label-line: 20px;     --m-label-weight: 600;
+
+  /* ---- movimento (SaqzMotionPolicy) ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-sheet: 320ms;
+  --dur-press: 100ms;
+
+  /* ---- quadro em volta das telas: segue o tema do visualizador ---- */
+  --board-bg: #FFFFFF;
+  --board-fg: var(--saqz-navy);
+  --board-muted: var(--saqz-muted);
+  --board-soft: var(--saqz-ice);
+  --board-border: var(--saqz-border);
+  --on-blue-12: rgba(255, 255, 255, 0.12);
+  --on-blue-32: rgba(255, 255, 255, 0.32);
+  --on-blue-60: rgba(255, 255, 255, 0.60);
+  --saqz-success-fg: #067647;
+  --shadow-seg: rgba(14, 23, 56, 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --board-bg: #0C1226;
+    --board-fg: #E8ECF8;
+    --board-muted: #A3ADC7;
+    --board-soft: #151C36;
+    --board-border: #29345A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --board-bg: #0C1226;
+  --board-fg: #E8ECF8;
+  --board-muted: #A3ADC7;
+  --board-soft: #151C36;
+  --board-border: #29345A;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; overflow-x: clip; }
+body { font-family: var(--font-ui); font-size: var(--m-body-size); line-height: var(--m-body-line); color: var(--board-fg); background: var(--board-bg); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--saqz-blue); outline-offset: 2px; }
+p, h1, h2, h3, ul, ol { margin: 0; }
+ul { padding: 0; list-style: none; }
+p, li { text-wrap: pretty; }
+.ic { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ic--sm { width: 16px; height: 16px; }
+
+/* ---------- quadro ---------- */
+.board { max-width: 1320px; margin-inline: auto; padding: var(--space-6) max(16px, env(safe-area-inset-right, 0px)) 96px max(16px, env(safe-area-inset-left, 0px)); }
+.board__head { display: grid; gap: var(--space-4); max-width: 72ch; }
+.board__title { font-size: var(--text-h2-size); line-height: var(--text-h2-line); font-weight: 700; letter-spacing: var(--text-h2-track); overflow-wrap: anywhere; min-width: 0; text-wrap: balance; }
+.board__lead { color: var(--board-muted); }
+.decide { display: grid; gap: var(--space-2); padding: var(--space-4); background: var(--board-soft); border-radius: var(--radius-card); }
+.decide__title { font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; }
+.decide ol, .decide ul { padding-left: var(--space-5); display: grid; gap: var(--space-2); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.decide ul { list-style: disc; }
+.group { display: grid; gap: var(--space-6); margin-top: 64px; }
+.group__head { display: grid; gap: var(--space-1); max-width: 65ch; }
+.group__title { font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: 700; letter-spacing: var(--m-title-track); text-wrap: balance; }
+.group__lead { color: var(--board-muted); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.frames { display: grid; gap: 48px var(--space-8); grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 390px)); justify-content: start; align-items: start; }
+.frame { margin: 0; display: grid; gap: var(--space-3); min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.frame figcaption { display: grid; gap: var(--space-1); max-width: 390px; }
+.frame__name { font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; }
+.frame__note { font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--board-muted); text-wrap: pretty; }
+
+/* ---------- tela do app (sempre clara) ---------- */
+.screen { position: relative; isolation: isolate; container-type: inline-size; display: flex; flex-direction: column; width: 100%; max-width: 390px; min-height: 780px; overflow: hidden; color-scheme: light; color: var(--text-body); background: var(--surface-page); border: 1px solid var(--board-border); border-radius: var(--radius-card); }
+.appbar { display: flex; align-items: center; gap: var(--space-1); min-height: 56px; padding: var(--space-2) var(--space-1); }
+.appbar__title { flex: 1; min-width: 0; font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: 700; letter-spacing: var(--m-title-track); color: var(--text-strong); }
+.iconbtn { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--saqz-blue); }
+.iconbtn .ic { width: 24px; height: 24px; }
+.iconbtn:active { background: var(--brand-fill-11); }
+@media (hover: hover) { .iconbtn:hover { background: var(--brand-fill-08); } }
+.content { flex: 1; display: grid; align-content: start; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); padding: var(--space-1) var(--page-margin) var(--space-6); }
+
+/* ---------- ingresso: o jogo + a sua resposta num cartão azul só ---------- */
+.ticket { display: grid; gap: var(--space-4); padding: var(--space-5) var(--space-4) var(--space-4); border-radius: var(--radius-large); background: var(--saqz-blue); color: var(--text-on-brand); }
+.ticket__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ticket__kicker { font-size: var(--m-support-size); line-height: var(--m-support-line); font-weight: 600; opacity: 0.86; }
+.pill-on-blue { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-3); border-radius: var(--radius-pill); background: var(--on-blue-12); font-size: 13px; line-height: 20px; font-weight: 600; white-space: nowrap; }
+.pill-on-blue::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--saqz-lime); }
+.pill-on-blue--muted::before { background: var(--on-blue-60); }
+.ticket__when { display: grid; gap: 2px; }
+.ticket__day { font-size: var(--m-subtitle-size); line-height: var(--m-subtitle-line); font-weight: 600; }
+.ticket__time { font-size: 44px; line-height: 48px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.ticket__where { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--m-support-size); line-height: var(--m-support-line); }
+.ticket__where .ic { margin-top: 2px; opacity: 0.86; }
+.ticket__rule { height: 0; border-top: 1px dashed var(--on-blue-32); margin-inline: calc(-1 * var(--space-4)); }
+.ticket__line { font-size: var(--m-support-size); line-height: var(--m-support-line); opacity: 0.9; }
+.answer { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-5); border: 1px solid transparent; border-radius: var(--radius-pill); font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; white-space: nowrap; transition: transform var(--dur-press) var(--ease-out), background-color 120ms var(--ease-out); }
+.btn:active { transform: translateY(1px) scale(0.98); }
+.btn--lime { background: var(--saqz-lime); color: var(--saqz-navy); }
+.btn--outline-white { background: transparent; color: var(--text-on-brand); border-color: var(--on-blue-60); }
+.btn--primary { background: var(--saqz-blue); color: var(--text-on-brand); }
+.btn--full { width: 100%; }
+@media (hover: hover) { .btn--outline-white:hover { background: var(--on-blue-12); } .btn--primary:hover { background: var(--saqz-blue-pressed); } }
+.answered { display: flex; align-items: center; gap: var(--space-3); min-height: 52px; padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-input); background: var(--on-blue-12); font-size: var(--m-label-size); font-weight: 600; }
+.answered__dot { width: 10px; height: 10px; border-radius: 50%; background: var(--saqz-success); flex: none; }
+.answered span { flex: 1; min-width: 0; }
+.ghost-white { min-height: 44px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text-on-brand); font-weight: 600; font-size: var(--m-support-size); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- ocupação: uma barra no lugar dos três contadores ---------- */
+.fill { display: grid; gap: var(--space-2); padding: var(--space-4); background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-card); }
+.fill__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.fill__big { font-size: var(--m-title-size); line-height: var(--m-title-line); font-weight: 700; letter-spacing: var(--m-title-track); color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.fill__big small { font-size: var(--m-support-size); font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
+.fill__state { font-size: var(--m-support-size); line-height: var(--m-support-line); font-weight: 600; color: var(--saqz-blue); white-space: nowrap; }
+.fill__state--done { color: var(--saqz-success-fg); }
+.bar { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; height: 10px; }
+.bar i { border-radius: 3px; background: var(--surface-soft); border: 1px solid var(--border-default); }
+.bar i.on { background: var(--saqz-blue); border-color: var(--saqz-blue); }
+.bar i.forced { background: var(--saqz-warning); border-color: var(--saqz-warning); }
+.fill__foot { font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); }
+
+/* ---------- lista com abas ---------- */
+.list { display: grid; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: var(--radius-card); overflow: hidden; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; margin: var(--space-3); padding: 3px; border-radius: var(--radius-pill); background: var(--surface-soft); }
+.seg button { min-height: 40px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text-muted); font-size: var(--m-support-size); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg button b { font-variant-numeric: tabular-nums; }
+.seg button[aria-selected="true"] { background: var(--saqz-white); color: var(--text-strong); box-shadow: 0 1px 3px var(--shadow-seg); }
+.seg button:active { background: var(--brand-fill-08); }
+.pane[hidden] { display: none; }
+.pos { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-4); background: var(--surface-soft); border-top: 1px solid var(--border-default); }
+.pos__name { font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; color: var(--text-strong); }
+.pos__slots { display: flex; align-items: center; gap: var(--space-2); font-size: var(--m-support-size); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pos__slots--done { color: var(--saqz-success-fg); font-weight: 600; }
+.dots { display: flex; gap: 3px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--saqz-blue); }
+.dots i.on { background: var(--saqz-blue); }
+.person { display: flex; align-items: center; gap: var(--space-3); min-height: 60px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-top: 1px solid var(--border-default); min-width: 0; }
+.avatar { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-soft); border: 1px solid var(--border-default); color: var(--saqz-blue); font-size: var(--m-support-size); font-weight: 600; }
+.avatar--out { color: var(--text-muted); }
+.person__text { flex: 1; min-width: 0; }
+.person__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-label-size); line-height: var(--m-label-line); font-weight: 600; color: var(--text-strong); }
+.person__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); }
+.person__you { color: var(--saqz-blue); }
+.tag { flex: none; padding: 2px var(--space-2); border-radius: var(--radius-pill); font-size: 12px; line-height: 18px; font-weight: 600; white-space: nowrap; }
+.tag--warn { color: var(--saqz-warning-fg); background: var(--warning-fill-14); }
+.tag--brand { color: var(--saqz-blue); background: var(--brand-fill-08); }
+.queue { flex: none; width: 28px; text-align: center; font-size: var(--m-label-size); font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.more { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); }
+.more:active { background: var(--brand-fill-08); }
+.inline-add { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 56px; padding: 0 var(--space-4); border: 0; border-top: 1px solid var(--border-default); background: transparent; color: var(--saqz-blue); font-size: var(--m-label-size); font-weight: 600; text-align: left; }
+.inline-add .plus { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px dashed var(--saqz-blue); }
+.inline-add:active { background: var(--brand-fill-08); }
+@media (hover: hover) { .inline-add:hover { background: var(--brand-fill-08); } }
+.pane__note { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-default); font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); text-wrap: pretty; }
+.empty { display: grid; justify-items: center; gap: var(--space-1); padding: var(--space-6) var(--space-4); border-top: 1px solid var(--border-default); text-align: center; }
+.empty__title { font-size: var(--m-label-size); font-weight: 600; color: var(--text-strong); }
+.empty p { font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); }
+
+/* ---------- barra de baixo e folha ---------- */
+.bottombar { display: grid; gap: var(--space-2); padding: var(--space-3) var(--page-margin) var(--space-4); background: var(--surface-page); border-top: 1px solid var(--border-default); }
+.bottombar__help { text-align: center; font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--text-muted); text-wrap: balance; }
+.overlay { position: absolute; inset: 0; z-index: 3; display: flex; align-items: flex-end; background: var(--scrim); }
+.sheet { width: 100%; display: grid; gap: var(--space-2); padding: var(--space-3) var(--page-margin) var(--space-6); background: var(--saqz-white); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; box-shadow: var(--shadow-sheet); }
+.sheet__grip { justify-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--border-default); margin-bottom: var(--space-2); }
+.sheet__title { font-size: var(--m-subtitle-size); line-height: var(--m-subtitle-line); font-weight: 600; color: var(--text-strong); padding: 0 var(--space-1) var(--space-1); }
+.action { display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: 0 var(--space-1); border: 0; border-top: 1px solid var(--border-default); background: transparent; text-align: left; font-size: var(--m-body-size); font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+.action .ic { color: var(--saqz-blue); }
+.action small { display: block; font-size: var(--m-support-size); font-weight: 400; color: var(--text-muted); white-space: normal; }
+.action--danger, .action--danger .ic { color: var(--saqz-error); }
+.action:active { background: var(--brand-fill-08); }
+.answered__dot--wait { background: var(--saqz-warning); }
+.btn--row { min-height: 40px; padding: 0 var(--space-4); font-size: var(--m-support-size); }
+.action--first { border-top: 0; }
+.fill__state--muted { color: var(--text-muted); }
+.dim { opacity: 0.5; pointer-events: none; }
+
+/* ---------- antes x depois ---------- */
+.compare { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); max-width: 980px; }
+.compare__col { display: grid; gap: var(--space-2); align-content: start; padding: var(--space-4); border: 1px solid var(--board-border); border-radius: var(--radius-card); }
+.compare__col h3 { font-size: var(--m-label-size); line-height: var(--m-label-line); }
+.compare__col ol { padding-left: var(--space-5); display: grid; gap: var(--space-1); font-size: var(--m-support-size); line-height: var(--m-support-line); color: var(--board-muted); }
+
+@container (max-width: 359px) { .ticket__time { font-size: 36px; line-height: 40px; } .seg button { font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:active { transform: none; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+  <symbol id="i-more-v" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></symbol>
+</svg>
+
+<main class="board">
+  <header class="board__head">
+    <h1 class="board__title">Tela de jogo, redesenhada</h1>
+    <p class="board__lead">Proposta para aprovar antes de mexer no app. Mesmo design system (cores, Inter, botões, folhas), estrutura nova: o jogo e a sua resposta viram um cartão só no topo, a lista passa a ter abas com quem vai, quem espera e <strong>quem avisou que não vai</strong>, e as ações do organizador saem do pé da tela.</p>
+    <div class="decide">
+      <p class="decide__title">Para você decidir</p>
+      <ol>
+        <li><strong>Quem vê a aba "Não vão"?</strong> Proposta: todo membro do grupo, como já acontece com quem vai. Alternativa: só dono e admins.</li>
+        <li><strong>Abas ou tudo empilhado?</strong> Proposta: abas "Vão · Espera · Não vão", com os números nelas (substituem os três contadores). Alternativa: as três listas uma embaixo da outra, "Não vão" recolhida no fim.</li>
+        <li><strong>"Cancelar jogo" no menu ⋯ do topo</strong>, junto de Editar e Ajustar vagas (a revisão RCD de 20/10 pediu tirar o destaque do botão vermelho).</li>
+        <li>"Sem resposta" segue só como número (na barra de ocupação). Mostrar os nomes também é possível, mas fica fora deste pedido.</li>
+      </ol>
+    </div>
+  </header>
+
+  <section class="group">
+    <div class="group__head">
+      <h2 class="group__title">O que muda</h2>
+    </div>
+    <div class="compare">
+      <div class="compare__col">
+        <h3>Hoje (de cima para baixo)</h3>
+        <ol>
+          <li>Cartão branco: selo, "Confirmar até", data, quadra, duração, vagas</li>
+          <li>Cartão azul "Sua presença": prazo de novo, Vou / Não vou</li>
+          <li>Cartão de números: "4 de 12 confirmados · 8 vagas" e os contadores Vão / Não vão / Sem resposta</li>
+          <li>Levar convidado</li>
+          <li>Confirmados</li>
+          <li>Colocar alguém (organizador)</li>
+          <li>Lista de espera em outro cartão</li>
+          <li>Ajustar vagas, Editar, Cancelar jogo (vermelho), Publicar, Acertar contas, empilhados no fim</li>
+        </ol>
+      </div>
+      <div class="compare__col">
+        <h3>Proposta</h3>
+        <ol>
+          <li>Ingresso azul: data e hora grandes, quadra, prioridade e a sua resposta, sem repetir o prazo</li>
+          <li>Ocupação: "8 de 12" com uma barra de vagas e o que falta; "sem resposta" vira uma linha</li>
+          <li>Lista com abas <strong>Vão · Espera · Não vão</strong>; posições como cabeçalhos com bolinhas de vaga</li>
+          <li>"Levar convidado" e "Colocar alguém" no fim da aba Vão, onde a pessoa vai entrar</li>
+          <li>Menu ⋯ do topo: Editar, Ajustar vagas, Cancelar jogo</li>
+          <li>Barra de baixo só quando há a ação do momento: Publicar (rascunho) ou Acertar contas (encerrado)</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <h2 class="group__title">Atleta</h2>
+      <p class="group__lead">As abas funcionam: toque para trocar.</p>
+    </div>
+    <div class="frames">
+
+      <figure class="frame">
+        <div class="screen">
+          <div class="appbar">
+            <button class="iconbtn" aria-label="Voltar"><svg class="ic"><use href="#i-back"/></svg></button>
+            <p class="appbar__title">Jogo</p>
+            <button class="iconbtn" aria-label="Compartilhar"><svg class="ic"><use href="#i-share"/></svg></button>
+          </div>
+          <div class="content">
+            <section class="ticket">
+              <div class="ticket__top"><p class="ticket__kicker">Vôlei de terça</p><span class="pill-on-blue">Aberto</span></div>
+              <div class="ticket__when"><p class="ticket__day">Terça, 28/07</p><p class="ticket__time">19h30</p></div>
+              <p class="ticket__where"><svg class="ic ic--sm"><use href="#i-pin"/></svg><span>CERET — Quadra 2 · 2h</span></p>
+              <div class="ticket__rule"></div>
+              <p class="ticket__line">Você vai? Prioridade dos mensalistas até hoje às 17h30.</p>
+              <div class="answer"><button class="btn btn--lime">Vou</button><button class="btn btn--outline-white">Não vou</button></div>
+            </section>
+            <section class="fill">
+              <div class="fill__head"><p class="fill__big">8 <small>de 12</small></p><p class="fill__state">Faltam 4</p></div>
+              <div class="bar" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+              <p class="fill__foot">5 ainda não responderam</p>
+            </section>
+            <section class="list" data-tabs>
+              <div class="seg" role="tablist">
+                <button role="tab" aria-selected="true">Vão <b>8</b></button>
+                <button role="tab" aria-selected="false">Espera <b>2</b></button>
+                <button role="tab" aria-selected="false">Não vão <b>3</b></button>
+              </div>
+              <div class="pane">
+                <div class="person"><span class="avatar">LP</span><div class="person__text"><p class="person__name">Lucas Prado</p><p class="person__meta">Mensalista</p></div></div>
+                <div class="person"><span class="avatar">BS</span><div class="person__text"><p class="person__name">Bia Souza</p><p class="person__meta">Mensalista</p></div></div>
+                <div class="person"><span class="avatar">TM</span><div class="person__text"><p class="person__name">Thiago Melo</p><p class="person__meta">Avulso</p></div></div>
+                <div class="person"><span class="avatar">JR</span><div class="person__text"><p class="person__name">Júlia Rocha</p><p class="person__meta">Convidada de Bia Souza</p></div></div>
+                <p class="pane__note">e mais 4</p>
+              </div>
+              <div class="pane" hidden>
+                <div class="person"><span class="queue">1º</span><span class="avatar">CL</span><div class="person__text"><p class="person__name">Caio Lima</p><p class="person__meta">Avulso · entrou depois do prazo</p></div></div>
+                <div class="person"><span class="queue">2º</span><span class="avatar">DA</span><div class="person__text"><p class="person__name">Duda Alves</p><p class="person__meta">Avulso</p></div></div>
+                <p class="pane__note">Abriu vaga, o 1º da fila entra sozinho.</p>
+              </div>
+              <div class="pane" hidden>
+                <div class="person"><span class="avatar avatar--out">RD</span><div class="person__text"><p class="person__name">Rafa Dias</p><p class="person__meta">Mensalista</p></div></div>
+                <div class="person"><span class="avatar avatar--out">MC</span><div class="person__text"><p class="person__name">Marina Costa</p><p class="person__meta">Avulsa</p></div></div>
+                <div class="person"><span class="avatar avatar--out">PH</span><div class="person__text"><p class="person__name">Pedro Henrique</p><p class="person__meta">Mensalista</p></div></div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <figcaption><p class="frame__name">1 · Sem resposta</p><p class="frame__note">Data, hora e resposta num cartão só. O prazo aparece uma vez. Os três contadores viraram os números das abas.</p></figcaption>
+      </figure>
+
+      <figure class="frame">
+        <div class="screen">
+          <div class="appbar">
+            <button class="iconbtn" aria-label="Voltar"><svg class="ic"><use href="#i-back"/></svg></button>
+            <p class="appbar__title">Jogo</p>
+            <button class="iconbtn" aria-label="Compartilhar"><svg class="ic"><use href="#i-share"/></svg></button>
+          </div>
+          <div class="content">
+            <section class="ticket">
+              <div class="ticket__top"><p class="ticket__kicker">Vôlei de terça</p><span class="pill-on-blue">Aberto</span></div>
+              <div class="ticket__when"><p class="ticket__day">Terça, 28/07</p><p class="ticket__time">19h30</p></div>
+              <p class="ticket__where"><svg class="ic ic--sm"><use href="#i-pin"/></svg><span>CERET — Quadra 2 · 2h</span></p>
+              <div class="ticket__rule"></div>
+              <div class="answered"><span class="answered__dot"></span><span>Você vai jogar</span><button class="ghost-white">Alterar</button></div>
+            </section>
+            <section class="fill">
+              <div class="fill__head"><p class="fill__big">9 <small>de 12</small></p><p class="fill__state">Faltam 3</p></div>
+              <div class="bar" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+              <p class="fill__foot">4 ainda não responderam</p>
+            </section>
+            <section class="list" data-tabs>
+              <div class="seg" role="tablist">
+                <button role="tab" aria-selected="false">Vão <b>9</b></button>
+                <button role="tab" aria-selected="false">Espera <b>2</b></button>
+                <button role="tab" aria-selected="true">Não vão <b>3</b></button>
+              </div>
+              <div class="pane" hidden>
+                <div class="person"><span class="avatar">VC</span><div class="person__text"><p class="person__name">Você <span class="person__you">(Lucas Prado)</span></p><p class="person__meta">Mensalista</p></div></div>
+                <div class="person"><span class="avatar">BS</span><div class="person__text"><p class="person__name">Bia Souza</p><p class="person__meta">Mensalista</p></div></div>
+                <button class="inline-add"><span class="plus"><svg class="ic"><use href="#i-plus"/></svg></span>Levar convidado</button>
+              </div>
+              <div class="pane" hidden>
+                <div class="person"><span class="queue">1º</span><span class="avatar">CL</span><div class="person__text"><p class="person__name">Caio Lima</p><p class="person__meta">Avulso</p></div></div>
+                <div class="person"><span class="queue">2º</span><span class="avatar">DA</span><div class="person__text"><p class="person__name">Duda Alves</p><p class="person__meta">Avulso</p></div></div>
+              </div>
+              <div class="pane">
+                <div class="person"><span class="avatar avatar--out">RD</span><div class="person__text"><p class="person__name">Rafa Dias</p><p class="person__meta">Mensalista</p></div></div>
+                <div class="person"><span class="avatar avatar--out">MC</span><div class="person__text"><p class="person__name">Marina Costa</p><p class="person__meta">Avulsa</p></div></div>
+                <div class="person"><span class="avatar avatar--out">PH</span><div class="person__text"><p class="person__name">Pedro Henrique</p><p class="person__meta">Mensalista</p></div></div>
+                <p class="pane__note">Quem avisou que não vai. Se mudar de ideia, é só tocar em Vou.</p>
+              </div>
+            </section>
+          </div>
+        </div>
+        <figcaption><p class="frame__name">2 · Confirmado, aba "Não vão"</p><p class="frame__note">A novidade pedida: nome de quem respondeu "Não vou", com mensalista ou avulso. Convidado não aparece aqui (sai junto com o anfitrião).</p></figcaption>
+      </figure>
+
+      <figure class="frame">
+        <div class="screen">
+          <div class="appbar">
+            <button class="iconbtn" aria-label="Voltar"><svg class="ic"><use href="#i-back"/></svg></button>
+            <p class="appbar__title">Jogo</p>
+            <button class="iconbtn" aria-label="Compartilhar"><svg class="ic"><use href="#i-share"/></svg></button>
+          </div>
+          <div class="content">
+            <section class="ticket">
+              <div class="ticket__top"><p class="ticket__kicker">Vôlei de terça</p><span class="pill-on-blue">Lotado</span></div>
+              <div class="ticket__when"><p class="ticket__day">Terça, 28/07</p><p class="ticket__time">19h30</p></div>
+              <p class="ticket__where"><svg class="ic ic--sm"><use href="#i-pin"/></svg><span>CERET — Quadra 2 · 2h</span></p>
+              <div class="ticket__rule"></div>
+              <div class="answered"><span class="answered__dot answered__dot--wait"></span><span>Você é o 2º da espera</span><button class="ghost-white">Alterar</button></div>
+            </section>
+            <section class="fill">
+              <div class="fill__head"><p class="fill__big">12 <small>de 12</small></p><p class="fill__state fill__state--done">Completo</p></div>
+              <div class="bar" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+              <p class="fill__foot">Todo mundo respondeu</p>
+            </section>
+            <section class="list" data-tabs>
+              <div class="seg" role="tablist">
+                <button role="tab" aria-selected="false">Vão <b>12</b></button>
+                <button role="tab" aria-selected="true">Espera <b>2</b></button>
+                <button role="tab" aria-selected="false">Não vão <b>0</b></button>
+              </div>
+              <div class="pane" hidden><p class="pane__note">12 confirmados</p></div>
+              <div class="pane">
+                <div class="person"><span class="queue">1º</span><span class="avatar">CL</span><div class="person__text"><p class="person__name">Caio Lima</p><p class="person__meta">Avulso</p></div></div>
+                <div class="person"><span class="queue">2º</span><span class="avatar">VC</span><div class="person__text"><p class="person__name">Você <span class="person__you">(Lucas Prado)</span></p><p class="person__meta">Avulso</p></div></div>
+                <p class="pane__note">Abriu vaga, o 1º da fila entra sozinho.</p>
+              </div>
+              <div class="pane" hidden>
+                <div class="empty"><p class="empty__title">Ninguém avisou que não vai</p><p>Quem responder "Não vou" aparece aqui.</p></div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <figcaption><p class="frame__name">3 · Na espera, jogo cheio</p><p class="frame__note">Quem espera abre direto na aba Espera, com a própria posição na fila. A aba vazia explica o que vai aparecer ali.</p></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group__head">
+      <h2 class="group__title">Organizador</h2>
+      <p class="group__lead">Jogo com posições (5-1). Ações de cada pessoa no ⋯ da linha, como hoje (remover, forçar entrada, colocar no jogo).</p>
+    </div>
+    <div class="frames">
+
+      <figure class="frame">
+        <div class="screen">
+          <div class="appbar">
+            <button class="iconbtn" aria-label="Voltar"><svg class="ic"><use href="#i-back"/></svg></button>
+            <p class="appbar__title">Jogo</p>
+            <button class="iconbtn" aria-label="Compartilhar"><svg class="ic"><use href="#i-share"/></svg></button>
+            <button class="iconbtn" aria-label="Mais ações do jogo"><svg class="ic"><use href="#i-more"/></svg></button>
+          </div>
+          <div class="content">
+            <section class="ticket">
+              <div class="ticket__top"><p class="ticket__kicker">Vôlei de terça</p><span class="pill-on-blue">Aberto</span></div>
+              <div class="ticket__when"><p class="ticket__day">Terça, 28/07</p><p class="ticket__time">19h30</p></div>
+              <p class="ticket__where"><svg class="ic ic--sm"><use href="#i-pin"/></svg><span>CERET — Quadra 2 · 2h</span></p>
+              <div class="ticket__rule"></div>
+              <div class="answered"><span class="answered__dot"></span><span>Você vai jogar</span><button class="ghost-white">Alterar</button></div>
+            </section>
+            <section class="fill">
+              <div class="fill__head"><p class="fill__big">4 <small>de 5</small></p><p class="fill__state">Falta 1 central</p></div>
+              <div class="bar" aria-hidden="true"><i class="on"></i><i class="forced"></i><i class="on"></i><i class="on"></i><i></i></div>
+              <p class="fill__foot">2 ainda não responderam</p>
+            </section>
+            <section class="list" data-tabs>
+              <div class="seg" role="tablist">
+                <button role="tab" aria-selected="true">Vão <b>4</b></button>
+                <button role="tab" aria-selected="false">Espera <b>1</b></button>
+                <button role="tab" aria-selected="false">Não vão <b>1</b></button>
+              </div>
+              <div class="pane">
+                <div class="pos"><p class="pos__name">Pontas</p><p class="pos__slots pos__slots--done"><span class="dots"><i class="on"></i><i class="on"></i></span>Completo</p></div>
+                <div class="person"><span class="avatar">BS</span><div class="person__text"><p class="person__name">Bia Souza</p><p class="person__meta">Mensalista</p></div><button class="more" aria-label="Ações de Bia Souza"><svg class="ic"><use href="#i-more-v"/></svg></button></div>
+                <div class="person"><span class="avatar">RD</span><div class="person__text"><p class="person__name">Rafa Dias</p><p class="person__meta">Avulso</p></div><span class="tag tag--warn">Forçado</span><button class="more" aria-label="Ações de Rafa Dias"><svg class="ic"><use href="#i-more-v"/></svg></button></div>
+                <div class="pos"><p class="pos__name">Centrais</p><p class="pos__slots"><span class="dots"><i class="on"></i><i></i></span>Falta 1</p></div>
+                <div class="person"><span class="avatar">TM</span><div class="person__text"><p class="person__name">Thiago Melo</p><p class="person__meta">Mensalista</p></div><button class="more" aria-label="Ações de Thiago Melo"><svg class="ic"><use href="#i-more-v"/></svg></button></div>
+                <div class="pos"><p class="pos__name">Levantador</p><p class="pos__slots pos__slots--done"><span class="dots"><i class="on"></i></span>Completo</p></div>
+                <div class="person"><span class="avatar">VC</span><div class="person__text"><p class="person__name">Você <span class="person__you">(Lucas Prado)</span></p><p class="person__meta">Mensalista</p></div></div>
+                <button class="inline-add"><span class="plus"><svg class="ic"><use href="#i-plus"/></svg></span>Colocar alguém</button>
+                <button class="inline-add"><span class="plus"><svg class="ic"><use href="#i-plus"/></svg></span>Levar convidado</button>
+              </div>
+              <div class="pane" hidden>
+                <div class="pos"><p class="pos__name">Pontas</p><p class="pos__slots">1 na espera</p></div>
+                <div class="person"><span class="queue">1º</span><span class="avatar">DA</span><div class="person__text"><p class="person__name">Duda Alves</p><p class="person__meta">Avulsa</p></div><button class="btn btn--primary btn--row">Colocar</button></div>
+              </div>
+              <div class="pane" hidden>
+                <div class="person"><span class="avatar avatar--out">MC</span><div class="person__text"><p class="person__name">Marina Costa</p><p class="person__meta">Mensalista · central</p></div><button class="more" aria-label="Ações de Marina Costa"><svg class="ic"><use href="#i-more-v"/></svg></button></div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <figcaption><p class="frame__name">4 · Organizador com posições</p><p class="frame__note">A barra diz qual posição falta. Cabeçalho de posição com bolinhas de vaga; quem foi forçado ganha a etiqueta e a cor de aviso na barra. Colocar alguém e convidado no fim da lista.</p></figcaption>
+      </figure>
+
+      <figure class="frame">
+        <div class="screen">
+          <div class="appbar">
+            <button class="iconbtn" aria-label="Voltar"><svg class="ic"><use href="#i-back"/></svg></button>
+            <p class="appbar__title">Jogo</p>
+            <button class="iconbtn" aria-label="Compartilhar"><svg class="ic"><use href="#i-share"/></svg></button>
+            <button class="iconbtn" aria-label="Mais ações do jogo"><svg class="ic"><use href="#i-more"/></svg></button>
+          </div>
+          <div class="content dim" aria-hidden="true">
+            <section class="ticket">
+              <div class="ticket__top"><p class="ticket__kicker">Vôlei de terça</p><span class="pill-on-blue">Aberto</span></div>
+              <div class="ticket__when"><p class="ticket__day">Terça, 28/07</p><p class="ticket__time">19h30</p></div>
+              <p class="ticket__where"><svg class="ic ic--sm"><use href="#i-pin"/></svg><span>CERET — Quadra 2 · 2h</span></p>
+            </section>
+          </div>
+          <div class="overlay">
+            <div class="sheet" role="dialog" aria-label="Ações do jogo">
+              <span class="sheet__grip"></span>
+              <p class="sheet__title">Jogo de terça, 28/07</p>
+              <button class="action action--first"><svg class="ic"><use href="#i-edit"/></svg><span>Editar jogo<small>Data, hora, quadra e valor</small></span></button>
+              <button class="action"><svg class="ic"><use href="#i-users"/></svg><span>Ajustar vagas<small>Hoje: 12 vagas</small></span></button>
+              <button class="action action--danger"><svg class="ic"><use href="#i-x"/></svg><span>Cancelar jogo</span></button>
+            </div>
+          </div>
+        </div>
+        <figcaption><p class="frame__name">5 · Menu ⋯ do jogo</p><p class="frame__note">Editar, Ajustar vagas (some em jogo com posições, como hoje) e Cancelar jogo, que segue pedindo confirmação na folha atual.</p></figcaption>
+      </figure>
+
+      <figure class="frame">
+        <div class="screen">
+          <div class="appbar">
+            <button class="iconbtn" aria-label="Voltar"><svg class="ic"><use href="#i-back"/></svg></button>
+            <p class="appbar__title">Jogo</p>
+            <button class="iconbtn" aria-label="Mais ações do jogo"><svg class="ic"><use href="#i-more"/></svg></button>
+          </div>
+          <div class="content">
+            <section class="ticket">
+              <div class="ticket__top"><p class="ticket__kicker">Vôlei de terça</p><span class="pill-on-blue pill-on-blue--muted">Encerrado</span></div>
+              <div class="ticket__when"><p class="ticket__day">Terça, 21/07</p><p class="ticket__time">19h30</p></div>
+              <p class="ticket__where"><svg class="ic ic--sm"><use href="#i-pin"/></svg><span>CERET — Quadra 2 · 2h</span></p>
+            </section>
+            <section class="fill">
+              <div class="fill__head"><p class="fill__big">11 <small>de 12</small></p><p class="fill__state fill__state--muted">Jogaram</p></div>
+              <div class="bar" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+            </section>
+            <section class="list" data-tabs>
+              <div class="seg" role="tablist">
+                <button role="tab" aria-selected="true">Foram <b>11</b></button>
+                <button role="tab" aria-selected="false">Não foram <b>4</b></button>
+              </div>
+              <div class="pane">
+                <div class="person"><span class="avatar">LP</span><div class="person__text"><p class="person__name">Lucas Prado</p><p class="person__meta">Mensalista</p></div></div>
+                <div class="person"><span class="avatar">BS</span><div class="person__text"><p class="person__name">Bia Souza</p><p class="person__meta">Mensalista</p></div></div>
+                <p class="pane__note">e mais 9</p>
+              </div>
+              <div class="pane" hidden>
+                <div class="person"><span class="avatar avatar--out">RD</span><div class="person__text"><p class="person__name">Rafa Dias</p><p class="person__meta">Mensalista</p></div></div>
+              </div>
+            </section>
+          </div>
+          <div class="bottombar">
+            <button class="btn btn--primary btn--full">Acertar contas</button>
+            <p class="bottombar__help">Confira quem pagou o jogo.</p>
+          </div>
+        </div>
+        <figcaption><p class="frame__name">6 · Jogo encerrado</p><p class="frame__note">Sem resposta nem espera: a lista vira "Foram · Não foram" e a ação do momento fica fixa embaixo. No rascunho, o mesmo lugar leva "Publicar jogo".</p></figcaption>
+      </figure>
+
+    </div>
+  </section>
+</main>
+<script>
+document.querySelectorAll('[data-tabs]').forEach(function (list) {
+  var tabs = list.querySelectorAll('[role="tab"]');
+  var panes = list.querySelectorAll('.pane');
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener('click', function () {
+      tabs.forEach(function (t, j) { t.setAttribute('aria-selected', String(i === j)); panes[j].hidden = i !== j; });
+    });
+  });
+});
+</script>
+</body>
+</html>
