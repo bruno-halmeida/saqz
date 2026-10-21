@@ -30,6 +30,7 @@ class SubmitGooglePlayPurchase(
     private val clock: Clock = Clock.systemUTC(),
     private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
     private val couponAttribution: CouponStoreAttribution? = null,
+    private val orderAmounts: GooglePlayOrderAmounts? = null,
 ) {
     private val sync = GooglePlayPurchaseSync(api, subscriptions, clock, couponAttribution)
 
@@ -48,6 +49,7 @@ class SubmitGooglePlayPurchase(
         val owned = transaction.inTransaction { sync.record(purchase, product, ownerUserId) }
         if (owned.ownerUserId != ownerUserId) return SubmitGooglePlayPurchaseResult.OwnedByAnotherAccount
         sync.acknowledgeIfNeeded(purchase)
+        owned.latestOrderId?.let { orderAmounts?.fetch(it) }
         // Depois de gravar: a compra que dá acesso encerra o checkout do site nunca pago (cobrança dupla).
         if (owned.isEntitlingAt(clock.instant())) unpaidCheckout?.execute(ownerUserId)
         return SubmitGooglePlayPurchaseResult.Accepted
@@ -82,6 +84,7 @@ class ProcessGooglePlayNotification(
     private val clock: Clock = Clock.systemUTC(),
     private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
     private val couponAttribution: CouponStoreAttribution? = null,
+    private val orderAmounts: GooglePlayOrderAmounts? = null,
 ) {
     private val sync = GooglePlayPurchaseSync(api, subscriptions, clock, couponAttribution)
 
@@ -105,6 +108,7 @@ class ProcessGooglePlayNotification(
             sync.record(purchase, product, owner)
         }
         if (recorded != null && purchase != null) sync.acknowledgeIfNeeded(purchase)
+        recorded?.latestOrderId?.let { orderAmounts?.fetch(it) }
         if (recorded != null && recorded.isEntitlingAt(clock.instant())) unpaidCheckout?.execute(recorded.ownerUserId)
         return ProcessGooglePlayNotificationResult.Accepted
     }

@@ -10,6 +10,8 @@ import br.com.saqz.subscriptions.application.GetMySubscription
 import br.com.saqz.subscriptions.application.CancelUnpaidWebCheckout
 import br.com.saqz.subscriptions.application.CouponStoreAttribution
 import br.com.saqz.subscriptions.application.GooglePlayNotificationStore
+import br.com.saqz.subscriptions.application.GooglePlayOrderAmounts
+import br.com.saqz.subscriptions.application.GooglePlayOrdersApi
 import br.com.saqz.subscriptions.application.GooglePlayPurchasesApi
 import br.com.saqz.subscriptions.application.GooglePlaySubscriptionRepository
 import br.com.saqz.subscriptions.application.ProcessGooglePlayNotification
@@ -20,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.annotation.Scheduled
 import java.time.Clock
 import javax.sql.DataSource
 
@@ -28,16 +31,22 @@ import javax.sql.DataSource
 @ConditionalOnProperty("spring.datasource.url")
 class GooglePlaySubscriptionsConfiguration {
     @Bean
-    fun googlePlaySubscriptionRepository(dataSource: DataSource): GooglePlaySubscriptionRepository =
-        JdbcGooglePlaySubscriptionRepository(dataSource)
+    fun googlePlaySubscriptionRepository(dataSource: DataSource) = JdbcGooglePlaySubscriptionRepository(dataSource)
 
     @Bean
     fun googlePlayNotificationStore(dataSource: DataSource): GooglePlayNotificationStore =
         JdbcGooglePlayNotificationStore(dataSource)
 
     @Bean
-    fun googlePlayPurchasesApi(@Value("\${saqz.google-play.package-name}") packageName: String): GooglePlayPurchasesApi =
+    fun httpGooglePlayPurchasesApi(@Value("\${saqz.google-play.package-name}") packageName: String) =
         HttpGooglePlayPurchasesApi(packageName, GooglePlayAccessTokens())
+
+    @Bean
+    fun googlePlayOrderAmounts(api: GooglePlayOrdersApi, repository: JdbcGooglePlaySubscriptionRepository, clock: Clock) =
+        GooglePlayOrderAmounts(api, repository, clock)
+
+    @Bean
+    fun googlePlayOrderAmountsJob(orderAmounts: GooglePlayOrderAmounts) = GooglePlayOrderAmountsJob(orderAmounts)
 
     @Bean
     fun submitGooglePlayPurchase(
@@ -47,7 +56,8 @@ class GooglePlaySubscriptionsConfiguration {
         clock: Clock,
         unpaidCheckout: CancelUnpaidWebCheckout,
         couponAttribution: CouponStoreAttribution,
-    ) = SubmitGooglePlayPurchase(api, subscriptions, transaction, clock, unpaidCheckout, couponAttribution)
+        orderAmounts: GooglePlayOrderAmounts,
+    ) = SubmitGooglePlayPurchase(api, subscriptions, transaction, clock, unpaidCheckout, couponAttribution, orderAmounts)
 
     @Bean
     fun processGooglePlayNotification(
@@ -60,8 +70,9 @@ class GooglePlaySubscriptionsConfiguration {
         clock: Clock,
         unpaidCheckout: CancelUnpaidWebCheckout,
         couponAttribution: CouponStoreAttribution,
+        orderAmounts: GooglePlayOrderAmounts,
     ) = ProcessGooglePlayNotification(
-        webhookToken, packageName, api, subscriptions, notifications, transaction, clock, unpaidCheckout, couponAttribution,
+        webhookToken, packageName, api, subscriptions, notifications, transaction, clock, unpaidCheckout, couponAttribution, orderAmounts,
     )
 
     @Bean
@@ -74,6 +85,17 @@ class GooglePlaySubscriptionsConfiguration {
     @Bean
     fun googlePlayNotificationController(processGooglePlayNotification: ProcessGooglePlayNotification) =
         GooglePlayNotificationController(processGooglePlayNotification)
+}
+
+/** Pedidos sem valor (compra em que a Orders API falhou e os anteriores à V182), um lote por rodada. */
+class GooglePlayOrderAmountsJob(private val orderAmounts: GooglePlayOrderAmounts) {
+    @Scheduled(
+        fixedDelayString = "\${saqz.google-play.order-amounts-delay-ms:600000}",
+        initialDelayString = "\${saqz.google-play.order-amounts-initial-delay-ms:120000}",
+    )
+    fun run() {
+        orderAmounts.backfill()
+    }
 }
 
 /**
