@@ -85,9 +85,9 @@ push, loja ou WhatsApp fica registrado como `BLOQUEADO` aqui e vai para a rodada
 
 ## Web e WhatsApp no stack local
 
-- `ferramentas/saqz-app-local.mjs` imita saqz.app (8787: landing, /comecar, /assinar e /app com o build de produção do
-  web app) e links.saqz.app (8788) contra este stack, com analytics desligado. Safari do simulador em
-  `http://localhost:8787/app/`; convite em `http://localhost:8788/?saqz_invite=<código>`.
+- `ferramentas/saqz-app-local.mjs` imita saqz.app (8787: landing, /comecar e /assinar; /app redireciona para o
+  links local, como em produção) e links.saqz.app (8788) contra este stack, com analytics desligado. Safari do
+  simulador em `http://localhost:8787/comecar/`; convite em `http://localhost:8788/?saqz_invite=<código>`.
 - `ferramentas/uazapi-falso.mjs` é um Uazapi falso em HTTPS que grava cada mensagem que o backend mandaria ao WhatsApp
   (vínculo de grupo, lembretes, avisos, confirmação de conta). Preparação do certificado e variáveis do backend no topo
   do arquivo. Rodada de exemplo: [rodada-2026-10-13.md](rodada-2026-10-13.md).

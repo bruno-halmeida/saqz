@@ -27,19 +27,13 @@ class FailedTestsTest(unittest.TestCase):
             (out / "TEST-app.LoginTest.xml").write_text(XML)
             self.assertEqual(failed_tests(root), ["features/profile/presentation · app.LoginTest.falha"])
 
-    def test_includes_android_instrumented_and_web_app_reports(self):
+    def test_includes_android_instrumented_reports(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             android = root / "android-app/build/outputs/androidTest-results/connected/debug/flavors/dev"
-            web = root / "web-app/build/test-results/wasmJsNodeTest"
             android.mkdir(parents=True)
-            web.mkdir(parents=True)
             (android / "TEST-emulator-5554 - 11-_android-app-dev.xml").write_text(XML)
-            (web / "TEST-app.LoginTest.xml").write_text(XML)
-            self.assertEqual(
-                failed_tests(root),
-                ["android-app · app.LoginTest.falha", "web-app · app.LoginTest.falha"],
-            )
+            self.assertEqual(failed_tests(root), ["android-app · app.LoginTest.falha"])
 
     def test_no_reports_means_no_failures(self):
         with tempfile.TemporaryDirectory() as tmp:

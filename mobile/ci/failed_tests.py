@@ -1,7 +1,7 @@
 """Lista os testes que falharam a partir dos relatórios JUnit (XML) do Gradle.
 
 Uso: python failed_tests.py <pasta-raiz> — imprime uma linha por teste: `módulo · Classe.teste`.
-Lê os resultados de unidade (`build/test-results`, incluindo simulador iOS e web app em Wasm/Node) e os
+Lê os resultados de unidade (`build/test-results`, incluindo o simulador iOS) e os
 dos testes instrumentados e E2E do Android (`build/outputs/androidTest-results`).
 """
 import sys

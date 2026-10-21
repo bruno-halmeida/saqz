@@ -1,7 +1,7 @@
 # Testes do app toda madrugada, só na main: os de unidade e tela (detekt, JVM, simulador iOS, Swift e
 # Node, para pegar quebra antes da RC) e os CAROS, que não rodam na RC: instrumentados do Android
 # (androidTest) e E2E instalado (tests/e2e/android, com backend, Postgres e Firebase Auth Emulator
-# descartáveis) em emulador no Ubuntu, e os testes do web app (wasmJsNodeTest e scripts Node).
+# descartáveis) em emulador no Ubuntu.
 # Pula a noite se a main não mudou desde a última execução que passou.
 # Se falhar, abre (ou comenta em) a issue "Testes noturnos do app falharam"; quando volta a
 # passar, comenta e fecha. Não trava RC nem release. Execução à mão: Actions → Mobile · testes
@@ -187,51 +187,9 @@ jobs:
             mobile/android-app/build/outputs/androidTest-results/
             ${{ runner.temp }}/saqz-e2e-*/
 
-  web-app:
-    name: Web app (Kotlin/Wasm no Node)
-    needs: checar
-    if: needs.checar.outputs.executar == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      falhas: ${{ steps.falhas.outputs.lista }}
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - name: JDK 21
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-      - name: Gradle com cache
-        uses: gradle/actions/setup-gradle@v6
-      - name: wasmJsNodeTest e scripts do loader e do service worker
-        working-directory: mobile
-        run: ./gradlew :web-app:wasmJsNodeTest :web-app:hostScriptsTest --continue
-      - name: Listar os testes que falharam
-        id: falhas
-        if: ${{ failure() }}
-        run: |
-          set -uo pipefail
-          python3 mobile/ci/failed_tests.py mobile | awk 'NF' | sort -u | head -100 > falhas.txt
-          { echo "### Testes que falharam"; echo; sed 's/^/- /' falhas.txt; } >> "$GITHUB_STEP_SUMMARY"
-          { echo "lista<<FALHAS_EOF"; cat falhas.txt; echo "FALHAS_EOF"; } >> "$GITHUB_OUTPUT"
-      - name: Guardar os relatórios
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: relatorios-web-app
-          retention-days: 14
-          if-no-files-found: ignore
-          path: mobile/web-app/build/reports/
-
   relatar:
     name: Issue de acompanhamento
-    needs: [checar, verificar, testes-ios, instrumentados, e2e-android, web-app]
+    needs: [checar, verificar, testes-ios, instrumentados, e2e-android]
     # Só a main abre ou fecha a issue; execuções à mão em outros branches (validação) não mexem nela.
     if: ${{ !cancelled() && needs.checar.outputs.executar == 'true' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
@@ -244,13 +202,11 @@ jobs:
       FALHAS_IOS: ${{ needs.testes-ios.outputs.falhas }}
       FALHAS_INSTRUMENTADOS: ${{ needs.instrumentados.outputs.falhas }}
       FALHAS_E2E: ${{ needs.e2e-android.outputs.falhas }}
-      FALHAS_WEB: ${{ needs.web-app.outputs.falhas }}
       EXECUCAO: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       R_VERIFICAR: ${{ needs.verificar.result }}
       R_IOS: ${{ needs.testes-ios.result }}
       R_INSTRUMENTADOS: ${{ needs.instrumentados.result }}
       R_E2E: ${{ needs.e2e-android.result }}
-      R_WEB: ${{ needs.web-app.result }}
     steps:
       - name: Abrir, comentar ou fechar a issue
         run: |
@@ -259,7 +215,7 @@ jobs:
             --json number,title --jq "[.[] | select(.title == \"$TITULO\")][0].number // \"\"")
           falhou=""
           for par in "detekt e testes na JVM=$R_VERIFICAR" "Simulador iOS, Swift e Node=$R_IOS" \
-                     "Instrumentados do Android=$R_INSTRUMENTADOS" "E2E instalado do Android=$R_E2E" "Web app=$R_WEB"; do
+                     "Instrumentados do Android=$R_INSTRUMENTADOS" "E2E instalado do Android=$R_E2E"; do
             [[ "${par##*=}" == "success" ]] || falhou+="- ${par%=*}: ${par##*=}"$'\n'
           done
           if [[ -z "$falhou" ]]; then
@@ -269,8 +225,8 @@ jobs:
             exit 0
           fi
           cerca='```'
-          testes=$(printf '%s\n%s\n%s\n%s' "$FALHAS_IOS" "$FALHAS_INSTRUMENTADOS" "$FALHAS_E2E" "$FALHAS_WEB" | awk 'NF')
-          corpo=$(printf 'Execução: %s\nCommit: %s\n\nEtapas que não passaram:\n\n%s\nTestes que falharam (iOS, Swift, Node, instrumentados, E2E e web app):\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefatos da execução (relatorios-*).' \
+          testes=$(printf '%s\n%s\n%s' "$FALHAS_IOS" "$FALHAS_INSTRUMENTADOS" "$FALHAS_E2E" | awk 'NF')
+          corpo=$(printf 'Execução: %s\nCommit: %s\n\nEtapas que não passaram:\n\n%s\nTestes que falharam (iOS, Swift, Node, instrumentados e E2E):\n\n%s\n%s\n%s\n\nOs relatórios ficam como artefatos da execução (relatorios-*).' \
             "$EXECUCAO" "${GITHUB_SHA:0:9}" "$falhou" "$cerca" "${testes:-(nenhum listado)}" "$cerca")
           if [[ -n "$numero" ]]; then
             gh issue comment "$numero" --repo "$GITHUB_REPOSITORY" --body "$corpo"
