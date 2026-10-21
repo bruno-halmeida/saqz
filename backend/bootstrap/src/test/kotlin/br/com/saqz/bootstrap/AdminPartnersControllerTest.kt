@@ -40,7 +40,7 @@ class AdminPartnersControllerTest {
     @Test
     fun `cria parceiro com contato normalizado e recusa o inválido`() {
         val partners = Partners()
-        val controller = AdminPartnersController(partners) { now }
+        val controller = AdminPartnersController(partners, now = { now })
         fun req(name: String?, phone: String? = null, email: String? = null) =
             CreatePartnerRequest().apply { this.name = name; contactPhone = phone; contactEmail = email }
         assertEquals(201, controller.create(req(" Arena Moema ", "(11) 99999-0000", "a@b.co")).statusCode.value())

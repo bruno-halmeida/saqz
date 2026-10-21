@@ -25,11 +25,13 @@ import br.com.saqz.groups.application.moderation.ContentModerationService
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponAnalytics
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponDirectoryRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminPartnerDirectory
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcPartnerCommissionStore
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueReader
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
 import br.com.saqz.subscriptions.application.AdminCouponDirectory
 import br.com.saqz.subscriptions.application.AdminPartnerDirectory
+import br.com.saqz.subscriptions.application.PartnerCommissionStore
 import br.com.saqz.subscriptions.application.PreviewCouponPrices
 import br.com.saqz.subscriptions.application.AdminRevenueReader
 import br.com.saqz.subscriptions.application.AdminRevenueStats
@@ -127,7 +129,11 @@ class PlatformAdminConfiguration {
     fun adminPartnerDirectory(dataSource: DataSource): AdminPartnerDirectory = JdbcAdminPartnerDirectory(dataSource)
 
     @Bean
-    fun adminPartnersController(partners: AdminPartnerDirectory) = AdminPartnersController(partners)
+    fun partnerCommissionStore(dataSource: DataSource): PartnerCommissionStore = JdbcPartnerCommissionStore(dataSource)
+
+    @Bean
+    fun adminPartnersController(partners: AdminPartnerDirectory, commissions: PartnerCommissionStore) =
+        AdminPartnersController(partners, commissions)
 
     @Bean
     fun adminCouponAnalyticsController(dataSource: DataSource, clock: Clock) =
