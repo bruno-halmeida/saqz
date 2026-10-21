@@ -21,6 +21,15 @@ data class CouponConversionMetrics(
     val payments: Int,
     val revenueCents: Long,
     val incompleteUsers: Int,
+    /** Pagantes e receita por plataforma (`SITE`, `APP_STORE`, `GOOGLE_PLAY`); só as que têm pagamento com valor. */
+    val platforms: List<CouponPlatformMetrics> = emptyList(),
+)
+
+data class CouponPlatformMetrics(
+    val source: String,
+    val payingUsers: Int,
+    val payments: Int,
+    val revenueCents: Long,
 )
 
 data class CouponAnalyticsRow(

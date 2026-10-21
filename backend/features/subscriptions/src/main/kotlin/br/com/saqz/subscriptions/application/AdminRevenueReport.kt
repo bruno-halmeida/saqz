@@ -5,7 +5,7 @@ data class AdminRevenueRow(
     val month: String,
     /** `SITE`, `APP_STORE` ou `GOOGLE_PLAY`. */
     val source: String,
-    /** Nula quando a origem não informa valor (Google Play hoje). */
+    /** Nula quando a origem não informa valor (pedido do Google Play ainda sem valor da Orders API). */
     val currency: String?,
     val payments: Long,
     val grossCents: Long?,
