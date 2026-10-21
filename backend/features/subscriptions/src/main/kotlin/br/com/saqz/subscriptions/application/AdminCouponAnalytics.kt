@@ -35,4 +35,6 @@ data class CouponAnalyticsRow(
     val ongoingTrials: Int?,
     val endedTrials: Int?,
     val endedConversionPercent: BigDecimal?,
+    /** Usos do cupom de desconto por plataforma (WEB, ANDROID, IOS). */
+    val usesByPlatform: Map<String, Int> = emptyMap(),
 )

@@ -26,7 +26,7 @@ class JdbcAdminCouponAnalytics(dataSource: DataSource, private val clock: Clock)
         isolationLevel = TransactionDefinition.ISOLATION_REPEATABLE_READ
     }
     private data class Key(val type: String, val id: UUID)
-    private data class Touch(val key: Key, val owner: UUID, val at: Instant, val end: Instant?)
+    private data class Touch(val key: Key, val owner: UUID, val at: Instant, val end: Instant?, val platform: String)
     private data class Payment(val owner: UUID, val id: String, val at: Instant, val cents: Long?)
     private data class Coupon(
         val key: Key, val code: String, val campaign: String?, val days: Int?, val discount: Int?,
@@ -39,7 +39,7 @@ class JdbcAdminCouponAnalytics(dataSource: DataSource, private val clock: Clock)
             SELECT 'TRIAL' AS type,id,code,campaign,trial_days, NULL::integer AS discount_percent,active,valid_until,max_uses
             FROM trial_coupons
             UNION ALL
-            SELECT 'DISCOUNT',id,code,NULL,NULL,discount_percent,true,valid_until,NULL FROM coupons
+            SELECT 'DISCOUNT',id,code,campaign,NULL,discount_percent,ended_at IS NULL,valid_until,max_uses FROM coupons
             ORDER BY code,type,id
         """.trimIndent()).query { rs, _ -> Coupon(
             Key(rs.getString("type"),rs.getObject("id",UUID::class.java)),rs.getString("code"),rs.getString("campaign"),
@@ -47,13 +47,13 @@ class JdbcAdminCouponAnalytics(dataSource: DataSource, private val clock: Clock)
             rs.getTimestamp("valid_until")?.toInstant(),rs.getObject("max_uses") as Int?,
         ) }.list()
         val touches = jdbc.sql("""
-            SELECT 'TRIAL' AS type,coupon_id,owner_user_id AS owner,started_at AS used_at,ends_at
+            SELECT 'TRIAL' AS type,coupon_id,owner_user_id AS owner,started_at AS used_at,ends_at,'WEB' AS platform
             FROM organizer_trials WHERE coupon_id IS NOT NULL AND started_at <= :now
             UNION ALL
-            SELECT 'DISCOUNT',coupon_id,user_id,redeemed_at,NULL FROM coupon_redemptions WHERE redeemed_at <= :now
+            SELECT 'DISCOUNT',coupon_id,user_id,redeemed_at,NULL,platform FROM coupon_redemptions WHERE redeemed_at <= :now
         """.trimIndent()).param("now",now.atOffset(ZoneOffset.UTC)).query { rs, _ -> Touch(
             Key(rs.getString("type"),rs.getObject("coupon_id",UUID::class.java)),rs.getObject("owner",UUID::class.java),
-            rs.getTimestamp("used_at").toInstant(),rs.getTimestamp("ends_at")?.toInstant(),
+            rs.getTimestamp("used_at").toInstant(),rs.getTimestamp("ends_at")?.toInstant(),rs.getString("platform"),
         ) }.list()
         val payments = readPayments(now).groupBy { it.owner }
         val confirmations = jdbc.sql("""
@@ -86,7 +86,8 @@ class JdbcAdminCouponAnalytics(dataSource: DataSource, private val clock: Clock)
             }
             CouponAnalyticsRow(coupon.key.id,coupon.key.type,coupon.code,coupon.campaign,coupon.days,coupon.discount,status,
                 metrics(uses),if(isTrial) uses.size-ended.size else null,if(isTrial) ended.size else null,
-                if(isTrial) metrics(ended).conversionPercent else null)
+                if(isTrial) metrics(ended).conversionPercent else null,
+                if(isTrial) emptyMap() else uses.groupingBy { it.platform }.eachCount())
         })
     })
 

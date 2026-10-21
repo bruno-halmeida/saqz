@@ -27,6 +27,7 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueReader
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
 import br.com.saqz.subscriptions.application.AdminCouponDirectory
+import br.com.saqz.subscriptions.application.PreviewCouponPrices
 import br.com.saqz.subscriptions.application.AdminRevenueReader
 import br.com.saqz.subscriptions.application.AdminRevenueStats
 import br.com.saqz.subscriptions.application.AdminSubscriptionCanceler
@@ -113,7 +114,8 @@ class PlatformAdminConfiguration {
         JdbcAdminCouponDirectoryRepository(dataSource)
 
     @Bean
-    fun adminCouponsController(directory: AdminCouponDirectory) = AdminCouponsController(directory)
+    fun adminCouponsController(directory: AdminCouponDirectory, preview: ObjectProvider<PreviewCouponPrices>) =
+        AdminCouponsController(directory, preview = preview.getIfAvailable { PreviewCouponPrices(null) })
 
     @Bean
     fun adminCouponAnalyticsController(dataSource: DataSource, clock: Clock) =

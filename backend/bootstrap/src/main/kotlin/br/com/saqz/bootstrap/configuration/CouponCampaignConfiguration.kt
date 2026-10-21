@@ -13,6 +13,7 @@ import br.com.saqz.subscriptions.application.CouponStoreOfferRepository
 import br.com.saqz.subscriptions.application.GooglePlayOffersApi
 import br.com.saqz.subscriptions.application.PaidHistoryCouponEligibility
 import br.com.saqz.subscriptions.application.PaidSubscriptionHistory
+import br.com.saqz.subscriptions.application.PreviewCouponPrices
 import br.com.saqz.subscriptions.application.SubscriptionPlanLookup
 import br.com.saqz.subscriptions.application.SyncCouponStoreOffers
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcPaidSubscriptionHistory
@@ -44,9 +45,7 @@ class CouponCampaignConfiguration {
         CouponStoreAttribution(offers, coupons)
 
     @Bean
-    fun syncCouponStoreOffers(
-        offers: CouponStoreOfferRepository,
-        coupons: CouponRepository,
+    fun couponStoreClients(
         @Value("\${saqz.coupons.store-sync:false}") enabled: Boolean,
         @Value("\${saqz.google-play.package-name}") packageName: String,
         @Value("\${saqz.app-store.app-apple-id:}") appAppleId: String,
@@ -54,19 +53,38 @@ class CouponCampaignConfiguration {
         @Value("\${saqz.app-store-connect.key-id:}") keyId: String,
         @Value("\${saqz.app-store-connect.private-key:}") privateKey: String,
         clock: Clock,
-    ): SyncCouponStoreOffers {
-        val googlePlay: GooglePlayOffersApi? = if (enabled) HttpGooglePlayOffersApi(packageName, GooglePlayAccessTokens()) else null
-        val appStore: AppStoreOffersApi? = if (enabled && appAppleId.isNotBlank()) {
+    ) = CouponStoreClients(
+        enabled = enabled,
+        googlePlay = if (enabled) HttpGooglePlayOffersApi(packageName, GooglePlayAccessTokens()) else null,
+        appStore = if (enabled && appAppleId.isNotBlank()) {
             HttpAppStoreOffersApi(appAppleId, AppStoreConnectCredentials(issuerId, keyId, privateKey), clock = clock)
         } else {
             null
-        }
-        return SyncCouponStoreOffers(offers, coupons, googlePlay, appStore, enabled, clock)
-    }
+        },
+    )
+
+    @Bean
+    fun syncCouponStoreOffers(
+        offers: CouponStoreOfferRepository,
+        coupons: CouponRepository,
+        clients: CouponStoreClients,
+        clock: Clock,
+    ) = SyncCouponStoreOffers(offers, coupons, clients.googlePlay, clients.appStore, clients.enabled, clock)
+
+    /** Prévia de preços do admin; com a integração desligada, o preço da Apple sai estimado. */
+    @Bean
+    fun previewCouponPrices(clients: CouponStoreClients) = PreviewCouponPrices(clients.appStore)
 
     @Bean
     fun couponStoreOffersJob(sync: SyncCouponStoreOffers) = CouponStoreOffersJob(sync)
 }
+
+/** Clientes das lojas; nulos com a integração desligada (nada chama as lojas). */
+class CouponStoreClients(
+    val enabled: Boolean,
+    val googlePlay: GooglePlayOffersApi?,
+    val appStore: AppStoreOffersApi?,
+)
 
 class CouponStoreOffersJob(private val sync: SyncCouponStoreOffers) {
     @Scheduled(fixedDelayString = "\${saqz.coupons.store-sync-delay-ms:60000}", initialDelay = 30_000)
