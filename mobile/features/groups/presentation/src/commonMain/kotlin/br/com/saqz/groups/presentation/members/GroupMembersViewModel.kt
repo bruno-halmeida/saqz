@@ -481,8 +481,12 @@ private fun AthleteRosterEntry.toUi(
 ) = MemberUi(
     id = userId,
     name = displayName,
-    meta = listOfNotNull(position?.label(), membershipType.name.lowercase().replaceFirstChar { it.uppercase() })
-        .joinToString(" · "),
+    meta = listOfNotNull(
+        position?.label(),
+        membershipType.name.lowercase().replaceFirstChar { it.uppercase() },
+        // Isenção da mensalidade (DEB-115) é dado financeiro: só quem administra vê.
+        "com isenção".takeIf { monthlyFeeExempt && canManageAthletes && membershipType == AthleteMembershipType.MENSALISTA },
+    ).joinToString(" · "),
     isAdmin = role == GroupRole.ADMIN || role == GroupRole.OWNER,
     isSelf = userId == ownUserId,
     canManageAthletes = canManageAthletes,

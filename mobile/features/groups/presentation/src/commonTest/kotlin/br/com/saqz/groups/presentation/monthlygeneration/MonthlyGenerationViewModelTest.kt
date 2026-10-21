@@ -56,6 +56,11 @@ class MonthlyGenerationViewModelTest {
         assertFalse(vm.state.value.isLoading)
     }
 
+    @Test fun `an exempt monthly member is not offered for generation`() {
+        val vm = monthlyVm()
+        assertFalse(vm.state.value.members.any { it.id == "isento" })
+    }
+
     @Test fun `athlete or failed load cannot review or generate and retry recovers`() {
         val groups = FakeGroupGateway(SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = GroupRole.ATHLETE))))
         val gateway = MonthlyRecordingGateway()
@@ -264,6 +269,7 @@ internal fun monthlyVm(
         sampleRosterEntry("bia").copy(displayName = "Bia"),
         sampleRosterEntry("inactive").copy(active = false),
         sampleRosterEntry("avulso").copy(membershipType = AthleteMembershipType.AVULSO),
+        sampleRosterEntry("isento").copy(displayName = "Isento", monthlyFeeExempt = true),
     ))),
 ) = MonthlyGenerationViewModel(
     "selected-group", saved, groups, athletes, gateway,

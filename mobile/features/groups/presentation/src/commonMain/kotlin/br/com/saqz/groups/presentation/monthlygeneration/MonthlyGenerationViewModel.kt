@@ -75,7 +75,7 @@ class MonthlyGenerationViewModel(
             val roster = athletes.roster(GroupId(groupId), AthleteRosterFilter(membershipType = AthleteMembershipType.MENSALISTA))
             if (current != generation) return@launch
             val members = (roster as? SaqzResult.Success)?.value
-                ?.filter { it.active && it.membershipType == AthleteMembershipType.MENSALISTA }
+                ?.filter { it.active && it.membershipType == AthleteMembershipType.MENSALISTA && !it.monthlyFeeExempt }
                 ?.map { MonthlyMemberUi(it.userId, it.displayName) }
                 ?: return@launch failLoad(GroupUiError.Network)
             dueDay = group.financeDefaults?.monthlyDueDay

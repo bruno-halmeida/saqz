@@ -72,6 +72,17 @@ class GroupMembersViewModelTest {
     }
 
     @Test
+    fun `exempt monthly member shows com isencao to the organizer`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("athlete").copy(monthlyFeeExempt = true))),
+        )
+        val memberships = FakeGroupMembershipGateway(listResult = SaqzResult.Success(emptyList()))
+        val viewModel = membersViewModel("group-1", athlete, memberships, FakeGroupGateway())
+
+        assertEquals("Central · Mensalista · com isenção", viewModel.state.value.members.single().meta)
+    }
+
+    @Test
     fun `signed in member is marked self and its sheet only edits the profile`() = runTest {
         val athlete = FakeAthleteGateway(
             ownProfileResult = SaqzResult.Success(
