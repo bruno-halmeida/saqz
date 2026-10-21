@@ -17,7 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -162,6 +167,9 @@ fun SaqzAvatarStack(
 
 /**
  * 10k — linha de pessoa: avatar, nome, meta e um slot livre à direita (chip, ação).
+ *
+ * Na lista de borda a borda da tela do jogo (DEB-116) a linha ganha uma coluna à esquerda do avatar
+ * ([leading], o número) e a divisória de cima ([divider]) começa na coluna do nome: não cruza número e avatar.
  */
 @Composable
 fun SaqzMemberRow(
@@ -175,9 +183,18 @@ fun SaqzMemberRow(
     avatarName: String = name,
     /** Com fonte grande, [trailing] (um chip de texto) desce para baixo do nome em vez de espremê-lo. */
     stackTrailingOnLargeFont: Boolean = false,
+    /** Coluna à esquerda do avatar (o "1", "2º" da lista do jogo). */
+    leading: (@Composable () -> Unit)? = null,
+    /** Troca o círculo de iniciais inteiro (vaga aberta tracejada); [photo] só troca o miolo. */
+    avatar: (@Composable () -> Unit)? = null,
+    nameColor: Color = SaqzTheme.colors.textPrimary,
+    initialsColor: Color = SaqzTheme.colors.primary,
+    /** Linha de cima a partir da coluna do nome. */
+    divider: Boolean = false,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
+    val dividerColor = colors.border
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -186,38 +203,89 @@ fun SaqzMemberRow(
                 else Modifier.clickable(onClickLabel = name, role = Role.Button, onClick = onClick),
             )
             .heightIn(min = metrics.minimumTouchTarget)
-            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+            .padding(start = if (leading != null) LeadingStartPadding else metrics.horizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = avatarName, initialsColor = colors.primary, photo = photo)
+        leading?.invoke()
+        if (avatar != null) avatar() else SaqzAvatar(name = avatarName, initialsColor = initialsColor, photo = photo)
         // Fonte grande: o chip à direita espremia o nome até ele sumir. Ele desce para baixo do
         // texto e o nome quebra por palavra em vez de virar reticências.
         val largeFont = LocalDensity.current.fontScale >= LargeFontScale
         val stackTrailing = largeFont && stackTrailingOnLargeFont
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = name,
-                style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.textPrimary,
-                maxLines = if (largeFont) Int.MAX_VALUE else 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (meta != null) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (divider) {
+                        Modifier.drawBehind { drawRect(dividerColor, size = Size(size.width, 1.dp.toPx())) }
+                    } else {
+                        Modifier
+                    },
+                )
+                .heightIn(min = RowAvatarSize + metrics.blockGap * 2)
+                .padding(end = metrics.horizontalPadding, top = metrics.blockGap, bottom = metrics.blockGap),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = meta,
-                    style = SaqzTheme.typography.support,
-                    color = colors.textSecondary,
+                    text = name,
+                    style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
+                    color = nameColor,
                     maxLines = if (largeFont) Int.MAX_VALUE else 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (meta != null) {
+                    Text(
+                        text = meta,
+                        style = SaqzTheme.typography.support,
+                        color = colors.textSecondary,
+                        maxLines = if (largeFont) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (stackTrailing) trailing?.invoke()
             }
-            if (stackTrailing) trailing?.invoke()
+            if (!stackTrailing) trailing?.invoke()
         }
-        if (!stackTrailing) trailing?.invoke()
     }
 }
 
+/**
+ * Círculo tracejado do tamanho do avatar: a vaga aberta (cinza, sem ícone) e as linhas de ação da lista do
+ * jogo (azul, com "+" ou o ícone da ação). Decorativo: quem toca é a linha.
+ */
+@Composable
+fun SaqzDashedCircle(
+    color: Color,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    size: Dp = RowAvatarSize,
+) {
+    Box(
+        modifier = modifier.size(size).drawBehind {
+            val stroke = DashedStroke.toPx()
+            drawCircle(
+                color = color,
+                radius = this.size.minDimension / 2 - stroke / 2,
+                style = Stroke(
+                    width = stroke,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(DashLength.toPx(), DashLength.toPx())),
+                ),
+            )
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (icon != null) SaqzIcon(icon, tint = color, size = DashedIconSize)
+    }
+}
+
+private val RowAvatarSize = 40.dp
+private val LeadingStartPadding = 10.dp
+private val DashedStroke = 1.5.dp
+private val DashLength = 4.dp
+private val DashedIconSize = 20.dp
 private const val LargeFontScale = 1.3f
 
 @Preview

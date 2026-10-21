@@ -108,6 +108,13 @@ object SaqzIcons {
 
     /** Documento: "Termos de uso" no Perfil. */
     val FileText = Lucide.FileText
+
+    // Tela do jogo (DEB-116): menu da barra, fim do jogo, editar, colocar alguém e cancelar.
+    val MoreHorizontal = Lucide.Ellipsis
+    val Timer = Lucide.Timer
+    val Pencil = Lucide.Pencil
+    val UserPlus = Lucide.UserPlus
+    val CircleX = Lucide.CircleX
 }
 
 @Composable

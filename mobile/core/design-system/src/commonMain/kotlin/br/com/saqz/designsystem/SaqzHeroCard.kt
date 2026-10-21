@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,11 +54,16 @@ fun SaqzHeroCard(
     meta: String? = null,
     /** Quando presente, o cartão inteiro é tocável (os botões de dentro continuam com o próprio toque). */
     onClick: (() -> Unit)? = null,
+    /** `RectangleShape` = cabeçalho de borda a borda (tela do jogo, DEB-116); o padrão é o cartão de hoje. */
+    shape: Shape = RoundedCornerShape(SaqzTheme.metrics.blockRadius),
+    /** Faixa de borda a borda colada no fim do azul, fora do recuo do conteúdo (o placar da tela do jogo). */
+    footer: (@Composable () -> Unit)? = null,
+    /** Jogo fora do ar (rascunho, realizado, cancelado): o ponto do kicker apaga. */
+    kickerMuted: Boolean = false,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    val shape = RoundedCornerShape(metrics.blockRadius)
     val tap = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Box(modifier = modifier.fillMaxWidth().clip(shape).background(colors.primary, shape).then(tap)) {
         // Marca d'água antes do conteúdo: quem vem depois desenha por cima dela.
@@ -66,57 +73,78 @@ fun SaqzHeroCard(
             colorFilter = ColorFilter.tint(colors.onPrimary),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(x = HERO_BALL_OFFSET_X, y = HERO_BALL_OFFSET_Y)
+                // De borda a borda a bola desce até o topo do azul, como no desenho da tela do jogo.
+                .offset(x = HERO_BALL_OFFSET_X, y = if (shape == RectangleShape) 0.dp else HERO_BALL_OFFSET_Y)
                 .size(HERO_BALL_SIZE)
                 .alpha(HERO_BALL_ALPHA)
                 .clearAndSetSemantics {},
         )
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(HERO_PADDING),
-            verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
-        ) {
-            // FlowRow: com fonte grande o chip desce para a linha de baixo em vez de espremer o kicker
-            // (que quebrava letra a letra); em fonte normal segue o kicker à esquerda e o chip à direita.
-            if (kicker != null || trailing != null) FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalArrangement = Arrangement.spacedBy(metrics.grid),
-                itemVerticalAlignment = Alignment.CenterVertically,
+        Column(Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(
+                    start = HERO_PADDING,
+                    top = HERO_PADDING,
+                    end = HERO_PADDING,
+                    bottom = if (footer != null) HERO_FOOTER_GAP else HERO_PADDING,
+                ),
+                verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
-                if (kicker != null) Row(
-                    horizontalArrangement = Arrangement.spacedBy(HERO_DOT_GAP),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Ponto lima com halo: o kicker da landing.
-                    Box(
-                        modifier = Modifier
-                            .size(HERO_DOT_SIZE + HERO_DOT_HALO * 2)
-                            .background(colors.accent.copy(alpha = HERO_DOT_HALO_ALPHA), CircleShape)
-                            .padding(HERO_DOT_HALO)
-                            .background(colors.accent, CircleShape),
-                    )
+                if (kicker != null || trailing != null) HeroKickerRow(kicker, kickerMuted, trailing)
+                Text(text = title, style = SaqzTheme.typography.display, color = colors.onPrimary)
+                if (meta != null) {
                     Text(
-                        text = kicker,
-                        style = SaqzTheme.typography.eyebrow,
-                        color = colors.onPrimary.copy(alpha = HERO_KICKER_ALPHA),
+                        text = meta,
+                        style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.Medium),
+                        color = colors.onPrimary.copy(alpha = HERO_META_ALPHA),
                     )
                 }
-                trailing?.invoke()
+                content?.invoke(this)
             }
-            Text(text = title, style = SaqzTheme.typography.display, color = colors.onPrimary)
-            if (meta != null) {
-                Text(
-                    text = meta,
-                    style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.Medium),
-                    color = colors.onPrimary.copy(alpha = HERO_META_ALPHA),
-                )
-            }
-            content?.invoke(this)
+            footer?.invoke()
         }
     }
 }
 
+/**
+ * FlowRow: com fonte grande o chip desce para a linha de baixo em vez de espremer o kicker
+ * (que quebrava letra a letra); em fonte normal segue o kicker à esquerda e o chip à direita.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HeroKickerRow(kicker: String?, muted: Boolean, trailing: (@Composable () -> Unit)?) {
+    val colors = SaqzTheme.colors
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (kicker != null) Row(
+            horizontalArrangement = Arrangement.spacedBy(HERO_DOT_GAP),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Ponto lima com halo: o kicker da landing. Apagado: ponto branco a 60% com halo branco.
+            val dot = if (muted) colors.onPrimary.copy(alpha = HERO_MUTED_DOT_ALPHA) else colors.accent
+            val halo = if (muted) colors.onPrimary else colors.accent
+            Box(
+                modifier = Modifier
+                    .size(HERO_DOT_SIZE + HERO_DOT_HALO * 2)
+                    .background(halo.copy(alpha = HERO_DOT_HALO_ALPHA), CircleShape)
+                    .padding(HERO_DOT_HALO)
+                    .background(dot, CircleShape),
+            )
+            Text(
+                text = kicker,
+                style = SaqzTheme.typography.eyebrow,
+                color = colors.onPrimary.copy(alpha = HERO_KICKER_ALPHA),
+            )
+        }
+        trailing?.invoke()
+    }
+}
+
 private val HERO_PADDING = 20.dp
+private val HERO_FOOTER_GAP = 16.dp
 private val HERO_BALL_SIZE = 210.dp
 private val HERO_BALL_OFFSET_X = 58.dp
 private val HERO_BALL_OFFSET_Y = (-62).dp
@@ -125,6 +153,7 @@ private val HERO_DOT_SIZE = 8.dp
 private val HERO_DOT_HALO = 4.dp
 private val HERO_DOT_GAP = 9.dp
 private const val HERO_DOT_HALO_ALPHA = 0.18f
+private const val HERO_MUTED_DOT_ALPHA = 0.60f
 private const val HERO_KICKER_ALPHA = 0.82f
 private const val HERO_META_ALPHA = 0.82f
 
