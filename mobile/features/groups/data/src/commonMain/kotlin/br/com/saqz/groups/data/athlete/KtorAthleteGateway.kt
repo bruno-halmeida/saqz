@@ -50,6 +50,7 @@ private data class AthleteDto(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val monthlyFeeExempt: Boolean = false,
 )
 
 @Serializable
@@ -69,6 +70,7 @@ private data class RosterEntryDto(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val monthlyFeeExempt: Boolean = false,
     val joinedAt: String = "",
 )
 
@@ -123,6 +125,7 @@ private data class UpdateAthleteRequestDto(
     val active: Boolean,
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
+    val monthlyFeeExempt: Boolean,
 )
 
 @Serializable
@@ -252,6 +255,7 @@ class KtorAthleteGateway(
                     active = command.active,
                     monthlyFeeCents = command.monthlyFeeCents,
                     monthlyDueDay = command.monthlyDueDay,
+                    monthlyFeeExempt = command.monthlyFeeExempt,
                 ),
             ),
         ),
@@ -352,6 +356,7 @@ private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
         heightCm = heightCm,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
+        monthlyFeeExempt = monthlyFeeExempt,
         joinedAt = joinedAt,
         role = parsedRole,
     )
@@ -385,6 +390,7 @@ private fun AthleteDto.toDomain(): Athlete? {
         heightCm = heightCm,
         monthlyFeeCents = monthlyFeeCents,
         monthlyDueDay = monthlyDueDay,
+        monthlyFeeExempt = monthlyFeeExempt,
     )
 }
 

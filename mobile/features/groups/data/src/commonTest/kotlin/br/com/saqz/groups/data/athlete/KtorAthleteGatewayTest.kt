@@ -75,6 +75,39 @@ class KtorAthleteGatewayTest {
         assertEquals(null, athlete.monthlyDueDay)
         assertEquals("2026-08-01T12:00:00Z", athlete.joinedAt)
         assertEquals(br.com.saqz.groups.domain.group.GroupRole.OWNER, athlete.role)
+        // Backend anterior ao DEB-115 não manda o campo: lê como sem isenção.
+        assertEquals(false, athlete.monthlyFeeExempt)
+    }
+
+    @Test
+    fun `roster and patch read monthly fee exempt and patch always sends the current value`() = runTest {
+        val entry = fixture {
+            respond(
+                """{"athletes":[{"userId":"member-1","displayName":"Member","role":"ATHLETE","membershipType":"MENSALISTA","active":true,"financialStatus":"EM_DIA","monthlyFeeExempt":true,"joinedAt":"2026-08-01T12:00:00Z"}]}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.roster(GroupId(GROUP_ID), AthleteRosterFilter()).success<List<AthleteRosterEntry>>().single()
+        assertEquals(true, entry.monthlyFeeExempt)
+
+        for (value in listOf(true, false)) {
+            val athlete = fixture { request ->
+                assertEquals(value, request.bodyJson().getValue("monthlyFeeExempt").jsonPrimitive.boolean)
+                respond(
+                    """{"userId":"$USER_ID","displayName":"Member","role":"ADMIN","membershipType":"MENSALISTA","active":true,"monthlyFeeExempt":$value}""",
+                    headers = jsonHeaders(),
+                )
+            }.gateway.updateAthlete(
+                UpdateAthleteCommand(
+                    groupId = GroupId(GROUP_ID),
+                    userId = USER_ID,
+                    position = null,
+                    membershipType = AthleteMembershipType.MENSALISTA,
+                    active = true,
+                    monthlyFeeExempt = value,
+                ),
+            ).success<Athlete>()
+            assertEquals(value, athlete.monthlyFeeExempt)
+        }
     }
 
     @Test

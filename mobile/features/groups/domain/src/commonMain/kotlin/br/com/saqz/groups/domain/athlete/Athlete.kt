@@ -34,6 +34,8 @@ data class AthleteRosterEntry(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    /** Mensalista com isenção da mensalidade (DEB-115): continua mensalista, sem mensalidade. */
+    val monthlyFeeExempt: Boolean = false,
     /** ISO-8601 vindo da API; a apresentação é dona de formatá-lo. */
     val joinedAt: String = "",
     val role: GroupRole = GroupRole.ATHLETE,
@@ -61,6 +63,7 @@ data class Athlete(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    val monthlyFeeExempt: Boolean = false,
 )
 
 data class UpdateAthleteCommand(
@@ -76,6 +79,8 @@ data class UpdateAthleteCommand(
     val heightCm: Int? = null,
     val monthlyFeeCents: Long? = null,
     val monthlyDueDay: Int? = null,
+    /** Sempre enviado com o valor atual: o backend trata ausente como "mantém". */
+    val monthlyFeeExempt: Boolean = false,
 )
 
 data class UpdateOwnAthleteProfileCommand(
