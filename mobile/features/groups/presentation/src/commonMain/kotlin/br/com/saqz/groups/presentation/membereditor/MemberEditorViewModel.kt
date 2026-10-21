@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.membereditor
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
@@ -177,6 +178,7 @@ class MemberEditorViewModel(
                 loadFailed = false,
                 error = null,
                 name = entry.nickname?.takeIf(String::isNotBlank) ?: entry.displayName,
+                photo = memberPhoto(groupId, userId, entry.photoTag),
                 displayName = entry.displayName,
                 nickname = entry.nickname.orEmpty(),
                 joinedAtLabel = joinedAtMonth(entry.joinedAt),

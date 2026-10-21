@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.membereditor
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthleteLevel
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
@@ -18,6 +19,8 @@ data class MemberEditorState(
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val name: String = "",
+    /** Foto de perfil do atleta (MEM-006); fora do estado salvo, volta na próxima carga. */
+    val photo: MemberPhoto? = null,
     val displayName: String = "",
     val nickname: String = "",
     val joinedAtLabel: String = "",

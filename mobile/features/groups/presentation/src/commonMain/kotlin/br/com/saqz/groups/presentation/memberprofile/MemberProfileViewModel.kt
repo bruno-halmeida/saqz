@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.memberprofile
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
@@ -95,6 +96,7 @@ class MemberProfileViewModel(
                     statsFailed = statsFailed,
                     isSelf = isSelf,
                     blocked = userId in blocks.blocked.value,
+                    photo = memberPhoto(groupId, userId, member.photoTag),
                 )
             }
         }

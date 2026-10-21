@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.gamedetail
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
@@ -258,6 +259,8 @@ data class GameDetailConfirmedUi(
     val isMensalista: Boolean = false,
     /** O gestor colocou a pessoa acima das vagas da posição (DEB-102). */
     val forced: Boolean = false,
+    /** Foto de perfil (MEM-006); convidado nunca tem. */
+    val photo: MemberPhoto? = null,
 )
 @Immutable
 data class GameDetailWaitlistUi(
@@ -272,6 +275,8 @@ data class GameDetailWaitlistUi(
     val canRemove: Boolean = false,
     /** Quem olha está nesta linha da espera (DEB-116): a linha ganha o fundo lima e o "Você". */
     val isYou: Boolean = false,
+    /** Foto de perfil (MEM-006); convidado nunca tem. */
+    val photo: MemberPhoto? = null,
 )
 
 /** Por que "Tirar"/"Colocar" não deu certo: o jogo fechou para mudanças, ou uma falha qualquer (tentar de novo). */
@@ -296,6 +301,7 @@ data class GameMemberCandidateUi(
     val id: String,
     val name: String,
     val position: AthletePosition?,
+    val photo: MemberPhoto? = null,
 )
 
 @Immutable

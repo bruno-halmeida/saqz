@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.communication
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -230,7 +231,11 @@ private fun NotificationCard(
             horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SaqzAvatar(name = item.content.author, initialsColor = colors.primary)
+            SaqzAvatar(
+                name = item.content.author,
+                initialsColor = colors.primary,
+                photo = item.content.photo.avatarSlot(item.content.author, initialsColor = colors.primary),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = item.content.author,

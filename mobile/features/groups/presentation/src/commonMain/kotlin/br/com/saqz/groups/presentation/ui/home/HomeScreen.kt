@@ -408,6 +408,7 @@ private fun HomeHero(
             val spotsLeft = game.capacity - game.confirmedCount
             HeroRosterRow(
                 names = game.rosterNames,
+                photos = game.confirmedPhotos,
                 summary = game.confirmedSummary,
                 // Jogo já começado não tem "vaga restante": ninguém mais entra pela confirmação.
                 spotsLeft = if (game.canRespond && spotsLeft in 1..SpotsLeftMax) {
@@ -498,6 +499,7 @@ private fun HomeWaitlistExtras(
         HomeWaitlistKind.Reserva, HomeWaitlistKind.Manual, HomeWaitlistKind.AfterDeadline -> {
             HomeWaitlistConfirmedSection(
                 confirmedRoster = game.confirmedRoster,
+                confirmedPhotos = game.confirmedPhotos,
                 confirmedCount = game.confirmedCount,
                 capacity = game.capacity,
             )

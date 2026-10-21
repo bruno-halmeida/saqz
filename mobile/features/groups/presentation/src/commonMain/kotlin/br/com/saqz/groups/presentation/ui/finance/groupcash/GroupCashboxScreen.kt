@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import br.com.saqz.groups.presentation.ui.finance.PixKeyNotice
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
 
@@ -202,6 +203,7 @@ internal fun GroupCashboxScreen(
             busy = state.updatingChargeId != null,
             onClose = { onIntent(GroupCashboxIntent.DismissReviewSheet) },
             onConfirm = { reviewCharge?.let { onIntent(GroupCashboxIntent.ResolveReview(it.chargeId)) } },
+            photo = reviewCharge?.photo,
         )
         UndoSheet(
             open = state.undoSheetChargeId != null,
@@ -212,6 +214,7 @@ internal fun GroupCashboxScreen(
             busy = state.updatingChargeId != null,
             onClose = { onIntent(GroupCashboxIntent.DismissUndoSheet) },
             onConfirm = { note -> undoCharge?.let { onIntent(GroupCashboxIntent.Undo(it.chargeId, note)) } },
+            photo = undoCharge?.photo,
         )
     }
 }
@@ -549,7 +552,7 @@ private fun SettledRow(settled: SettledUi, onIntent: (GroupCashboxIntent) -> Uni
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = settled.name)
+        SaqzAvatar(name = settled.name, photo = settled.photo.avatarSlot(settled.name))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(
                 text = settled.name,
@@ -588,7 +591,7 @@ private fun ReviewRow(review: ReviewUi, onIntent: (GroupCashboxIntent) -> Unit) 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = review.name)
+        SaqzAvatar(name = review.name, photo = review.photo.avatarSlot(review.name))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
             Text(
                 text = review.name,
@@ -632,7 +635,7 @@ private fun DebtorRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = debtor.name)
+        SaqzAvatar(name = debtor.name, photo = debtor.photo.avatarSlot(debtor.name))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid / 4)) {
             Text(
                 text = debtor.name,

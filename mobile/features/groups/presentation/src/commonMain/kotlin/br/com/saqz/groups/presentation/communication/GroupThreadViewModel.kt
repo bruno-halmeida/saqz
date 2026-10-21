@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.communication
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
@@ -158,6 +159,7 @@ class GroupThreadViewModel(
 
 internal fun CommunicationMessage.toThreadUi(ownUserId: String? = null) = ThreadMessageUi(
     id, authorName, body, communicationTime(createdAt), authorId = authorId, own = ownUserId != null && authorId == ownUserId,
+    photo = memberPhoto(groupId.value, authorId, photoTag),
 )
 
 /** O filtro de texto do backend: 422 com `fieldErrors.body = ["objectionable"]`. */

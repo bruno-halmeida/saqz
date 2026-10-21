@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.members
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
@@ -233,6 +234,7 @@ class GroupMembersViewModel(
         return RosterOutcome.Loaded(
             (rosterResult as SaqzResult.Success).value.map { entry ->
                 entry.toUi(
+                    groupId = groupId,
                     role = roles[entry.userId]
                         ?: viewerRole.takeIf { entry.userId == ownUserId }
                         ?: entry.role,
@@ -474,6 +476,7 @@ private fun String.agoLabel(zoneId: String): String {
 }
 
 private fun AthleteRosterEntry.toUi(
+    groupId: String,
     role: GroupRole?,
     ownUserId: String,
     canManageAthletes: Boolean,
@@ -495,6 +498,7 @@ private fun AthleteRosterEntry.toUi(
     // DESCONHECIDO é o contrato para atleta comum: não há filtro financeiro na tela e ele
     // deliberadamente não é convertido em status visual.
     stats = "",
+    photo = memberPhoto(groupId, userId, photoTag),
 )
 
 private fun br.com.saqz.groups.domain.athlete.AthletePosition.label(): String = when (this) {

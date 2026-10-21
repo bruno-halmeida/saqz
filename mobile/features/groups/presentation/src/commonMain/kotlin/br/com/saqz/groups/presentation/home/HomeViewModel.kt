@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.home
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
@@ -613,6 +614,7 @@ class HomeViewModel(
                 name = member.displayName,
                 position = pos,
                 isSelf = ownPosition != null && pos == ownPosition,
+                photo = memberPhoto(groupId.value, member.userId, member.photoTag),
             )
         }.sortedBy { it.position }
         val waitlistedRows = if (
@@ -639,6 +641,7 @@ class HomeViewModel(
             confirmedCount = confirmedCount,
             capacity = capacity,
             rosterNames = rosterPreview.confirmed.map { it.displayName },
+            confirmedPhotos = rosterPreview.confirmed.map { memberPhoto(groupId.value, it.userId, it.photoTag) },
             ownAttendance = ownAttendance?.status,
             confirmationOpen = confirmationOpen,
             responseOpen = responseOpen,

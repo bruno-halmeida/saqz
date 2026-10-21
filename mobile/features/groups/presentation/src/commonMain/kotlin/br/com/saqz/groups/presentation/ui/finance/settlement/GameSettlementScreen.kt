@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
 
 import androidx.compose.foundation.background
@@ -179,6 +180,7 @@ internal fun GameSettlementScreen(
             busy = state.updatingChargeId != null,
             onClose = { onIntent(GameSettlementIntent.DismissReviewSheet) },
             onConfirm = { reviewDiarist?.let { onIntent(GameSettlementIntent.ResolveReview(it.chargeId)) } },
+            photo = reviewDiarist?.photo,
         )
         UndoSheet(
             open = state.undoSheetChargeId != null,
@@ -189,6 +191,7 @@ internal fun GameSettlementScreen(
             busy = state.updatingChargeId != null,
             onClose = { onIntent(GameSettlementIntent.DismissUndoSheet) },
             onConfirm = { note -> undoDiarist?.let { onIntent(GameSettlementIntent.Undo(it.chargeId, note)) } },
+            photo = undoDiarist?.photo,
         )
     }
 }
@@ -439,7 +442,7 @@ private fun DiaristRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
     ) {
-        SaqzAvatar(name = diarist.name)
+        SaqzAvatar(name = diarist.name, photo = diarist.photo.avatarSlot(diarist.name))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
             Text(
                 text = diarist.name,

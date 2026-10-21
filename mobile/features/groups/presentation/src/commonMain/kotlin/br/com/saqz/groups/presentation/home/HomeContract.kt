@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.home
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.home.HomeReadModel
@@ -116,6 +117,8 @@ data class HomeWaitlistRowUi(
     val name: String,
     val position: Long,
     val isSelf: Boolean,
+    /** Foto de perfil (MEM-006). */
+    val photo: MemberPhoto? = null,
 )
 
 @Immutable
@@ -130,6 +133,8 @@ data class HomeNextGameUi(
     val confirmedCount: Int,
     val capacity: Int,
     val rosterNames: List<String>,
+    /** Foto de cada nome de [rosterNames] e [confirmedRoster], na mesma ordem (MEM-006). */
+    val confirmedPhotos: List<MemberPhoto?> = emptyList(),
     val ownAttendance: AttendanceStatus?,
     val weekday: String,
     val time: String,

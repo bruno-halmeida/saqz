@@ -1,5 +1,8 @@
 package br.com.saqz.groups.presentation.ui.home
 
+import androidx.compose.ui.unit.dp
+import br.com.saqz.groups.presentation.photo.MemberPhoto
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -303,6 +306,7 @@ internal fun HomeWaitlistConfirmedSection(
     confirmedCount: Int,
     capacity: Int,
     modifier: Modifier = Modifier,
+    confirmedPhotos: List<MemberPhoto?> = emptyList(),
 ) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -325,7 +329,10 @@ internal fun HomeWaitlistConfirmedSection(
                     color = SaqzTheme.colors.textSecondary,
                 )
             } else {
-                SaqzAvatarStack(names = confirmedRoster)
+                SaqzAvatarStack(
+                    names = confirmedRoster,
+                    photos = confirmedRoster.mapIndexed { index, name -> confirmedPhotos.getOrNull(index).avatarSlot(name, size = 30.dp) },
+                )
             }
         }
     }
@@ -379,7 +386,11 @@ private fun HomeWaitlistQueueRow(row: HomeWaitlistRowUi) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        SaqzAvatar(name = nameText, initialsColor = colors.primary)
+        SaqzAvatar(
+            name = nameText,
+            initialsColor = colors.primary,
+            photo = row.photo.avatarSlot(nameText, initialsColor = colors.primary),
+        )
         Text(
             text = nameText,
             style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),

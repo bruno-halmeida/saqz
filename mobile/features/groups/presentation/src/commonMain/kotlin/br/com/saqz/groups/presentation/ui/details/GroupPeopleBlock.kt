@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.details
 
+import androidx.compose.ui.unit.dp
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,11 +121,17 @@ private fun GroupCrowdSection(
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val names = state.memberPreview.map { it.name }.filter { it.isNotBlank() }
-    val avatars: (@Composable () -> Unit)? = if (names.isEmpty()) {
+    val people = state.memberPreview.filter { it.name.isNotBlank() }
+    val avatars: (@Composable () -> Unit)? = if (people.isEmpty()) {
         null
     } else {
-        { SaqzAvatarStack(names = names, max = CrowdAvatarMax) }
+        {
+            SaqzAvatarStack(
+                names = people.map { it.name },
+                photos = people.map { it.photo.avatarSlot(it.name, size = 30.dp) },
+                max = CrowdAvatarMax,
+            )
+        }
     }
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -134,7 +142,7 @@ private fun GroupCrowdSection(
             GroupShellRow(
                 icon = SaqzIcons.Users,
                 title = peopleCount(state.memberCount) ?: stringResource(Res.string.group_details_people_fallback),
-                meta = crowdNames(names = names, memberCount = state.memberCount),
+                meta = crowdNames(names = people.map { it.name }, memberCount = state.memberCount),
                 tag = GroupDetailsTags.People,
                 onClick = { onIntent(GroupDetailsIntent.ViewAllMembers) },
                 leading = avatars,

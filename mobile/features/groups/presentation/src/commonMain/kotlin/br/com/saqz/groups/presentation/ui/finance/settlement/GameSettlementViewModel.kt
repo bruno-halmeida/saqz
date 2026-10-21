@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
@@ -560,7 +561,12 @@ class GameSettlementViewModel(
             .filter { it.kind == ChargeKind.Game && it.gameId == game.id && it.status != ChargeStatus.Cancelled }
             .map { charge ->
                 val memberName = names[charge.memberId] ?: athleteById[charge.memberId]?.displayName ?: "Membro"
-                charge.toDiarist(memberName)
+                val photo = if (charge.guestDisplayName != null) {
+                    null
+                } else {
+                    memberPhoto(groupId, charge.memberId, athleteById[charge.memberId]?.photoTag)
+                }
+                charge.toDiarist(memberName).copy(photo = photo)
             }
         val paid = gameCharges.filter { it.status == ChargeStatus.Paid }
         val pending = gameCharges.filter { it.status == ChargeStatus.Pending }
@@ -640,6 +646,7 @@ class GameSettlementViewModel(
         month = null,
         referenceLabel = referenceLabel,
         withdrew = withdrew,
+        photo = photo,
     )
 
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o fechamento que está na tela fica. */

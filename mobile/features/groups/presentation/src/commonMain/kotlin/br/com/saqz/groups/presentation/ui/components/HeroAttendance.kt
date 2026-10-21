@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.components
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -191,6 +193,7 @@ internal fun HeroRosterRow(
     summary: String,
     spotsLeft: String?,
     modifier: Modifier = Modifier,
+    photos: List<MemberPhoto?> = emptyList(),
 ) {
     val colors = SaqzTheme.colors
     var visibleAvatars by remember(names, summary) { mutableIntStateOf(HeroAvatarsMax) }
@@ -201,6 +204,7 @@ internal fun HeroRosterRow(
     ) {
         SaqzAvatarStack(
             names = names,
+            photos = names.mapIndexed { index, name -> photos.getOrNull(index).avatarSlot(name, size = HeroAvatarSize) },
             max = visibleAvatars,
             ring = colors.primary,
             overflowContainer = colors.accent,
@@ -235,6 +239,8 @@ internal fun HeroRosterRow(
 }
 
 private const val HeroAvatarsMax = 3
+// Diâmetro padrão do `SaqzAvatarStack`: as iniciais de reserva saem do mesmo tamanho.
+private val HeroAvatarSize = 30.dp
 private val HeroRosterLineGap = 2.dp
 private val HeroRosterDotSize = 6.dp
 

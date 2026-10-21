@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.members
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -260,11 +261,12 @@ private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
         meta = member.meta,
         // O sufixo entra no nome e as iniciais saem dele: sem isto, "Lucas Prado · você"
         // vira "LV". O `photo` recebe o mesmo avatar, desenhado a partir do nome limpo.
-        photo = if (member.isSelf) {
-            { SaqzAvatar(name = member.name, initialsColor = SaqzTheme.colors.primary) }
-        } else {
-            null
-        },
+        photo = member.visiblePhoto.avatarSlot(member.name, initialsColor = SaqzTheme.colors.primary)
+            ?: if (member.isSelf) {
+                { SaqzAvatar(name = member.name, initialsColor = SaqzTheme.colors.primary) }
+            } else {
+                null
+            },
         // A própria linha também abre o sheet: dono e admin editam o próprio jogador (mensalista etc.).
         onClick = {
             dismissKeyboard()
@@ -348,7 +350,11 @@ internal fun GroupMemberActionsSheet(
             horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SaqzAvatar(name = member.name, size = metrics.grid * 6)
+            SaqzAvatar(
+                name = member.name,
+                size = metrics.grid * 6,
+                photo = member.visiblePhoto.avatarSlot(member.name, size = metrics.grid * 6),
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
                 Text(
                     text = member.name,

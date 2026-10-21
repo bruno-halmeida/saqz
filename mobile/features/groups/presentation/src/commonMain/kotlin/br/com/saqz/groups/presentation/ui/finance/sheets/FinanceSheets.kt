@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.finance.sheets
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -241,7 +243,11 @@ internal fun ReceiptSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
-                SaqzAvatar(name = receipt.name, modifier = Modifier.testTag(FinanceSheetsTags.ReceiptAvatar))
+                SaqzAvatar(
+                    name = receipt.name,
+                    modifier = Modifier.testTag(FinanceSheetsTags.ReceiptAvatar),
+                    photo = receipt.photo.avatarSlot(receipt.name),
+                )
                 Column {
                     Text(
                         text = receipt.name,
@@ -337,7 +343,7 @@ internal fun WaiveSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
-                SaqzAvatar(name = waived.name)
+                SaqzAvatar(name = waived.name, photo = waived.photo.avatarSlot(waived.name))
                 Column {
                     Text(
                         text = waived.name,
@@ -413,7 +419,7 @@ internal fun CancelChargeSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
-                SaqzAvatar(name = canceled.name)
+                SaqzAvatar(name = canceled.name, photo = canceled.photo.avatarSlot(canceled.name))
                 Column {
                     Text(
                         text = canceled.name,
@@ -462,6 +468,7 @@ internal fun ReviewSheet(
     busy: Boolean,
     onClose: () -> Unit,
     onConfirm: () -> Unit,
+    photo: MemberPhoto? = null,
 ) {
     SaqzBottomSheet(
         open = open,
@@ -491,7 +498,7 @@ internal fun ReviewSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
-                SaqzAvatar(name = name)
+                SaqzAvatar(name = name, photo = photo.avatarSlot(name))
                 Text(text = name, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
             }
             SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.ReviewAmount)) {
@@ -535,6 +542,7 @@ internal fun UndoSheet(
     busy: Boolean,
     onClose: () -> Unit,
     onConfirm: (note: String) -> Unit,
+    photo: MemberPhoto? = null,
 ) {
     var reason by remember(open, name) { mutableStateOf("") }
     // O servidor aceita nota de 2 a 500 caracteres; vazia vale como sem nota.
@@ -567,7 +575,7 @@ internal fun UndoSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
             ) {
-                SaqzAvatar(name = name)
+                SaqzAvatar(name = name, photo = photo.avatarSlot(name))
                 Text(text = name, style = SaqzTheme.typography.subtitle, color = SaqzTheme.colors.textPrimary)
             }
             SaqzCard(modifier = Modifier.testTag(FinanceSheetsTags.UndoAmount)) {

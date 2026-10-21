@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzAvatarInitials
-import br.com.saqz.designsystem.SaqzTheme
+import br.com.saqz.designsystem.theme.SaqzTheme
 
 /**
  * Foto de perfil de outro membro do grupo (MEM-006). Só existe com [tag]: sem foto, ou

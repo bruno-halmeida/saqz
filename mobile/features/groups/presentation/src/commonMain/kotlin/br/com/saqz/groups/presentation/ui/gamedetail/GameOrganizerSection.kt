@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Text
@@ -194,6 +195,7 @@ internal fun GamePlaceSheet(state: GameDetailState, onIntent: (GameDetailIntent)
                 SaqzMemberRow(
                     name = candidate.name,
                     meta = stringResource(candidate.position.positionResource()),
+                    photo = candidate.photo.avatarSlot(candidate.name, initialsColor = SaqzTheme.colors.primary),
                     modifier = Modifier
                         .testTag(GameOrganizerTags.candidate(candidate.id))
                         .semantics { this.selected = isSelected }

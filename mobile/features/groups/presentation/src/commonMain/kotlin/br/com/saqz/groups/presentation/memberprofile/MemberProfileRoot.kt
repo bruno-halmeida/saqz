@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.memberprofile
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -111,7 +112,7 @@ internal fun MemberProfileScreen(
                 )
                 else -> {
                     SaqzCard {
-                        SaqzAvatar(name = state.name)
+                        SaqzAvatar(name = state.name, photo = state.photo.takeUnless { state.blocked }.avatarSlot(state.name))
                         Text(state.name, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
                         state.attributes.forEach { Text(it, color = SaqzTheme.colors.textSecondary) }
                         state.phone?.let { Text(it, modifier = Modifier.testTag(MemberProfileTags.Phone)) }

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.membereditor
 
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -258,7 +259,7 @@ private fun MemberEditorHeader(state: MemberEditorState) {
             horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SaqzAvatar(state.name, size = metrics.avatarSize)
+            SaqzAvatar(state.name, size = metrics.avatarSize, photo = state.photo.avatarSlot(state.name, size = metrics.avatarSize))
             Column(verticalArrangement = Arrangement.spacedBy(metrics.subGrid)) {
                 Text(
                     text = state.name,

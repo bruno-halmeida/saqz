@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
@@ -487,8 +488,10 @@ class GroupCashboxViewModel(
         val openMonthly = monthly.filter { it.status == ChargeStatus.Pending }
         val pending = charges.filter { it.status == ChargeStatus.Pending }
         val memberNames = memberships.associate { it.userId to it.displayName }
+        val memberPhotos = memberships.associate { it.userId to memberPhoto(groupId, it.userId, it.photoTag) }
+        fun Charge.photo() = if (guestDisplayName != null) null else memberPhotos[memberId]
         val debtors = pending
-            .map { it.toDebtor(memberNames[it.memberId] ?: "Membro", it.dueDate < date.toString()) }
+            .map { it.toDebtor(memberNames[it.memberId] ?: "Membro", it.dueDate < date.toString()).copy(photo = it.photo()) }
             .sortedBy { it.dueLabel }
         val balanceCents = statement.summary.accumulatedBalanceCents
         val receivedCents = paidMonthly.sumOf { it.amountCents }
@@ -519,10 +522,10 @@ class GroupCashboxViewModel(
             overdueBanner = buildOverdueBanner(debtors),
             debtors = debtors,
             reviews = charges.filter { it.reviewRequired }
-                .map { it.toReview(memberNames[it.memberId] ?: "Membro") },
+                .map { it.toReview(memberNames[it.memberId] ?: "Membro").copy(photo = it.photo()) },
             settled = monthly
                 .filter { (it.status == ChargeStatus.Paid || it.status == ChargeStatus.Waived) && !it.electronicOrder }
-                .map { it.toSettled(memberNames[it.memberId] ?: "Membro") },
+                .map { it.toSettled(memberNames[it.memberId] ?: "Membro").copy(photo = it.photo()) },
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
         )
     }

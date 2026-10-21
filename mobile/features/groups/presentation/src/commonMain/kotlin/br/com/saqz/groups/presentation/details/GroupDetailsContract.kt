@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.details
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
@@ -115,6 +116,8 @@ data class NextGameUi(
     val confirmedCount: Int,
     val capacity: Int,
     val confirmedNames: List<String> = emptyList(),
+    /** Foto de cada nome de [confirmedNames], na mesma ordem (MEM-006). */
+    val confirmedPhotos: List<MemberPhoto?> = emptyList(),
     val availableSpots: Int = 0,
     val confirmationOpen: Boolean = true,
     /** Ainda dá para responder: jogo publicado e por começar. Depois do prazo o "Vou" entra pela espera. */
@@ -252,6 +255,8 @@ data class MemberPreviewUi(
     val name: String,
     val meta: String,
     val status: MemberStatusUi? = null,
+    /** Foto de perfil (MEM-006). */
+    val photo: MemberPhoto? = null,
 )
 
 /** Os três tons de etiqueta que as linhas de membro do 2e usam. */

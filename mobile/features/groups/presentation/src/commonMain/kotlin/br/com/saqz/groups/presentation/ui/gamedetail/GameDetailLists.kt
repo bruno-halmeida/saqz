@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -196,6 +198,7 @@ private fun ConfirmedRow(
         divider = divider,
         hasActions = person.canRemove || person.guest?.canRemove == true,
         onIntent = onIntent,
+        photo = person.photo,
     )
 }
 
@@ -268,6 +271,7 @@ private fun WaitingRow(
         divider = divider,
         hasActions = person.canRemove || person.guest?.canRemove == true || force,
         onIntent = onIntent,
+        photo = person.photo,
         action = if (state.canPromote) {
             {
                 // Posição completa: contorno, e o toque abre a confirmação de entrada forçada (fica acima das vagas).
@@ -321,6 +325,7 @@ internal fun GameDeclinedList(state: GameDetailState) {
                 hasActions = false,
                 muted = true,
                 onIntent = {},
+                photo = person.photo,
             )
         }
     }
@@ -359,6 +364,7 @@ private fun PersonRow(
     onIntent: (GameDetailIntent) -> Unit,
     muted: Boolean = false,
     action: (@Composable () -> Unit)? = null,
+    photo: MemberPhoto? = null,
 ) {
     val colors = SaqzTheme.colors
     SaqzMemberRow(
@@ -366,7 +372,11 @@ private fun PersonRow(
         meta = meta,
         leading = number?.let { { NumberCell(it) } },
         divider = divider,
-        photo = if (guest) { { SaqzIcon(SaqzIcons.UserPlus, tint = colors.primary, size = GuestIconSize) } } else null,
+        photo = if (guest) {
+            { SaqzIcon(SaqzIcons.UserPlus, tint = colors.primary, size = GuestIconSize) }
+        } else {
+            photo.avatarSlot(name, initialsColor = if (muted) colors.textSecondary else colors.primary)
+        },
         initialsColor = if (muted) colors.textSecondary else colors.primary,
         modifier = Modifier
             .testTag(if (guest) GameGuestTags.row(id) else GameDetailTags.row(id))

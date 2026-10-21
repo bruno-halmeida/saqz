@@ -209,6 +209,7 @@ private fun GroupGameHero(
                 game.confirmationOpen && game.responseOpen
             HeroRosterRow(
                 names = game.confirmedNames,
+                photos = game.confirmedPhotos,
                 summary = if (game.confirmedCount > game.capacity) {
                     pluralStringResource(
                         Res.plurals.game_detail_confirmed_over_capacity,
@@ -396,6 +397,7 @@ private fun ColumnScope.GroupWaitlistExtras(state: GroupDetailsState, game: Next
         HomeWaitlistKind.Reserva, HomeWaitlistKind.Manual, HomeWaitlistKind.AfterDeadline -> {
             HomeWaitlistConfirmedSection(
                 confirmedRoster = game.confirmedNames,
+                confirmedPhotos = game.confirmedPhotos,
                 confirmedCount = game.confirmedCount,
                 capacity = game.capacity,
             )

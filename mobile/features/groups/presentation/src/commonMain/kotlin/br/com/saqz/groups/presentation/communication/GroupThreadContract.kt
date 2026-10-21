@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.communication
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.presentation.GroupUiError
 
@@ -30,6 +31,8 @@ data class ThreadMessageUi(
     val time: String,
     val authorId: String = "",
     val own: Boolean = false,
+    /** Foto de perfil de quem escreveu (MEM-006). */
+    val photo: MemberPhoto? = null,
 )
 
 sealed interface GroupThreadIntent {

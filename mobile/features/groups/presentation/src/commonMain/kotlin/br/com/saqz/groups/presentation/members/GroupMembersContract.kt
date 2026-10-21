@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.entryrequest.AcceptAsUi
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 
 /** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2"; "Convidados · N" do CONV-010. */
 enum class GroupMembersFilter { All, Admins, Pending, Invited }
@@ -34,7 +35,11 @@ data class MemberUi(
     val isOwner: Boolean = false,
     /** Quem olha bloqueou esta pessoa: o sheet troca "Bloquear" por "Desbloquear". */
     val isBlocked: Boolean = false,
-)
+    /** Foto de perfil (MEM-006); some na hora em que quem olha bloqueia a pessoa. */
+    val photo: MemberPhoto? = null,
+) {
+    val visiblePhoto: MemberPhoto? get() = photo.takeUnless { isBlocked }
+}
 
 @Immutable
 data class JoinRequestUi(

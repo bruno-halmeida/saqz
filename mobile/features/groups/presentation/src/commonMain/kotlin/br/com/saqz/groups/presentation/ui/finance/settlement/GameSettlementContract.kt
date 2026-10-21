@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.presentation.GroupUiError
@@ -70,6 +71,8 @@ data class GameSettlementDiaristUi(
     val reviewRequired: Boolean = false,
     /** Recebida ou dispensada sem ordem eletrônica: o organizador pode desfazer a baixa (DEB-052). */
     val canUndo: Boolean = false,
+    /** Foto de perfil (MEM-006); cobrança de convidado não tem. */
+    val photo: MemberPhoto? = null,
 )
 
 sealed interface GameSettlementIntent {

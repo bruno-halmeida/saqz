@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.finance.groupcash
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.presentation.pix.PixKeyType
 import br.com.saqz.groups.presentation.pix.PixKeys
@@ -66,6 +67,8 @@ data class DebtorUi(
     val referenceLabel: String = "",
     /** Desistiu depois de confirmar e a diária segue pendente: o organizador cobra ou dispensa. */
     val withdrew: Boolean = false,
+    /** Foto de perfil de quem deve (MEM-006); convidado não tem. */
+    val photo: MemberPhoto? = null,
 )
 
 /** Cobrança de jogo cancelado que já estava paga ou dispensada: o organizador confere a devolução (DEB-053). */
@@ -77,6 +80,7 @@ data class ReviewUi(
     val amountLabel: String,
     val chargeVersion: Long,
     val isUpdating: Boolean = false,
+    val photo: MemberPhoto? = null,
 )
 
 /** Mensalidade do mês já recebida ou dispensada, sem ordem eletrônica: o organizador pode desfazer a baixa (DEB-052). */
@@ -89,6 +93,7 @@ data class SettledUi(
     val chargeVersion: Long,
     val received: Boolean,
     val isUpdating: Boolean = false,
+    val photo: MemberPhoto? = null,
 )
 
 @Immutable

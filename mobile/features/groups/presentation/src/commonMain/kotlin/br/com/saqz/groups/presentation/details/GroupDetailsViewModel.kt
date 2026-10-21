@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.details
 
+import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.formatting.formatBrl
@@ -444,7 +446,12 @@ class GroupDetailsViewModel(
             it.copy(
                 memberCount = roster.size,
                 memberPreview = roster.take(MEMBER_PREVIEW_LIMIT).map { member ->
-                    MemberPreviewUi(id = member.userId, name = member.displayName, meta = "")
+                    MemberPreviewUi(
+                        id = member.userId,
+                        name = member.displayName,
+                        meta = "",
+                        photo = memberPhoto(groupId, member.userId, member.photoTag),
+                    )
                 },
             )
         }
@@ -948,6 +955,7 @@ class GroupDetailsViewModel(
             confirmedCount = detail.confirmedCount,
             capacity = detail.capacity,
             confirmedNames = roster.confirmed.map { it.displayName },
+            confirmedPhotos = roster.confirmed.photos(),
             availableSpots = detail.availableSpots,
             // A palavra do servidor vale mais que o relógio do aparelho: prazo recusado é prazo vencido.
             confirmationOpen = status == GameStatus.Published && deadlineIsOpen() && !lateRefused,
@@ -970,12 +978,17 @@ class GroupDetailsViewModel(
         confirmedCount = detail.confirmedCount,
         capacity = detail.capacity,
         confirmedNames = roster?.confirmed?.map { it.displayName } ?: confirmedNames,
+        confirmedPhotos = roster?.confirmed?.photos() ?: confirmedPhotos,
         availableSpots = detail.availableSpots,
     )
 
     private fun NextGameUi.reconcileRoster(roster: AttendanceRoster) = copy(
         confirmedNames = roster.confirmed.map { it.displayName },
+        confirmedPhotos = roster.confirmed.photos(),
     )
+
+    private fun List<AttendanceRosterMember>.photos() =
+        map { if (it.isGuest) null else memberPhoto(groupId, it.memberId, it.photoTag) }
 
     private fun AttendanceEntry.toResponse(roster: AttendanceRoster?) = GroupDetailsResponseUi(
         status = status.toResponseStatus(),
@@ -1068,7 +1081,12 @@ class GroupDetailsViewModel(
     ): GroupWaitlistUi? {
         if (this?.status != GroupDetailsResponseStatus.Waitlisted) return null
         val rows = roster?.waitlisted?.mapIndexed { index, member ->
-            HomeWaitlistRowUi(name = member.displayName, position = index + 1L, isSelf = !member.isGuest && member.memberId == memberId)
+            HomeWaitlistRowUi(
+                name = member.displayName,
+                position = index + 1L,
+                isSelf = !member.isGuest && member.memberId == memberId,
+                photo = if (member.isGuest) null else memberPhoto(groupId, member.memberId, member.photoTag),
+            )
         } ?: fallbackRows
         return GroupWaitlistUi(kind = waitlistKind(membershipType), rows = rows)
     }

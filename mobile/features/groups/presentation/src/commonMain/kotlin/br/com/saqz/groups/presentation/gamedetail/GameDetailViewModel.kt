@@ -1,4 +1,5 @@
 package br.com.saqz.groups.presentation.gamedetail
+import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.formatting.formatBrl
@@ -1027,6 +1028,7 @@ class GameDetailViewModel(
         canRemove = canRemoveMember(isAdmin, tone),
         isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
         forced = forced,
+        photo = rosterPhoto(),
     )
 
     private fun AttendanceRosterMember.toWaitlist(
@@ -1043,6 +1045,7 @@ class GameDetailViewModel(
         guest = guestRow(isAdmin, open, tone),
         canRemove = canRemoveMember(isAdmin, tone),
         isYou = !isGuest && memberId == selfId,
+        photo = rosterPhoto(),
     )
 
     /** Quem não vai: só nome, posição e vínculo; ninguém mexe nessa lista. */
@@ -1052,7 +1055,10 @@ class GameDetailViewModel(
         isYou = !isGuest && memberId == selfId,
         position = position ?: athlete?.position,
         isMensalista = athlete?.membershipType == AthleteMembershipType.MENSALISTA,
+        photo = rosterPhoto(),
     )
+
+    private fun AttendanceRosterMember.rosterPhoto() = if (isGuest) null else memberPhoto(groupId, memberId, photoTag)
 
     /** "Terça, 19h30", "28 de julho", o fim do jogo e o endereço, no fuso do jogo. */
     private suspend fun Game.toHero(priority: Boolean): GameDetailHeroUi? {
@@ -1229,7 +1235,7 @@ class GameDetailViewModel(
         val taken = (current.confirmedRoster.map { it.id } + current.waitlist.map { it.id }).toSet()
         val candidates = athletes
             .filter { it.active && it.userId != selfId && it.userId !in taken }
-            .map { GameMemberCandidateUi(it.userId, it.displayName, it.position) }
+            .map { GameMemberCandidateUi(it.userId, it.displayName, it.position, memberPhoto(groupId, it.userId, it.photoTag)) }
         updateOrganizer {
             it.copy(
                 placeOpen = true,

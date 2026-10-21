@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.memberprofile
 
+import br.com.saqz.groups.presentation.photo.MemberPhoto
 import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.presentation.GroupUiError
 
@@ -18,6 +19,8 @@ data class MemberProfileState(
     val isSelf: Boolean = false,
     /** Quem olha bloqueou esta pessoa: a ação vira "Desbloquear". */
     val blocked: Boolean = false,
+    /** Foto de perfil (MEM-006); nula sem foto ou depois de bloquear. */
+    val photo: MemberPhoto? = null,
 ) {
     /** Denunciar e bloquear só aparecem com o perfil carregado e de outra pessoa. */
     val moderationVisible: Boolean get() = !loading && error == null && !isSelf && name.isNotBlank()
