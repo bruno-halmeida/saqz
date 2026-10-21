@@ -38,16 +38,8 @@ class SubscriptionPlansNavigationTest {
     private fun open(
         stack: MutableList<NavKey>,
         result: SaqzResult<MySubscription, SubscriptionError>,
-        webOpens: Boolean = false,
         entry: PlansEntry = PlansEntry.Default,
-    ): Int {
-        var webCalls = 0
-        stack.openSubscriptionPlans(result, entry) {
-            webCalls++
-            webOpens
-        }
-        return webCalls
-    }
+    ) = stack.openSubscriptionPlans(result, entry)
 
     @Test
     fun `past due in grace goes to my plan and never stacks the store paywall`() {
@@ -70,9 +62,8 @@ class SubscriptionPlansNavigationTest {
     fun `active and canceled subscribers go to my plan`() {
         for (status in listOf(SubscriptionStatus.Active, SubscriptionStatus.Canceled)) {
             val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
-            val webCalls = open(stack, subscription(status, entitled = status == SubscriptionStatus.Active))
+            open(stack, subscription(status, entitled = status == SubscriptionStatus.Active))
             assertEquals(SubscriptionsRoute.MyPlan, stack.last())
-            assertEquals(0, webCalls)
         }
     }
 
@@ -84,27 +75,10 @@ class SubscriptionPlansNavigationTest {
     }
 
     @Test
-    fun `web checkout replaces the plans screen for whoever never subscribed`() {
-        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
-        val webCalls = open(stack, SaqzResult.Failure(SubscriptionError.NotFound), webOpens = true)
-        assertEquals(1, webCalls)
-        assertEquals(1, stack.size)
-    }
-
-    @Test
     fun `a web checkout that was never paid is treated as never subscribed`() {
         val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
-        val webCalls = open(stack, subscription(SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false))
+        open(stack, subscription(SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false))
         assertEquals(SubscribeForAccess, stack.last())
-        assertEquals(1, webCalls)
-    }
-
-    @Test
-    fun `a never paid web checkout opens the web checkout where there is one`() {
-        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
-        val webCalls = open(stack, subscription(SubscriptionStatus.PastDue, entitled = false, paymentConfirmed = false), webOpens = true)
-        assertEquals(1, webCalls)
-        assertEquals(1, stack.size)
     }
 
     @Test
@@ -145,20 +119,11 @@ class SubscriptionPlansNavigationTest {
     }
 
     @Test
-    fun `group creation opens the web checkout as before where there is one`() {
-        val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
-        val webCalls = open(stack, SaqzResult.Failure(SubscriptionError.NotFound), webOpens = true, entry = PlansEntry.GroupCreation)
-        assertEquals(1, webCalls)
-        assertEquals(1, stack.size)
-    }
-
-    @Test
     fun `whoever already subscribes goes to my plan from group creation too`() {
         for (status in SubscriptionStatus.entries) {
             val stack = mutableListOf<NavKey>(GroupsRoute.Notifications())
-            val webCalls = open(stack, subscription(status, entitled = status == SubscriptionStatus.Active), entry = PlansEntry.GroupCreation)
+            open(stack, subscription(status, entitled = status == SubscriptionStatus.Active), entry = PlansEntry.GroupCreation)
             assertEquals(SubscriptionsRoute.MyPlan, stack.last())
-            assertEquals(0, webCalls)
         }
         val failed = mutableListOf<NavKey>(GroupsRoute.Notifications())
         open(failed, SaqzResult.Failure(SubscriptionError.Data(DataError.Connectivity)), entry = PlansEntry.GroupCreation)

@@ -367,24 +367,6 @@ class AttendanceLinkViewModelTest {
         assertEquals(AttendanceLinkPhase.Failed, vm.state.value.phase)
     }
 
-    @Test fun appDownloadIsOfferedOnlyWhenThePortHasAStoreAndOpensIt() = runTest {
-        val port = br.com.saqz.groups.presentation.FakeAppDownload()
-        val offered = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), appDownload = port)
-        assertTrue(offered.appDownloadAvailable)
-        offered.onIntent(AttendanceLinkIntent.OpenAppDownload)
-        assertEquals(listOf("https://play.example/saqz"), port.opened)
-
-        val noStore = br.com.saqz.groups.presentation.FakeAppDownload(url = null)
-        val withoutStore = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake(), appDownload = noStore)
-        assertFalse(withoutStore.appDownloadAvailable)
-        withoutStore.onIntent(AttendanceLinkIntent.OpenAppDownload)
-        assertTrue(noStore.opened.isEmpty())
-
-        val native = AttendanceLinkViewModel(code, false, SharingFake(), AttendanceFake(), InviteFake())
-        assertFalse(native.appDownloadAvailable)
-        native.onIntent(AttendanceLinkIntent.OpenAppDownload)
-    }
-
     @Test fun memberSeesTheGameCardFromTheGameDataAndKeepsItThroughTheDeclineSheetAndTheAnswer() = runTest {
         val games = br.com.saqz.groups.presentation.FakeGameGateway()
         val card = AttendanceLinkGame("TUESDAY", "04/08", "19h30", "CERET", null, capacity = 12, confirmedCount = 8)

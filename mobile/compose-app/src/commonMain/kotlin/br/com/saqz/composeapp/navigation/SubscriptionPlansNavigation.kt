@@ -14,7 +14,7 @@ internal enum class PlansEntry { Default, GroupCreation }
  * "Ver planos", o toque no push do teste/atraso e o "Abrir" da central: quem já tem assinatura
  * (em dia, na carência, vencida ou cancelada) vai a Meu plano, onde está o pagamento do site, o
  * gerenciamento da loja e o "Assinar de novo". Só quem nunca assinou (teste ou sem plano) vê a
- * tela de planos, que vende pela loja ou pelo checkout do site. O checkout do site que nunca foi pago
+ * tela de planos, que vende pela loja. O checkout do site que nunca foi pago
  * (linha em atraso sem pagamento confirmado) conta como quem nunca assinou. A consulta que falha também vai a
  * Meu plano: ali a falha tem "tentar de novo", e a loja nunca vende por cima de uma assinatura
  * que talvez exista.
@@ -25,7 +25,6 @@ internal enum class PlansEntry { Default, GroupCreation }
 internal fun MutableList<NavKey>.openSubscriptionPlans(
     subscription: SaqzResult<MySubscription, SubscriptionError>,
     entry: PlansEntry = PlansEntry.Default,
-    openWebCheckout: () -> Boolean,
 ) {
     val neverSubscribed = when (subscription) {
         is SaqzResult.Failure -> subscription.error == SubscriptionError.NotFound
@@ -33,7 +32,7 @@ internal fun MutableList<NavKey>.openSubscriptionPlans(
     }
     if (neverSubscribed) {
         val plans: NavKey = if (entry == PlansEntry.GroupCreation) SubscriptionRequired else SubscribeForAccess
-        if (lastOrNull() != plans && !openWebCheckout()) add(plans)
+        if (lastOrNull() != plans) add(plans)
     } else if (lastOrNull() != SubscriptionsRoute.MyPlan) {
         add(SubscriptionsRoute.MyPlan)
     }

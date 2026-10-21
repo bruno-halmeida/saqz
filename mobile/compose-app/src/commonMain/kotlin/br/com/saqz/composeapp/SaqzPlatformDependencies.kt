@@ -54,11 +54,11 @@ class GroupsRuntimeDependencies(
 class SaqzPlatformDependencies(
     val environment: String,
     val apiBaseUrl: String,
-    /** "android", "ios" ou "web": vai em toda chamada à API (X-Saqz-Platform). */
+    /** "android" ou "ios": vai em toda chamada à API (X-Saqz-Platform). */
     val platform: String,
     /** Versão publicada, "1.0.3" (versionName / CFBundleShortVersionString): X-Saqz-App-Version e rodapé do Perfil. */
     val appVersion: String,
-    /** Build, "14" (versionCode / CFBundleVersion): X-Saqz-App-Build e rodapé do Perfil; `null` onde não existe (web). */
+    /** Build, "14" (versionCode / CFBundleVersion): X-Saqz-App-Build e rodapé do Perfil; `null` onde não existe. */
     val appBuild: String?,
     val access: AccessRuntimeDependencies,
     val groups: GroupsRuntimeDependencies,
@@ -70,10 +70,6 @@ class SaqzPlatformDependencies(
     val appStorePurchases: br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort?,
     /** Play Billing no Android; `null` explícito no iOS. */
     val googlePlayPurchases: br.com.saqz.subscriptions.domain.port.GooglePlayPurchasesPort?,
-    /** Checkout do site (saqz.app/assinar/) no web app; `null` explícito no Android e no iOS. */
-    val webCheckout: br.com.saqz.subscriptions.domain.port.WebCheckoutPort?,
-    /** Loja do app oferecida depois da primeira resposta, só no web app; `null` explícito no Android e no iOS. */
-    val appDownload: br.com.saqz.groups.domain.communication.AppDownloadPort?,
 ) {
     init {
         require(environment.isNotBlank()) { "environment must not be blank" }

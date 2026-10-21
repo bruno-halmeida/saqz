@@ -11,7 +11,6 @@ import br.com.saqz.groups.domain.attendance.*
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.share.*
-import br.com.saqz.groups.domain.communication.AppDownloadPort
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameGateway
@@ -33,8 +32,6 @@ class AttendanceLinkViewModel(
     private val attendance: AttendanceGateway,
     private val invites: InviteGateway,
     private val notifications: NativeNotificationPort? = null,
-    /** Só no web app: a loja do app oferecida depois da resposta. */
-    private val appDownload: AppDownloadPort? = null,
     /** O cartão do jogo de quem já é membro; sem o port, a tela segue sem cartão. */
     private val games: GameGateway? = null,
     /** Horário do cartão de quem aguarda aprovação (a prévia traz o instante); sem o port, UTC. */
@@ -42,8 +39,6 @@ class AttendanceLinkViewModel(
     /** Lê o cadastro guardado no pedido pendente; sem o port, a fase `Pending` segue sem esse passo. */
     private val athletes: AthleteGateway? = null,
 ) : MviViewModel<AttendanceLinkState, AttendanceLinkIntent, AttendanceLinkEffect>(AttendanceLinkState()) {
-    /** Há loja do app para oferecer depois da resposta (confirmada ou lista de espera). */
-    val appDownloadAvailable: Boolean = appDownload?.appDownloadUrl() != null
     private var generation = 0
     private var timeZone: TimeZone = TimeZone.UTC
     init {
@@ -59,7 +54,6 @@ class AttendanceLinkViewModel(
             AttendanceLinkIntent.Refresh -> refresh()
             AttendanceLinkIntent.Decline -> decline()
             AttendanceLinkIntent.Undo -> undo()
-            AttendanceLinkIntent.OpenAppDownload -> appDownload?.appDownloadUrl()?.let(appDownload::openAppDownload)
             AttendanceLinkIntent.PickPosition -> state.value.destination
                 ?.takeIf { state.value.phase == AttendanceLinkPhase.ChoosingPosition }
                 ?.let { emit(AttendanceLinkEffect.PickPosition(it)) }

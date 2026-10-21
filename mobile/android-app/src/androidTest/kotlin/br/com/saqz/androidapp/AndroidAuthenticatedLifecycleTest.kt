@@ -315,8 +315,6 @@ private class LifecycleCompositionFactory(
             },
             appStorePurchases = null,
             googlePlayPurchases = null,
-            webCheckout = null,
-            appDownload = null,
             environment = "dev",
             apiBaseUrl = "http://127.0.0.1:1",
             platform = "android",

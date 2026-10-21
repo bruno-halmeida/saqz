@@ -82,7 +82,6 @@ fun groupsPresentationModule(): Module = module {
         GroupDetailsViewModel(
             params.get(), get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>(), get(), get(), get(),
             getOrNull(), get(), get(), whatsAppAvailability = getOrNull(), reports = getOrNull(),
-            appDownload = getOrNull(),
             trialAccess = getOrNull(),
             notificationPrompt = getOrNull(),
         )
@@ -107,7 +106,7 @@ fun groupsPresentationModule(): Module = module {
     }
     viewModel { params ->
         br.com.saqz.groups.presentation.attendancelink.AttendanceLinkViewModel(
-            params[0], params[1], get(), get(), get(), getOrNull(), getOrNull(), getOrNull(), getOrNull(), getOrNull(),
+            params[0], params[1], get(), get(), get(), getOrNull(), getOrNull(), getOrNull(), getOrNull(),
         )
     }
     viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get(), get()) }

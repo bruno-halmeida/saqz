@@ -11,8 +11,6 @@ import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.app_download_action
-import br.com.saqz.groups.resources.app_download_offer
 import br.com.saqz.groups.resources.onboarding_athlete_title
 import br.com.saqz.groups.resources.onboarding_athlete_body
 import br.com.saqz.groups.resources.onboarding_athlete_share
@@ -24,26 +22,18 @@ internal object AthleteOnboardingTags {
     const val Card = "athlete-onboarding-card"
     const val Share = "athlete-onboarding-share"
     const val Dismiss = "athlete-onboarding-dismiss"
-    const val Download = "athlete-onboarding-download"
 }
 
 @Composable
 internal fun AthleteOnboardingCard(
     shareFailed: Boolean,
     onIntent: (GroupDetailsIntent) -> Unit,
-    appDownloadAvailable: Boolean = false,
 ) {
     SaqzCard(modifier = Modifier.testTag(AthleteOnboardingTags.Card)) {
         Text(stringResource(Res.string.onboarding_athlete_title),
             style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
         Text(stringResource(Res.string.onboarding_athlete_body),
             style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-        if (appDownloadAvailable) {
-            Text(stringResource(Res.string.app_download_offer),
-                style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-            SaqzButton(stringResource(Res.string.app_download_action), { onIntent(GroupDetailsIntent.OpenAppDownload) },
-                fullWidth = true, modifier = Modifier.testTag(AthleteOnboardingTags.Download))
-        }
         SaqzButton(stringResource(Res.string.onboarding_athlete_share), { onIntent(GroupDetailsIntent.ShareSaqz) },
             variant = SaqzButtonVariant.Secondary, fullWidth = true, modifier = Modifier.testTag(AthleteOnboardingTags.Share))
         SaqzButton(stringResource(Res.string.onboarding_athlete_dismiss), { onIntent(GroupDetailsIntent.DismissAthleteIntro) },

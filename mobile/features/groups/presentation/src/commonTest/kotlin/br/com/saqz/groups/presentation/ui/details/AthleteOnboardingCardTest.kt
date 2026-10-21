@@ -34,18 +34,6 @@ class AthleteOnboardingCardTest {
         onNodeWithText("Sua resposta foi salva. Conheça o Saqz.").assertExists()
     }
 
-    @Test fun appDownloadOfferShowsOnlyWithAStoreAndOpensIt() = runComposeUiTest {
-        val intents = mutableListOf<GroupDetailsIntent>()
-        var available by mutableStateOf(false)
-        setContent { SaqzTheme { AthleteOnboardingCard(false, intents::add, available) } }
-        onNodeWithTag(AthleteOnboardingTags.Download).assertDoesNotExist()
-        onNodeWithText("Quer lembrete no celular? Baixe o app Saqz e entre com a mesma conta.").assertDoesNotExist()
-        runOnIdle { available = true }
-        onNodeWithText("Quer lembrete no celular? Baixe o app Saqz e entre com a mesma conta.").assertExists()
-        onNodeWithTag(AthleteOnboardingTags.Download).performClick()
-        assertEquals(listOf<GroupDetailsIntent>(GroupDetailsIntent.OpenAppDownload), intents)
-    }
-
     @Test fun shareFailureOffersRetryWithoutClaimingDelivery() = runComposeUiTest {
         setContent { SaqzTheme { AthleteOnboardingCard(true, {}) } }
         onNodeWithText("Não foi possível abrir o compartilhamento. Tente novamente.").assertExists()

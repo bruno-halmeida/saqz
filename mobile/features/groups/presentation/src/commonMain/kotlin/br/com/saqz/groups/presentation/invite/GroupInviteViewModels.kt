@@ -558,7 +558,7 @@ class InviteQrViewModel(
 
 internal fun renderQr(inviteUrl: String): ByteArray = QRCode.ofSquares().withSize(10).build(inviteUrl).renderToPngBytes()
 
-/** PNG do QR. No navegador o qrcode-kotlin devolve o `data:` URL em vez do PNG; cada plataforma acerta isso. */
+/** PNG do QR, gerado por plataforma. */
 internal expect fun QRCode.renderToPngBytes(): ByteArray
 
 private fun String.withLink(inviteUrl: String, codeHint: String): String {

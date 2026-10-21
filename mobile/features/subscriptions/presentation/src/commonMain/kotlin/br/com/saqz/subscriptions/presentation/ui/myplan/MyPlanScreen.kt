@@ -116,8 +116,8 @@ fun MyPlanScreen(
                         modifier = Modifier.testTag(MyPlanTags.PayNow),
                     )
                 }
-                // Assinatura encerrada: a loja do aparelho (App Store, Google Play) ou, no web app, o
-                // checkout do site. Sem nenhum dos dois o botão some, como o do teste.
+                // Assinatura encerrada: a loja do aparelho (App Store, Google Play). Sem loja o botão some,
+                // como o do teste.
                 if (state.canResubscribe && purchasesAvailable) {
                     SaqzButton(
                         stringResource(Res.string.myplan_resubscribe),

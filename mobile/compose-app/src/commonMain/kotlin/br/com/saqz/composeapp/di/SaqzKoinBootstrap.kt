@@ -158,7 +158,7 @@ fun loadSaqzPlatformDependencies(
     }
     platformModules = listOf(
         platformBindingsModule(dependencies),
-        storeCheckoutModule(dependencies.appStorePurchases, dependencies.googlePlayPurchases, dependencies.webCheckout),
+        storeCheckoutModule(dependencies.appStorePurchases, dependencies.googlePlayPurchases),
         profilePhotoPresentationModule(
             selection = dependencies.access.profilePhotoSelection,
             initialPhotoUrl = null,
@@ -202,9 +202,6 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
         )
     }
     single<br.com.saqz.groups.domain.communication.NativeNotificationPort> { dependencies.notifications }
-    dependencies.appDownload?.let { appDownload ->
-        single<br.com.saqz.groups.domain.communication.AppDownloadPort> { appDownload }
-    }
     single { SaqzNativePorts(access = dependencies.access, groups = dependencies.groups) }
     single<NativeAuthPort>(named("raw-native-auth")) {
         BackendEmailVerificationAuth(

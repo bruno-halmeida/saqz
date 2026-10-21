@@ -2377,7 +2377,6 @@ class GroupDetailsViewModelTest {
         notifications: NativeNotificationPort? = null,
         whatsApp: FakeGroupWhatsAppGateway? = null,
         onboardingMemory: FakeGroupOnboardingMemory? = null,
-        appDownload: br.com.saqz.groups.domain.communication.AppDownloadPort? = null,
         reports: br.com.saqz.groups.domain.finance.GroupReportGateway? = null,
     ) = GroupDetailsViewModel(
         GROUP_ID,
@@ -2397,26 +2396,8 @@ class GroupDetailsViewModelTest {
         onboardingMemory,
         // O servidor do fake responde "ligado" por padrão; o desligado tem testes próprios.
         whatsApp?.let(::WhatsAppAvailability),
-        appDownload,
         reports = reports,
     )
-
-    @Test
-    fun `app download is offered to the athlete only when the port has a store`() = runTest {
-        val port = br.com.saqz.groups.presentation.FakeAppDownload()
-        val vm = viewModel(groupGateway = athleteGroupGateway(), appDownload = port)
-        assertTrue(vm.state.value.appDownloadAvailable)
-        vm.onIntent(GroupDetailsIntent.OpenAppDownload)
-        assertEquals(listOf("https://play.example/saqz"), port.opened)
-
-        val noStore = br.com.saqz.groups.presentation.FakeAppDownload(url = null)
-        val withoutStore = viewModel(groupGateway = athleteGroupGateway(), appDownload = noStore)
-        assertFalse(withoutStore.state.value.appDownloadAvailable)
-        withoutStore.onIntent(GroupDetailsIntent.OpenAppDownload)
-        assertTrue(noStore.opened.isEmpty())
-
-        assertFalse(viewModel(groupGateway = athleteGroupGateway()).state.value.appDownloadAvailable)
-    }
 
     @Test
     fun `reports row follows the plan the server reports and stays hidden for athletes`() = runTest {

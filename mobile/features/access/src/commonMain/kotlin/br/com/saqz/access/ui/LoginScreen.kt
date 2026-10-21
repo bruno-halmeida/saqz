@@ -279,7 +279,7 @@ fun LoginScreen(
             style = SaqzTheme.typography.caption,
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
-            // A frase cai sobre a onda azul fixa ao fundo (no web, com a tela mais baixa, por inteiro):
+            // A frase cai sobre a onda azul fixa ao fundo:
             // o fundo quase opaco, como o do cadastro, mantém o contraste em qualquer posição.
             modifier = Modifier
                 .fillMaxWidth()

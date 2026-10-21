@@ -19,7 +19,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 internal object AttendanceLinkTags {
-    const val Download = "attendance-link-download"
     const val GameCard = "attendance-link-game-card"
     const val Undo = "attendance-link-undo"
     const val ResultCard = "attendance-link-result-card"
@@ -60,7 +59,7 @@ fun AttendanceLinkRoot(
     }
     // Volta do formulário de cadastro (ou do app em segundo plano): o pedido pode ter sido aprovado nesse meio tempo.
     RefreshWhenVisible { vm.onIntent(AttendanceLinkIntent.Refresh) }
-    AttendanceLinkScreen(state, onBack, vm::onIntent, onOpenGame, onAdvanceRegistration, vm.appDownloadAvailable)
+    AttendanceLinkScreen(state, onBack, vm::onIntent, onOpenGame, onAdvanceRegistration)
 }
 
 @Composable
@@ -68,7 +67,6 @@ internal fun AttendanceLinkScreen(
     state: AttendanceLinkState, onBack: () -> Unit, onIntent: (AttendanceLinkIntent) -> Unit,
     onOpenGame: (AttendanceLinkDestination) -> Unit,
     onAdvanceRegistration: (groupId: String) -> Unit = {},
-    appDownloadAvailable: Boolean = false,
 ) {
     val phase = state.phase
     val answered = phase in listOf(
@@ -117,17 +115,6 @@ internal fun AttendanceLinkScreen(
                     else -> null
                 }
                 if (message != null) Text(stringResource(message))
-                // Depois da primeira resposta, o web app oferece o app para o lembrete no celular.
-                if (appDownloadAvailable && phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted)) {
-                    Text(stringResource(Res.string.app_download_offer),
-                        style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
-                    SaqzButton(
-                        stringResource(Res.string.app_download_action),
-                        { onIntent(AttendanceLinkIntent.OpenAppDownload) },
-                        variant = SaqzButtonVariant.Secondary,
-                        modifier = Modifier.testTag(AttendanceLinkTags.Download),
-                    )
-                }
             }
             AttendanceLinkFooter(state, onIntent, onOpenGame, onAdvanceRegistration)
         }

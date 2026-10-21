@@ -108,7 +108,6 @@ import br.com.saqz.profile.presentation.own.ui.OwnProfileRoot
 import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.groups.presentation.ui.monthlyinvite.MonthlyInviteRoot
 import br.com.saqz.subscriptions.presentation.ui.changeplan.ChangePlanRoot
-import br.com.saqz.subscriptions.presentation.ui.limit.PaywallGroupLimitWebScreen
 import kotlinx.coroutines.launch
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute
@@ -414,7 +413,7 @@ internal fun SaqzNavHost(
     }
     // "Ver planos" dos diálogos de assinatura em Marcar jogo/Editar grupo e o toque nos avisos do teste e do
     // atraso: quem nunca assinou vai à mesma tela de Perfil → Meu plano → "Continuar com o Organizador"
-    // (checkout do site no web app, a loja do aparelho nos demais); quem já assina vai a Meu plano
+    // (a loja do aparelho); quem já assina vai a Meu plano
     // (SubscriptionPlansNavigation.kt). Ao voltar, o plano e o acesso se atualizam.
     val subscriptionGateway = koinInject<br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway>()
     var openingPlans by remember { mutableStateOf(false) }
@@ -428,13 +427,7 @@ internal fun SaqzNavHost(
                 } finally {
                     openingPlans = false
                 }
-                backStack.openSubscriptionPlans(subscription, entry) {
-                    storeCheckout.openWebCheckout {
-                        myPlanRefreshVersion++
-                        planAnalytics.refresh()
-                        onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                    }
-                }
+                backStack.openSubscriptionPlans(subscription, entry)
             }
         }
     }
@@ -702,10 +695,8 @@ internal fun SaqzNavHost(
                                 // entitulador — ou limite atingido — ele abre o gate de assinatura;
                                 // quando autorizado, o gate substitui a si mesmo pelo 2a.
                                 onCreateGroup = { backStack.add(GroupsRoute.Create) },
-                                // No web app não há loja: assinar abre o checkout do site.
                                 onOpenPlans = {
-                                    // Se foi o limite de grupos, a assinatura diz isso: no app, no topo da
-                                    // tela de planos; no web, numa tela antes de abrir o site.
+                                    // Se foi o limite de grupos, a assinatura diz isso no topo da tela de planos.
                                     scope.launch {
                                         val limit = groupLimitResolver.resolve()
                                         if (limit != null) {
@@ -874,15 +865,8 @@ internal fun SaqzNavHost(
                     MyPlanRoot(
                         onBack = pop,
                         onOpenChangePlan = { backStack.add(SubscriptionsRoute.ChangePlan) },
-                        // Trial vencido ou assinatura encerrada ("Assinar de novo"): a loja do aparelho
-                        // pelo portão; no web app, o checkout do site, e o plano recarrega na volta.
-                        onOpenSubscribe = {
-                            val openedWeb = storeCheckout.openWebCheckout {
-                                myPlanRefreshVersion++
-                                onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                            }
-                            if (!openedWeb) backStack.add(SubscribeForAccess)
-                        },
+                        // Trial vencido ou assinatura encerrada ("Assinar de novo"): a loja do aparelho pelo portão.
+                        onOpenSubscribe = { backStack.add(SubscribeForAccess) },
                         refreshVersion = myPlanRefreshVersion,
                         onManageStoreSubscription = if (storeCheckout.canManageSubscriptions) {
                             { storeCheckout.manageSubscriptions { myPlanRefreshVersion++ } }
@@ -912,28 +896,15 @@ internal fun SaqzNavHost(
                     )
                 }
                 entry<SubscriptionLimitReached> { route ->
-                    if (storeCheckout.hasWebCheckout) {
-                        PaywallGroupLimitWebScreen(
-                            limit = route.toLimit(),
-                            onOpenPlans = {
-                                storeCheckout.openWebCheckout {
-                                    planAnalytics.refresh()
-                                    onIntent(AccessIntent.Session(SessionIntent.RefreshAccess))
-                                }
-                            },
-                            onBack = pop,
-                        )
-                    } else {
-                        SubscriptionRequiredDestination(
-                            onBack = pop,
-                            onAuthorizationSuccess = {
-                                planAnalytics.purchased()
-                                backStack.replaceSubscriptionRequiredWithGroupCreation()
-                            },
-                            onAccessAlreadyActive = { backStack.replaceSubscriptionRequiredWithGroupCreation() },
-                            groupLimit = route.toLimit(),
-                        )
-                    }
+                    SubscriptionRequiredDestination(
+                        onBack = pop,
+                        onAuthorizationSuccess = {
+                            planAnalytics.purchased()
+                            backStack.replaceSubscriptionRequiredWithGroupCreation()
+                        },
+                        onAccessAlreadyActive = { backStack.replaceSubscriptionRequiredWithGroupCreation() },
+                        groupLimit = route.toLimit(),
+                    )
                 }
                 entry<SubscribeForAccess> {
                     SubscriptionRequiredDestination(

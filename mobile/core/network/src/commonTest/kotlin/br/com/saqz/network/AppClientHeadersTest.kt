@@ -46,11 +46,11 @@ class AppClientHeadersTest {
     @Test
     fun `a missing build omits only the build header`() = runTest {
         val seen = mutableListOf<Identification>()
-        val client = client(AppClient(platform = "web", version = "1.0.3"), seen)
+        val client = client(AppClient(platform = "android", version = "1.0.3"), seen)
 
         client.execute(HttpMethod.Get, "probe", serializer<Probe>())
 
-        assertEquals(listOf(Identification("web", "1.0.3", null)), seen)
+        assertEquals(listOf(Identification("android", "1.0.3", null)), seen)
     }
 
     @Test
@@ -104,13 +104,13 @@ class AppClientHeadersTest {
     }
 
     @Test
-    fun `only the three known platforms are sent`() = runTest {
-        listOf("android", "ios", "web").forEach { platform ->
+    fun `only the two known platforms are sent`() = runTest {
+        listOf("android", "ios").forEach { platform ->
             val seen = mutableListOf<Identification>()
             client(AppClient(platform, "1.0.3", "14"), seen).execute(HttpMethod.Get, "probe", serializer<Probe>())
             assertEquals(listOf(Identification(platform, "1.0.3", "14")), seen)
         }
-        listOf("", "Android", "IOS", "desktop", "ios ", "android;ios").forEach { platform ->
+        listOf("", "web", "Android", "IOS", "desktop", "ios ", "android;ios").forEach { platform ->
             val seen = mutableListOf<Identification>()
 
             val result = client(AppClient(platform, "1.0.3", "14"), seen)

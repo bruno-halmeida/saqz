@@ -11,7 +11,6 @@ import br.com.saqz.domain.onSuccess
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.groups.presentation.attendance.AttendanceRule
-import br.com.saqz.groups.domain.communication.AppDownloadPort
 import br.com.saqz.groups.domain.athlete.AthleteError
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
@@ -123,15 +122,13 @@ class GroupDetailsViewModel(
     private val onboardingMemory: GroupOnboardingMemoryPort? = null,
     /** Se o servidor está com o WhatsApp ligado; sem ela, o vínculo nem aparece. */
     private val whatsAppAvailability: WhatsAppAvailability? = null,
-    /** Só no web app: a loja do app oferecida depois da primeira resposta. */
-    private val appDownload: AppDownloadPort? = null,
     /** Dias do teste em curso, para o aviso do grupo recém-criado. */
     private val trialAccess: br.com.saqz.groups.domain.group.GroupTrialAccessPort? = null,
     /** Pergunta ao servidor se o plano do dono inclui relatórios; sem ela a linha nem aparece. */
     private val reports: GroupReportGateway? = null,
     private val notificationPrompt: NotificationPromptOffer? = null,
 ) : MviViewModel<GroupDetailsState, GroupDetailsIntent, GroupDetailsEffect>(
-    GroupDetailsState(appDownloadAvailable = appDownload?.appDownloadUrl() != null),
+    GroupDetailsState(),
 ) {
 
 
@@ -186,7 +183,6 @@ class GroupDetailsViewModel(
         when (intent) {
             GroupDetailsIntent.DismissAthleteIntro -> update { it.copy(athleteIntroVisible = false, athleteShareFailed = false) }
             GroupDetailsIntent.ShareSaqz -> shareSaqz()
-            GroupDetailsIntent.OpenAppDownload -> appDownload?.appDownloadUrl()?.let(appDownload::openAppDownload)
             GroupDetailsIntent.AthleteShareFailed -> {
                 if (state.value.athleteIntroVisible) update { it.copy(athleteShareFailed = true) }
             }

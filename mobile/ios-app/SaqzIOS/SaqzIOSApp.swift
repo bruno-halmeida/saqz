@@ -105,9 +105,7 @@ struct IOSAppComposition {
             financialDocuments: IOSReceiptDocumentPicker(presenter: { IOSPresentationRoot.current }),
             analytics: IOSAnalyticsSink(),
             appStorePurchases: appStore,
-            googlePlayPurchases: nil,
-            webCheckout: nil,
-            appDownload: nil
+            googlePlayPurchases: nil
         )
         return IOSAppComposition(auth: auth, links: links, localState: localState, groupState: groupState, share: share, attendanceShare: attendanceShare, photos: photos, drafts: drafts, appStore: appStore, dependencies: dependencies)
     }

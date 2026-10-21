@@ -68,7 +68,7 @@ data class AttendanceLinkState(
 /** `Undo`: desfaz a resposta que o link acabou de gravar (registra o "não vou" do mesmo jeito que o link de recusa). */
 /** `Refresh`: refaz o pedido de entrada sem sair da fase `Pending` (a tela se atualiza ao reaparecer). */
 /** `PickPosition`: reabre a tela de escolher posição (voltou dela sem confirmar). */
-enum class AttendanceLinkIntent { Retry, Refresh, Decline, Undo, OpenAppDownload, PickPosition }
+enum class AttendanceLinkIntent { Retry, Refresh, Decline, Undo, PickPosition }
 
 sealed interface AttendanceLinkEffect {
     data class Register(val groupId: String) : AttendanceLinkEffect

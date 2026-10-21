@@ -5,7 +5,7 @@ internal const val PLATFORM_HEADER = "X-Saqz-Platform"
 internal const val APP_VERSION_HEADER = "X-Saqz-App-Version"
 internal const val APP_BUILD_HEADER = "X-Saqz-App-Build"
 
-private val PLATFORMS = setOf("android", "ios", "web")
+private val PLATFORMS = setOf("android", "ios")
 private const val MAX_VERSION_LENGTH = 32
 private const val MAX_BUILD_DIGITS = 9
 
@@ -16,7 +16,7 @@ private const val MAX_BUILD_DIGITS = 9
  * certo para um app antigo).
  *
  * Valor fora do padrão que o backend aceita não quebra a chamada: só o cabeçalho dele é omitido.
- *  - [platform]: `android`, `ios` ou `web`;
+ *  - [platform]: `android` ou `ios`;
  *  - [version]: `X.Y.Z` com até 32 caracteres (versionName no Android, CFBundleShortVersionString no iOS);
  *  - [build]: só dígitos (versionCode no Android, CFBundleVersion no iOS); `null` onde a plataforma não tem.
  */

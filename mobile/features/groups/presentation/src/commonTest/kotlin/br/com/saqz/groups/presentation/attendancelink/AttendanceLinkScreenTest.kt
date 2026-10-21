@@ -15,20 +15,7 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalTestApi::class)
 class AttendanceLinkScreenTest {
-    private val offer = "Quer lembrete no celular? Baixe o app Saqz e entre com a mesma conta."
     private val destination = AttendanceLinkDestination(GroupId("group"), "game")
-
-    @Test fun confirmedAndWaitlistedOfferTheAppWhenThereIsAStore() {
-        for (phase in listOf(AttendanceLinkPhase.Confirmed, AttendanceLinkPhase.Waitlisted)) runComposeUiTest {
-            val intents = mutableListOf<AttendanceLinkIntent>()
-            setContent {
-                SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(phase, destination), {}, intents::add, {}, appDownloadAvailable = true) }
-            }
-            onNodeWithText(offer).assertExists()
-            onNodeWithTag(AttendanceLinkTags.Download).performClick()
-            assertEquals(listOf(AttendanceLinkIntent.OpenAppDownload), intents)
-        }
-    }
 
     /** DEB-107, quadro `Confirmado`: o resultado com a posição, em verde, com "Ver o jogo" e "Não vou mais". */
     @Test fun confirmedWithAPositionShowsThePositionCard() = runComposeUiTest {
@@ -65,18 +52,6 @@ class AttendanceLinkScreenTest {
         onNodeWithTag(AttendanceLinkTags.PickPosition).performClick()
         assertEquals(listOf(AttendanceLinkIntent.PickPosition), intents)
         onNodeWithTag(AttendanceLinkTags.ResultCard).assertDoesNotExist()
-    }
-
-    @Test fun noOfferWithoutAStoreOrBeforeTheAnswer() = runComposeUiTest {
-        setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(AttendanceLinkPhase.Confirmed, destination), {}, {}, {}) } }
-        onNodeWithTag(AttendanceLinkTags.Download).assertDoesNotExist()
-    }
-
-    @Test fun noOfferWhileLoadingOrOnFailure() {
-        for (phase in listOf(AttendanceLinkPhase.Loading, AttendanceLinkPhase.Failed, AttendanceLinkPhase.Invalid, AttendanceLinkPhase.Declined)) runComposeUiTest {
-            setContent { SaqzTheme { AttendanceLinkScreen(AttendanceLinkState(phase), {}, {}, {}, appDownloadAvailable = true) } }
-            onNodeWithTag(AttendanceLinkTags.Download).assertDoesNotExist()
-        }
     }
 
     @Test fun declineSheetNeverClaimsTheGroupWasNotifiedBeforeTheTap() = runComposeUiTest {

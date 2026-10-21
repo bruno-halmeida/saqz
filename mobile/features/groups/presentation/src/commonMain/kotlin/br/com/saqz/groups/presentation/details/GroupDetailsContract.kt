@@ -59,8 +59,6 @@ data class GroupDetailsState(
     val trialDays: Int? = null,
     val athleteIntroVisible: Boolean = false,
     val athleteShareFailed: Boolean = false,
-    /** Há loja do app para oferecer a quem respondeu pelo navegador (só no web app, Android). */
-    val appDownloadAvailable: Boolean = false,
     /** Espera do próprio usuário no próximo jogo; `null` fora da lista de espera. */
     val waitlist: GroupWaitlistUi? = null,
     /** Retorno de uma ação recém-concluída; some em [GroupDetailsIntent.DismissToast]. */
@@ -310,7 +308,6 @@ data class GroupWaitingUi(
 sealed interface GroupDetailsIntent {
     data object DismissAthleteIntro : GroupDetailsIntent
     data object ShareSaqz : GroupDetailsIntent
-    data object OpenAppDownload : GroupDetailsIntent
     data object AthleteShareFailed : GroupDetailsIntent
     data object OnboardingAction : GroupDetailsIntent
     data object Retry : GroupDetailsIntent
