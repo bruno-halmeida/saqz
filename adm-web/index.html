@@ -15,6 +15,19 @@
 .trial-button{border:0;border-radius:999px;background:var(--saqz-blue);color:white;padding:10px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .trial-button.secondary{background:var(--saqz-ice);color:var(--saqz-navy)}
 .trial-button:disabled{opacity:.5;cursor:default}
+.cc-label{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)}
+.cc-input{border:1px solid var(--saqz-border);border-radius:10px;padding:10px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy);min-width:0}
+.cc-seg{display:flex;border:1px solid var(--saqz-border);border-radius:10px;overflow:hidden}
+.cc-seg button{flex:1;border:0;background:white;padding:9px 6px;font:600 13px Inter,sans-serif;color:var(--saqz-navy);cursor:pointer;white-space:nowrap}
+.cc-seg button+button{border-left:1px solid var(--saqz-border)}
+.cc-seg button[aria-pressed="true"]{background:var(--saqz-blue);color:white}
+.cc-count{display:flex;align-items:center;border:1px solid var(--saqz-border);border-radius:10px;overflow:hidden}
+.cc-count button{border:0;background:var(--saqz-ice);width:38px;height:40px;font:700 16px Inter,sans-serif;color:var(--saqz-navy);cursor:pointer}
+.cc-count button:disabled{opacity:.4;cursor:default}
+.cc-count span{flex:1;text-align:center;font-size:14px;font-weight:700;white-space:nowrap}
+.cc-help{margin:0;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-prev{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:6px 10px;font-size:12.5px;border-top:1px solid var(--saqz-border);padding-top:12px}
+.cc-prev strong{font-size:11px;letter-spacing:.05em;color:var(--saqz-muted)}
 .trial-fields label{display:grid;gap:6px;font-size:13px}
 .trial-fields input{min-width:0;width:100%;box-sizing:border-box;border:1px solid var(--saqz-border);border-radius:8px;padding:10px;font:inherit}
 .trial-row{display:grid;grid-template-columns:1.4fr .5fr 1fr 1fr .8fr 110px;gap:10px;align-items:center;text-align:left;padding:12px 8px;border-bottom:1px solid var(--saqz-border)}
@@ -750,9 +763,9 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
       </section>
       <h2 style="font-size:18px;margin:0 0 16px">Cupons de desconto na assinatura</h2>
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-        <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr 110px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>CÓDIGO</span><span>DESCONTO</span><span>VÁLIDO ATÉ</span><span>USOS</span><span>COM DESCONTO ATIVO</span><span>STATUS</span><span></span></span>
+        <span style="display:grid;grid-template-columns:1.3fr 0.9fr 1.1fr 1fr 1.1fr 1.4fr 1.4fr 0.8fr 190px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>CAMPANHA</span><span>CÓDIGO</span><span>DESCONTO</span><span>VÁLIDO ATÉ</span><span>USOS (SITE · AND · IOS)</span><span>ANDROID</span><span>IPHONE</span><span>STATUS</span><span></span></span>
         <sc-for list="{{ cuponsRows }}" as="c" hint-placeholder-count="3">
-          <span style="display:grid;grid-template-columns:1fr 1.6fr 1fr 0.7fr 1.1fr 1fr 110px;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><strong style="font-weight:700;letter-spacing:.03em">{{ c.cod }}</strong><span style="color:var(--saqz-muted)">{{ c.desc }}</span><span style="color:var(--saqz-muted)">{{ c.validade }}</span><span>{{ c.usos }}</span><span style="color:var(--saqz-muted)">{{ c.ativos }}</span><span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span><span style="justify-self:end"><sc-if value="{{ c.podeDesativar }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ c.onDesativar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-error);background:rgba(229,72,77,.08)">Desativar</span></sc-if></span></span>
+          <span style="display:grid;grid-template-columns:1.3fr 0.9fr 1.1fr 1fr 1.1fr 1.4fr 1.4fr 0.8fr 190px;gap:10px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ c.campanha }}">{{ c.campanha }}</span><strong style="font-weight:700;letter-spacing:.03em">{{ c.cod }}</strong><span style="color:var(--saqz-muted)">{{ c.desc }}</span><span style="color:var(--saqz-muted)">{{ c.validade }}</span><span>{{ c.usos }}</span><span style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ c.androidTitulo }}"><span style="{{ c.androidStyle }}">{{ c.androidTxt }}</span></span><span style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ c.iosTitulo }}"><span style="{{ c.iosStyle }}">{{ c.iosTxt }}</span></span><span><span style="{{ c.statusStyle }}">{{ c.statusTxt }}</span></span><span style="justify-self:end;display:flex;gap:6px"><sc-if value="{{ c.podeTentar }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ c.onTentar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-blue);background:var(--saqz-ice)">Tentar de novo</span></sc-if><sc-if value="{{ c.podeDesativar }}" hint-placeholder-val="{{ false }}"><span sc-camel-on-click="{{ c.onDesativar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:12.5px;font-weight:700;border-radius:999px;padding:7px 14px;color:var(--saqz-error);background:rgba(229,72,77,.08)">Encerrar</span></sc-if></span></span>
         </sc-for>
       </div>
     </div>
@@ -869,19 +882,36 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 
   <sc-if value="{{ cupomOpen }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;inset:0;background:rgba(14,23,56,.46);display:grid;place-items:center;z-index:50" sc-camel-on-click="{{ onCupomFechar }}">
-      <div style="width:460px;background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
+      <div style="width:620px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow-y:auto;background:var(--saqz-white);border-radius:20px;padding:24px;box-sizing:border-box;box-shadow:0 24px 70px rgba(14,23,56,.14)" sc-camel-on-click="{{ pare }}">
         <strong style="display:block;font-size:18px;font-weight:800;letter-spacing:-0.01em">Criar cupom</strong>
         <div style="display:grid;gap:12px;margin-top:16px">
-          <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Código<input value="{{ ncCod }}" sc-camel-on-change="{{ onNcCod }}" placeholder="EX.: VOLTA15" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy);text-transform:uppercase;letter-spacing:.03em"></label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Desconto (%)<input value="{{ ncDesc }}" sc-camel-on-change="{{ onNcDesc }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
-            <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Dura (ciclos de cobrança)<input value="{{ ncMeses }}" sc-camel-on-change="{{ onNcMeses }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px">
+            <label class="cc-label">Campanha<input class="cc-input" aria-label="Campanha" maxlength="120" value="{{ ncCampanha }}" sc-camel-on-change="{{ onNcCampanha }}" placeholder="Ex.: Volta às quadras"></label>
+            <label class="cc-label">Código<input class="cc-input" aria-label="Código" maxlength="32" value="{{ ncCod }}" sc-camel-on-change="{{ onNcCod }}" placeholder="EX.: VOLTA15" style="text-transform:uppercase;letter-spacing:.03em"></label>
           </div>
-          <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Válido até<input value="{{ ncVal }}" sc-camel-on-change="{{ onNcVal }}" placeholder="dd/mm/aaaa" style="border:1px solid var(--saqz-border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="cc-label">Desconto<div class="cc-count" role="group" aria-label="Desconto"><button type="button" aria-label="Menos desconto" disabled="{{ ncDescMenosOff }}" sc-camel-on-click="{{ onNcDescMenos }}">−</button><span>{{ ncDescTxt }}</span><button type="button" aria-label="Mais desconto" disabled="{{ ncDescMaisOff }}" sc-camel-on-click="{{ onNcDescMais }}">+</button></div></div>
+            <div class="cc-label">Duração<div class="cc-count" role="group" aria-label="Duração"><button type="button" aria-label="Menos ciclos" disabled="{{ ncMesesMenosOff }}" sc-camel-on-click="{{ onNcMesesMenos }}">−</button><span>{{ ncMesesTxt }}</span><button type="button" aria-label="Mais ciclos" disabled="{{ ncMesesMaisOff }}" sc-camel-on-click="{{ onNcMesesMais }}">+</button></div></div>
+          </div>
+          <p class="cc-help">{{ ncDuracaoAjuda }}</p>
+          <div class="cc-label">Planos<div class="cc-seg" role="group" aria-label="Planos"><sc-for list="{{ ncPlanos }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.onClick }}">{{ o.txt }}</button></sc-for></div></div>
+          <div class="cc-label">Ciclos<div class="cc-seg" role="group" aria-label="Ciclos"><sc-for list="{{ ncCiclos }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.onClick }}">{{ o.txt }}</button></sc-for></div></div>
+          <div class="cc-label">Quem pode usar<div class="cc-seg" role="group" aria-label="Quem pode usar"><sc-for list="{{ ncQuem }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.onClick }}">{{ o.txt }}</button></sc-for></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label class="cc-label">Limite de usos (opcional)<input class="cc-input" aria-label="Limite de usos" inputmode="numeric" value="{{ ncLimite }}" sc-camel-on-change="{{ onNcLimite }}" placeholder="Sem limite"></label>
+            <label class="cc-label">Válido até (opcional)<input class="cc-input" aria-label="Válido até" value="{{ ncVal }}" sc-camel-on-change="{{ onNcVal }}" placeholder="dd/mm/aaaa"></label>
+          </div>
+          <sc-if value="{{ ncPrevErro }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:13px;color:var(--saqz-error)">{{ ncPrevErroTxt }}</p></sc-if>
+          <sc-if value="{{ ncPrevOk }}" hint-placeholder-val="{{ false }}">
+            <div class="cc-prev" aria-label="Preço por plataforma"><strong>PRODUTO</strong><strong>SITE</strong><strong>ANDROID</strong><strong>IPHONE</strong>
+              <sc-for list="{{ ncPrevRows }}" as="r"><span>{{ r.produto }}</span><span>{{ r.site }}</span><span>{{ r.android }}</span><span>{{ r.ios }}</span></sc-for>
+            </div>
+            <p class="cc-help">{{ ncPrevNota }}</p>
+          </sc-if>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
           <span sc-camel-on-click="{{ onCupomFechar }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 18px;color:var(--saqz-navy)" style-hover="background:var(--saqz-ice)">Voltar</span>
-          <span sc-camel-on-click="{{ onCriarCupom }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">Criar cupom</span>
+          <span sc-camel-on-click="{{ onCriarCupom }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:11px 20px;background:var(--saqz-blue);color:#fff" style-hover="background:#052BB3">{{ ncBotao }}</span>
         </div>
       </div>
     </div>
@@ -915,7 +945,7 @@ class Component extends DCLogic {
     usersSort: null, groupsSort: null, subsSort: null,
     // Suporte segue mockado até o VUL-171
     resolvidas: {},
-    cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" },
+    cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "" }, ncPrev: null,
     cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
     modal: null, toast: null
   };
@@ -957,7 +987,7 @@ class Component extends DCLogic {
             // ao próximo admin.
             modal: null, toast: null, cupomOpen: false,
             cort: null, cf: { plan: "TITULAR", fim: "", motivo: "" }, lote: null,
-            nc: { cod: "", desc: "10", meses: "3", val: "" },
+            nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "" }, ncPrev: null,
             page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
             periodo: "30d", rTab: "ass",
             uBusca: "", uPlano: "todos", uStatus: "todos",
@@ -1719,47 +1749,126 @@ class Component extends DCLogic {
       .catch(() => this.setState({ couponsData: { erro: true } }));
   }
 
-  criarCupom() {
+  /** Corpo do cupom a partir do formulário; string = motivo para não seguir. */
+  corpoCupom() {
     const n = this.state.nc;
-    if (!n.cod.trim()) { this.aviso("Dá um código pro cupom antes de criar."); return; }
-    const desconto = parseInt(n.desc, 10);
-    if (!(desconto >= 1 && desconto <= 100) || String(desconto) !== n.desc.trim()) {
-      this.aviso("Desconto precisa ser um número inteiro de 1 a 100.");
-      return;
-    }
-    const body = { code: n.cod.trim(), discountPercent: desconto };
-    // Campo vazio = sem limite (intencional); preenchido inválido interrompe,
-    // senão um erro de digitação viraria cupom eterno.
-    if (n.meses.trim() !== "") {
-      const ciclos = parseInt(n.meses, 10);
-      if (!(ciclos >= 1) || String(ciclos) !== n.meses.trim()) { this.aviso("Duração precisa ser um número de ciclos (ou vazio para sempre)."); return; }
-      body.durationCycles = ciclos;
+    const code = n.cod.trim().toUpperCase();
+    if (!n.campanha.trim()) return "Dá um nome para a campanha.";
+    if (!/^[A-Z0-9]{3,32}$/.test(code)) return "Código com 3 a 32 letras ou números, sem espaço.";
+    const body = { code, campaign: n.campanha.trim(), discountPercent: n.desc };
+    if (n.meses > 0) body.durationCycles = n.meses;
+    const planos = n.plano === "ALL" ? ["TITULAR", "ORGANIZADOR", "ILIMITADO"] : [n.plano];
+    const ciclos = n.ciclo === "ALL" ? ["MONTHLY", "ANNUAL"] : [n.ciclo];
+    body.products = planos.flatMap(p => ciclos.map(c => `${p}:${c}`));
+    body.eligibility = n.quem === "AMBOS" ? ["NEVER_SUBSCRIBED", "FORMER_SUBSCRIBER"] : [n.quem];
+    if (n.limite.trim() !== "") {
+      const limite = parseInt(n.limite, 10);
+      if (!(limite >= 1) || String(limite) !== n.limite.trim()) return "Limite de usos precisa ser um número inteiro (ou vazio).";
+      body.maxUses = limite;
     }
     if (n.val.trim() !== "") {
       const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(n.val.trim());
-      if (!m) { this.aviso("Validade precisa estar no formato dd/mm/aaaa (ou vazia)."); return; }
+      if (!m) return "Validade precisa estar no formato dd/mm/aaaa (ou vazia).";
       body.validUntil = `${m[3]}-${m[2]}-${m[1]}T23:59:59Z`;
     }
-    this.mutacao("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => {
+    return body;
+  }
+
+  /** Muda o formulário e descarta a prévia: o preço mostrado precisa ser o do cupom que será criado. */
+  editarCupom(patch) {
+    this.setState(s => ({ nc: { ...s.nc, ...patch }, ncPrev: null }));
+  }
+
+  criarCupom() {
+    const body = this.corpoCupom();
+    if (typeof body === "string") { this.aviso(body); return; }
+    const chave = JSON.stringify(body);
+    const prev = this.state.ncPrev;
+    // Primeiro clique mostra o preço de cada plataforma; o segundo cria.
+    if (!prev || prev.chave !== chave || prev.erro) {
+      this.mutacao("/admin/coupons/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: chave }).then((r) => {
+        if (r.status === 200 || r.status === 400) {
+          return r.json().then(dados => this.setState({ ncPrev: r.status === 200 ? { chave, dados } : { chave, erro: dados.message || "Confira os campos do cupom." } }));
+        }
+        this.aviso("Não deu para calcular os preços agora.");
+      }).catch(() => this.aviso("Não deu para calcular os preços agora."));
+      return;
+    }
+    this.mutacao("/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: chave }).then((r) => {
       if (r.status === 201) {
-        this.setState({ cupomOpen: false, nc: { cod: "", desc: "10", meses: "3", val: "" } });
+        this.setState({ cupomOpen: false, nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "" }, ncPrev: null });
         this.carregarCupons();
-        this.aviso(`Cupom ${body.code} criado.`);
+        this.aviso(body.durationCycles ? `Cupom ${body.code} criado. As lojas são configuradas em seguida.` : `Cupom ${body.code} criado (só site).`);
       } else if (r.status === 409) {
         this.aviso("Já existe um cupom com esse código.");
+      } else if (r.status === 400) {
+        r.json().then(d => this.aviso(d.message || "Confira os campos do cupom.")).catch(() => this.aviso("Confira os campos do cupom."));
       } else {
         this.aviso("Não deu para criar o cupom — confira os campos.");
       }
     });
   }
 
+  tentarCupom(c) {
+    this.mutacao(`/admin/coupons/${c.id}/retry`, { method: "POST" }).then((r) => {
+      if (r.ok) { this.carregarCupons(); this.aviso(`Tentando de novo nas lojas: ${c.code}.`); } else { this.aviso("Não deu para tentar de novo agora."); }
+    });
+  }
+
+  /** Estado de uma loja na lista: o pior entre as ofertas dela. */
+  estadoLoja(p) {
+    if (!p) return { txt: "—", style: "color:var(--saqz-muted)", titulo: "Cupom só do site" };
+    const m = {
+      ACTIVE: ["Ativo", "ativo"], WAITING_STORE: ["Liberando na Apple (até 1 h)", "pendente"], CREATING: ["Criando", "pendente"],
+      PENDING: ["Criando", "pendente"], FAILED: ["Falhou", "vencido"], DEACTIVATING: ["Encerrando", "pendente"], DEACTIVATED: ["Encerrado", "vencido"],
+    }[p.state] || [p.state, "pendente"];
+    const txt = p.state === "WAITING_STORE" && p.isAndroid ? "Ativando no Play" : m[0];
+    const cs = this.chipStatus(m[1]);
+    return { txt: p.message && p.state === "FAILED" ? `${txt}: ${p.message}` : (p.message && p.state === "PENDING" ? p.message : txt), style: cs.style, titulo: p.message || txt };
+  }
+
   desativarCupom(c) {
-    this.setState({ modal: { titulo: `Desativar ${c.code}?`, texto: "O cupom expira agora e novas assinaturas não conseguem mais usar. Quem já usa mantém o desconto contratado.", confirm: "Desativar cupom", danger: true, acao: () => {
+    this.setState({ modal: { titulo: `Encerrar ${c.code}?`, texto: "O cupom deixa de valer agora no site e as ofertas nas lojas são desativadas. Quem já usa mantém o desconto contratado. Para mudar o desconto, encerre e crie outro.", confirm: "Encerrar cupom", danger: true, acao: () => {
       this.mutacao(`/admin/coupons/${c.id}/deactivate`, { method: "POST" }).then((r) => {
         this.setState({ modal: null });
-        if (r.ok) { this.carregarCupons(); this.aviso(`Cupom ${c.code} desativado.`); } else { this.aviso("Não deu para desativar agora."); }
+        if (r.ok) { this.carregarCupons(); this.aviso(`Cupom ${c.code} encerrado.`); } else { this.aviso("Não deu para encerrar agora."); }
       });
     } } });
+  }
+
+  cupomFormVals() {
+    const n = this.state.nc;
+    const prev = this.state.ncPrev;
+    const seg = (atual, campo, opcoes) => opcoes.map(([v, txt]) => ({ txt, on: atual === v ? "true" : "false", onClick: () => this.editarCupom({ [campo]: v }) }));
+    const nomes = { TITULAR: "Titular", ORGANIZADOR: "Organizador", ILIMITADO: "Ilimitado" };
+    const prevRows = prev && prev.dados ? prev.dados.rows.map(r => ({
+      produto: `${nomes[r.plan] || r.plan} ${r.cycle === "MONTHLY" ? "mensal" : "anual"}`,
+      site: this.money(r.sitePriceCents),
+      android: r.googlePlayPriceCents == null ? "—" : this.money(r.googlePlayPriceCents),
+      ios: r.appStorePriceCents == null ? "—" : `${r.appStoreEstimated ? "≈ " : ""}${this.money(r.appStorePriceCents)}`,
+    })) : [];
+    return {
+      ncCampanha: n.campanha, ncCod: n.cod, ncVal: n.val, ncLimite: n.limite,
+      onNcCampanha: e => this.editarCupom({ campanha: e.target.value }),
+      onNcCod: e => this.editarCupom({ cod: e.target.value.toUpperCase() }),
+      onNcVal: e => this.editarCupom({ val: e.target.value }),
+      onNcLimite: e => this.editarCupom({ limite: e.target.value }),
+      ncDescTxt: `${n.desc}%`, ncDescMenosOff: n.desc <= 5, ncDescMaisOff: n.desc >= 100,
+      onNcDescMenos: () => this.editarCupom({ desc: Math.max(5, n.desc - 5) }),
+      onNcDescMais: () => this.editarCupom({ desc: Math.min(100, n.desc + 5) }),
+      ncMesesTxt: n.meses === 0 ? "Para sempre — só site" : `${n.meses} ciclo${n.meses === 1 ? "" : "s"}`,
+      ncMesesMenosOff: n.meses <= 0, ncMesesMaisOff: n.meses >= 36,
+      onNcMesesMenos: () => this.editarCupom({ meses: Math.max(0, n.meses - 1) }),
+      onNcMesesMais: () => this.editarCupom({ meses: Math.min(36, n.meses + 1) }),
+      ncDuracaoAjuda: n.meses === 0 ? "Sem duração o desconto vale para sempre e só no site." : "Com duração vale no site, no Android e no iPhone (lojas: mensal até 12, anual só 1).",
+      ncPlanos: seg(n.plano, "plano", [["ALL", "Todos"], ["TITULAR", "Titular"], ["ORGANIZADOR", "Organizador"], ["ILIMITADO", "Ilimitado"]]),
+      ncCiclos: seg(n.ciclo, "ciclo", [["ALL", "Mensal e anual"], ["MONTHLY", "Mensal"], ["ANNUAL", "Anual"]]),
+      ncQuem: seg(n.quem, "quem", [["AMBOS", "Os dois"], ["NEVER_SUBSCRIBED", "Nunca assinou"], ["FORMER_SUBSCRIBER", "Já cancelou"]]),
+      ncPrevErro: !!(prev && prev.erro), ncPrevErroTxt: prev && prev.erro ? prev.erro : "",
+      ncPrevOk: !!(prev && prev.dados), ncPrevRows: prevRows,
+      ncPrevNota: prev && prev.dados && prev.dados.rows.some(r => r.appStoreEstimated) ? "≈ preço alvo: a Apple escolhe o price point mais próximo ao criar." : "iPhone: price point da Apple mais próximo do desconto.",
+      ncBotao: prev && prev.dados ? "Confirmar e criar" : "Ver preços",
+    };
   }
 
   chip(bg, c) { return `display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;background:${bg};color:${c};white-space:nowrap`; }
@@ -1781,7 +1890,7 @@ class Component extends DCLogic {
     return p === "ILIMITADO" ? this.chip("#F4F8FB", "#0E1738") : this.chip("#F4F8FB", "#0638DF");
   }
   chipStatus(s) {
-    const m = { ativo: ["rgba(23,178,106,.12)", "#17B26A", "Ativo"], ativa: ["rgba(23,178,106,.12)", "#17B26A", "Ativa"], paga: ["rgba(23,178,106,.12)", "#17B26A", "Paga"], inativo: ["#F5F5F7", "#667085", "Inativo"], suspenso: ["rgba(229,72,77,.12)", "#E5484D", "Suspenso"], atrasada: ["rgba(245,166,35,.16)", "#8a5a00", "Atrasada"], falhou: ["rgba(229,72,77,.12)", "#E5484D", "Falhou"], cancelada: ["#F5F5F7", "#667085", "Cancelada"], reembolsada: ["#F5F5F7", "#667085", "Reembolsada"], apagado: ["#F5F5F7", "#667085", "Apagado"], aberta: ["rgba(245,166,35,.16)", "#8a5a00", "Aberta"], resolvida: ["rgba(23,178,106,.12)", "#17B26A", "Resolvida"], vencido: ["#F5F5F7", "#667085", "Vencido"] };
+    const m = { ativo: ["rgba(23,178,106,.12)", "#17B26A", "Ativo"], ativa: ["rgba(23,178,106,.12)", "#17B26A", "Ativa"], paga: ["rgba(23,178,106,.12)", "#17B26A", "Paga"], inativo: ["#F5F5F7", "#667085", "Inativo"], suspenso: ["rgba(229,72,77,.12)", "#E5484D", "Suspenso"], atrasada: ["rgba(245,166,35,.16)", "#8a5a00", "Atrasada"], falhou: ["rgba(229,72,77,.12)", "#E5484D", "Falhou"], cancelada: ["#F5F5F7", "#667085", "Cancelada"], reembolsada: ["#F5F5F7", "#667085", "Reembolsada"], apagado: ["#F5F5F7", "#667085", "Apagado"], aberta: ["rgba(245,166,35,.16)", "#8a5a00", "Aberta"], resolvida: ["rgba(23,178,106,.12)", "#17B26A", "Resolvida"], vencido: ["#F5F5F7", "#667085", "Vencido"], pendente: ["rgba(245,166,35,.16)", "#8a5a00", "Pendente"] };
     const [bg, c, t] = m[s] || m.ativo;
     return { style: this.chip(bg, c), txt: t };
   }
@@ -1958,9 +2067,15 @@ class Component extends DCLogic {
     const cd = st.couponsData && !st.couponsData.erro ? st.couponsData : null;
     const agora = Date.now();
     const cuponsRows = cd ? cd.map(c => {
-      const ativo = !c.validUntil || new Date(c.validUntil).getTime() > agora;
+      const ativo = !c.endedAt && (!c.validUntil || new Date(c.validUntil).getTime() > agora);
+      const esgotado = ativo && c.maxUses && c.redemptions >= c.maxUses;
       const cs = this.chipStatus(ativo ? "ativo" : "vencido");
-      return { cod: c.code, desc: `${c.discountPercent}%${c.durationCycles ? ` por ${c.durationCycles} ciclo${c.durationCycles === 1 ? "" : "s"}` : " sempre"}`, validade: c.validUntil ? this.dataBr(c.validUntil) : "sem validade", usos: String(c.redemptions), ativos: String(c.activeSubscriptions), statusTxt: cs.txt, statusStyle: cs.style, podeDesativar: ativo, onDesativar: () => this.desativarCupom(c) };
+      const plat = c.platforms || {};
+      const por = c.redemptionsByPlatform || {};
+      const and = this.estadoLoja(plat.ANDROID && { ...plat.ANDROID, isAndroid: true });
+      const ios = this.estadoLoja(plat.IOS);
+      const falhou = [plat.ANDROID, plat.IOS].some(p => p && p.state === "FAILED");
+      return { campanha: c.campaign || "—", cod: c.code, desc: `${c.discountPercent}%${c.durationCycles ? ` por ${c.durationCycles} ciclo${c.durationCycles === 1 ? "" : "s"}` : " sempre"}`, validade: c.validUntil ? this.dataBr(c.validUntil) : "sem validade", usos: `${por.WEB || 0} · ${por.ANDROID || 0} · ${por.IOS || 0}${c.maxUses ? ` / ${c.maxUses}` : ""}`, ativos: String(c.activeSubscriptions), androidTxt: and.txt, androidStyle: and.style, androidTitulo: and.titulo, iosTxt: ios.txt, iosStyle: ios.style, iosTitulo: ios.titulo, statusTxt: esgotado ? "Esgotado" : cs.txt, statusStyle: cs.style, podeDesativar: ativo, onDesativar: () => this.desativarCupom(c), podeTentar: ativo && falhou, onTentar: () => this.tentarCupom(c) };
     }) : [];
     const denAbertas = this.DEN.filter(d => d.aberta && !st.resolvidas[d.id]).length;
     const denRows = this.DEN.map(d => {
@@ -2031,11 +2146,7 @@ class Component extends DCLogic {
       onNovoCupom: () => this.setState({ cupomOpen: true }),
       onCupomFechar: () => this.setState({ cupomOpen: false }),
       cupomOpen: st.cupomOpen,
-      ncCod: st.nc.cod, ncDesc: st.nc.desc, ncMeses: st.nc.meses, ncVal: st.nc.val,
-      onNcCod: e => this.setState(s => ({ nc: { ...s.nc, cod: e.target.value.toUpperCase() } })),
-      onNcDesc: e => this.setState(s => ({ nc: { ...s.nc, desc: e.target.value } })),
-      onNcMeses: e => this.setState(s => ({ nc: { ...s.nc, meses: e.target.value } })),
-      onNcVal: e => this.setState(s => ({ nc: { ...s.nc, val: e.target.value } })),
+      ...this.cupomFormVals(),
       onCriarCupom: () => this.criarCupom(),
       denRows, supResumo: `Prévia — fluxo de denúncias ainda não existe (VUL-171)`,
       dd: dSel, ddStatusTxt: ddStatus.txt, ddStatusStyle: ddStatus.style, ddAberta,
