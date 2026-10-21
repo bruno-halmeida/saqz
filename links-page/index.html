@@ -37,6 +37,8 @@
   .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid rgba(7,16,37,.18); }
   .primary:active, .secondary:active { transform:scale(.98); }
   .quiet { display:inline-block; margin-top:20px; font-size:13px; color:#6b7186; text-decoration:underline; }
+  .qr { width:200px; margin:0 auto 24px; padding:12px; background:#fff; border-radius:16px; }
+  .qr svg { display:block; width:100%; height:auto; }
   [hidden] { display:none; }
 </style>
 </head>
@@ -45,10 +47,12 @@
   <img class="logo" src="/assets/saqz-logo.svg" alt="Saqz">
   <h1 id="heading">Este link abre no app Saqz</h1>
   <p id="lead">Entre no grupo ou confirme sua presença no Saqz.</p>
+  <div id="qr" class="qr" role="img" aria-label="QR code para abrir este link no celular" hidden></div>
   <a id="primary" class="primary" href="https://saqz.app">Acessar site do Saqz</a>
   <a id="secondary" class="secondary" hidden></a>
   <a id="tertiary" class="quiet" hidden></a>
 </main>
+<script src="/assets/qrcode.js"></script>
 <script>
   (function () {
     // O celular vai para a loja do sistema dele (iPhone: App Store; Android: Google Play).
@@ -100,6 +104,10 @@
     var webApp = "https://saqz.app/app/";
     var webQuery = kind === "attendance" ? "?saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
       : kind ? route : "";
+    // Convite e presença no computador: sem redirecionamento. O QR leva o link ao celular, que segue
+    // o fluxo do app; o web app fica num link discreto, só se responde e há WasmGC.
+    var desktopLink = !isIOS && !isAndroid && (kind === "invite" || kind === "attendance");
+    if (desktopLink) return desktopFlow();
     var wantsWebApp = !isIOS && !isAndroid && supportsWasmGc();
     if (wantsWebApp && typeof fetch === "function") {
       var waiting = lead.textContent;
@@ -174,6 +182,36 @@
             location.href = store;
           });
         });
+      }
+    }
+
+    function desktopFlow() {
+      lead.textContent = "Aponte a câmera do celular para o QR code e continue no app.";
+      drawQr("https://links.saqz.app/" + route);
+      link(primary, appStore, "Baixar na App Store");
+      link(secondary, googlePlay, "Baixar no Google Play");
+      if (supportsWasmGc() && typeof fetch === "function") {
+        fetch(webApp + "disponivel.json", { cache: "no-store" })
+          .then(function (response) {
+            if (response.ok) link(tertiary, webApp + webQuery, "Continuar no computador");
+          })
+          .catch(function () {});
+      }
+    }
+
+    // O QR é desenhado aqui mesmo (assets/qrcode.js): o link nunca sai do navegador. Sem a lib, só as lojas.
+    function drawQr(text) {
+      var box = document.getElementById("qr");
+      try {
+        if (typeof qrcode !== "function") return;
+        var code = qrcode(0, "M");
+        code.addData(text);
+        code.make();
+        box.innerHTML = code.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+        box.setAttribute("data-link", text);
+        box.hidden = false;
+      } catch (e) {
+        box.hidden = true;
       }
     }
 
