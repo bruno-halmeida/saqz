@@ -184,6 +184,23 @@ class MemberPhotoEndpointIntegrationTest {
         assertEquals(hex(ownerPhoto), inbox[0]["message"]["photoTag"].stringValue())
     }
 
+    @Test fun `home groups and own profile carry the group photo version only when there is a photo`() {
+        fun homeVersion() = json.readTree(text("/api/me/home", member).body())["member"]["groups"][0]["photoVersion"]
+        fun profileVersion() = json.readTree(text("/api/athletes/me", member).body())["memberships"][0]["photoVersion"]
+        assertTrue(homeVersion().isNull)
+        assertTrue(profileVersion().isNull)
+
+        val bytes = "foto-do-grupo".encodeToByteArray()
+        jdbc.sql(
+            "INSERT INTO group_photos (group_id, photo_bytes, media_type, byte_size, width, height, sha256_digest, version, updated_by, created_at, updated_at) " +
+                "VALUES (:group, :bytes, 'image/png', :size, 1, 1, :digest, 3, :owner, now(), now())",
+        ).param("group", group).param("bytes", bytes).param("size", bytes.size.toLong())
+            .param("digest", MessageDigest.getInstance("SHA-256").digest(bytes)).param("owner", owner).update()
+
+        assertEquals(3L, homeVersion().longValue())
+        assertEquals(3L, profileVersion().longValue())
+    }
+
     private fun roster(actor: UUID): Map<String, JsonNode> =
         json.readTree(text("/api/groups/$group/athletes", actor).body())["athletes"]
             .associate { it["userId"].stringValue() to it["photoTag"] }

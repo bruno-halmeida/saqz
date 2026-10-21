@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.communication
 
+import br.com.saqz.designsystem.SaqzAvatar
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +70,7 @@ object GroupThreadTags {
     const val ReportMessage = "message-actions-report"
     const val BlockAuthor = "message-actions-block"
     fun message(id: String) = "message-$id"
+    fun avatar(id: String) = "message-avatar-$id"
     fun options(id: String) = "message-options-$id"
 }
 
@@ -207,7 +210,14 @@ private fun GroupThreadContent(
 @Composable
 private fun ThreadMessageCard(message: ThreadMessageUi, onOptions: () -> Unit) {
     SaqzCard(modifier = Modifier.testTag(GroupThreadTags.message(message.id))) {
-        Row(verticalAlignment = Alignment.Top) {
+        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
+            // Mesmo avatar da central de avisos: foto de quem escreveu (MEM-006) ou as iniciais.
+            SaqzAvatar(
+                name = message.author,
+                initialsColor = SaqzTheme.colors.primary,
+                modifier = Modifier.testTag(GroupThreadTags.avatar(message.id)),
+                photo = message.photo.avatarSlot(message.author, initialsColor = SaqzTheme.colors.primary),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
                 Text(message.author, color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.subtitle)
                 Text(message.body, color = SaqzTheme.colors.textPrimary, style = SaqzTheme.typography.body)

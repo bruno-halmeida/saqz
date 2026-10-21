@@ -79,6 +79,15 @@ class KtorHomeGatewayTest {
     }
 
     @Test
+    fun `member groups map the group photo version and its absence`() = runTest {
+        val plain = assertIs<SaqzResult.Success<HomeReadModel>>(gateway { respond(HOME_JSON, headers = jsonHeaders()) }.read()).value
+        assertNull(plain.member.groups.single().photoVersion)
+        val json = HOME_JSON.replace("\"memberCount\": 26", "\"memberCount\": 26, \"photoVersion\": 5")
+        val tagged = assertIs<SaqzResult.Success<HomeReadModel>>(gateway { respond(json, headers = jsonHeaders()) }.read()).value
+        assertEquals(5L, tagged.member.groups.single().photoVersion)
+    }
+
+    @Test
     fun `home from a backend without game to review reads as nothing to review`() = runTest {
         val result = gateway {
             respond(HOME_JSON.replace("\"gameToReview\"", "\"ignoredGameToReview\""), headers = jsonHeaders())

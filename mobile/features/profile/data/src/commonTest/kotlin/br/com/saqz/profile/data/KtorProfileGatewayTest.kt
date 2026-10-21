@@ -142,6 +142,20 @@ class KtorProfileGatewayTest {
     }
 
     @Test
+    fun `athlete profile maps the group photo version and its absence`() = runTest {
+        val athlete = fixture {
+            respond(
+                """{"userId":"user-1","displayName":"Person","memberships":[
+                    {"groupId":"g-1","groupName":"Com Foto","role":"ATHLETE","membershipType":"AVULSO","active":true,"photoVersion":4},
+                    {"groupId":"g-2","groupName":"Sem Foto","role":"ATHLETE","membershipType":"AVULSO","active":true}
+                ]}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.athleteProfile().success()
+        assertEquals(listOf(4L, null), athlete.memberships.map { it.groupPhotoVersion })
+    }
+
+    @Test
     fun `delete session is bodyless and can be repeated`() = runTest {
         var calls = 0
         val fixture = fixture {
