@@ -68,6 +68,17 @@ class KtorGroupMembershipGatewayTest {
     }
 
     @Test
+    fun `list maps the member photo tag`() = runTest {
+        val members = fixture {
+            respond(
+                """[{"userId":"a","displayName":"Ana","role":"ADMIN","photoTag":"abc123"},{"userId":"b","displayName":"Bia","role":"ATHLETE"}]""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.listMemberships(GroupId(GROUP_ID)).success()
+        assertEquals(listOf("abc123", null), members.map { it.photoTag })
+    }
+
+    @Test
     fun `list maps complete memberships and roles`() = runTest {
         val members = fixture { memberships() }.gateway.listMemberships(GroupId(GROUP_ID)).success()
 

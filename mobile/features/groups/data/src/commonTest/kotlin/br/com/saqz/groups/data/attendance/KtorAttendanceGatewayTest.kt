@@ -105,6 +105,20 @@ class KtorAttendanceGatewayTest {
     }
 
     @Test
+    fun rosterMapsMemberPhotoTagAndNeverGivesOneToAGuest() = runTest {
+        val json = """{"confirmed":[
+            {"memberId":"m-1","displayName":"Ana","guestSeq":0,"photoTag":"abc123"},
+            {"memberId":"m-1","displayName":"Convidado","guestSeq":1,"hostDisplayName":"Ana","photoTag":"abc123"}
+        ],"waitlisted":[{"memberId":"m-2","displayName":"Bia","waitlistPosition":1}],"declined":[{"memberId":"m-3","displayName":"Caio","photoTag":"def456"}]}"""
+        val result = gateway { respond(json, headers = jsonHeaders()) }.roster(GROUP, GAME)
+
+        val roster = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceRoster
+        assertEquals(listOf("abc123", null), roster.confirmed.map { it.photoTag })
+        assertEquals(null, roster.waitlisted.single().photoTag)
+        assertEquals("def456", roster.declined?.single()?.photoTag)
+    }
+
+    @Test
     fun rosterParsesDeclinedListInBackendOrder() = runTest {
         val result = gateway { respond(ROSTER_WITH_DECLINED_JSON, headers = jsonHeaders()) }.roster(GROUP, GAME)
 

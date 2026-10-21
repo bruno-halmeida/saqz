@@ -64,6 +64,21 @@ class KtorHomeGatewayTest {
     }
 
     @Test
+    fun `roster preview maps member id and photo tag, absent on old backends`() = runTest {
+        val json = HOME_JSON.replace(
+            """{"displayName": "Ana", "waitlistPosition": null}""",
+            """{"displayName": "Ana", "waitlistPosition": null, "userId": "user-ana", "photoTag": "abc123"}""",
+        )
+        val home = assertIs<SaqzResult.Success<HomeReadModel>>(gateway { respond(json, headers = jsonHeaders()) }.read()).value
+        val ana = home.member.nextGame?.rosterPreview?.confirmed?.single()
+        assertEquals("user-ana", ana?.userId)
+        assertEquals("abc123", ana?.photoTag)
+        val bia = home.member.nextGame?.rosterPreview?.waitlisted?.single()
+        assertNull(bia?.userId)
+        assertNull(bia?.photoTag)
+    }
+
+    @Test
     fun `home from a backend without game to review reads as nothing to review`() = runTest {
         val result = gateway {
             respond(HOME_JSON.replace("\"gameToReview\"", "\"ignoredGameToReview\""), headers = jsonHeaders())

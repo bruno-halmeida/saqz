@@ -80,6 +80,21 @@ class KtorAthleteGatewayTest {
     }
 
     @Test
+    fun `roster maps the member photo tag and treats a missing or blank one as no photo`() = runTest {
+        val entries = fixture {
+            respond(
+                """{"athletes":[
+                    {"userId":"a","displayName":"Ana","role":"ATHLETE","membershipType":"AVULSO","active":true,"photoTag":"abc123"},
+                    {"userId":"b","displayName":"Bia","role":"ATHLETE","membershipType":"AVULSO","active":true,"photoTag":" "},
+                    {"userId":"c","displayName":"Caio","role":"ATHLETE","membershipType":"AVULSO","active":true}
+                ]}""",
+                headers = jsonHeaders(),
+            )
+        }.gateway.roster(GroupId(GROUP_ID), AthleteRosterFilter()).success<List<AthleteRosterEntry>>()
+        assertEquals(listOf("abc123", null, null), entries.map { it.photoTag })
+    }
+
+    @Test
     fun `roster and patch read monthly fee exempt and patch always sends the current value`() = runTest {
         val entry = fixture {
             respond(

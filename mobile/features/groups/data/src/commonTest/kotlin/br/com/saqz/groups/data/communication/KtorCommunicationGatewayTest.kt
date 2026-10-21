@@ -152,6 +152,13 @@ class KtorCommunicationGatewayTest {
         assertEquals(SaqzResult.Success(value), gateway { respond(payload, headers = jsonHeaders) }.preferences())
     }
 
+    @Test fun noticeAndInboxMapTheAuthorPhotoTag() = runTest {
+        val tagged = message.replace("\"recipientCount\":1", "\"recipientCount\":1,\"photoTag\":\"abc123\"")
+        val thread = gateway { respond("""{"items":[$tagged,$message]}""", headers = jsonHeaders) }
+            .messages(GroupId("group-1"), CommunicationChannel.NOTICE, null).success()
+        assertEquals(listOf("abc123", null), thread.items.map { it.photoTag })
+    }
+
     private fun gateway(response: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): KtorCommunicationGateway {
         val network = NetworkClient(MockEngine { response(it) }, NetworkConfig(NetworkEnvironment.Test, "https://api.test/"))
         return KtorCommunicationGateway(AuthenticatedNetworkClient(network, object : IdTokenProvider {
