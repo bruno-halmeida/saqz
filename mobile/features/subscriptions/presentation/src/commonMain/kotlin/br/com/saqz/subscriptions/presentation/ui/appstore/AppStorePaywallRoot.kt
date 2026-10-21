@@ -3,9 +3,11 @@ package br.com.saqz.subscriptions.presentation.ui.appstore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.ObserveAsEvents
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallEffect
+import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallIntent
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPhase
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel
 import br.com.saqz.subscriptions.presentation.limit.PaywallGroupLimit
@@ -31,7 +33,13 @@ fun AppStorePaywallRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             AppStorePaywallEffect.Subscribed -> onSubscriptionConfirm()
+            is AppStorePaywallEffect.OpenUrl -> runCatching { uriHandler.openUri(effect.url) }
         }
+    }
+    // Volta da App Store depois do resgate do código do cupom: reconsulta o plano.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onIntent(AppStorePaywallIntent.Resumed)
+        onPauseOrDispose { }
     }
     if (state.phase == AppStorePaywallPhase.Unavailable && !state.isSubscribed) {
         fallback()

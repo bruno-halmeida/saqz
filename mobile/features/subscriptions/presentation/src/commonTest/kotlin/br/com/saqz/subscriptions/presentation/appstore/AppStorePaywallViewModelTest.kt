@@ -44,6 +44,7 @@ class AppStorePaywallViewModelTest {
         sync = AppStoreTransactionSync(port, appStore, CoroutineScope(UnconfinedTestDispatcher(testScheduler))),
         appStore = appStore,
         subscriptions = catalog,
+        coupons = FakeCouponGateway(),
     )
 
     @Test
@@ -182,7 +183,7 @@ class AppStorePaywallViewModelTest {
     fun `purchase approved later in the background subscribes`() = runTest {
         port.purchaseResult = AppStorePurchaseResult.Pending
         val sync = AppStoreTransactionSync(port, appStore, CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
-        val viewModel = AppStorePaywallViewModel(port, sync, appStore, catalog)
+        val viewModel = AppStorePaywallViewModel(port, sync, appStore, catalog, FakeCouponGateway())
         sync.start()
         sync.onAuthenticated()
 

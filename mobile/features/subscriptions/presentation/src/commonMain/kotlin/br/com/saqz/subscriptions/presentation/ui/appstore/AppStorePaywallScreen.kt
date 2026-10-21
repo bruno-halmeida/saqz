@@ -2,6 +2,7 @@ package br.com.saqz.subscriptions.presentation.ui.appstore
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
@@ -27,6 +29,7 @@ import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzEmptyState
 import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzInput
 import br.com.saqz.designsystem.SaqzSegmented
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
@@ -42,11 +45,36 @@ import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallOfferUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPhase
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPlanUi
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallState
+import br.com.saqz.subscriptions.presentation.appstore.PaywallCouponMessage
+import br.com.saqz.subscriptions.presentation.appstore.PaywallCouponSheet
+import br.com.saqz.subscriptions.presentation.appstore.PaywallCouponUi
 import br.com.saqz.subscriptions.presentation.limit.PaywallGroupLimit
 import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
 import br.com.saqz.subscriptions.presentation.ui.limit.PaywallGroupLimitNotice
 import br.com.saqz.subscriptions.resources.Res
 import br.com.saqz.subscriptions.resources.paywall_confirm_retry
+import br.com.saqz.subscriptions.resources.paywall_coupon_apply
+import br.com.saqz.subscriptions.resources.paywall_coupon_change
+import br.com.saqz.subscriptions.resources.paywall_coupon_cta
+import br.com.saqz.subscriptions.resources.paywall_coupon_exhausted
+import br.com.saqz.subscriptions.resources.paywall_coupon_expired
+import br.com.saqz.subscriptions.resources.paywall_coupon_failed
+import br.com.saqz.subscriptions.resources.paywall_coupon_field
+import br.com.saqz.subscriptions.resources.paywall_coupon_invalid_cycle
+import br.com.saqz.subscriptions.resources.paywall_coupon_invalid_plan
+import br.com.saqz.subscriptions.resources.paywall_coupon_not_eligible
+import br.com.saqz.subscriptions.resources.paywall_coupon_not_found
+import br.com.saqz.subscriptions.resources.paywall_coupon_off
+import br.com.saqz.subscriptions.resources.paywall_coupon_off_months
+import br.com.saqz.subscriptions.resources.paywall_coupon_off_one_month
+import br.com.saqz.subscriptions.resources.paywall_coupon_off_one_year
+import br.com.saqz.subscriptions.resources.paywall_coupon_off_years
+import br.com.saqz.subscriptions.resources.paywall_coupon_only_web
+import br.com.saqz.subscriptions.resources.paywall_coupon_open
+import br.com.saqz.subscriptions.resources.paywall_coupon_pending
+import br.com.saqz.subscriptions.resources.paywall_coupon_then
+import br.com.saqz.subscriptions.resources.paywall_coupon_title
+import br.com.saqz.subscriptions.resources.paywall_notice_coupon_redeem
 import br.com.saqz.subscriptions.resources.paywall_cta
 import br.com.saqz.subscriptions.resources.paywall_current
 import br.com.saqz.subscriptions.resources.paywall_cycle_annual
@@ -91,6 +119,14 @@ object AppStorePaywallTags {
     const val Terms = "paywall-terms"
     const val Privacy = "paywall-privacy"
     const val Disclosure = "paywall-disclosure"
+    const val CouponOpen = "paywall-coupon-open"
+    const val CouponSheet = "paywall-coupon-sheet"
+    const val CouponField = "paywall-coupon-field"
+    const val CouponPlan = "paywall-coupon-plan"
+    const val CouponApply = "paywall-coupon-apply"
+    const val CouponMessage = "paywall-coupon-message"
+    const val CouponDiscountPrefix = "paywall-coupon-discount-"
+    const val CouponPurchase = "paywall-coupon-purchase"
 }
 
 /**
@@ -110,8 +146,23 @@ fun AppStorePaywallScreen(
     modifier: Modifier = Modifier,
     groupLimit: PaywallGroupLimit? = null,
 ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        AppStorePaywallContent(state, onIntent, onBack, onOpenTerms, onOpenPrivacy, groupLimit)
+        AppStorePaywallCouponSheet(state, onIntent)
+    }
+}
+
+@Composable
+private fun AppStorePaywallContent(
+    state: AppStorePaywallState,
+    onIntent: (AppStorePaywallIntent) -> Unit,
+    onBack: () -> Unit,
+    onOpenTerms: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+    groupLimit: PaywallGroupLimit?,
+) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(SaqzTheme.colors.background)
             .testTag(AppStorePaywallTags.Screen),
@@ -197,16 +248,29 @@ private fun AppStorePaywallCatalog(
         state.notice?.let { notice -> AppStorePaywallNoticeCard(notice, state.store, state.isConfirming, onIntent) }
         state.plans.forEach { plan ->
             val offer = plan.offer(state.cycle) ?: return@forEach
+            val coupon = state.couponFor(plan.plan)
             AppStorePaywallPlanCard(
                 plan = plan,
                 offer = offer,
                 cycle = state.cycle,
-                purchasing = state.purchasingProductId == offer.productId,
+                purchasing = state.purchasingProductId == (coupon?.purchaseOfferId ?: offer.productId),
                 enabled = !state.isBusy,
                 tooSmallFor = groupLimit?.takeUnless { it.fits(plan.maxGroups) },
-                onPurchase = { onIntent(AppStorePaywallIntent.Purchase(offer.productId)) },
+                coupon = coupon,
+                onPurchase = {
+                    onIntent(if (coupon != null) AppStorePaywallIntent.PurchaseWithCoupon else AppStorePaywallIntent.Purchase(offer.productId))
+                },
             )
         }
+        SaqzButton(
+            label = state.coupon?.let { stringResource(Res.string.paywall_coupon_change, it.code) }
+                ?: stringResource(Res.string.paywall_coupon_open),
+            onClick = { onIntent(AppStorePaywallIntent.OpenCoupon) },
+            variant = SaqzButtonVariant.Ghost,
+            size = SaqzButtonSize.Sm,
+            enabled = !state.isBusy,
+            modifier = Modifier.align(Alignment.CenterHorizontally).testTag(AppStorePaywallTags.CouponOpen),
+        )
         Text(
             text = stringResource(
                 if (state.store == PaywallStoreKind.GooglePlay) Res.string.paywall_disclosure_play else Res.string.paywall_disclosure,
@@ -255,6 +319,7 @@ private fun AppStorePaywallPlanCard(
     enabled: Boolean,
     onPurchase: () -> Unit,
     tooSmallFor: PaywallGroupLimit? = null,
+    coupon: PaywallCouponUi? = null,
 ) {
     val colors = SaqzTheme.colors
     SaqzCard(
@@ -274,11 +339,21 @@ private fun AppStorePaywallPlanCard(
         Text(
             text = stringResource(
                 if (cycle == SubscriptionCycle.Annual) Res.string.paywall_price_year else Res.string.paywall_price_month,
-                offer.displayPrice,
+                coupon?.discountedPrice ?: offer.displayPrice,
             ),
             style = SaqzTheme.typography.headline,
             color = colors.primary,
         )
+        if (coupon != null) {
+            val off = coupon.discountLabel()
+            Text(
+                text = if (coupon.discountedPrice != null) stringResource(Res.string.paywall_coupon_then, off, offer.displayPrice) else off,
+                style = SaqzTheme.typography.support,
+                color = colors.successForeground,
+                maxLines = 1,
+                modifier = Modifier.testTag(AppStorePaywallTags.CouponDiscountPrefix + plan.plan.name),
+            )
+        }
         Text(
             text = stringResource(
                 if (cycle == SubscriptionCycle.Annual) Res.string.paywall_duration_annual else Res.string.paywall_duration_monthly,
@@ -299,12 +374,14 @@ private fun AppStorePaywallPlanCard(
         }
         if (!offer.isCurrent) {
             SaqzButton(
-                label = stringResource(Res.string.paywall_cta, plan.name),
+                label = if (coupon != null) stringResource(Res.string.paywall_coupon_cta) else stringResource(Res.string.paywall_cta, plan.name),
                 onClick = onPurchase,
                 fullWidth = true,
                 enabled = enabled && tooSmallFor == null,
                 loading = purchasing,
-                modifier = Modifier.testTag(AppStorePaywallTags.PurchasePrefix + offer.productId),
+                modifier = Modifier.testTag(
+                    if (coupon != null) AppStorePaywallTags.CouponPurchase else AppStorePaywallTags.PurchasePrefix + offer.productId,
+                ),
             )
         }
     }
@@ -349,6 +426,79 @@ private fun AppStorePaywallNotice.message(store: PaywallStoreKind) = when (this)
     AppStorePaywallNotice.NothingToRestore ->
         if (store == PaywallStoreKind.GooglePlay) Res.string.paywall_notice_nothing_play else Res.string.paywall_notice_nothing
     AppStorePaywallNotice.RestoreFailed -> Res.string.paywall_notice_restore_failed
+    AppStorePaywallNotice.CouponRedeemOpened -> Res.string.paywall_notice_coupon_redeem
+}
+
+@Composable
+private fun PaywallCouponUi.discountLabel(): String = when {
+    durationCycles <= 0 -> stringResource(Res.string.paywall_coupon_off, discountPercent)
+    cycle == SubscriptionCycle.Annual && durationCycles == 1 -> stringResource(Res.string.paywall_coupon_off_one_year, discountPercent)
+    cycle == SubscriptionCycle.Annual -> stringResource(Res.string.paywall_coupon_off_years, discountPercent, durationCycles)
+    durationCycles == 1 -> stringResource(Res.string.paywall_coupon_off_one_month, discountPercent)
+    else -> stringResource(Res.string.paywall_coupon_off_months, discountPercent, durationCycles)
+}
+
+/** O cupom vale para o plano escolhido aqui e o ciclo da tela; trocar o plano pede validar de novo. */
+@Composable
+private fun AppStorePaywallCouponSheet(state: AppStorePaywallState, onIntent: (AppStorePaywallIntent) -> Unit) {
+    val sheet = state.couponSheet
+    val plans = state.plans.filter { it.offer(state.cycle) != null }
+    SaqzBottomSheet(
+        open = sheet != null,
+        onClose = { onIntent(AppStorePaywallIntent.CloseCoupon) },
+        title = stringResource(Res.string.paywall_coupon_title),
+        modifier = Modifier.testTag(AppStorePaywallTags.CouponSheet),
+        footer = {
+            SaqzButton(
+                label = stringResource(Res.string.paywall_coupon_apply),
+                onClick = { onIntent(AppStorePaywallIntent.ApplyCoupon) },
+                fullWidth = true,
+                enabled = sheet != null && sheet.code.isNotEmpty(),
+                loading = sheet?.isValidating == true,
+                modifier = Modifier.testTag(AppStorePaywallTags.CouponApply),
+            )
+        },
+    ) {
+        if (sheet == null) return@SaqzBottomSheet
+        SaqzInput(
+            value = sheet.code,
+            onValueChange = { onIntent(AppStorePaywallIntent.CouponCodeChanged(it)) },
+            label = stringResource(Res.string.paywall_coupon_field),
+            enabled = !sheet.isValidating,
+            modifier = Modifier.fillMaxWidth().testTag(AppStorePaywallTags.CouponField),
+        )
+        if (plans.size > 1) {
+            SaqzSegmented(
+                options = plans.map { it.name },
+                selected = plans.indexOfFirst { it.plan == sheet.plan }.coerceAtLeast(0),
+                onSelect = { index -> onIntent(AppStorePaywallIntent.CouponPlanChanged(plans[index].plan)) },
+                modifier = Modifier.testTag(AppStorePaywallTags.CouponPlan),
+            )
+        }
+        sheet.message?.let {
+            Text(
+                text = stringResource(it.text()),
+                style = SaqzTheme.typography.support,
+                color = if (it == PaywallCouponMessage.Pending) SaqzTheme.colors.textSecondary else SaqzTheme.colors.errorForeground,
+                maxLines = 1,
+                modifier = Modifier
+                    .testTag(AppStorePaywallTags.CouponMessage)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+    }
+}
+
+private fun PaywallCouponMessage.text() = when (this) {
+    PaywallCouponMessage.NotFound -> Res.string.paywall_coupon_not_found
+    PaywallCouponMessage.Expired -> Res.string.paywall_coupon_expired
+    PaywallCouponMessage.InvalidPlan -> Res.string.paywall_coupon_invalid_plan
+    PaywallCouponMessage.InvalidCycle -> Res.string.paywall_coupon_invalid_cycle
+    PaywallCouponMessage.NotEligible -> Res.string.paywall_coupon_not_eligible
+    PaywallCouponMessage.Exhausted -> Res.string.paywall_coupon_exhausted
+    PaywallCouponMessage.OnlyOnWeb -> Res.string.paywall_coupon_only_web
+    PaywallCouponMessage.Pending -> Res.string.paywall_coupon_pending
+    PaywallCouponMessage.Failed -> Res.string.paywall_coupon_failed
 }
 
 internal object AppStorePaywallPreviewData {
@@ -425,6 +575,23 @@ private fun AppStorePaywallLimitPreview() = SaqzTheme {
         groupLimit = PaywallGroupLimit(groupsUsed = 3, groupsLimit = 3, planName = "Organizador"),
     )
 }
+
+@Preview(name = "Cupom aplicado")
+@Composable
+private fun AppStorePaywallCouponPreview() = AppStorePaywallPreview(
+    AppStorePaywallPreviewData.ready.copy(
+        store = PaywallStoreKind.GooglePlay,
+        coupon = PaywallCouponUi("VERAO30", Plan.Organizador, SubscriptionCycle.Monthly, 30, 3, discountedPrice = "R$ 41,93"),
+    ),
+)
+
+@Preview(name = "Folha do cupom")
+@Composable
+private fun AppStorePaywallCouponSheetPreview() = AppStorePaywallPreview(
+    AppStorePaywallPreviewData.ready.copy(
+        couponSheet = PaywallCouponSheet(code = "VERAO30", plan = Plan.Organizador, message = PaywallCouponMessage.Pending),
+    ),
+)
 
 @Preview(name = "Carregando")
 @Composable

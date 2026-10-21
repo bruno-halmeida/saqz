@@ -8,10 +8,22 @@ data class GooglePlayBasePlan(
     val formattedPrice: String,
 )
 
+/**
+ * Uma oferta de um plano base (a do cupom de campanha, por exemplo). [formattedPrice] é o preço
+ * da primeira fase, o com desconto, como o Google formatou; o preço cheio é o do plano base.
+ */
+data class GooglePlayOffer(
+    val basePlanId: String,
+    val offerId: String,
+    val offerToken: String,
+    val formattedPrice: String,
+)
+
 data class GooglePlayProduct(
     val productId: String,
     val name: String,
     val basePlans: List<GooglePlayBasePlan>,
+    val offers: List<GooglePlayOffer> = emptyList(),
 )
 
 /** Uma compra de assinatura como o Play a devolve. Quem reconhece é o backend, nunca o app. */

@@ -2,6 +2,8 @@ package br.com.saqz.subscriptions.presentation.appstore
 
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.subscriptions.domain.appstore.AppStoreSubscriptionGateway
+import br.com.saqz.subscriptions.domain.coupon.CampaignCoupon
+import br.com.saqz.subscriptions.domain.coupon.CouponPlatform
 import br.com.saqz.subscriptions.domain.port.AppStoreProductsResult
 import br.com.saqz.subscriptions.domain.port.AppStorePurchaseResult
 import br.com.saqz.subscriptions.domain.port.AppStorePurchasesPort
@@ -9,6 +11,7 @@ import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
+import br.com.saqz.subscriptions.presentation.store.CouponCheckout
 import br.com.saqz.subscriptions.presentation.store.PaywallStore
 import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
 import br.com.saqz.subscriptions.presentation.store.PlanCycle
@@ -26,6 +29,7 @@ class AppStorePaywallStore(
 ) : PaywallStore {
     override val kind = PaywallStoreKind.AppStore
     override val provider = SubscriptionProvider.AppStore
+    override val couponPlatform = CouponPlatform.Ios
     override val deliveries: SharedFlow<MySubscription> get() = sync.deliveries
 
     override fun canPurchase(): Boolean = port.canMakeAppStorePayments()
@@ -58,6 +62,13 @@ class AppStorePaywallStore(
             is AppStorePurchaseResult.Failed -> StorePurchaseOutcome.Failed
         }
     }
+
+    /**
+     * Código de oferta não se aplica pelo `Product.purchase`: a App Store resgata o código na
+     * página dela. A compra chega sem `appAccountToken` e o backend a prende à conta logada.
+     */
+    override suspend fun couponCheckout(offerId: String, coupon: CampaignCoupon): CouponCheckout =
+        coupon.appStoreRedeemUrl?.let(CouponCheckout::Redeem) ?: CouponCheckout.NotReady
 
     override suspend fun restore(): StoreRestoreOutcome = when (val outcome = sync.restore()) {
         AppStoreRestoreOutcome.Failed -> StoreRestoreOutcome.Failed

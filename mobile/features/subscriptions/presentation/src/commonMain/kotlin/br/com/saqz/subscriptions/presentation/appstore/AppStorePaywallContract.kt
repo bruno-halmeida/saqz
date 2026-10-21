@@ -30,7 +30,50 @@ enum class AppStorePaywallNotice {
     ConfirmationPending,
     NothingToRestore,
     RestoreFailed,
+
+    /** O código do cupom foi aberto na App Store: a compra volta sozinha quando a pessoa retorna. */
+    CouponRedeemOpened,
 }
+
+/** Resposta curta da folha do cupom. */
+enum class PaywallCouponMessage {
+    NotFound,
+    Expired,
+    InvalidPlan,
+    InvalidCycle,
+    NotEligible,
+    Exhausted,
+    OnlyOnWeb,
+
+    /** A oferta ainda está sendo criada na loja. */
+    Pending,
+    Failed,
+}
+
+/** A folha "Tenho um cupom": o código digitado e o plano a que ele vai se aplicar. */
+@Immutable
+data class PaywallCouponSheet(
+    val code: String = "",
+    val plan: Plan,
+    val isValidating: Boolean = false,
+    val message: PaywallCouponMessage? = null,
+)
+
+/**
+ * Cupom aceito para um plano e ciclo. No Play, [purchaseOfferId] é a oferta com desconto e
+ * [discountedPrice] o preço da primeira fase; na App Store, [redeemUrl] abre o resgate do código.
+ */
+@Immutable
+data class PaywallCouponUi(
+    val code: String,
+    val plan: Plan,
+    val cycle: SubscriptionCycle,
+    val discountPercent: Int,
+    val durationCycles: Int,
+    val discountedPrice: String? = null,
+    val purchaseOfferId: String? = null,
+    val redeemUrl: String? = null,
+)
 
 /** Uma assinatura de um ciclo: o id da oferta na loja e o preço que a loja devolveu. */
 @Immutable
@@ -66,7 +109,13 @@ data class AppStorePaywallState(
     val isConfirming: Boolean = false,
     val isSubscribed: Boolean = false,
     val notice: AppStorePaywallNotice? = null,
+    val coupon: PaywallCouponUi? = null,
+    val couponSheet: PaywallCouponSheet? = null,
+    /** O resgate do código foi aberto na App Store: na volta ao app, o plano é reconsultado. */
+    val awaitingRedeem: Boolean = false,
 ) {
+    fun couponFor(plan: Plan): PaywallCouponUi? = coupon?.takeIf { it.plan == plan && it.cycle == cycle }
+
     val isBusy: Boolean get() = purchasingProductId != null || isRestoring || isConfirming || isSubscribed
 }
 
@@ -77,9 +126,21 @@ sealed interface AppStorePaywallIntent {
     data object Restore : AppStorePaywallIntent
     data object RetryConfirmation : AppStorePaywallIntent
     data object DismissNotice : AppStorePaywallIntent
+    data object OpenCoupon : AppStorePaywallIntent
+    data object CloseCoupon : AppStorePaywallIntent
+    data class CouponCodeChanged(val code: String) : AppStorePaywallIntent
+    data class CouponPlanChanged(val plan: Plan) : AppStorePaywallIntent
+    data object ApplyCoupon : AppStorePaywallIntent
+    data object PurchaseWithCoupon : AppStorePaywallIntent
+
+    /** O app voltou ao primeiro plano (da App Store, depois do resgate do código). */
+    data object Resumed : AppStorePaywallIntent
 }
 
 sealed interface AppStorePaywallEffect {
     /** O backend confirmou uma assinatura com acesso: quem hospeda segue o fluxo autorizado. */
     data object Subscribed : AppStorePaywallEffect
+
+    /** Abrir fora do app: a página de resgate do código na App Store. */
+    data class OpenUrl(val url: String) : AppStorePaywallEffect
 }

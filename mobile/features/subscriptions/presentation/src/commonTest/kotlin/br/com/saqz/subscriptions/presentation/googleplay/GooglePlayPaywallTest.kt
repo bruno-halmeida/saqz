@@ -10,6 +10,7 @@ import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallNotice
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallPhase
 import br.com.saqz.subscriptions.presentation.appstore.AppStorePaywallViewModel
 import br.com.saqz.subscriptions.presentation.appstore.FakeCatalogGateway
+import br.com.saqz.subscriptions.presentation.appstore.FakeCouponGateway
 import br.com.saqz.subscriptions.presentation.appstore.appStoreSubscription
 import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +43,7 @@ class GooglePlayPaywallTest {
 
     private fun TestScope.viewModel(): AppStorePaywallViewModel {
         val sync = GooglePlayPurchaseSync(port, gateway, CoroutineScope(UnconfinedTestDispatcher(testScheduler)))
-        return AppStorePaywallViewModel(GooglePlayPaywallStore(port, sync, gateway), catalog)
+        return AppStorePaywallViewModel(GooglePlayPaywallStore(port, sync, gateway), catalog, FakeCouponGateway())
     }
 
     @Test

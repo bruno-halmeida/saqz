@@ -98,6 +98,6 @@ internal fun storeCheckoutModule(
         else -> single { StoreCheckout(deviceStore = null, sync = null, enabled = false, manage = null, webCheckout = webCheckout) }
     }
     if (appStore != null || googlePlay != null) {
-        viewModel { AppStorePaywallViewModel(store = get(), subscriptions = get()) }
+        viewModel { AppStorePaywallViewModel(store = get(), subscriptions = get(), coupons = get()) }
     }
 }

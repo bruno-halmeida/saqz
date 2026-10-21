@@ -1,6 +1,8 @@
 package br.com.saqz.subscriptions.presentation.googleplay
 
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.subscriptions.domain.coupon.CampaignCoupon
+import br.com.saqz.subscriptions.domain.coupon.CouponPlatform
 import br.com.saqz.subscriptions.domain.googleplay.GooglePlaySubscriptionGateway
 import br.com.saqz.subscriptions.domain.port.GooglePlayProduct
 import br.com.saqz.subscriptions.domain.port.GooglePlayProductsResult
@@ -10,6 +12,7 @@ import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionCycle
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionProvider
+import br.com.saqz.subscriptions.presentation.store.CouponCheckout
 import br.com.saqz.subscriptions.presentation.store.PaywallStore
 import br.com.saqz.subscriptions.presentation.store.PaywallStoreKind
 import br.com.saqz.subscriptions.presentation.store.PlanCycle
@@ -29,9 +32,11 @@ class GooglePlayPaywallStore(
     private val gateway: GooglePlaySubscriptionGateway,
 ) : PaywallStore {
     private val purchasable = mutableMapOf<String, PlayOffer>()
+    private val products = mutableMapOf<String, GooglePlayProduct>()
 
     override val kind = PaywallStoreKind.GooglePlay
     override val provider = SubscriptionProvider.GooglePlay
+    override val couponPlatform = CouponPlatform.Android
     override val deliveries: SharedFlow<MySubscription> get() = sync.deliveries
 
     override fun canPurchase(): Boolean = port.canMakeGooglePlayPayments()
@@ -39,8 +44,8 @@ class GooglePlayPaywallStore(
     override suspend fun offers(catalog: List<PlanCatalogItem>): Map<PlanCycle, StoreOffer>? {
         val productIds = catalog.mapNotNull { it.googlePlay?.productId }.distinct()
         if (productIds.isEmpty()) return emptyMap()
-        val products = when (val result = port.products(productIds)) {
-            is GooglePlayProductsResult.Loaded -> result.products.associateBy(GooglePlayProduct::productId)
+        when (val result = port.products(productIds)) {
+            is GooglePlayProductsResult.Loaded -> result.products.forEach { products[it.productId] = it }
             is GooglePlayProductsResult.Failed -> return null
         }
         return buildMap {
@@ -58,6 +63,26 @@ class GooglePlayPaywallStore(
         val id = "${product.productId}:$basePlanId"
         purchasable[id] = PlayOffer(product.productId, basePlan.offerToken)
         return StoreOffer(id = id, displayPrice = basePlan.formattedPrice)
+    }
+
+    /**
+     * A oferta do cupom é criada no Play pelo backend e leva alguns minutos para aparecer no
+     * `ProductDetails`: sem ela na lista (nem depois de reler o produto), nada de comprar sem o
+     * desconto. O preço mostrado é o da primeira fase da oferta, como o Play vai cobrar.
+     */
+    override suspend fun couponCheckout(offerId: String, coupon: CampaignCoupon): CouponCheckout {
+        val playOfferId = coupon.googlePlayOfferId ?: return CouponCheckout.NotReady
+        val base = purchasable[offerId] ?: return CouponCheckout.NotReady
+        val basePlanId = offerId.substringAfter(':')
+        fun find() = products[base.productId]?.offers?.firstOrNull { it.basePlanId == basePlanId && it.offerId == playOfferId }
+        val offer = find() ?: run {
+            (port.products(listOf(base.productId)) as? GooglePlayProductsResult.Loaded)
+                ?.products?.forEach { products[it.productId] = it }
+            find()
+        } ?: return CouponCheckout.NotReady
+        val id = "$offerId:$playOfferId"
+        purchasable[id] = PlayOffer(base.productId, offer.offerToken)
+        return CouponCheckout.InApp(StoreOffer(id = id, displayPrice = offer.formattedPrice))
     }
 
     override suspend fun purchase(offerId: String): StorePurchaseOutcome {

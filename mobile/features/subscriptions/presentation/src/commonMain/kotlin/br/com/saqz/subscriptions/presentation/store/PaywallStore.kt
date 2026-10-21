@@ -1,6 +1,8 @@
 package br.com.saqz.subscriptions.presentation.store
 
 import br.com.saqz.domain.DataError
+import br.com.saqz.subscriptions.domain.coupon.CampaignCoupon
+import br.com.saqz.subscriptions.domain.coupon.CouponPlatform
 import br.com.saqz.subscriptions.domain.subscription.MySubscription
 import br.com.saqz.subscriptions.domain.subscription.Plan
 import br.com.saqz.subscriptions.domain.subscription.PlanCatalogItem
@@ -40,6 +42,18 @@ sealed interface StoreRestoreOutcome {
     data object Failed : StoreRestoreOutcome
 }
 
+/** Como comprar com um cupom de campanha nesta loja. */
+sealed interface CouponCheckout {
+    /** Google Play: a oferta do cupom no plano base, com o preço das fases do Play. */
+    data class InApp(val offer: StoreOffer) : CouponCheckout
+
+    /** App Store: a página de resgate abre com o código preenchido; a compra volta por `Transaction.updates`. */
+    data class Redeem(val url: String) : CouponCheckout
+
+    /** A loja ainda não mostra a oferta do cupom: libera em alguns minutos. */
+    data object NotReady : CouponCheckout
+}
+
 /**
  * Leva as compras da loja ao backend durante a vida do processo: escuta desde a abertura,
  * reentrega o que ficou pendente no login e anuncia cada assinatura que o backend devolveu.
@@ -62,12 +76,18 @@ interface PaywallStore {
     val provider: SubscriptionProvider
     val deliveries: SharedFlow<MySubscription>
 
+    /** Como o backend chama esta loja ao validar um cupom. */
+    val couponPlatform: CouponPlatform
+
     fun canPurchase(): Boolean
 
     /** Ofertas por plano e ciclo, só das que a loja conhece; `null` quando a loja não respondeu. */
     suspend fun offers(catalog: List<PlanCatalogItem>): Map<PlanCycle, StoreOffer>?
 
     suspend fun purchase(offerId: String): StorePurchaseOutcome
+
+    /** [offerId] é a oferta do plano e ciclo do cupom, de [offers]. */
+    suspend fun couponCheckout(offerId: String, coupon: CampaignCoupon): CouponCheckout
 
     suspend fun restore(): StoreRestoreOutcome
 
