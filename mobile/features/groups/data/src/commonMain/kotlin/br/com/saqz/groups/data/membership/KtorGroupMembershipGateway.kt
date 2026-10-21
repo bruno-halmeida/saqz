@@ -42,6 +42,7 @@ private data class MembershipDto(
     val userId: String = "",
     val displayName: String = "",
     val role: GroupRoleDto? = null,
+    val photoTag: String? = null,
 )
 
 @Serializable
@@ -164,7 +165,7 @@ private fun NetworkResult<Unit>.toEmptyResult() = when (this) {
 private fun MembershipDto.toDomain(): GroupMembership? {
     val domainRole = role ?: return null
     if (userId.isBlank() || displayName.isBlank()) return null
-    return GroupMembership(userId, displayName, GroupRole.valueOf(domainRole.name))
+    return GroupMembership(userId, displayName, GroupRole.valueOf(domainRole.name), photoTag?.takeIf(String::isNotBlank))
 }
 
 private fun InviteMetadataDto.toDomain(): GroupInviteMetadata? {

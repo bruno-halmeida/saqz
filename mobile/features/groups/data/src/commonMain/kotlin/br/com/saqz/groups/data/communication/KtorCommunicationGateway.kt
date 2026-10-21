@@ -26,11 +26,15 @@ import kotlinx.serialization.json.Json
 private data class MessageDto(
     val id: String, val sequence: Long, val groupId: String, val authorId: String, val authorName: String,
     val channel: String, val body: String, val createdAt: String, val gameId: String? = null, val recipientCount: Int = 0,
+    val photoTag: String? = null,
 ) {
     fun domain(): CommunicationMessage? {
         val channel = CommunicationChannel.entries.find { it.name == channel } ?: return null
         if (listOf(id, groupId, authorId, authorName, body).any(String::isBlank) || sequence <= 0) return null
-        return CommunicationMessage(id, sequence, GroupId(groupId), authorId, authorName, channel, body, createdAt, gameId, recipientCount)
+        return CommunicationMessage(
+            id, sequence, GroupId(groupId), authorId, authorName, channel, body, createdAt, gameId, recipientCount,
+            photoTag?.takeIf(String::isNotBlank),
+        )
     }
 }
 @Serializable private data class PageDto<T>(val items: List<T>, val nextCursor: Long? = null)

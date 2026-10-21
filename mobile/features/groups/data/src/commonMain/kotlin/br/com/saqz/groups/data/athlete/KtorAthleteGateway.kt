@@ -72,6 +72,7 @@ private data class RosterEntryDto(
     val monthlyDueDay: Int? = null,
     val monthlyFeeExempt: Boolean = false,
     val joinedAt: String = "",
+    val photoTag: String? = null,
 )
 
 @Serializable
@@ -359,6 +360,7 @@ private fun RosterEntryDto.toDomain(): AthleteRosterEntry? {
         monthlyFeeExempt = monthlyFeeExempt,
         joinedAt = joinedAt,
         role = parsedRole,
+        photoTag = photoTag?.takeIf(String::isNotBlank),
     )
 }
 

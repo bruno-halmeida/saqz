@@ -47,6 +47,8 @@ internal data class HomeGroupTransport(
 internal data class HomeRosterMemberTransport(
     val displayName: String,
     val waitlistPosition: Long?,
+    val userId: String? = null,
+    val photoTag: String? = null,
 )
 
 @Serializable
@@ -349,6 +351,8 @@ private fun HomeRosterPreviewTransport.toDomain() = HomeRosterPreview(
 private fun HomeRosterMemberTransport.toDomain() = HomeRosterMember(
     displayName = displayName,
     waitlistPosition = waitlistPosition,
+    userId = userId?.takeIf(String::isNotBlank),
+    photoTag = photoTag?.takeIf(String::isNotBlank),
 )
 
 private fun HomeLastCompletedGameTransport.toDomain() = HomeLastCompletedGame(

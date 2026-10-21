@@ -100,6 +100,7 @@ internal data class AttendanceRosterMemberTransport(
     val hostDisplayName: String? = null,
     val position: String? = null,
     val forced: Boolean = false,
+    val photoTag: String? = null,
 )
 
 @Serializable
@@ -479,4 +480,5 @@ private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
     hostDisplayName = hostDisplayName,
     position = position.toPosition(),
     forced = forced,
+    photoTag = photoTag?.takeIf { it.isNotBlank() && guestSeq == 0 },
 )

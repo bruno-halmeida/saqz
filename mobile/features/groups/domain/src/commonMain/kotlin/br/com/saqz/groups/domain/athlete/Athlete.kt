@@ -39,6 +39,8 @@ data class AthleteRosterEntry(
     /** ISO-8601 vindo da API; a apresentação é dona de formatá-lo. */
     val joinedAt: String = "",
     val role: GroupRole = GroupRole.ATHLETE,
+    /** Resumo da foto de perfil (MEM-006); nulo sem foto ou quando quem olha bloqueou a pessoa. */
+    val photoTag: String? = null,
 )
 
 data class AthleteRosterFilter(

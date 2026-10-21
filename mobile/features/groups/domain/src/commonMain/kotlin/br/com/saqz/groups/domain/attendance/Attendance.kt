@@ -77,6 +77,8 @@ data class AttendanceRosterMember(
     val hostDisplayName: String? = null,
     val position: AthletePosition? = null,
     val forced: Boolean = false,
+    /** Foto de perfil do membro (MEM-006); convidado nunca tem. */
+    val photoTag: String? = null,
 ) {
     val isGuest: Boolean get() = guestSeq > 0
 

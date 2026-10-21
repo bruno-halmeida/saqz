@@ -18,6 +18,8 @@ data class GroupMembership(
     val userId: String,
     val displayName: String,
     val role: GroupRole,
+    /** Resumo da foto de perfil (MEM-006); nulo sem foto ou quando quem olha bloqueou a pessoa. */
+    val photoTag: String? = null,
 )
 
 data class GroupInviteMetadata(

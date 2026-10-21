@@ -23,6 +23,8 @@ data class CommunicationMessage(
     val id: String, val sequence: Long, val groupId: GroupId, val authorId: String, val authorName: String,
     val channel: CommunicationChannel, val body: String, val createdAt: String, val gameId: String? = null,
     val recipientCount: Int = 0,
+    /** Foto de perfil do autor (MEM-006); nulo sem foto ou bloqueado por quem lê. */
+    val photoTag: String? = null,
 )
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class InAppNotification(val sequence: Long, val message: CommunicationMessage, val read: Boolean)

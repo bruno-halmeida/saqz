@@ -19,6 +19,10 @@ data class HomeMemberGroup(
 data class HomeRosterMember(
     val displayName: String,
     val waitlistPosition: Long?,
+    /** Nulo para convidado sem conta. */
+    val userId: String? = null,
+    /** Foto de perfil (MEM-006); nulo sem foto, convidado ou bloqueado por quem olha. */
+    val photoTag: String? = null,
 )
 
 data class HomeRosterPreview(

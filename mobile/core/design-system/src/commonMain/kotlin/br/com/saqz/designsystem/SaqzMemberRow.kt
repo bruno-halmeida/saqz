@@ -99,17 +99,26 @@ fun SaqzAvatar(
         if (photo != null) {
             photo()
         } else {
-            Text(
-                text = saqzInitials(name),
-                fontSize = avatarTextSize(size),
-                lineHeight = avatarTextSize(size),
-                fontWeight = FontWeight.SemiBold,
-                color = initialsColor,
-                maxLines = 1,
-                softWrap = false,
-            )
+            SaqzAvatarInitials(name = name, size = size, color = initialsColor)
         }
     }
+}
+
+/**
+ * As iniciais do [SaqzAvatar], soltas: quem passa um `photo` de rede as usa enquanto a
+ * foto carrega ou quando ela falha.
+ */
+@Composable
+fun SaqzAvatarInitials(name: String, size: Dp = 40.dp, color: Color = SaqzTheme.colors.textPrimary) {
+    Text(
+        text = saqzInitials(name),
+        fontSize = avatarTextSize(size),
+        lineHeight = avatarTextSize(size),
+        fontWeight = FontWeight.SemiBold,
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+    )
 }
 
 /**
@@ -129,6 +138,8 @@ fun SaqzAvatarStack(
     ring: Color = SaqzTheme.colors.border,
     overflowContainer: Color = SaqzTheme.colors.primary,
     overflowContent: Color = SaqzTheme.colors.onPrimary,
+    /** Foto de cada nome, na mesma ordem; nulo (ou lista curta) fica nas iniciais. */
+    photos: List<(@Composable () -> Unit)?> = emptyList(),
 ) {
     val colors = SaqzTheme.colors
     val shown = names.take(max)
@@ -139,8 +150,8 @@ fun SaqzAvatarStack(
     Row(horizontalArrangement = Arrangement.spacedBy(-overlap), modifier = modifier) {
         // Sem zIndex: a ordem de pintura é a do Row, que é a do DOM no export —
         // cada círculo cobre a borda esquerda do anterior e o "+N" fica inteiro.
-        shown.forEach { name ->
-            SaqzAvatar(name = name, size = size, background = colors.surface, ring = ring)
+        shown.forEachIndexed { index, name ->
+            SaqzAvatar(name = name, size = size, background = colors.surface, ring = ring, photo = photos.getOrNull(index))
         }
         if (overflow > 0) {
             Box(
