@@ -57,6 +57,8 @@ class AdminCouponsController(
     private val directory: AdminCouponDirectory,
     private val now: () -> Instant = Instant::now,
     private val preview: PreviewCouponPrices = PreviewCouponPrices(null),
+    /** Parceiro ativo existe? Sem diretório (testes antigos), qualquer id passa ao banco. */
+    private val partnerExists: (UUID) -> Boolean = { true },
 ) {
     @GetMapping("/admin/coupons")
     fun list(): List<AdminCoupon> = directory.list()
@@ -128,6 +130,7 @@ class AdminCouponsController(
         val products = request.products.orEmpty().map { raw ->
             CouponProduct.parse(raw) ?: return Parsed.Rejected("Plano inválido: $raw")
         }.toSet()
+        if (request.partnerId?.let(partnerExists) == false) return Parsed.Rejected("Parceiro não encontrado ou encerrado.")
         val covered = if (products.isEmpty()) CouponProduct.ALL else products.toList()
         // Com duração, o cupom vai às lojas: o que a loja não aceita é recusado aqui, com o motivo.
         val stores = durationCycles != null

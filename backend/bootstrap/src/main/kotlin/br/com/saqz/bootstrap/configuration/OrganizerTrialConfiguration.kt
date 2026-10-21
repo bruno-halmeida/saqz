@@ -1,5 +1,6 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.subscriptions.application.AdminPartnerDirectory
 import br.com.saqz.groups.adapter.output.jdbc.plan.JdbcOwnerGroupHistory
 import br.com.saqz.sharedkernel.subscription.GroupCreationTrial
 import br.com.saqz.sharedkernel.subscription.OwnerGroupHistory
@@ -114,6 +115,6 @@ class OrganizerTrialConfiguration {
     fun trialCampaignStore(dataSource: DataSource, clock: Clock): TrialCampaignStore = JdbcTrialCampaignStore(dataSource, clock)
 
     @Bean
-    fun adminTrialCampaigns(store: TrialCampaignStore, clock: Clock) =
-        br.com.saqz.adminweb.http.AdminTrialCampaignsController(store, clock)
+    fun adminTrialCampaigns(store: TrialCampaignStore, clock: Clock, partners: AdminPartnerDirectory) =
+        br.com.saqz.adminweb.http.AdminTrialCampaignsController(store, clock, partners::exists)
 }

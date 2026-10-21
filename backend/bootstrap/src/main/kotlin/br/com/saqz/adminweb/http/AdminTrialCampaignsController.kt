@@ -23,7 +23,11 @@ data class TrialModeResponse(val mode: TrialOfferMode)
 
 /** Admin access is enforced by PlatformAdminGuardFilter for every /admin route. */
 @RestController
-class AdminTrialCampaignsController(private val store: TrialCampaignStore, private val clock: Clock) {
+class AdminTrialCampaignsController(
+    private val store: TrialCampaignStore,
+    private val clock: Clock,
+    private val partnerExists: (UUID) -> Boolean = { true },
+) {
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException::class)
     fun invalidBody(): ResponseEntity<Void> = ResponseEntity.badRequest().build()
 
@@ -50,6 +54,7 @@ class AdminTrialCampaignsController(private val store: TrialCampaignStore, priva
             (body.maxUses != null && (max == null || max < 1)) || (campaign?.length ?: 0) > 120 ||
             (body.validUntil != null && !requireNotNull(body.validUntil).isAfter(clock.instant()))
         ) return ResponseEntity.badRequest().build<Void>()
+        if (body.partnerId?.let(partnerExists) == false) return ResponseEntity.badRequest().build<Void>()
         val created = store.create(code, campaign, days, body.validUntil, max, body.partnerId)
             ?: return ResponseEntity.status(409).build<Void>()
         return ResponseEntity.status(201).body(created)

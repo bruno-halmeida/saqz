@@ -10,6 +10,7 @@ import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.adminweb.http.AdminCouponAnalyticsController
 import br.com.saqz.adminweb.http.AdminCourtesiesController
 import br.com.saqz.adminweb.http.AdminCouponsController
+import br.com.saqz.adminweb.http.AdminPartnersController
 import br.com.saqz.adminweb.http.AdminGroupsController
 import br.com.saqz.adminweb.http.AdminModerationController
 import br.com.saqz.adminweb.http.AdminOverviewController
@@ -23,10 +24,12 @@ import br.com.saqz.groups.application.admin.AdminGroupStats
 import br.com.saqz.groups.application.moderation.ContentModerationService
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponAnalytics
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminCouponDirectoryRepository
+import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminPartnerDirectory
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueReader
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminRevenueStatsRepository
 import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcAdminSubscriptionDirectoryRepository
 import br.com.saqz.subscriptions.application.AdminCouponDirectory
+import br.com.saqz.subscriptions.application.AdminPartnerDirectory
 import br.com.saqz.subscriptions.application.PreviewCouponPrices
 import br.com.saqz.subscriptions.application.AdminRevenueReader
 import br.com.saqz.subscriptions.application.AdminRevenueStats
@@ -114,8 +117,17 @@ class PlatformAdminConfiguration {
         JdbcAdminCouponDirectoryRepository(dataSource)
 
     @Bean
-    fun adminCouponsController(directory: AdminCouponDirectory, preview: ObjectProvider<PreviewCouponPrices>) =
-        AdminCouponsController(directory, preview = preview.getIfAvailable { PreviewCouponPrices(null) })
+    fun adminCouponsController(
+        directory: AdminCouponDirectory,
+        preview: ObjectProvider<PreviewCouponPrices>,
+        partners: AdminPartnerDirectory,
+    ) = AdminCouponsController(directory, preview = preview.getIfAvailable { PreviewCouponPrices(null) }, partnerExists = partners::exists)
+
+    @Bean
+    fun adminPartnerDirectory(dataSource: DataSource): AdminPartnerDirectory = JdbcAdminPartnerDirectory(dataSource)
+
+    @Bean
+    fun adminPartnersController(partners: AdminPartnerDirectory) = AdminPartnersController(partners)
 
     @Bean
     fun adminCouponAnalyticsController(dataSource: DataSource, clock: Clock) =
