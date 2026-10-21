@@ -131,3 +131,51 @@ Play; excluir a conta não cancela a assinatura do Play (o app avisa).
 - `StoreLaunchPolicy.googlePlayPurchases = false` desliga a compra no Android.
 - Teste: AAB numa faixa de teste interno (a compra só funciona em app instalado pelo Play)
   e a conta Google do aparelho entre os testadores de licença.
+
+## Cupons de campanha (ofertas do Play)
+
+O dono cria o cupom no adm-web (Cupons → Criar cupom). Cupom **sem duração** vale só no
+site. Cupom **com duração** vale no site, no Android e no iPhone: o backend cria uma oferta
+em cada plano base coberto (`coupon_store_offers`, migração `V182`).
+
+- Oferta: `offerId` = `cupom-<código em minúsculas>` (único no plano base e não reaproveitável
+  depois de ativada), uma fase com `recurrenceCount` = duração e `duration` P1M/P1Y,
+  `relativeDiscount` = desconto/100 só em `BR`, sem `targeting` (oferta determinada pelo
+  desenvolvedor: quem decide quem usa é o backend), `offerTags` `cupom` + slug da campanha
+  (RFC-1034, até 20). Depois `:activate`; fica `ACTIVE` quando a API devolve `state: ACTIVE`.
+- Limites recusados no admin: 100% (o Play só aceita desconto relativo < 1), mensal até 12
+  ciclos e anual só 1 ciclo (o limite da Apple, aplicado às duas lojas).
+- Preço na loja = preço do plano base × (1 − desconto), arredondado ao centavo. Os anuais
+  das lojas (R$ 359,90 / 539,90 / 809,90) diferem dos do site.
+- Encerrar = `:deactivate` (quem já tem a oferta mantém o desconto contratado).
+- Compra com oferta: a linha da `subscriptionsv2` traz `offerDetails.offerId`; o backend
+  acha a oferta do cupom e grava o resgate em `coupon_redemptions` com `platform = ANDROID`.
+
+### Estados
+
+`PENDING` → `CREATING` → `WAITING_STORE` → `ACTIVE`; `FAILED` (motivo na lista e botão
+"Tentar de novo"); `DEACTIVATING` → `DEACTIVATED` ao encerrar ou ao vencer a validade. O
+estado da plataforma na lista é o pior entre as ofertas dela. Erro 400/404/409/422 da loja vai
+direto a `FAILED`; os outros tentam de novo com espera crescente, até 5 vezes.
+
+### Contrato com os apps
+
+`POST /coupons/validate` (autenticado), `{ code, planId, cycle, platform: WEB|ANDROID|IOS }`
+(`platform` ausente = `WEB`). `status`: `APPLIED`, `NOT_FOUND`, `EXPIRED`, `INVALID_PLAN`,
+`INVALID_CYCLE`, `NOT_ELIGIBLE`, `EXHAUSTED`, `NOT_AVAILABLE_ON_PLATFORM`,
+`PENDING_ON_PLATFORM`. Em `APPLIED`, além dos campos antigos: `campaign`, `durationCycles`,
+`storePriceCents`, `googlePlayOfferId` (ANDROID) e `appStoreOfferCode`/`appStoreRedeemUrl`
+(IOS). O app Android compra o plano base com o `offerToken` da oferta `googlePlayOfferId`.
+
+"Quem pode usar": `NEVER_SUBSCRIBED` (nenhuma assinatura paga em nenhuma plataforma; teste
+grátis não conta) e/ou `FORMER_SUBSCRIBER` (teve assinatura paga e hoje não tem acesso pago).
+
+### Configuração
+
+| Variável | Produção | Dev / local / testes |
+|---|---|---|
+| `SAQZ_COUPON_STORE_SYNC` | `true` | `false` (padrão): nenhuma chamada às lojas; ofertas ficam pendentes com "Integração com as lojas desligada neste ambiente" |
+| `SAQZ_COUPON_STORE_SYNC_DELAY_MS` | `60000` (padrão) | — |
+
+Dev e produção usam as mesmas lojas: só produção liga. O token é o mesmo das compras
+(`GOOGLE_APPLICATION_CREDENTIALS`, conta de serviço com "Gerenciar presença na loja").

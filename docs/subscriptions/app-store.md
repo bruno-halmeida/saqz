@@ -190,3 +190,54 @@ as transações quando o usuário abre o app.
 - Local: o scheme **SaqzDev** usa `SaqzIOS/Saqz.storekit` (preços só de referência) e o
   backend de dev precisa aceitar `XCODE` em `SAQZ_APP_STORE_ENVIRONMENTS`. Os schemes de
   produção usam o sandbox da App Store, com testador sandbox.
+
+## Cupons de campanha (códigos de oferta)
+
+Cupom com duração criado no adm-web vira, para cada produto coberto, um **código de oferta**
+(offer code) com **código personalizado** na App Store Connect API. Fluxo do job
+(`SyncCouponStoreOffers`, cada id gravado assim que a Apple devolve, para retomar do passo certo):
+
+1. `GET /v1/apps/{SAQZ_APP_STORE_APP_APPLE_ID}/subscriptionGroups` e
+   `GET /v1/subscriptionGroups/{id}/subscriptions?filter[productId]=…` → id da assinatura.
+2. `GET /v1/subscriptions/{id}/pricePoints?filter[territory]=BRA` → price point de `BRA` mais
+   próximo de preço da loja × (1 − desconto). É o preço que o admin mostra na prévia.
+3. `POST /v1/subscriptionOfferCodes`: `name` = código personalizado, `offerMode`
+   `PAY_AS_YOU_GO`, `duration` `ONE_MONTH`/`ONE_YEAR`, `numberOfPeriods` = duração,
+   `offerEligibility` `STACK_WITH_INTRO_OFFERS` (não há oferta introdutória),
+   `customerEligibilities` `NEW` ("Nunca assinou") e/ou `EXPIRED` ("Já cancelou"), preço só
+   em `BRA`.
+4. `POST /v1/subscriptionOfferCodeCustomCodes`: `customCode` e `numberOfCodes` = limite de
+   usos (sem limite = 25.000, o máximo por código).
+
+**Código personalizado é único no app inteiro** ("Custom codes can't be used for other offer
+campaigns or subscriptions for the app", ajuda do App Store Connect): por isso um código por
+produto, o do cupom + inicial do plano + `M`/`A` (ex.: `VOLEI30OM` = Organizador mensal). O
+app recebe esse código em `appStoreOfferCode` e o link
+`https://apps.apple.com/redeem?ctx=offercodes&id=<app-apple-id>&code=<código>`.
+
+- Limites: pay as you go numa assinatura de 1 mês aceita 1 a 12 meses; de 1 ano, só 1 ano.
+  Até 64 caracteres sem especiais. Código personalizado aceita no máximo 25.000 resgates por
+  criação. Validade do código não é enviada (máximo de 6 meses na Apple): o job desativa
+  quando o cupom vence ou é encerrado.
+- A Apple não avisa quando o código passa a valer (até 1 hora): a oferta fica
+  `WAITING_STORE` ("Liberando na Apple (até 1 h)") e vira `ACTIVE` 60 minutos depois.
+- Encerrar = `PATCH active=false` no código personalizado e no código de oferta (a oferta
+  não pode ser reativada; quem resgatou mantém o desconto).
+- Compra: a transação assinada traz `offerType` 3 (código de oferta) e `offerIdentifier`;
+  o backend acha a oferta pelo produto + identificador e grava o resgate com `platform = IOS`
+  (no envio pelo app e no webhook). A compra pelo código vem sem `appAccountToken`: fica com
+  quem enviou primeiro, como já era.
+
+Estados, contrato do `POST /coupons/validate` e "quem pode usar": ver
+`google-play.md` (seção Cupons de campanha).
+
+| Variável | Produção | Dev / local |
+|---|---|---|
+| `SAQZ_COUPON_STORE_SYNC` | `true` | `false` (padrão; nenhuma chamada) |
+| `SAQZ_APP_STORE_CONNECT_ISSUER_ID` | issuer da chave de equipe | vazio |
+| `SAQZ_APP_STORE_CONNECT_KEY_ID` | key id | vazio |
+| `SAQZ_APP_STORE_CONNECT_PRIVATE_KEY` | conteúdo do `.p8` (PEM; `\n` literal aceito) | vazio |
+
+Token JWT ES256 (`aud` `appstoreconnect-v1`, 20 min). A chave nunca vai para log nem
+resposta; chave ausente ou malformada não derruba o boot (as ofertas da Apple falham com
+"credenciais não configuradas" até corrigir e "Tentar de novo").
