@@ -31,6 +31,9 @@ struct IOSPhotoMetadata: Equatable { let width: Int; let height: Int; let type: 
 final class IOSPhotoFiles {
     static let maximumBytes = 5 * 1024 * 1024
     static let maximumDimension = 4096
+    /// A original como o celular salva (HEIC de 24, 48 ou 200 MP) só passa por aqui para ser
+    /// reduzida; os limites de lado, tipo e bytes valem sobre o JPEG reduzido que fica guardado.
+    static let maximumSourceBytes = 50 * 1024 * 1024
     private let manager: FileManager
     private let directory: URL
 
@@ -49,9 +52,32 @@ final class IOSPhotoFiles {
     }
 
     func copySelected(_ source: URL) throws -> URL {
-        let size = try source.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Self.maximumBytes + 1
-        guard (1...Self.maximumBytes).contains(size) else { throw IOSPhotoFileError.invalid }
-        return try store(Data(contentsOf: source, options: .mappedIfSafe))
+        let size = try source.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Self.maximumSourceBytes + 1
+        guard (1...Self.maximumSourceBytes).contains(size),
+              let image = CGImageSourceCreateWithURL(source as CFURL, nil) else { throw IOSPhotoFileError.invalid }
+        return try storeReduced(image)
+    }
+
+    /// Foto da câmera já reduzida a no máximo `maximumDimension`; o JPEG intermediário não tem
+    /// o limite de bytes da saída.
+    func storeCaptured(_ data: Data) throws -> URL {
+        guard (1...Self.maximumSourceBytes).contains(data.count),
+              let image = CGImageSourceCreateWithData(data as CFData, nil) else { throw IOSPhotoFileError.invalid }
+        return try storeReduced(image)
+    }
+
+    /// Decodifica já reduzida (nunca na resolução cheia), aplica a rotação do EXIF e guarda JPEG.
+    private func storeReduced(_ source: CGImageSource) throws -> URL {
+        guard CGImageSourceGetCount(source) >= 1,
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: Self.maximumDimension
+              ] as CFDictionary),
+              let data = IOSJPEG.encodeBounded(image, maximumBytes: Self.maximumBytes)
+        else { throw IOSPhotoFileError.invalid }
+        return try store(data)
     }
 
     func file(_ handle: GroupPhotoSourceHandle) -> URL? {
@@ -83,6 +109,18 @@ final class IOSPhotoFiles {
 }
 
 enum IOSPhotoFileError: Error { case invalid }
+
+enum IOSJPEG {
+    static func encodeBounded(_ image: CGImage, maximumBytes: Int) -> Data? {
+        for quality in [0.92, 0.85, 0.75, 0.65] {
+            let data = NSMutableData()
+            guard let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { continue }
+            CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+            if CGImageDestinationFinalize(destination), data.length <= maximumBytes { return data as Data }
+        }
+        return nil
+    }
+}
 
 struct IOSPixelCrop: Equatable { let x: Int; let y: Int; let side: Int }
 
@@ -124,8 +162,13 @@ final class IOSPhotoPreviewAdapter: GroupPhotoPreviewPort {
 }
 
 final class IOSPhotoEncoderAdapter: GroupPhotoEncoderPort {
+    /// Foto de perfil: o servidor grava 512 px, então basta enviar até 1024.
+    static let profileDimension = 1024
     private let files: IOSPhotoFiles
-    init(files: IOSPhotoFiles) { self.files = files }
+    private let maximumDimension: Int
+    init(files: IOSPhotoFiles, maximumDimension: Int = IOSPhotoFiles.maximumDimension) {
+        self.files = files; self.maximumDimension = maximumDimension
+    }
     func cancel(source: String) {}
 
     func encode(
@@ -134,18 +177,18 @@ final class IOSPhotoEncoderAdapter: GroupPhotoEncoderPort {
         completionHandler: @escaping (GroupPhotoEncodingResult?, Error?) -> Void
     ) {
         let handle = GroupPhotoSourceHandle(value: source)
-        DispatchQueue.global(qos: .userInitiated).async { [files] in
+        DispatchQueue.global(qos: .userInitiated).async { [files, maximumDimension] in
             guard let url = files.file(handle), files.metadata(url) != nil,
                   let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil),
                   let image = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, [
                     kCGImageSourceCreateThumbnailFromImageAlways: true,
                     kCGImageSourceCreateThumbnailWithTransform: true,
-                    kCGImageSourceThumbnailMaxPixelSize: IOSPhotoFiles.maximumDimension
+                    kCGImageSourceThumbnailMaxPixelSize: maximumDimension
                   ] as CFDictionary)
             else { return completionHandler(GroupPhotoEncodingResultFailed.shared, nil) }
             let region = IOSSquareCrop.calculate(width: image.width, height: image.height, crop: crop)
             guard let square = image.cropping(to: CGRect(x: region.x, y: region.y, width: region.side, height: region.side)),
-                  let data = Self.encodeBounded(square)
+                  let data = IOSJPEG.encodeBounded(square, maximumBytes: IOSPhotoFiles.maximumBytes)
             else { return completionHandler(GroupPhotoEncodingResultFailed.shared, nil) }
             let payload = EncodedGroupPhoto(
                 mediaType: GroupPhotoMediaType.jpeg,
@@ -154,16 +197,6 @@ final class IOSPhotoEncoderAdapter: GroupPhotoEncoderPort {
             )
             completionHandler(GroupPhotoEncodingResultEncoded(value: payload), nil)
         }
-    }
-
-    private static func encodeBounded(_ image: CGImage) -> Data? {
-        for quality in [0.92, 0.85, 0.75, 0.65] {
-            let data = NSMutableData()
-            guard let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { continue }
-            CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
-            if CGImageDestinationFinalize(destination), data.length <= IOSPhotoFiles.maximumBytes { return data as Data }
-        }
-        return nil
     }
 }
 
@@ -248,12 +281,21 @@ final class IOSPhotoSelectionAdapter: NSObject, @preconcurrency GroupPhotoSelect
         }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
-            let url = image.jpegData(compressionQuality: 0.95).flatMap { try? self.files.store($0) }
+            let url = Self.reduced(image).jpegData(compressionQuality: 0.95).flatMap { try? self.files.storeCaptured($0) }
             Task { @MainActor in
                 guard self.gate.complete(.camera) else { self.files.cleanup(url); return }
                 self.finishSelection(url)
             }
         }
+    }
+
+    /// Reduz a foto da câmera antes de virar JPEG; o desenho já aplica a orientação.
+    nonisolated static func reduced(_ image: UIImage) -> UIImage {
+        let pixels = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+        let ratio = min(1, CGFloat(IOSPhotoFiles.maximumDimension) / max(pixels.width, pixels.height))
+        let format = UIGraphicsImageRendererFormat.default(); format.scale = 1; format.opaque = true
+        let size = CGSize(width: (pixels.width * ratio).rounded(.down), height: (pixels.height * ratio).rounded(.down))
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
     }
 
     private func begin(_ kind: IOSPhotoRequestKind, _ next: @escaping Completion) -> Bool {
@@ -290,12 +332,14 @@ final class IOSPhotoSelectionAdapter: NSObject, @preconcurrency GroupPhotoSelect
 struct IOSGroupPhotoAdapters {
     let selection: IOSPhotoSelectionAdapter
     let encoder: IOSPhotoEncoderAdapter
+    let profileEncoder: IOSPhotoEncoderAdapter
     let previews: IOSPhotoPreviewAdapter
     @MainActor static func makeLive(presenter: @escaping () -> UIViewController?) -> IOSGroupPhotoAdapters {
         let files = IOSPhotoFiles()
         return IOSGroupPhotoAdapters(
             selection: IOSPhotoSelectionAdapter(files: files, presenter: presenter),
             encoder: IOSPhotoEncoderAdapter(files: files),
+            profileEncoder: IOSPhotoEncoderAdapter(files: files, maximumDimension: IOSPhotoEncoderAdapter.profileDimension),
             previews: IOSPhotoPreviewAdapter(files: files)
         )
     }
