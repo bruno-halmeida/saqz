@@ -18,28 +18,74 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://links.saqz.app/assets/whatsapp-link.jpg?v=2">
 <style>
-  :root { --blue:#0638df; --lime:#c7f300; --ink:#071025; --paper:#f4f5f0; }
-  * { box-sizing:border-box; }
-  body {
-    margin:0; min-height:100svh; display:flex; align-items:center; justify-content:center;
-    background:var(--paper); color:var(--ink); font-family:Inter,system-ui,-apple-system,sans-serif;
-    padding:24px;
+  /* Hallmark · redesign (só layout) · tom: utilitário com a marca do app · azul/lima/papel da landing */
+  :root {
+    --blue:#0638df; --blue-press:#052fb8; --lime:#c7f300; --ink:#071025; --paper:#f4f5f0;
+    --card:#fcfcfa; --tile:#fff; --text:#3c4257; --muted:#5d6379; --line:rgba(7,16,37,.14);
+    --radius-card:28px; --radius-tile:20px; --ease:cubic-bezier(.23,1,.32,1);
+    color-scheme:light;
   }
-  main { width:min(400px,100%); text-align:center; }
-  .logo { width:150px; height:auto; }
-  h1 { font-size:24px; line-height:1.2; margin:28px 0 12px; letter-spacing:-.02em; }
-  p { font-size:15px; line-height:1.5; margin:0 0 28px; color:#3c4257; }
+  * { box-sizing:border-box; }
+  html, body { overflow-x:clip; }
+  body {
+    margin:0; min-height:100svh; display:grid; place-items:center;
+    background:var(--paper); color:var(--ink); font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+    padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right))
+            max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
+  }
+  main { width:min(400px,100%); min-width:0; }
+  .logo { display:block; width:128px; height:auto; margin:0 0 36px; }
+  h1 {
+    margin:0 0 12px; font-size:clamp(26px,7vw,30px); font-weight:800; line-height:1.1;
+    letter-spacing:-.035em; text-wrap:balance; overflow-wrap:anywhere;
+  }
+  p { max-width:36ch; margin:0 0 32px; font-size:16px; line-height:1.5; color:var(--text); text-wrap:pretty; }
   .primary, .secondary {
-    display:inline-flex; align-items:center; justify-content:center; width:100%;
-    padding:16px 24px; border-radius:999px; text-decoration:none; font-size:15px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; width:100%; min-height:52px; padding:0 24px;
+    border-radius:999px; text-decoration:none; font-size:16px; font-weight:700; letter-spacing:-.01em; white-space:nowrap;
+    transition:background-color 160ms var(--ease), border-color 160ms var(--ease), transform 160ms var(--ease);
   }
   .primary { background:var(--blue); color:#fff; }
-  .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid rgba(7,16,37,.18); }
+  .secondary { margin-top:12px; background:transparent; color:var(--ink); border:1.5px solid var(--line); }
   .primary:active, .secondary:active { transform:scale(.98); }
-  .quiet { display:inline-block; margin-top:20px; font-size:13px; color:#6b7186; text-decoration:underline; }
-  .qr { width:200px; margin:0 auto 24px; padding:12px; background:#fff; border-radius:16px; }
+  .primary:focus-visible, .secondary:focus-visible, .quiet:focus-visible { outline:3px solid var(--blue); outline-offset:3px; }
+  .quiet {
+    display:inline-block; margin-top:20px; padding:4px 0; font-size:14px; color:var(--muted);
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  @media (hover:hover) {
+    .primary:hover { background:var(--blue-press); }
+    .secondary:hover { border-color:var(--ink); }
+    .quiet:hover { color:var(--ink); }
+  }
+  /* QR code (computador, convite e presença): ladrilho branco para o leitor do celular, com margem de silêncio. */
+  .qr { width:min(248px,100%); margin:0 0 32px; padding:16px; background:var(--tile); border:1px solid var(--line); border-radius:var(--radius-tile); }
   .qr svg { display:block; width:100%; height:auto; }
-  [hidden] { display:none; }
+  /* Janela larga: cartão em duas metades. Texto e lojas à esquerda; à direita o painel azul com o QR. */
+  @media (min-width:780px) {
+    main:has(#qr:not([hidden])) {
+      width:min(900px,100%); min-height:540px; display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,360px); grid-template-rows:1fr repeat(6,auto) 1fr;
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); overflow:hidden;
+    }
+    main:has(#qr:not([hidden]))::before { content:""; grid-column:2; grid-row:1 / -1; background:var(--blue); }
+    main:has(#qr:not([hidden])) > :where(.logo, h1, p, .primary, .secondary, .quiet) {
+      grid-column:1; justify-self:start; width:100%; max-width:320px; margin-inline:56px 48px;
+    }
+    main:has(#qr:not([hidden])) > .logo { grid-row:2; width:148px; margin-bottom:40px; }
+    main:has(#qr:not([hidden])) > h1 { grid-row:3; max-width:none; width:auto; font-size:clamp(30px,3.6vw,38px); }
+    main:has(#qr:not([hidden])) > p { grid-row:4; margin-bottom:32px; }
+    main:has(#qr:not([hidden])) > .primary { grid-row:5; }
+    main:has(#qr:not([hidden])) > .secondary { grid-row:6; }
+    main:has(#qr:not([hidden])) > .quiet { grid-row:7; width:auto; justify-self:start; }
+    main:has(#qr:not([hidden])) > .qr {
+      grid-column:2; grid-row:1 / -1; place-self:center; width:248px; margin:0; border:0; z-index:1;
+      box-shadow:0 0 0 10px rgba(255,255,255,.14);
+    }
+  }
+  @media (prefers-reduced-motion:reduce) { .primary, .secondary { transition:none; } .primary:active, .secondary:active { transform:none; } }
+  [hidden] { display:none !important; }
 </style>
 </head>
 <body>
