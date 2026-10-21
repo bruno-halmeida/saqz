@@ -444,7 +444,7 @@ class JdbcAttendanceCommandRepository(
     }
 
     // Consulta à parte para não mexer na ordem de confirmados e espera do ROSTER (DEB-116).
-    // Só quem ainda é membro: quem saiu do grupo tem a linha de group_memberships apagada.
+    // Só quem ainda é do grupo (membro ou dono): quem saiu tem a linha de group_memberships apagada.
     private fun declined(groupId: UUID, gameId: UUID): List<AttendanceRosterMember> =
         jdbc.sql(DECLINED_ROSTER).param("group", groupId).param("game", gameId).query { rs, _ ->
             AttendanceRosterMember(
@@ -732,8 +732,10 @@ class JdbcAttendanceCommandRepository(
         const val DECLINED_ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.position
             FROM game_attendance a
-            JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
+            JOIN access_groups ag ON ag.id=a.group_id
+            LEFT JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
             WHERE a.group_id=:group AND a.game_id=:game AND a.status='DECLINED' AND a.guest_seq=0
+              AND (m.user_id IS NOT NULL OR ag.owner_user_id=a.member_user_id)
             ORDER BY lower(a.member_display_name),a.member_display_name,a.member_user_id
         """
         const val ROSTER = """
