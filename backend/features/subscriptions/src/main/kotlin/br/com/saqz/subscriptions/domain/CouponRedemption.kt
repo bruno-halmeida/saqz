@@ -7,4 +7,5 @@ data class CouponRedemption(
     val couponId: UUID,
     val userId: UUID,
     val redeemedAt: Instant,
+    val platform: CouponPlatform = CouponPlatform.WEB,
 )
