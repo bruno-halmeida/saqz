@@ -27,7 +27,7 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalTestApi::class)
 class MemberPhotoTest {
     @Test
-    fun `member photo needs group, member and tag and puts the tag in the url`() {
+    fun `member photo needs group member and tag and puts the tag in the url`() {
         assertEquals(
             "/api/groups/g-1/members/u-1/photo?v=abc123",
             memberPhoto("g-1", "u-1", "abc123")?.url,

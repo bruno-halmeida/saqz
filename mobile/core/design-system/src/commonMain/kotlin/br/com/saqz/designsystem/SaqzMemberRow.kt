@@ -109,9 +109,15 @@ fun SaqzAvatar(
  * foto carrega ou quando ela falha.
  */
 @Composable
-fun SaqzAvatarInitials(name: String, size: Dp = 40.dp, color: Color = SaqzTheme.colors.textPrimary) {
+fun SaqzAvatarInitials(
+    name: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    color: Color = SaqzTheme.colors.textPrimary,
+) {
     Text(
         text = saqzInitials(name),
+        modifier = modifier,
         fontSize = avatarTextSize(size),
         lineHeight = avatarTextSize(size),
         fontWeight = FontWeight.SemiBold,

@@ -64,7 +64,7 @@ class KtorHomeGatewayTest {
     }
 
     @Test
-    fun `roster preview maps member id and photo tag, absent on old backends`() = runTest {
+    fun `roster preview maps member id and photo tag absent on old backends`() = runTest {
         val json = HOME_JSON.replace(
             """{"displayName": "Ana", "waitlistPosition": null}""",
             """{"displayName": "Ana", "waitlistPosition": null, "userId": "user-ana", "photoTag": "abc123"}""",
