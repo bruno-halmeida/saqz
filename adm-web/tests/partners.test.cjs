@@ -66,3 +66,35 @@ test('cupom com "+ Novo parceiro" cria o parceiro antes e manda o partnerId', as
   assert.equal(requests.find(r => r.path === '/admin/partners' && r.method === 'POST').body.name, 'Arena Moema');
   assert.equal(requests.find(r => r.path === '/admin/coupons' && r.method === 'POST').body.partnerId, 'novo');
 });
+
+test('comissão: meses com extrato, fechar e pagar, e regra com vírgula', async () => {
+  const months = [
+    { month: '2026-10', closed: false, canClose: false, totalCents: -419, lines: [{ customerName: 'Ana', line: { kind: 'REFUND', source: 'SITE', paidAt: '2026-09-10T12:00:00Z', grossCents: -4193, commissionCents: -419 } }] },
+    { month: '2026-09', closed: true, paidOn: null, totalCents: 419, lines: [{ customerName: 'Ana', line: { kind: 'PAYMENT', source: 'GOOGLE_PLAY', paidAt: '2026-09-10T12:00:00Z', grossCents: 4190, commissionCents: 419 } }] },
+  ];
+  const { app, requests } = setup({
+    'GET /admin/partners/p1/commission': json(months),
+    'PUT /admin/partners/p1/commission-rule': json({}, 204),
+    'POST /admin/partners/p1/commission/2026-09/paid': json({}, 204),
+    'GET /admin/partners': json([]),
+  });
+  app.setState({ partnerSel: 'p1' });
+  app.carregarComissao(); await flush();
+  const v = app.comissaoVals();
+  assert.equal(v.comLinhas.length, 4);
+  assert.equal(v.comLinhas[0].mes, 'outubro de 2026');
+  assert.match(v.comLinhas[1].comissao, /^Estorno /);
+  assert.equal(v.comLinhas[2].podePagar, true);
+  assert.equal(v.comLinhas[3].plataforma, 'Android');
+  v.comLinhas[2].onPagar();
+  app.setState(s => ({ comPago: { ...s.comPago, data: '21/10/2026', nota: 'Pix 21/10' } }));
+  app.salvarPago(); await flush();
+  assert.deepEqual(JSON.parse(JSON.stringify(requests.at(-1).body ?? requests.find(r => r.path.endsWith('/paid')).body)), { paidOn: '2026-10-21', note: 'Pix 21/10' });
+
+  app.setState({ comRegra: { pct: '12,5', duracao: 'MONTHS', meses: 6 } });
+  app.salvarRegra(); await flush();
+  assert.deepEqual(JSON.parse(JSON.stringify(requests.find(r => r.method === 'PUT').body)), { percent: 12.5, duration: 'MONTHS', months: 6 });
+  app.setState({ comRegra: { pct: '12,555', duracao: 'LIFETIME', meses: 12 } });
+  const antes = requests.length; app.salvarRegra();
+  assert.equal(requests.length, antes);
+});

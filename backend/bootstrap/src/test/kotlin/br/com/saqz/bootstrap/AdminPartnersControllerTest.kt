@@ -72,4 +72,35 @@ class AdminPartnersControllerTest {
         assertEquals(201, controller.create(req(known)).statusCode.value())
         assertEquals(known, seen.single().partnerId)
     }
+
+    @Test
+    fun `regra de comissão - valida percentual, duração e meses - fechar só mês válido`() {
+        val saved = mutableListOf<br.com.saqz.subscriptions.application.CommissionRule?>()
+        val store = object : br.com.saqz.subscriptions.application.PartnerCommissionStore {
+            override fun rule(partnerId: UUID) = null
+            override fun setRule(partnerId: UUID, rule: br.com.saqz.subscriptions.application.CommissionRule?) = (partnerId == known).also { saved += rule }
+            override fun months(partnerId: UUID, now: Instant) = null
+            override fun totals(partnerId: UUID, now: Instant) = br.com.saqz.subscriptions.application.PartnerCommissionTotals(0, 0)
+            override fun close(partnerId: UUID, month: java.time.YearMonth, now: Instant) =
+                br.com.saqz.subscriptions.application.CloseCommissionResult.NotEnded
+            override fun markPaid(partnerId: UUID, month: java.time.YearMonth, paidOn: java.time.LocalDate, note: String?) = true
+        }
+        val controller = AdminPartnersController(Partners(), store) { now }
+        fun rule(p: String?, d: String?, m: Int? = null) = br.com.saqz.adminweb.http.CommissionRuleRequest().apply {
+            percent = p?.let { java.math.BigDecimal(it) }; duration = d; months = m
+        }
+        assertEquals(204, controller.setRule(known, rule("12.5", "MONTHS", 6)).statusCode.value())
+        assertEquals(java.math.BigDecimal("12.50"), saved.last()?.percent)
+        assertEquals(6, saved.last()?.months)
+        assertEquals(204, controller.setRule(known, rule(null, null)).statusCode.value())
+        assertEquals(null, saved.last())
+        assertEquals(400, controller.setRule(known, rule("12.555", "LIFETIME")).statusCode.value())
+        assertEquals(400, controller.setRule(known, rule("0", "LIFETIME")).statusCode.value())
+        assertEquals(400, controller.setRule(known, rule("10", "MONTHS", 61)).statusCode.value())
+        assertEquals(400, controller.setRule(known, rule("10", "SEMPRE")).statusCode.value())
+        assertEquals(404, controller.setRule(UUID.randomUUID(), rule("10", "LIFETIME")).statusCode.value())
+        assertEquals(400, controller.close(known, "2026-13").statusCode.value())
+        assertEquals(400, controller.close(known, "2026-10").statusCode.value())
+        assertEquals(400, controller.markPaid(known, "2026-09", br.com.saqz.adminweb.http.MarkCommissionPaidRequest()).statusCode.value())
+    }
 }
