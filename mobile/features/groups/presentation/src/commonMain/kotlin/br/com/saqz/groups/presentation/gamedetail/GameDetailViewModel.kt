@@ -51,7 +51,15 @@ import br.com.saqz.groups.presentation.isPlanPaused
 import br.com.saqz.groups.presentation.AutoRetry
 import br.com.saqz.groups.presentation.isOffline
 import br.com.saqz.groups.presentation.toUiError
+import br.com.saqz.domain.DataError
+import br.com.saqz.groups.domain.communication.CommunicationGateway
+import br.com.saqz.groups.presentation.game.gameHeroDisplay
+import br.com.saqz.groups.presentation.game.gameLongDateLabel
+import br.com.saqz.groups.presentation.game.gameMenuTitle
+import br.com.saqz.groups.presentation.game.gameTimeLabel
+import br.com.saqz.groups.presentation.game.gameTimeZone
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -73,6 +81,8 @@ class GameDetailViewModel(
     /** Resposta pelo app limpa o aviso das 24 h do jogo no aparelho; sem a porta (web, teste) não há o que limpar. */
     private val notifications: NativeNotificationPort? = null,
     private val notificationPrompt: NotificationPromptOffer? = null,
+    /** "Avisar" quem não respondeu (DEB-116); sem a porta (teste antigo) o botão não envia. */
+    private val communications: CommunicationGateway? = null,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
     private var promotionGeneration = 0
@@ -99,6 +109,7 @@ class GameDetailViewModel(
     /** Início do rascunho que o servidor recusou publicar por cair além do fim do plano; outro início na recarga limpa o aviso. */
     private var publishRefusedStart: Instant? = null
     private var groupPromotionMode: PromotionMode = PromotionMode.FIFO
+    private var groupName: String? = null
 
     /**
      * O servidor recusou a resposta por prazo vencido (`ATTENDANCE_DEADLINE_PASSED`, backend v.0.0.17). A
@@ -106,6 +117,9 @@ class GameDetailViewModel(
      * prazo voltaria a prometer a lista de espera, até o próximo toque recusado.
      */
     private var deadlineRefused = false
+
+    /** "Avisar" que falhou: tentar de novo reaproveita o `requestId` (o servidor deduplica); o sucesso o descarta. */
+    private var reminderRequestId: String? = null
 
     /**
      * Carga no ar. Só a recarga por baixo ([GameDetailIntent.Refresh]) é descartada por ela: o
@@ -129,7 +143,10 @@ class GameDetailViewModel(
     override fun handleIntent(intent: GameDetailIntent) {
         when (intent) {
             GameDetailIntent.Retry, GameDetailIntent.Refresh -> reload(intent)
-            GameDetailIntent.Edit -> emit(GameDetailEffect.OpenEditor)
+            GameDetailIntent.Edit -> {
+                update { it.copy(gameMenuOpen = false) }
+                emit(GameDetailEffect.OpenEditor)
+            }
             GameDetailIntent.OpenSettlement -> if (
                 state.value.isAdmin && state.value.header?.statusTone == GameDetailStatusTone.Completed ||
                 state.value.canReviewFinance
@@ -137,7 +154,7 @@ class GameDetailViewModel(
                 emit(GameDetailEffect.OpenSettlement)
             }
             GameDetailIntent.RequestCancel -> if (state.value.header?.statusTone == GameDetailStatusTone.Published) {
-                update { it.copy(cancelDialogOpen = true, cancelFailed = false) }
+                update { it.copy(cancelDialogOpen = true, cancelFailed = false, gameMenuOpen = false) }
             }
             GameDetailIntent.DismissCancel -> if (!state.value.cancelling) {
                 update { it.copy(cancelDialogOpen = false, cancelFailed = false) }
@@ -175,7 +192,10 @@ class GameDetailViewModel(
             GameDetailIntent.DismissGuestSheet -> if (!state.value.guest.adding) {
                 updateGuest { it.copy(sheetOpen = false, addFailed = false) }
             }
-            is GameDetailIntent.RequestRemoveGuest -> requestRemoveGuest(intent.rowId)
+            is GameDetailIntent.RequestRemoveGuest -> {
+                update { it.copy(personActionsId = null) }
+                requestRemoveGuest(intent.rowId)
+            }
             GameDetailIntent.ConfirmRemoveGuest -> confirmRemoveGuest()
             GameDetailIntent.DismissRemoveGuest -> if (!state.value.guest.removing) {
                 updateGuest { it.copy(removal = null, removeFailed = false) }
@@ -189,7 +209,10 @@ class GameDetailViewModel(
     /** "Tirar" e "Colocar alguém no jogo" do gestor (DEB-017). */
     private fun onOrganizerIntent(intent: GameDetailIntent): Boolean {
         when (intent) {
-            is GameDetailIntent.RequestRemoveMember -> requestRemoveMember(intent.rowId)
+            is GameDetailIntent.RequestRemoveMember -> {
+                update { it.copy(personActionsId = null) }
+                requestRemoveMember(intent.rowId)
+            }
             GameDetailIntent.ToggleRemoveReason -> updateOrganizer { organizer ->
                 organizer.copy(removal = organizer.removal?.let { it.copy(reasonOpen = !it.reasonOpen) })
             }
@@ -222,9 +245,70 @@ class GameDetailViewModel(
                     )
                 }
             }
+            else -> return onScreenIntent(intent)
+        }
+        return true
+    }
+
+    /** Cabeçalho e menus da tela redesenhada (DEB-116): mapa, Avisar, ⋯ da barra e ⋮ de cada pessoa. */
+    private fun onScreenIntent(intent: GameDetailIntent): Boolean {
+        when (intent) {
+            GameDetailIntent.OpenVenueMap -> openMap()
+            GameDetailIntent.MapOpenFailed -> update { it.copy(mapFailed = true) }
+            GameDetailIntent.NotifyPending -> notifyPending()
+            GameDetailIntent.OpenGameMenu -> if (state.value.hasGameMenu) update { it.copy(gameMenuOpen = true) }
+            GameDetailIntent.DismissGameMenu -> update { it.copy(gameMenuOpen = false) }
+            is GameDetailIntent.OpenPersonActions -> openPersonActions(intent.rowId)
+            GameDetailIntent.DismissPersonActions -> update { it.copy(personActionsId = null) }
             else -> return false
         }
         return true
+    }
+
+    /** O mapa abre o endereço DO JOGO; jogo sem endereço não mostra o botão, mas a falha fica colada na linha. */
+    private fun openMap() {
+        val address = state.value.hero?.address?.takeIf(String::isNotBlank)
+        update { it.copy(mapFailed = address == null) }
+        if (address != null) emit(GameDetailEffect.OpenMap(address))
+    }
+
+    /** O ⋮ só abre para quem tem alguma ação naquela linha (gestor, ou o anfitrião no convidado dele). */
+    private fun openPersonActions(rowId: String) {
+        val current = state.value
+        val confirmed = current.confirmedRoster.firstOrNull { it.id == rowId }
+        val waiting = current.waitlist.firstOrNull { it.id == rowId }
+        val canAct = confirmed?.canRemove == true || confirmed?.guest?.canRemove == true ||
+            waiting?.canRemove == true || waiting?.guest?.canRemove == true ||
+            (waiting != null && current.canForce(waiting))
+        if (canAct) update { it.copy(personActionsId = rowId) }
+    }
+
+    /**
+     * "Avisar" de quem não respondeu, o mesmo envio do grupo: trava de toque duplo, `requestId` reaproveitado na
+     * falha, recusa do servidor (jogo começou) com o texto próprio.
+     */
+    private fun notifyPending() {
+        val current = state.value
+        val gateway = communications ?: return
+        if (!current.isAdmin || current.reminder.sending) return
+        if (current.header?.statusTone != GameDetailStatusTone.Published || current.header.canRespond.not()) return
+        val requestId = reminderRequestId ?: Uuid.random().toString().also { reminderRequestId = it }
+        val loadAtStart = loadGeneration
+        update { it.copy(reminder = GameReminderUi(sending = true)) }
+        viewModelScope.launch {
+            val result = gateway.remind(GroupId(groupId), gameId, requestId)
+            if (loadAtStart != loadGeneration) return@launch
+            when (result) {
+                is SaqzResult.Success -> {
+                    reminderRequestId = null
+                    update { it.copy(reminder = GameReminderUi(notifiedCount = result.value.recipientCount)) }
+                }
+                is SaqzResult.Failure -> {
+                    val refused = result.error.cause is DataError.Validation
+                    update { it.copy(reminder = GameReminderUi(failed = !refused, refused = refused)) }
+                }
+            }
+        }
     }
     /**
      * `Retry` recarrega por inteiro. `Refresh` é a volta à tela: recarga por baixo, e o primeiro,
@@ -258,14 +342,17 @@ class GameDetailViewModel(
                     if (generation != loadGeneration) return@launch
                     when (groupResult) {
                         is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError(), softRefresh)
-                        is SaqzResult.Success -> loadAttendance(
-                            generation,
-                            gameResult.value.game,
-                            groupResult.value.group.role != GroupRole.ATHLETE,
-                            groupResult.value.group.gameConfig.mensalistaPriority,
-                            groupResult.value.group.gameConfig.promotionMode,
-                            softRefresh,
-                        )
+                        is SaqzResult.Success -> {
+                            groupName = groupResult.value.group.name
+                            loadAttendance(
+                                generation,
+                                gameResult.value.game,
+                                groupResult.value.group.role != GroupRole.ATHLETE,
+                                groupResult.value.group.gameConfig.mensalistaPriority,
+                                groupResult.value.group.gameConfig.promotionMode,
+                                softRefresh,
+                            )
+                        }
                     }
                 }
             }
@@ -283,8 +370,10 @@ class GameDetailViewModel(
         get() {
             val writing = cancelling || publishing || savingCapacity || promotingMemberId != null || response.responding
             val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null ||
-                organizer.removal != null || organizer.placeOpen || positionPicker != null
-            return writing || interacting || guest.adding || guest.removing || organizer.removing || organizer.placing
+                organizer.removal != null || organizer.placeOpen || positionPicker != null || gameMenuOpen ||
+                personActionsId != null
+            return writing || interacting || guest.adding || guest.removing || organizer.removing || organizer.placing ||
+                reminder.sending
         }
 
     private suspend fun loadAttendance(
@@ -326,6 +415,8 @@ class GameDetailViewModel(
                 val header = game.toHeader()
                 val open = header.confirmationOpen
                 val tone = header.statusTone
+                val hero = game.toHero()
+                if (generation != loadGeneration) return
                 update {
                     it.copy(
                         isLoading = false,
@@ -341,6 +432,12 @@ class GameDetailViewModel(
                         waitlist = roster.waitlisted.map { member ->
                             member.toWaitlist(byId[member.memberId], isAdmin, open, tone)
                         },
+                        declinedRoster = roster.declined?.map { member -> member.toDeclined(byId[member.memberId]) },
+                        groupName = groupName,
+                        hero = hero,
+                        showsFeeNote = membershipType == AthleteMembershipType.AVULSO && game.gameFeeCents != null,
+                        gameMenuOpen = false,
+                        personActionsId = null,
                         guest = guestUi(game, detail, open, it.guest),
                         response = responseUi(tone == GameDetailStatusTone.Published, detail.ownAttendance, roster, mensalistaPriority),
                         mensalistaPriority = mensalistaPriority,
@@ -424,6 +521,7 @@ class GameDetailViewModel(
     }
 
     private fun openCapacitySheet() {
+        update { it.copy(gameMenuOpen = false) }
         if (!state.value.isAdmin || state.value.header?.statusTone != GameDetailStatusTone.Published) return
         if (state.value.header?.gameStarted == true) return
         val capacity = state.value.attendance?.capacity ?: return
@@ -523,6 +621,7 @@ class GameDetailViewModel(
                             waitlist = roster.waitlisted.map { member ->
                                 member.toWaitlist(byId[member.memberId], isAdmin, open, tone)
                             },
+                            declinedRoster = roster.declined?.map { member -> member.toDeclined(byId[member.memberId]) },
                             response = it.response.reconcile(roster, it.mensalistaPriority),
                         )
                     }
@@ -558,7 +657,10 @@ class GameDetailViewModel(
             is GameDetailIntent.UpdateGuestPosition -> updateGuest { it.copy(position = intent.position) }
             is GameDetailIntent.SelectPlacePosition ->
                 updateOrganizer { it.copy(placePosition = intent.position, placeFailure = null) }
-            is GameDetailIntent.RequestForceEntry -> requestForceEntry(intent.rowId)
+            is GameDetailIntent.RequestForceEntry -> {
+                update { it.copy(personActionsId = null) }
+                requestForceEntry(intent.rowId)
+            }
             is GameDetailIntent.ConfirmForceEntry -> confirmForceEntry(intent.defaultReason)
             else -> return false
         }
@@ -938,6 +1040,29 @@ class GameDetailViewModel(
         canRemove = canRemoveMember(isAdmin, tone),
     )
 
+    /** Quem não vai: só nome, posição e vínculo; ninguém mexe nessa lista. */
+    private fun AttendanceRosterMember.toDeclined(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(
+        id = rowKey,
+        name = displayName,
+        isYou = !isGuest && memberId == selfId,
+        position = position ?: athlete?.position,
+        isMensalista = athlete?.membershipType == AthleteMembershipType.MENSALISTA,
+    )
+
+    /** "Terça, 19h30", "28 de julho", o fim do jogo e o endereço, no fuso do jogo. */
+    private suspend fun Game.toHero(): GameDetailHeroUi? {
+        val zone = gameTimeZone(zoneId)
+        val start = runCatching { Instant.parse(startsAt) }.getOrNull() ?: return null
+        val local = start.toLocalDateTime(zone)
+        return GameDetailHeroUi(
+            title = local.gameHeroDisplay(),
+            date = local.date.gameLongDateLabel(),
+            endTime = (start + durationMinutes.minutes).toLocalDateTime(zone).gameTimeLabel(),
+            address = venue.address.trim(),
+            menuTitle = local.date.gameMenuTitle(),
+        )
+    }
+
     /** Membro (não convidado, que tem a ação própria) que não é o gestor olhando, em jogo publicado. */
     private fun AttendanceRosterMember.canRemoveMember(isAdmin: Boolean, tone: GameDetailStatusTone?) =
         isAdmin && tone == GameDetailStatusTone.Published && !isGuest && memberId != selfId
@@ -1189,6 +1314,11 @@ class GameDetailViewModel(
 
     private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 }
+
+/** DEB-102: posição cheia + gestor = pode forçar a entrada de quem espera nela (fica acima das vagas). */
+internal fun GameDetailState.canForce(person: GameDetailWaitlistUi): Boolean =
+    canManageAttendance && header?.gameStarted != true && person.guest == null &&
+        positions.any { it.position == person.athletePosition && it.full }
 
 private fun PositionSummary.toUi() = GamePositionUi(position, slots, confirmed, missing, waitlisted)
 

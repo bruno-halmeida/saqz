@@ -30,6 +30,64 @@
     <string name="game_load_failure_title">Não foi possível carregar este jogo</string>
     <string name="game_load_access_denied">Você não tem acesso a este jogo</string>
     <string name="game_load_not_found">Jogo não encontrado</string>
+    <!-- DEB-116 · tela do jogo em tela cheia -->
+    <string name="game_detail_long_date">%1$s de %2$s</string>
+    <string name="game_menu_title">Jogo de %1$s, %2$s</string>
+    <string name="game_kicker_open">CONFIRMAÇÕES ABERTAS</string>
+    <string name="game_kicker_full">JOGO LOTADO</string>
+    <string name="game_kicker_deadline">PRAZO ENCERRADO</string>
+    <string name="game_kicker_started">EM ANDAMENTO</string>
+    <string name="game_kicker_draft">RASCUNHO</string>
+    <string name="game_kicker_completed">JOGO REALIZADO</string>
+    <string name="game_kicker_cancelled">JOGO CANCELADO</string>
+    <string name="game_hero_until">até %1$s</string>
+    <string name="game_lime_open_positions">Tem vaga para %1$s</string>
+    <string name="game_lime_and">e</string>
+    <string name="game_tab_played">Jogaram</string>
+    <string name="game_tab_not_played">Não foram</string>
+    <string name="game_tab_capacity">/%1$d</string>
+    <string name="game_more_actions">Mais ações do jogo</string>
+    <string name="game_person_actions">Ações de %1$s</string>
+    <string name="game_menu_edit_hint">Data, hora, quadra e valor</string>
+    <string name="game_menu_cancel_hint">Pede confirmação antes</string>
+    <string name="game_row_mensalista">Mensalista</string>
+    <string name="game_row_avulso">Avulso</string>
+    <string name="game_slot_open">Vaga aberta</string>
+    <string name="game_slot_position">Vaga de %1$s</string>
+    <string name="game_slot_yours">Pode ser a sua</string>
+    <string name="game_slot_place">Toque para colocar alguém</string>
+    <string name="game_guest_row_hint">Entra na lista de espera.</string>
+    <string name="game_waitlist_note_fifo">Se alguém desistir, a fila anda pela ordem.</string>
+    <string name="game_waitlist_note_organizer">Você escolhe quem entra. Em posição completa, quem você colocar fica acima das vagas.</string>
+    <string name="game_waitlist_empty">Ninguém na lista de espera.</string>
+    <string name="game_declined_empty_title">Ninguém avisou que não vai.</string>
+    <string name="game_declined_empty_body">Quem responder Não vou aparece aqui.</string>
+    <string name="game_waitlist_place">Colocar</string>
+    <string name="game_position_complete">%1$s · completo</string>
+    <plurals name="game_menu_capacity_hint">
+        <item quantity="one">Hoje é %1$d vaga</item>
+        <item quantity="other">Hoje são %1$d vagas</item>
+    </plurals>
+    <plurals name="game_lime_missing">
+        <item quantity="one">Falta %1$s</item>
+        <item quantity="other">Faltam %1$s</item>
+    </plurals>
+    <plurals name="game_slots_more">
+        <item quantity="one">+ %1$d vaga aberta</item>
+        <item quantity="other">+ %1$d vagas abertas</item>
+    </plurals>
+    <plurals name="game_pending_people">
+        <item quantity="one">%1$d pessoa sem resposta</item>
+        <item quantity="other">%1$d pessoas sem resposta</item>
+    </plurals>
+    <plurals name="game_declined_count">
+        <item quantity="one">%1$d pessoa avisou que não vai.</item>
+        <item quantity="other">%1$d pessoas avisaram que não vão.</item>
+    </plurals>
+    <plurals name="game_position_missing_chip">
+        <item quantity="one">Falta %1$d</item>
+        <item quantity="other">Faltam %1$d</item>
+    </plurals>
     <plurals name="game_detail_confirmed_full">
         <item quantity="one">%1$d de %2$d confirmado · lotado</item>
         <item quantity="other">%1$d de %2$d confirmados · lotado</item>

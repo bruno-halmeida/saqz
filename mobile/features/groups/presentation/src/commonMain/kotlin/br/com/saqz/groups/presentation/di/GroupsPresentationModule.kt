@@ -116,7 +116,7 @@ fun groupsPresentationModule(): Module = module {
         val (groupId, gameId) = gameEditorRouteArguments(params)
         GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull(), getOrNull(), getOrNull())
     }
-    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull(), getOrNull()) }
+    viewModel { params -> GameDetailViewModel(params.get(), params.get(), get(), get(), get(), get(), getOrNull(), getOrNull(), get()) }
     viewModel { params -> PositionPickerViewModel(params[0], params[1], params[2], params.get(), get(), get(), get(), getOrNull()) }
     viewModel {
         GroupPhotoViewModel(

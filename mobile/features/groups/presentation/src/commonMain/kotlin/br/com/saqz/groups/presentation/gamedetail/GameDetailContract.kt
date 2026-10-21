@@ -45,6 +45,22 @@ data class GameDetailState(
     val positions: List<GamePositionUi> = emptyList(),
     /** Seletor de posição aberto ("Vou" ou "Forçar entrada"). */
     val positionPicker: GamePositionPickerUi? = null,
+    /** Título da barra de cima (DEB-116); `null` enquanto carrega, e a tela diz "Jogo". */
+    val groupName: String? = null,
+    /** Textos do cabeçalho azul que dependem do fuso do jogo. */
+    val hero: GameDetailHeroUi? = null,
+    /** Quem respondeu "Não vou" (DEB-116); `null` = servidor antigo, e a aba mostra só o número. */
+    val declinedRoster: List<GameDetailConfirmedUi>? = null,
+    /** "Ver no mapa" sem endereço ou sem app de mapa: a falha fica colada na linha da quadra. */
+    val mapFailed: Boolean = false,
+    /** "Avisar" de quem não respondeu, o mesmo envio do grupo. */
+    val reminder: GameReminderUi = GameReminderUi(),
+    /** Avulso em jogo com taxa e respostas abertas: a nota da cobrança, como no grupo. */
+    val showsFeeNote: Boolean = false,
+    /** Menu ⋯ da barra (dono/admin). */
+    val gameMenuOpen: Boolean = false,
+    /** Linha cujo ⋮ abriu a folha de ações da pessoa. */
+    val personActionsId: String? = null,
 ) {
     val hasPositions: Boolean get() = positions.isNotEmpty()
 
@@ -66,7 +82,71 @@ data class GameDetailState(
 
     /** Depois do início a espera não anda mais, então com o jogo cheio não adianta colocar ninguém. */
     val placeBlocked: Boolean get() = placeGoesToWaitlist && header?.gameStarted == true
+
+    /** Número da aba Não vão: o tamanho da lista, ou a contagem do servidor antigo. */
+    val declinedCount: Int get() = declinedRoster?.size ?: attendance?.declined ?: 0
+
+    /** A aba abre em Na espera para quem está na espera; para o resto, em Vão. */
+    val initialTab: GameDetailTab
+        get() = if (response.status == AttendanceStatus.Waitlisted) GameDetailTab.Waiting else GameDetailTab.Going
+
+    /** Dono e admins mexem no jogo pelo ⋯ da barra; o menu sempre tem "Editar jogo". */
+    val hasGameMenu: Boolean get() = isAdmin && header != null
+
+    /** "Ajustar vagas": publicado, por começar e sem posições (com posições o total é a soma delas, DEB-102). */
+    val canAdjustCapacity: Boolean
+        get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published && header.gameStarted.not() && !hasPositions
+
+    /** Painel "N pessoas sem resposta" com o Avisar: some sem pendente, mas fica depois do envio para dizer o retorno. */
+    val canNotify: Boolean
+        get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published && header.canRespond &&
+            ((attendance?.pending ?: 0) > 0 || reminder.notifiedCount != null)
+
+    /** A linha verde-limão do que falta (DEB-116). */
+    val limeLine: GameLimeLine? get() = limeLine()
+
+    /** O gestor coloca da espera no jogo: escolha manual e jogo por começar (DEB-018). */
+    val canPromote: Boolean
+        get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published && header.gameStarted.not() &&
+            promotionMode == PromotionMode.MANUAL
 }
+
+enum class GameDetailTab { Going, Waiting, Declined }
+
+/** O que falta no jogo, na linha verde-limão do cabeçalho. */
+sealed interface GameLimeLine {
+    /** "Restam 2 vagas": jogo sem posições, de 1 a 3 vagas, para quem ainda não respondeu. */
+    data class SpotsLeft(val spots: Int) : GameLimeLine
+
+    /** "Tem vaga para central e oposto(a)": o atleta sem resposta, em jogo com posições. */
+    data class OpenPositions(val positions: List<AthletePosition>) : GameLimeLine
+
+    /** "Falta 1 central e 2 ponteiros(as)": o que o gestor ainda precisa fechar. */
+    data class Missing(val missing: List<Pair<AthletePosition, Int>>) : GameLimeLine
+}
+
+@Immutable
+data class GameDetailHeroUi(
+    /** "Terça, 19h30" */
+    val title: String,
+    /** "28 de julho" */
+    val date: String,
+    /** "21h30": início mais a duração, no fuso do jogo. */
+    val endTime: String,
+    /** Vazio = jogo sem endereço: sem a linha do endereço e sem o "Ver no mapa". */
+    val address: String,
+    /** "Jogo de terça, 28/07" (título do menu ⋯). */
+    val menuTitle: String,
+)
+
+@Immutable
+data class GameReminderUi(
+    val sending: Boolean = false,
+    val failed: Boolean = false,
+    val refused: Boolean = false,
+    /** Quantos receberam; preenchido depois do envio. */
+    val notifiedCount: Int? = null,
+)
 /** Uma posição do jogo (DEB-102): "2/2 pontas". */
 @Immutable
 data class GamePositionUi(
@@ -342,6 +422,17 @@ sealed interface GameDetailIntent {
     /** [defaultReason] vai quando "Outro motivo" está fechado, vazio ou com menos de 2 caracteres. */
     data class ConfirmPlaceMember(val defaultReason: String) : GameDetailIntent
     data object DismissPlaceSheet : GameDetailIntent
+
+    /** "Ver no mapa" do cabeçalho (DEB-116). */
+    data object OpenVenueMap : GameDetailIntent
+    data object MapOpenFailed : GameDetailIntent
+
+    /** "Avisar" quem não respondeu. */
+    data object NotifyPending : GameDetailIntent
+    data object OpenGameMenu : GameDetailIntent
+    data object DismissGameMenu : GameDetailIntent
+    data class OpenPersonActions(val rowId: String) : GameDetailIntent
+    data object DismissPersonActions : GameDetailIntent
 }
 sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect
@@ -350,4 +441,7 @@ sealed interface GameDetailEffect {
 
     /** "Vou" em jogo com posições: abre a tela de escolher posição (DEB-107). */
     data object PickPosition : GameDetailEffect
+
+    /** "Ver no mapa": o endereço do jogo. */
+    data class OpenMap(val address: String) : GameDetailEffect
 }
