@@ -30,8 +30,14 @@ class MonthlyFeeExemptMigrationIntegrationTest {
     @Test
     fun `avulso nao pode ser isento`() {
         val (group, member) = membership("avulso")
+        // O gatilho zera a isenção de quem não é mensalista; o CHECK segura quem passar por fora dele.
+        execute("UPDATE group_memberships SET monthly_fee_exempt = true WHERE group_id = '$group' AND user_id = '$member'")
+        assertEquals(false, bool("SELECT monthly_fee_exempt FROM group_memberships WHERE group_id = '$group' AND user_id = '$member'"))
         assertFailsWith<Exception> {
-            execute("UPDATE group_memberships SET monthly_fee_exempt = true WHERE group_id = '$group' AND user_id = '$member'")
+            execute(
+                "ALTER TABLE group_memberships DISABLE TRIGGER group_memberships_mensalista_since; " +
+                    "UPDATE group_memberships SET monthly_fee_exempt = true WHERE group_id = '$group' AND user_id = '$member'",
+            )
         }
     }
 

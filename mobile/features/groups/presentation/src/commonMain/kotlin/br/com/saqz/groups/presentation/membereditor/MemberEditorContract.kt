@@ -96,15 +96,18 @@ sealed interface MemberEditorIntent {
     data object SaveBilling : MemberEditorIntent
     data class AdminChanged(val value: Boolean) : MemberEditorIntent
     /** Ligar abre a confirmação; desligar salva na hora. */
-    data class ExemptionChanged(val value: Boolean) : MemberEditorIntent
-    data object ConfirmExemption : MemberEditorIntent
-    data object DismissExemption : MemberEditorIntent
+    data class ExemptionChanged(val value: Boolean) : MemberEditorExemptionIntent
+    data object ConfirmExemption : MemberEditorExemptionIntent
+    data object DismissExemption : MemberEditorExemptionIntent
     data object Save : MemberEditorIntent
     data object OpenRemove : MemberEditorIntent
     data object DismissRemove : MemberEditorIntent
     data object ConfirmRemove : MemberEditorIntent
     data object DismissSubscriptionRequired : MemberEditorIntent
 }
+
+/** Chave "Isenção da mensalidade" e a confirmação dela (DEB-115). */
+sealed interface MemberEditorExemptionIntent : MemberEditorIntent
 
 sealed interface MemberEditorEffect {
     data object Close : MemberEditorEffect

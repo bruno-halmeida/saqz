@@ -178,7 +178,8 @@ class AthleteManagementTest {
             ),
             result,
         )
-        assertEquals(listOf(command), fixture.athletes.updateCommands)
+        // Sem o campo, a isenção atual (falsa) é mantida.
+        assertEquals(listOf(command.copy(monthlyFeeExempt = false)), fixture.athletes.updateCommands)
     }
 
     @Test

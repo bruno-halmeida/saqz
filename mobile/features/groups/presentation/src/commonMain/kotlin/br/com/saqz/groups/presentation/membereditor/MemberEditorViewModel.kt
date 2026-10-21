@@ -83,14 +83,12 @@ class MemberEditorViewModel(
             }
             MemberEditorIntent.SaveBilling -> saveBilling()
             is MemberEditorIntent.AdminChanged -> changeRole(intent.value)
-            is MemberEditorIntent.ExemptionChanged -> changeExemption(intent.value)
-            MemberEditorIntent.ConfirmExemption -> saveExemption(true)
+            is MemberEditorExemptionIntent -> handleExemption(intent)
             MemberEditorIntent.Save -> save()
             MemberEditorIntent.OpenRemove -> openRemove()
             MemberEditorIntent.ConfirmRemove -> remove()
             MemberEditorIntent.DismissBilling,
             MemberEditorIntent.DismissRemove,
-            MemberEditorIntent.DismissExemption,
             MemberEditorIntent.DismissSubscriptionRequired,
             -> dismissSheet(intent)
         }
@@ -101,7 +99,6 @@ class MemberEditorViewModel(
         when (intent) {
             MemberEditorIntent.DismissBilling -> it.copy(billingSheetOpen = false)
             MemberEditorIntent.DismissRemove -> it.copy(removeSheetOpen = false)
-            MemberEditorIntent.DismissExemption -> it.copy(exemptionConfirmOpen = false)
             else -> it.copy(subscriptionRequired = false)
         }
     }
@@ -244,11 +241,18 @@ class MemberEditorViewModel(
         patch(
             operation = MemberEditorOperation.Billing,
             command = persisted.toBillingUpdateCommand(
+                groupId = groupId,
                 membershipType = AthleteMembershipType.MENSALISTA,
                 monthlyFeeCents = amount,
                 monthlyDueDay = current.billingDueDay,
             ),
         )
+    }
+
+    private fun handleExemption(intent: MemberEditorExemptionIntent) = when (intent) {
+        is MemberEditorIntent.ExemptionChanged -> changeExemption(intent.value)
+        MemberEditorIntent.ConfirmExemption -> saveExemption(true)
+        MemberEditorIntent.DismissExemption -> update { it.copy(exemptionConfirmOpen = false) }
     }
 
     private fun changeExemption(value: Boolean) {
@@ -263,7 +267,12 @@ class MemberEditorViewModel(
         if (persisted.membershipType != AthleteMembershipType.MENSALISTA) return
         patch(
             operation = MemberEditorOperation.Exemption,
-            command = persisted.toPersistedUpdateCommand().copy(monthlyFeeExempt = value),
+            command = persisted.toBillingUpdateCommand(
+                groupId = groupId,
+                membershipType = persisted.membershipType,
+                monthlyFeeCents = persisted.monthlyFeeCents,
+                monthlyDueDay = persisted.monthlyDueDay,
+            ).copy(monthlyFeeExempt = value),
         )
     }
 
@@ -274,7 +283,7 @@ class MemberEditorViewModel(
             update { it.copy(heightError = true) }
             return
         }
-        patch(MemberEditorOperation.Save, current.toUpdateCommand())
+        patch(MemberEditorOperation.Save, current.toUpdateCommand(groupId, userId))
     }
 
     private fun patch(operation: MemberEditorOperation, command: UpdateAthleteCommand) {
@@ -421,53 +430,6 @@ class MemberEditorViewModel(
         return generation
     }
 
-    private fun MemberEditorState.toUpdateCommand(
-        membershipType: AthleteMembershipType = this.membershipType,
-        monthlyFeeCents: Long? = monthlyFeeOverrideCents,
-        monthlyDueDay: Int? = monthlyDueDayOverride,
-    ) = UpdateAthleteCommand(
-        groupId = GroupId(groupId),
-        userId = this@MemberEditorViewModel.userId,
-        position = position,
-        membershipType = membershipType,
-        active = active,
-        nickname = nickname.trim().takeIf(String::isNotEmpty),
-        secondaryPosition = secondaryPosition.takeUnless { it == position },
-        level = level,
-        preferredSide = preferredSide,
-        heightCm = heightCm,
-        monthlyFeeCents = monthlyFeeCents,
-        monthlyDueDay = monthlyDueDay,
-        // Avulso não tem isenção; o backend zera de qualquer forma.
-        monthlyFeeExempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
-    )
-
-    private fun AthleteRosterEntry.toPersistedUpdateCommand() = toBillingUpdateCommand(
-        membershipType = membershipType,
-        monthlyFeeCents = monthlyFeeCents,
-        monthlyDueDay = monthlyDueDay,
-    )
-
-    private fun AthleteRosterEntry.toBillingUpdateCommand(
-        membershipType: AthleteMembershipType,
-        monthlyFeeCents: Long?,
-        monthlyDueDay: Int?,
-    ) = UpdateAthleteCommand(
-        groupId = GroupId(groupId),
-        userId = userId,
-        position = position,
-        membershipType = membershipType,
-        active = active,
-        nickname = nickname,
-        secondaryPosition = secondaryPosition,
-        level = level,
-        preferredSide = preferredSide,
-        heightCm = heightCm,
-        monthlyFeeCents = monthlyFeeCents,
-        monthlyDueDay = monthlyDueDay,
-        monthlyFeeExempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
-    )
-
     private fun clearDraft() {
         listOf(
             KEY_NICKNAME,
@@ -486,6 +448,44 @@ class MemberEditorViewModel(
         const val DEFAULT_DUE_DAY = 10
     }
 }
+
+private fun MemberEditorState.toUpdateCommand(groupId: String, userId: String) = UpdateAthleteCommand(
+    groupId = GroupId(groupId),
+    userId = userId,
+    position = position,
+    membershipType = membershipType,
+    active = active,
+    nickname = nickname.trim().takeIf(String::isNotEmpty),
+    secondaryPosition = secondaryPosition.takeUnless { it == position },
+    level = level,
+    preferredSide = preferredSide,
+    heightCm = heightCm,
+    monthlyFeeCents = monthlyFeeOverrideCents,
+    monthlyDueDay = monthlyDueDayOverride,
+    // Avulso não tem isenção; o backend zera de qualquer forma.
+    monthlyFeeExempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
+)
+
+private fun AthleteRosterEntry.toBillingUpdateCommand(
+    groupId: String,
+    membershipType: AthleteMembershipType,
+    monthlyFeeCents: Long?,
+    monthlyDueDay: Int?,
+) = UpdateAthleteCommand(
+    groupId = GroupId(groupId),
+    userId = userId,
+    position = position,
+    membershipType = membershipType,
+    active = active,
+    nickname = nickname,
+    secondaryPosition = secondaryPosition,
+    level = level,
+    preferredSide = preferredSide,
+    heightCm = heightCm,
+    monthlyFeeCents = monthlyFeeCents,
+    monthlyDueDay = monthlyDueDay,
+    monthlyFeeExempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
+)
 
 private fun MemberEditorState.restoreDraft(savedState: SavedStateHandle): MemberEditorState {
     val restoredMembership = savedState.get<String>(KEY_MEMBERSHIP).toEnumOrNull<AthleteMembershipType>()
