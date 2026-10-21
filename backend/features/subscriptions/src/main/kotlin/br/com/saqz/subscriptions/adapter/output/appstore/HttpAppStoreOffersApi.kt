@@ -29,7 +29,8 @@ class AppStoreConnectCredentials(
     val keyId: String,
     privateKeyPem: String,
 ) {
-    internal val privateKey: PrivateKey? = privateKeyPem.takeIf { it.isNotBlank() }?.let(::parsePkcs8)
+    // Chave malformada não derruba o boot: as ofertas da Apple falham com "credenciais não configuradas".
+    internal val privateKey: PrivateKey? = privateKeyPem.takeIf { it.isNotBlank() }?.let { runCatching { parsePkcs8(it) }.getOrNull() }
 
     val configured: Boolean get() = issuerId.isNotBlank() && keyId.isNotBlank() && privateKey != null
 

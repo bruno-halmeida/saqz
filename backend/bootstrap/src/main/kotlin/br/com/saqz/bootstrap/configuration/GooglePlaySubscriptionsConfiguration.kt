@@ -75,7 +75,7 @@ class GooglePlaySubscriptionsConfiguration {
  * Conta de serviço do Firebase Admin (GOOGLE_APPLICATION_CREDENTIALS) com o escopo do Play. Lida
  * só na primeira chamada: ambiente sem credencial (dev, testes) sobe e a chamada falha com 503.
  */
-private class GooglePlayAccessTokens : () -> String {
+internal class GooglePlayAccessTokens : () -> String {
     private val credentials by lazy {
         GoogleCredentials.getApplicationDefault().createScoped(HttpGooglePlayPurchasesApi.SCOPE)
     }
