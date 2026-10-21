@@ -394,6 +394,7 @@ class GameDetailViewModel(
         val athletesResult = athleteGateway.roster(GroupId(groupId), AthleteRosterFilter())
         if (generation != loadGeneration) return
         val profileResult = athleteGateway.ownProfile()
+        val hero = game.toHero()
         if (generation != loadGeneration) return
         when {
             detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError(), softRefresh)
@@ -415,8 +416,6 @@ class GameDetailViewModel(
                 val header = game.toHeader()
                 val open = header.confirmationOpen
                 val tone = header.statusTone
-                val hero = game.toHero()
-                if (generation != loadGeneration) return
                 update {
                     it.copy(
                         isLoading = false,

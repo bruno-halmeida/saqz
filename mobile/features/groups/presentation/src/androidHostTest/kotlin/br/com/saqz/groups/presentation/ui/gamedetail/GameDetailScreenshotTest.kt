@@ -144,7 +144,11 @@ class GameDetailScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h1000dp")
-    fun naoVaoVazia() = capture("nao-vao-vazia", GameDetailScenes.confirmed.copy(declinedRoster = emptyList()), tab = GameDetailTags.TabDeclined)
+    fun naoVaoVazia() = capture(
+        "nao-vao-vazia",
+        GameDetailScenes.confirmed.copy(declinedRoster = emptyList()),
+        tab = GameDetailTags.TabDeclined,
+    )
 
     @Test
     @Config(qualifiers = "+h1000dp")

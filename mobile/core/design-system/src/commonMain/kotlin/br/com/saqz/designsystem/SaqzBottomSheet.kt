@@ -256,12 +256,14 @@ fun SaqzSheetAction(
     modifier: Modifier = Modifier,
     hint: String? = null,
     destructive: Boolean = false,
+    /** A primeira ação da folha fica sem a linha: a folha já separa o título. */
+    divider: Boolean = true,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val foreground = if (destructive) colors.errorForeground else colors.textPrimary
     Column(modifier.fillMaxWidth()) {
-        SaqzDivider()
+        if (divider) SaqzDivider()
         Row(
             modifier = Modifier
                 .fillMaxWidth()

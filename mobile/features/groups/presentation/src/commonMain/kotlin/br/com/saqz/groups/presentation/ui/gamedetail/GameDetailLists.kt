@@ -455,10 +455,10 @@ private fun PositionBand(row: GamePositionUi) {
 }
 
 @Composable
-private fun NoPositionBand() = Band(stringResource(Res.string.position_without_group), Modifier) {}
+private fun NoPositionBand() = Band(stringResource(Res.string.position_without_group)) {}
 
 @Composable
-private fun Band(title: String, modifier: Modifier, trailing: @Composable () -> Unit) {
+private fun Band(title: String, modifier: Modifier = Modifier, trailing: @Composable () -> Unit) {
     Row(
         modifier = modifier
             .fillMaxWidth()

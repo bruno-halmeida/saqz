@@ -193,7 +193,9 @@ private fun GroupGameHero(
             ),
             tags = GroupHeroAttendanceTags,
         )
-        if (state.membershipType == AthleteMembershipType.AVULSO && game.hasGameFee && game.canRespond) HeroFeeNote(GroupDetailsTags.HeroFeeNote)
+        if (state.membershipType == AthleteMembershipType.AVULSO && game.hasGameFee && game.canRespond) {
+            HeroFeeNote(GroupDetailsTags.HeroFeeNote)
+        }
         if (state.rosterStale) {
             HeroRosterStale(
                 refreshing = state.rosterRefreshing,

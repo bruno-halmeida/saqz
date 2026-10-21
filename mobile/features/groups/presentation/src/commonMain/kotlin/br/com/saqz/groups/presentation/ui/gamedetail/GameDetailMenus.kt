@@ -40,6 +40,7 @@ internal fun GameMenuSheet(state: GameDetailState, onIntent: (GameDetailIntent) 
         label = stringResource(Res.string.game_detail_edit),
         hint = stringResource(Res.string.game_menu_edit_hint),
         onClick = { onIntent(GameDetailIntent.Edit) },
+        divider = false,
         modifier = Modifier.testTag(GameDetailTags.MenuEdit),
     )
     if (state.canAdjustCapacity) {
@@ -84,13 +85,16 @@ internal fun GamePersonActionsSheet(state: GameDetailState, rowId: String, onInt
             SaqzSheetAction(
                 icon = SaqzIcons.CircleX,
                 label = stringResource(Res.string.game_person_remove),
+                divider = false,
                 onClick = { onIntent(GameDetailIntent.RequestRemoveMember(rowId)) },
                 destructive = true,
                 modifier = Modifier.testTag(GameOrganizerTags.remove(rowId)),
             )
         }
+        val removable = confirmed?.canRemove == true || waiting?.canRemove == true
         if (waiting != null && state.canForce(waiting)) {
             SaqzSheetAction(
+                divider = removable,
                 icon = SaqzIcons.UserPlus,
                 label = stringResource(Res.string.position_force_action),
                 onClick = { onIntent(GameDetailIntent.RequestForceEntry(rowId)) },
@@ -99,6 +103,7 @@ internal fun GamePersonActionsSheet(state: GameDetailState, rowId: String, onInt
         }
         if (guest?.canRemove == true) {
             SaqzSheetAction(
+                divider = removable || (waiting != null && state.canForce(waiting)),
                 icon = SaqzIcons.CircleX,
                 label = stringResource(Res.string.game_person_remove_guest),
                 onClick = { onIntent(GameDetailIntent.RequestRemoveGuest(rowId)) },

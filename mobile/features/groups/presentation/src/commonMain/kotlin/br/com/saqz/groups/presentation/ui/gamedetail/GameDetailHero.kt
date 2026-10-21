@@ -314,7 +314,9 @@ private fun ColumnScope.GamePublishedBlock(
 
 /** Rascunho (gestor): o "Publicar jogo" lima no lugar do "Vou", com o apoio ou o erro de hoje. */
 @Composable
-private fun GamePublishBlock(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) {
+private fun GamePublishBlock(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) = Column(
+    verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+) {
     SaqzButton(
         label = stringResource(Res.string.game_detail_publish),
         onClick = { onIntent(GameDetailIntent.Publish) },

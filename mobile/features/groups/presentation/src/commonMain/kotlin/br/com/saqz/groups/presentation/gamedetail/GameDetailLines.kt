@@ -6,20 +6,18 @@ package br.com.saqz.groups.presentation.gamedetail
  * para o gestor, o que falta por posição.
  */
 internal fun GameDetailState.resolveLimeLine(): GameLimeLine? {
-    val header = header ?: return null
-    val attendance = attendance ?: return null
-    if (header.statusTone != GameDetailStatusTone.Published || !header.canRespond || attendance.availableSpots <= 0) {
-        return null
-    }
+    val spots = attendance?.availableSpots ?: 0
+    val open = header?.let { it.statusTone == GameDetailStatusTone.Published && it.canRespond } == true
+    if (!open || spots <= 0) return null
     val unanswered = response.status == null
     if (!hasPositions) {
-        return attendance.availableSpots.takeIf { unanswered && it in 1..SPOTS_LEFT_MAX }?.let(GameLimeLine::SpotsLeft)
+        return spots.takeIf { unanswered && it in 1..SPOTS_LEFT_MAX }?.let(GameLimeLine::SpotsLeft)
     }
-    val open = positions.filter { it.slots > 0 && it.missing > 0 }.sortedBy { it.position.ordinal }
+    val missing = positions.filter { it.slots > 0 && it.missing > 0 }.sortedBy { it.position.ordinal }
     return when {
-        open.isEmpty() -> null
-        isAdmin -> GameLimeLine.Missing(open.map { it.position to it.missing })
-        unanswered -> GameLimeLine.OpenPositions(open.map { it.position })
+        missing.isEmpty() -> null
+        isAdmin -> GameLimeLine.Missing(missing.map { it.position to it.missing })
+        unanswered -> GameLimeLine.OpenPositions(missing.map { it.position })
         else -> null
     }
 }
