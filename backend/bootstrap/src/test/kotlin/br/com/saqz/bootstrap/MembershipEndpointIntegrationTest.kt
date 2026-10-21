@@ -71,7 +71,7 @@ class MembershipEndpointIntegrationTest {
 
         assertEquals(200, response.statusCode())
         assertEquals(3, body.size())
-        assertEquals(setOf("userId", "displayName", "role"), body[0].propertyNames().asSequence().toSet())
+        assertEquals(setOf("userId", "displayName", "role", "photoTag"), body[0].propertyNames().asSequence().toSet())
         assertTrue(response.body().contains("Owner Person"))
     }
 
