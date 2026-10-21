@@ -1,11 +1,13 @@
 package br.com.saqz.composeapp.di
 
 import br.com.saqz.subscriptions.data.appstore.KtorAppStoreSubscriptionGateway
+import br.com.saqz.subscriptions.data.coupon.KtorCampaignCouponGateway
 import br.com.saqz.subscriptions.data.googleplay.KtorGooglePlaySubscriptionGateway
 import br.com.saqz.subscriptions.data.purchase.KtorPurchaseInformationGateway
 import br.com.saqz.subscriptions.data.subscription.KtorSubscriptionGateway
 import br.com.saqz.subscriptions.data.trial.KtorTrialGateway
 import br.com.saqz.subscriptions.domain.appstore.AppStoreSubscriptionGateway
+import br.com.saqz.subscriptions.domain.coupon.CampaignCouponGateway
 import br.com.saqz.subscriptions.domain.googleplay.GooglePlaySubscriptionGateway
 import br.com.saqz.subscriptions.domain.purchase.PurchaseInformationGateway
 import br.com.saqz.subscriptions.domain.subscription.SubscriptionGateway
@@ -18,4 +20,5 @@ internal val subscriptionsDataModule = module {
     single<PurchaseInformationGateway> { KtorPurchaseInformationGateway(get()) }
     single<AppStoreSubscriptionGateway> { KtorAppStoreSubscriptionGateway(get()) }
     single<GooglePlaySubscriptionGateway> { KtorGooglePlaySubscriptionGateway(get()) }
+    single<CampaignCouponGateway> { KtorCampaignCouponGateway(get()) }
 }
