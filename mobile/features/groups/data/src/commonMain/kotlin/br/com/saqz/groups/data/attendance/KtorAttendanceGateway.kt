@@ -107,6 +107,8 @@ internal data class AttendanceRosterTransport(
     val confirmed: List<AttendanceRosterMemberTransport> = emptyList(),
     val waitlisted: List<AttendanceRosterMemberTransport> = emptyList(),
     val positions: List<PositionSummaryTransport>? = null,
+    /** DEB-116: ausente no servidor antigo. */
+    val declined: List<AttendanceRosterMemberTransport>? = null,
 )
 
 @Serializable
@@ -466,6 +468,7 @@ private fun AttendanceRosterTransport.toDomain() = AttendanceRoster(
     confirmed = confirmed.map(AttendanceRosterMemberTransport::toDomain),
     waitlisted = waitlisted.map(AttendanceRosterMemberTransport::toDomain),
     positions = positions.toDomain(),
+    declined = declined?.map(AttendanceRosterMemberTransport::toDomain),
 )
 
 private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(

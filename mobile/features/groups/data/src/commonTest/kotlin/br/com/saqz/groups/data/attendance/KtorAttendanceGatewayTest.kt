@@ -100,6 +100,17 @@ class KtorAttendanceGatewayTest {
         assertEquals(listOf("confirmed-1", "confirmed-2"), roster.confirmed.map { it.memberId })
         assertEquals(listOf("wait-2", "wait-1"), roster.waitlisted.map { it.memberId })
         assertEquals(2L, roster.waitlisted.first().waitlistPosition)
+        // Servidor antigo, sem `declined`: a lista fica nula e a tela cai no número (DEB-116).
+        assertEquals(null, roster.declined)
+    }
+
+    @Test
+    fun rosterParsesDeclinedListInBackendOrder() = runTest {
+        val result = gateway { respond(ROSTER_WITH_DECLINED_JSON, headers = jsonHeaders()) }.roster(GROUP, GAME)
+
+        val roster = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceRoster
+        assertEquals(listOf("out-1", "out-2"), roster.declined?.map { it.memberId })
+        assertEquals("Marina Costa", roster.declined?.last()?.displayName)
     }
 
     @Test
@@ -576,6 +587,7 @@ class KtorAttendanceGatewayTest {
         const val GAME = "game-1"
         const val KEY = "request-key"
         const val ROSTER_JSON = """{"confirmed":[{"memberId":"confirmed-1","displayName":"Ana"},{"memberId":"confirmed-2","displayName":"Bia"}],"waitlisted":[{"memberId":"wait-2","displayName":"Caio","waitlistPosition":2},{"memberId":"wait-1","displayName":"Duda","waitlistPosition":1}]}"""
+        const val ROSTER_WITH_DECLINED_JSON = """{"confirmed":[],"waitlisted":[],"declined":[{"memberId":"out-1","displayName":"Ana Reis"},{"memberId":"out-2","displayName":"Marina Costa"}]}"""
         const val ROSTER_WITH_GUEST_JSON = """{"confirmed":[{"memberId":"member-1","displayName":"Ana"}],"waitlisted":[{"memberId":"host-1","displayName":"Rafa Moreira","guestSeq":1,"hostDisplayName":"Bia Souza","waitlistPosition":3}]}"""
         const val GUEST_JSON = """{"memberId":"host-1","guestSeq":1,"displayName":"Rafa Moreira","waitlistPosition":7}"""
         const val DETAIL_JSON = """{"ownAttendance":{"memberId":"member-1","status":"WAITLISTED","waitlistPosition":4,"version":7},"confirmedCount":3,"availableSpots":21,"waitlistCount":2,"capacity":24,"declinedCount":5,"pendingCount":7,"autoConfirmEnabled":true}"""

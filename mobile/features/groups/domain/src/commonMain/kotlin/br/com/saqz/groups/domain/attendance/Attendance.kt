@@ -88,6 +88,8 @@ data class AttendanceRoster(
     val confirmed: List<AttendanceRosterMember>,
     val waitlisted: List<AttendanceRosterMember>,
     val positions: List<PositionSummary> = emptyList(),
+    /** Quem respondeu "Não vou" e segue no grupo (DEB-116), em ordem alfabética; `null` = servidor antigo, sem a lista. */
+    val declined: List<AttendanceRosterMember>? = null,
 )
 
 data class AttendanceMutation(
