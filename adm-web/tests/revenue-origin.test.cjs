@@ -118,3 +118,30 @@ test('backend antigo, sem o campo de cortesia: nada muda na tela', async () => {
   assert.equal(app.cortesiaChip(undefined).txt, '');
   assert.match(require('node:fs').readFileSync(require.resolve('../index.html'), 'utf8'), /\{\{ a\.cortesiaTxt \}\}[\s\S]*\{\{ adCortesiaTxt \}\}|\{\{ adCortesiaTxt \}\}/);
 });
+
+test('receita por origem: sem cupom e cada cupom por mês, colunas por plataforma, valor faltante sinalizado', async () => {
+  const { app, requests } = setup({
+    '/admin/revenue?months=12': { real: [], test: [], courtesy: [] },
+    '/admin/revenue/origins?months=12': [
+      { month: '2026-10', couponType: null, couponId: null, couponCode: null, campaign: null, source: 'SITE', currency: 'BRL', payments: 2, grossCents: 11980, paymentsWithoutValue: 0 },
+      { month: '2026-10', couponType: null, couponId: null, couponCode: null, campaign: null, source: 'GOOGLE_PLAY', currency: 'BRL', payments: 2, grossCents: 5990, paymentsWithoutValue: 1 },
+      { month: '2026-10', couponType: 'TRIAL', couponId: 't', couponCode: 'ARENA', campaign: 'Quadra A', source: 'APP_STORE', currency: 'BRL', payments: 1, grossCents: 5990, paymentsWithoutValue: 0 },
+      { month: '2026-10', couponType: 'DISCOUNT', couponId: 'd', couponCode: 'ARENA', campaign: null, source: 'GOOGLE_PLAY', currency: null, payments: 1, grossCents: null, paymentsWithoutValue: 1 },
+    ],
+  });
+  app.carregarReceita();
+  await flush();
+  assert.ok(requests.includes('/admin/revenue/origins?months=12'));
+  const [sem, trial, desconto] = app.origemLinhas(app.state.originData);
+  assert.equal(sem.origem, 'Sem cupom');
+  assert.equal(sem.mes, '10/2026');
+  assert.match(sem.site, /119,80/);
+  assert.match(sem.googlePlay, /59,90 · 1 sem valor/);
+  assert.equal(sem.appStore, '—');
+  assert.match(sem.total, /179,70 · 1 sem valor/);
+  assert.equal(trial.origem, 'ARENA · Trial · Quadra A');
+  assert.match(trial.appStore, /59,90/);
+  assert.equal(desconto.origem, 'ARENA · Desconto');
+  assert.equal(desconto.googlePlay, 'a definir');
+  assert.equal(app.origemLinhas(null).length, 0);
+});

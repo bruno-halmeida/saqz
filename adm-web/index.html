@@ -42,7 +42,7 @@
 .analytics-filters { display:flex;flex-wrap:wrap;gap:16px; }
 .analytics-filters label { display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:180px; }
 .analytics-filters input,.analytics-filters select { box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid var(--saqz-border);border-radius:8px;background:var(--saqz-white);color:var(--saqz-navy);font:inherit; }
-.analytics-row { display:grid;grid-template-columns:1.3fr 1fr .5fr .55fr .7fr 1.2fr 1.5fr;gap:14px;align-items:start;padding:16px 4px;border-bottom:1px solid var(--saqz-border);font-size:13px; }
+.analytics-row { display:grid;grid-template-columns:1.3fr 1fr .5fr .55fr .7fr 1.2fr 1.3fr 1.5fr;gap:14px;align-items:start;padding:16px 4px;border-bottom:1px solid var(--saqz-border);font-size:13px; }
 .analytics-head { font-size:11px;font-weight:700;color:var(--saqz-muted);padding-top:8px; }
 .analytics-status { display:inline-block;font-size:11px;padding:4px 8px;margin-top:6px;border-radius:20px;background:var(--saqz-ice); }
 @media(max-width:1100px) { .analytics-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -626,6 +626,18 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         </sc-for>
         </sc-if>
       </div>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <span style="display:block;padding:14px 20px;border-bottom:1px solid var(--saqz-border);font-size:14px;font-weight:700">Receita por origem <span style="font-weight:400;font-size:12.5px;color:var(--saqz-muted)">· primeiro cupom do cliente; pago antes do cupom conta como sem cupom</span></span>
+        <div style="overflow-x:auto">
+        <div style="min-width:820px">
+        <span style="display:grid;grid-template-columns:0.7fr 1.6fr 1fr 1fr 1fr 1fr;gap:10px;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>MÊS</span><span>ORIGEM DO CLIENTE</span><span>SITE</span><span>APP STORE</span><span>GOOGLE PLAY</span><span>TOTAL BRUTO</span></span>
+        <sc-for list="{{ origemRows }}" as="o" hint-placeholder-count="3">
+          <span style="display:grid;grid-template-columns:0.7fr 1.6fr 1fr 1fr 1fr 1fr;gap:10px;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span>{{ o.mes }}</span><span style="{{ o.origemStyle }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.origem }}</span><span>{{ o.site }}</span><span>{{ o.appStore }}</span><span>{{ o.googlePlay }}</span><strong style="font-weight:600">{{ o.total }}</strong></span>
+        </sc-for>
+        </div>
+        </div>
+        <span style="display:block;padding:12px 20px;font-size:13px;color:var(--saqz-muted)">{{ origemMsg }}</span>
+      </div>
       <sc-if value="{{ isTabAss }}" hint-placeholder-val="{{ true }}">
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
         <span style="display:grid;grid-template-columns:1.6fr 1.5fr 1fr 0.7fr 0.9fr 0.9fr 0.9fr 0.8fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span role="columnheader" aria-sort="{{ sSort.owner.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.owner.disabled }}" sc-camel-on-click="{{ sSort.owner.onClick }}">ASSINANTE<span aria-hidden="true">{{ sSort.owner.seta }}</span></button></span><span role="columnheader" aria-sort="{{ sSort.source.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.source.disabled }}" sc-camel-on-click="{{ sSort.source.onClick }}">ORIGEM<span aria-hidden="true">{{ sSort.source.seta }}</span></button></span><span role="columnheader" aria-sort="{{ sSort.plan.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.plan.disabled }}" sc-camel-on-click="{{ sSort.plan.onClick }}">PLANO<span aria-hidden="true">{{ sSort.plan.seta }}</span></button></span><span role="columnheader" aria-sort="{{ sSort.cycle.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.cycle.disabled }}" sc-camel-on-click="{{ sSort.cycle.onClick }}">CICLO<span aria-hidden="true">{{ sSort.cycle.seta }}</span></button></span><span>VALOR</span><span role="columnheader" aria-sort="{{ sSort.coupon.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.coupon.disabled }}" sc-camel-on-click="{{ sSort.coupon.onClick }}">CUPOM<span aria-hidden="true">{{ sSort.coupon.seta }}</span></button></span><span role="columnheader" aria-sort="{{ sSort.status.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.status.disabled }}" sc-camel-on-click="{{ sSort.status.onClick }}">STATUS<span aria-hidden="true">{{ sSort.status.seta }}</span></button></span><span role="columnheader" aria-sort="{{ sSort.createdAt.aria }}"><button type="button" class="col-sort" disabled="{{ sSort.createdAt.disabled }}" sc-camel-on-click="{{ sSort.createdAt.onClick }}">DESDE<span aria-hidden="true">{{ sSort.createdAt.seta }}</span></button></span><span></span></span>
@@ -717,12 +729,13 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
           <sc-if value="{{ analytics.empty }}"><p>Nenhum cupom criado. Os indicadores aparecerão aqui após a criação.</p></sc-if>
           <sc-if value="{{ analytics.noResults }}"><p>Nenhum cupom corresponde aos filtros.</p></sc-if>
           <div style="overflow-x:auto" tabindex="0" aria-label="Indicadores por cupom">
-            <div role="table" aria-label="Conversão por cupom" style="min-width:1050px">
-              <div role="row" class="analytics-row analytics-head"><span role="columnheader">Cupom / campanha</span><span role="columnheader">Benefício</span><span role="columnheader">Usaram</span><span role="columnheader">Pagantes</span><span role="columnheader">Conversão</span><span role="columnheader">Receita bruta</span><span role="columnheader">Prazo dos trials</span></div>
+            <div role="table" aria-label="Conversão por cupom" style="min-width:1200px">
+              <div role="row" class="analytics-row analytics-head"><span role="columnheader">Cupom / campanha</span><span role="columnheader">Benefício</span><span role="columnheader">Usaram</span><span role="columnheader">Pagantes</span><span role="columnheader">Conversão</span><span role="columnheader">Receita bruta</span><span role="columnheader">Por plataforma</span><span role="columnheader">Prazo dos trials</span></div>
               <sc-for list="{{ analyticsRows }}" as="a"><div role="row" class="analytics-row">
                 <div role="cell"><strong>{{ a.code }}</strong><p class="analytics-note">{{ a.campaign }}</p><span class="analytics-status">{{ a.status }}</span></div>
                 <span role="cell">{{ a.benefit }}</span><strong role="cell">{{ a.users }}</strong><strong role="cell">{{ a.payers }}</strong><strong role="cell">{{ a.rate }}</strong>
                 <div role="cell"><strong>{{ a.revenue }}</strong><p class="analytics-note">{{ a.payments }}</p><p class="analytics-note">{{ a.incomplete }}</p></div>
+                <div role="cell"><span>{{ a.site }}</span><p class="analytics-note">{{ a.appStore }}</p><p class="analytics-note">{{ a.googlePlay }}</p></div>
                 <div role="cell"><span>{{ a.maturity }}</span><p class="analytics-note">{{ a.matureRate }}</p></div>
               </div></sc-for>
             </div>
@@ -730,9 +743,10 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
         </sc-if>
         <details class="analytics-note"><summary style="cursor:pointer;font-weight:700">Como os indicadores são calculados</summary>
           <p>Usaram: organizadores com trial iniciado ou resgate de desconto registrado. Aplicar um trial sem criar o grupo não conta. Conversão: quem tem pagamento confirmado de valor positivo após o uso, dividido por quem usou.</p>
-          <p>A primeira confirmação registrada no sistema define a data do pagamento. A receita inclui renovações posteriores ao uso, sem descontar taxas ou estornos. Uma mesma cobrança conta uma vez.</p>
+          <p>A primeira confirmação registrada no sistema (ou a data da compra na loja) define a data do pagamento. A receita inclui renovações posteriores ao uso, sem descontar taxas ou estornos. Uma mesma cobrança conta uma vez.</p>
           <p>Quem usou vários cupons pode aparecer em várias campanhas. O resumo geral remove essa duplicidade e permanece igual ao filtrar a tabela. Os números mostram participação, sem atribuir a venda exclusivamente a um cupom.</p>
           <p>Compare campanhas de trial pela conversão dos prazos encerrados. “—” significa que ainda não há base para a taxa. Confirmações sem recibo completo são sinalizadas; valores não são estimados pelo preço do plano. Eventos antigos sem vínculo com o organizador não entram no cálculo.</p>
+          <p>Pagamentos do site, da App Store e do Google Play contam igual; compras de teste e estornadas ficam fora. Pagamento de loja ainda sem valor, ou em moeda que não o real, aparece como confirmação incompleta.</p>
         </details>
       </section>
       <section aria-label="Trial e campanhas" style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:20px;margin-bottom:24px;display:flex;flex-direction:column;gap:16px">
@@ -939,7 +953,7 @@ class Component extends DCLogic {
     overview: null, atrasadas: null,
     usersPage: null, userDetail: null, userReceipts: null,
     groupsPage: null, groupDetail: null,
-    subsPage: null, subDetail: null, couponsData: null, sOrigem: "todos", revenueData: null,
+    subsPage: null, subDetail: null, couponsData: null, sOrigem: "todos", revenueData: null, originData: null,
     usersPageNumber: 1, groupsPageNumber: 1, subsPageNumber: 1,
     // Ordenação por coluna, aplicada no servidor antes da paginação: null = ordem padrão.
     usersSort: null, groupsSort: null, subsSort: null,
@@ -979,7 +993,7 @@ class Component extends DCLogic {
     overview: null, atrasadas: null,
             usersPage: null, userDetail: null, userReceipts: null,
             groupsPage: null, groupDetail: null,
-            subsPage: null, subDetail: null, couponsData: null, sOrigem: "todos", revenueData: null,
+            subsPage: null, subDetail: null, couponsData: null, sOrigem: "todos", revenueData: null, originData: null,
             usersPageNumber: 1, groupsPageNumber: 1, subsPageNumber: 1,
             usersSort: null, groupsSort: null, subsSort: null,
             // Modais e toasts carregam closures destrutivas da sessão velha;
@@ -1501,6 +1515,10 @@ class Component extends DCLogic {
     this.api("/admin/revenue?months=12")
       .then((revenueData) => { if (this._revReq === req) this.setState({ revenueData }); })
       .catch(() => { if (this._revReq === req) this.setState({ revenueData: { erro: true, real: [], test: [] } }); });
+    this.setState({ originData: null });
+    this.api("/admin/revenue/origins?months=12")
+      .then((originData) => { if (this._revReq === req) this.setState({ originData }); })
+      .catch(() => { if (this._revReq === req) this.setState({ originData: { erro: true } }); });
   }
 
   filtroOrigem() {
@@ -1546,6 +1564,38 @@ class Component extends DCLogic {
       moeda: r.currency && r.currency !== "BRL" ? r.currency : "",
       pagamentos: String(r.payments),
       bruto: this.valorMoeda(r.grossCents, r.currency), liquido: this.valorMoeda(r.netCents, r.currency),
+    }));
+  }
+
+  // Receita por origem do cliente: uma linha por mês × origem ("Sem cupom" ou o primeiro cupom), colunas por plataforma.
+  origemCliente(r) {
+    if (!r.couponType) return "Sem cupom";
+    return [r.couponCode, r.couponType === "TRIAL" ? "Trial" : "Desconto", r.campaign].filter(Boolean).join(" · ");
+  }
+  origemCelula(rows) {
+    if (!rows.length) return "—";
+    const semValor = rows.reduce((n, r) => n + (r.paymentsWithoutValue || 0), 0);
+    const porMoeda = {};
+    rows.forEach((r) => { if (r.grossCents != null) porMoeda[r.currency || "BRL"] = (porMoeda[r.currency || "BRL"] || 0) + r.grossCents; });
+    const valores = Object.keys(porMoeda).sort((a, b) => (a === "BRL" ? -1 : b === "BRL" ? 1 : a.localeCompare(b)))
+      .map((m) => this.valorMoeda(porMoeda[m], m));
+    const txt = valores.length ? valores.join(" + ") : "a definir";
+    return semValor && valores.length ? `${txt} · ${semValor} sem valor` : txt;
+  }
+  origemLinhas(rows) {
+    const grupos = new Map();
+    (Array.isArray(rows) ? rows : []).forEach((r) => {
+      const key = `${r.month}|${r.couponType || ""}|${r.couponId || ""}`;
+      if (!grupos.has(key)) grupos.set(key, { month: r.month, origem: this.origemCliente(r), semCupom: !r.couponType, rows: [] });
+      grupos.get(key).rows.push(r);
+    });
+    return [...grupos.entries()].map(([key, g]) => ({
+      key, mes: this.mesBr(g.month), origem: g.origem,
+      origemStyle: g.semCupom ? "color:var(--saqz-muted)" : "font-weight:600",
+      site: this.origemCelula(g.rows.filter((r) => r.source === "SITE")),
+      appStore: this.origemCelula(g.rows.filter((r) => r.source === "APP_STORE")),
+      googlePlay: this.origemCelula(g.rows.filter((r) => r.source === "GOOGLE_PLAY")),
+      total: this.origemCelula(g.rows),
     }));
   }
 
@@ -1650,6 +1700,10 @@ class Component extends DCLogic {
     const rate=n=>n==null ? "—" : Number(n).toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
     const money=n=>(Number(n)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
     const missing=n=>n ? n+(n===1 ? " organizador com confirmação incompleta. " : " organizadores com confirmação incompleta. ")+"Receita e conversão podem estar subestimadas." : "";
+    const platform=(list,source,name)=>{const p=(list || []).find(x=>x.source===source);
+      return p ? name+": "+p.payingUsers+(p.payingUsers===1 ? " pagante · " : " pagantes · ")+money(p.revenueCents) : "";};
+    const platforms=list=>{const v={site:platform(list,"SITE","Site"),appStore:platform(list,"APP_STORE","App Store"),googlePlay:platform(list,"GOOGLE_PLAY","Google Play")};
+      return v.site || v.appStore || v.googlePlay ? v : {...v,site:"—"};};
     const query=st.analyticsSearch.trim().toLocaleLowerCase("pt-BR");
     const rows=(data?.coupons || []).filter(c=>(st.analyticsType==="ALL" || c.type===st.analyticsType) &&
       (!query || (c.code+" "+(c.campaign || "")).toLocaleLowerCase("pt-BR").includes(query)));
@@ -1667,6 +1721,7 @@ class Component extends DCLogic {
         benefit:c.type==="TRIAL" ? "Trial · "+c.trialDays+" dias" : "Desconto · "+c.discountPercent+"%",
         users:c.metrics.users,payers:c.metrics.payingUsers,rate:rate(c.metrics.conversionPercent),revenue:money(c.metrics.revenueCents),
         payments:c.metrics.payments+(c.metrics.payments===1 ? " pagamento" : " pagamentos"),incomplete:missing(c.metrics.incompleteUsers),
+        ...platforms(c.metrics.platforms),
         maturity:c.type==="TRIAL" ? c.ongoingTrials+" em andamento · "+c.endedTrials+" encerrados" : "Não se aplica",
         matureRate:c.type==="TRIAL" ? "Conversão dos encerrados: "+rate(c.endedConversionPercent) : ""}))};
   }
@@ -2049,6 +2104,9 @@ class Component extends DCLogic {
     const receitaTesteRows = rv ? this.receitaLinhas(rv.test) : [];
     const cortesiaRows = rv ? this.cortesiaLinhas(rv.courtesy) : [];
     const receitaMsg = !st.revenueData ? "Carregando receita…" : st.revenueData.erro ? "Não foi possível carregar a receita." : receitaRows.length === 0 ? "Nenhum pagamento real confirmado nos últimos 12 meses." : "";
+    const od = st.originData;
+    const origemRows = od && !od.erro ? this.origemLinhas(od) : [];
+    const origemMsg = !od ? "Carregando receita por origem…" : od.erro ? "Não foi possível carregar a receita por origem." : origemRows.length === 0 ? "Nenhum pagamento real confirmado nos últimos 12 meses." : "";
     const recResumo = sp ? (sp.erro ? "erro ao carregar" : `${sp.total} assinatura${sp.total === 1 ? "" : "s"}`) : "carregando…";
 
     const sd = st.subDetail && !st.subDetail.erro ? st.subDetail : null;
@@ -2129,7 +2187,7 @@ class Component extends DCLogic {
       isTabAss: true,
       sSort: this.ordenacoes("subs", ["owner", "source", "plan", "cycle", "coupon", "status", "createdAt"]),
       assinRows, recResumo, sPager: this.paginacao("subs"), sOrigem: st.sOrigem, onSOrigem: this.filtroOrigem(),
-      receitaRows, cortesiaRows, receitaTesteRows, receitaMsg, receitaTemTeste: receitaTesteRows.length > 0,
+      receitaRows, cortesiaRows, receitaTesteRows, receitaMsg, origemRows, origemMsg, receitaTemTeste: receitaTesteRows.length > 0,
       ad, adCortesiaTxt: this.cortesiaDetalhe(sds && sds.courtesy), adCortesiaStyle: sds && sds.courtesy ? this.chip("rgba(23,178,106,.12)", "#17B26A") : "display:none", adStatusTxt: adStatus.txt, adStatusStyle: adStatus.style, adHist, adAtiva: !!sds && !adCancelada,
       onCancelar: !sds || adCancelada ? () => {} : () => this.setState({ modal: { titulo: `Cancelar o plano de ${sds.ownerName}?`, texto: "A assinatura para de renovar no Asaas e vale até o fim do período já pago.", confirm: "Cancelar plano", danger: true, acao: () => {
         this.mutacao(`/admin/subscriptions/${sds.ownerUserId}/cancel`, { method: "POST" }).then((r) => {

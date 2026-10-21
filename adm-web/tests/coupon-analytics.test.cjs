@@ -55,3 +55,10 @@ test('direct admin session replacement clears old data and starts a fresh page l
  analytics[0].resolve(ok(data()));analytics[1].resolve(ok({...data(),coupons:[]}));await flush();
  assert.equal(app.state.analyticsBusy,false);assert.equal(app.state.analyticsData.coupons.length,0);
 });
+test('conversion table shows payers and revenue per platform',()=>{
+ const {app}=setup();const d=data();
+ d.coupons[0].metrics={...metrics,platforms:[{source:'SITE',payingUsers:1,payments:1,revenueCents:1000},{source:'GOOGLE_PLAY',payingUsers:2,payments:2,revenueCents:1000}]};
+ app.state.analyticsData=d;const [row,other]=app.analyticsVals().analyticsRows;
+ assert.match(row.site,/^Site: 1 pagante · R\$\s?10,00$/);assert.equal(row.appStore,'');assert.match(row.googlePlay,/^Google Play: 2 pagantes · /);
+ assert.equal(other.site,'—');
+});
