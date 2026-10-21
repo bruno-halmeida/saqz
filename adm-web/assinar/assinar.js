@@ -18,6 +18,9 @@
 
   var loginPorLink = new URLSearchParams(window.location.search).get("t");
   var redimindoLink = Boolean(loginPorLink);
+  // Link de campanha (?cupom=CODIGO): o cupom é preenchido e validado ao escolher o plano.
+  var cupomDaUrl = (new URLSearchParams(window.location.search).get("cupom") || "")
+    .trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 32);
 
   function limparTokenDaUrl() {
     if (!loginPorLink) return;
@@ -406,6 +409,10 @@
       "Plano " + plano.name + " · " + (ciclo === "ANNUAL" ? "anual" : "mensal");
     atualizarTotal();
     mostrar("dados");
+    if (cupomDaUrl) {
+      $("dados-cupom").value = cupomDaUrl;
+      validarCupom();
+    }
   }
 
   function precoLista() {
@@ -459,6 +466,12 @@
           atualizarTotal();
         } else if (resultado.status === "EXPIRED") {
           mostrarErro("cupom-erro", "Este cupom expirou.");
+        } else if (resultado.status === "NOT_ELIGIBLE") {
+          mostrarErro("cupom-erro", "Este cupom não vale para a sua conta.");
+        } else if (resultado.status === "EXHAUSTED") {
+          mostrarErro("cupom-erro", "Este cupom já atingiu o limite de usos.");
+        } else if (resultado.status === "INVALID_PLAN" || resultado.status === "INVALID_CYCLE") {
+          mostrarErro("cupom-erro", "Este cupom não vale para este plano. Troque o plano ou o ciclo.");
         } else {
           mostrarErro("cupom-erro", "Cupom não encontrado.");
         }
@@ -581,7 +594,8 @@
             return;
           }
           if (problema.code === "COUPON_NOT_FOUND" || problema.code === "COUPON_EXPIRED" ||
-              problema.code === "COUPON_ALREADY_REDEEMED") {
+              problema.code === "COUPON_ALREADY_REDEEMED" || problema.code === "COUPON_NOT_ELIGIBLE" ||
+              problema.code === "COUPON_EXHAUSTED" || problema.code === "COUPON_NOT_VALID_FOR_PLAN") {
             mostrarErro("dados-erro", "O cupom não pôde ser aplicado. Remova ou troque o cupom.");
             return;
           }
