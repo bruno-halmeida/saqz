@@ -82,7 +82,7 @@ interface GooglePlaySubscriptionRepository {
     fun listOrdersForOwner(ownerUserId: UUID, limit: Int): List<GooglePlayOrderRecord>
 }
 
-/** Valor dos pedidos em `google_play_orders` (colunas da V182). */
+/** Valor dos pedidos em `google_play_orders` (colunas da V183). */
 interface GooglePlayOrderAmountStore {
     /** O pedido existe e ainda não tem valor. */
     fun orderAmountMissing(orderId: String): Boolean

@@ -87,7 +87,7 @@ class GooglePlaySubscriptionsConfiguration {
         GooglePlayNotificationController(processGooglePlayNotification)
 }
 
-/** Pedidos sem valor (compra em que a Orders API falhou e os anteriores à V182), um lote por rodada. */
+/** Pedidos sem valor (compra em que a Orders API falhou e os anteriores à V183), um lote por rodada. */
 class GooglePlayOrderAmountsJob(private val orderAmounts: GooglePlayOrderAmounts) {
     @Scheduled(
         fixedDelayString = "\${saqz.google-play.order-amounts-delay-ms:600000}",

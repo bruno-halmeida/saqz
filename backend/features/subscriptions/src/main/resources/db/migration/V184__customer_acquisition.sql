@@ -2,7 +2,7 @@
 --   owner_user_id  a pessoa (access_users.id).
 --   coupon_type    TRIAL (trial_coupons, uso = organizer_trials.started_at com coupon_id) ou
 --                  DISCOUNT (coupons, uso = coupon_redemptions.redeemed_at).
---   coupon_id, coupon_code, campaign  o cupom do primeiro uso; campaign so existe em trial_coupons (nula em DISCOUNT).
+--   coupon_id, coupon_code, campaign  o cupom do primeiro uso; campaign de trial_coupons ou de coupons (V182).
 --   first_used_at  quando o primeiro cupom foi usado.
 -- A primeira origem vence: quem usou dois cupons fica com o mais antigo (empate: TRIAL, depois o menor id).
 -- Quem nunca usou cupom nao aparece ("Sem cupom"). Pagamento antes de first_used_at tambem e "Sem cupom".
@@ -17,7 +17,7 @@ WITH uses AS (
     FROM coupon_redemptions r
 )
 SELECT DISTINCT ON (u.owner_user_id)
-       u.owner_user_id, u.coupon_type, u.coupon_id, COALESCE(tc.code, c.code)::text, tc.campaign::text, u.used_at
+       u.owner_user_id, u.coupon_type, u.coupon_id, COALESCE(tc.code, c.code)::text, COALESCE(tc.campaign, c.campaign)::text, u.used_at
 FROM uses u
 LEFT JOIN trial_coupons tc ON u.coupon_type = 'TRIAL' AND tc.id = u.coupon_id
 LEFT JOIN coupons c ON u.coupon_type = 'DISCOUNT' AND c.id = u.coupon_id

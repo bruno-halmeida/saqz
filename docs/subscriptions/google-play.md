@@ -97,7 +97,7 @@ Play; excluir a conta não cancela a assinatura do Play (o app avisa).
 ### Valor dos pedidos (receita)
 
 A `subscriptionsv2` não traz preço. O valor de cada pedido (`google_play_orders`, colunas
-da V182) vem da **Orders API** do Android Publisher:
+da V183) vem da **Orders API** do Android Publisher:
 `GET /androidpublisher/v3/applications/{packageName}/orders:batchGet?orderIds=…` (1 a 1000
 ids; um id desconhecido derruba o lote com 4xx).
 
@@ -113,7 +113,7 @@ ids; um id desconhecido derruba o lote com 4xx).
 - `GooglePlayOrderAmountsJob` (a cada 10 min, `saqz.google-play.order-amounts-delay-ms`)
   pega até 100 pedidos reais sem valor, os nunca tentados primeiro, e só repete um pedido
   1 h depois da última tentativa. Lote recusado (4xx) → um a um. Assim os pedidos antigos
-  (anteriores à V182) também ganham valor. Compras de teste não são buscadas pelo job.
+  (anteriores à V183) também ganham valor. Compras de teste não são buscadas pelo job.
 - A view `subscription_payments` usa `gross_cents` como bruto do Play; líquido continua
   nulo (o Play não informa o repasse final). Pedido sem valor aparece como "a definir":
   nunca se infere pelo preço do plano.
