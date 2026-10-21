@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Gera os artboards (.dc.html) do canvas da tela de jogo (claude.ai/artifact/EMQMpFSFJFoxhdg4YTU8Z9) e as prévias em HTML puro.
+"""Gera os artboards (.dc.html) do canvas da tela de jogo (claude.ai/artifact/EMQMpFSFJFoxhdg4YTU8Z9), nas versões
+cartão e tela cheia (prefixo Cheia-), e as prévias em HTML puro.
 
-Uso: python3 gerar.py '{"Main":1352,"Cinco-um-atleta":1484,"Confirmado-nao-vao":696,"Na-espera":796,"Organizador":1248,"Rascunho":412,"Encerrado":692,"Menu-do-jogo":844}'
+Uso: python3 gerar.py '{"Main":1352,"Cinco-um-atleta":1480,"Confirmado-nao-vao":696,"Na-espera":796,"Organizador":1244,"Organizador-espera":896,"Rascunho":412,"Encerrado":692,"Menu-do-jogo":844,"Cheia-Main":1308,"Cheia-Cinco-um-atleta":1432,"Cheia-Confirmado-nao-vao":844,"Cheia-Na-espera":844,"Cheia-Organizador":1204,"Cheia-Organizador-espera":852,"Cheia-Rascunho":844,"Cheia-Encerrado":844,"Cheia-Menu-do-jogo":844}'
 
 Tokens e medidas copiados de mobile/core/design-system (SaqzColorTokens, SaqzTypography,
 SaqzMetrics, SaqzHeroCard, AttendanceScoreBoard, SaqzMemberRow, SaqzStatusChip).
@@ -83,6 +84,12 @@ ICONS = {
 }
 
 
+# Tela cheia: o azul vira o cabeçalho da tela (de borda a borda, com a barra de cima) e a lista ocupa a largura toda.
+FULL = False
+APPBAR_MARK = "<!--appbar-->"
+BALL_FULL = BALL.replace("right: -58px; top: -62px;", "right: -58px; top: -6px;")
+
+
 def icon(name, size=20, color="currentColor", extra=""):
     return (f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" '
             f'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" '
@@ -108,7 +115,31 @@ def appbar(menu=False):
     )
 
 
+def appbar_blue(menu=False, title="Vôlei do CERET"):
+    trailing = ""
+    if menu:
+        trailing = (f'<button aria-label="Mais ações do jogo" style="width: 44px; height: 44px; flex: none; '
+                    f'display: flex; align-items: center; justify-content: center; padding: 0; border: 0; '
+                    f'border-radius: 22px; background: transparent; color: {WHITE};">{icon("more", 24)}</button>')
+    return (
+        f'<div style="position: relative; display: flex; align-items: center; gap: 4px; min-height: 56px; '
+        f'box-sizing: border-box; padding: 6px 8px 6px 4px; margin: 0 -20px -4px;">'
+        f'<button aria-label="Voltar" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; '
+        f'justify-content: center; padding: 0; border: 0; border-radius: 22px; background: transparent; color: {WHITE};">'
+        f'{icon("back", 24)}</button>'
+        f'<span style="flex-grow: 1; min-width: 0; font-size: 17px; line-height: 22px; font-weight: 600; color: {WHITE}; '
+        f'white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{title}</span>'
+        f'{trailing}</div>'
+    )
+
+
 def screen(inner, height, menu=False):
+    if FULL:
+        return (
+            f'<div style="width: 390px; height: {height}px; box-sizing: border-box; background: {WHITE}; {UI}; '
+            f'color: {NAVY}; display: flex; flex-direction: column; overflow: hidden; position: relative;">'
+            f'{inner.replace(APPBAR_MARK, appbar_blue(menu))}</div>'
+        )
     return (
         f'<div style="width: 390px; height: {height}px; box-sizing: border-box; background: {CANVAS}; {UI}; '
         f'color: {NAVY}; display: flex; flex-direction: column; overflow: hidden; position: relative;">'
@@ -122,6 +153,9 @@ def screen(inner, height, menu=False):
 def kicker_row(kicker, chip, muted_dot=False):
     halo = W18 if muted_dot else LIME18
     dot = W60 if muted_dot else LIME
+    chip_html = "" if FULL or not chip else (
+        f'<span style="flex: none; font-size: 12px; line-height: 16px; font-weight: 600; padding: 5px 10px; '
+        f'border-radius: 999px; background: {W14}; color: {WHITE}; white-space: nowrap;">{chip}</span>')
     return (
         f'<div style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px;">'
         f'<div style="display: flex; align-items: center; gap: 9px; min-width: 0;">'
@@ -130,9 +164,7 @@ def kicker_row(kicker, chip, muted_dot=False):
         f'background: {dot};"></span></span>'
         f'<span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.08em; '
         f'text-transform: uppercase; color: {W82}; white-space: nowrap;">{kicker}</span></div>'
-        f'<span style="flex: none; font-size: 12px; line-height: 16px; font-weight: 600; padding: 5px 10px; '
-        f'border-radius: 999px; background: {W14}; color: {WHITE}; white-space: nowrap;">{chip}</span>'
-        f'</div>'
+        f'{chip_html}</div>'
     )
 
 
@@ -283,6 +315,12 @@ def placar(tabs):
 
 
 def hero(parts, joined=True):
+    if FULL:
+        return (
+            f'<section style="position: relative; overflow: hidden; background: {BLUE}; padding: 0 20px 20px; '
+            f'display: flex; flex-direction: column; gap: 12px; color: {WHITE}; flex: none;">'
+            f'{BALL_FULL}{APPBAR_MARK}{"".join(parts)}</section>'
+        )
     radius = "20px 20px 0 0" if joined else "20px"
     return (
         f'<section style="position: relative; overflow: hidden; background: {BLUE}; border-radius: {radius}; '
@@ -293,6 +331,8 @@ def hero(parts, joined=True):
 
 # ---------------------------------------------------------------- lista
 def body(rows):
+    if FULL:
+        return f'<div style="display: flex; flex-direction: column; background: {WHITE};">{"".join(rows)}</div>'
     return (f'<div style="margin-top: -12px; background: {WHITE}; border: 1px solid {BORDER}; border-top: 0; '
             f'border-radius: 0 0 20px 20px; overflow: hidden; display: flex; flex-direction: column;">'
             f'{"".join(rows)}</div>')
@@ -333,75 +373,80 @@ def more_button(name):
             f'background: transparent; color: {MUTED};">{icon("more_v", 20)}</button>')
 
 
+def small_secondary(label):
+    return (f'<button style="flex: none; min-height: 40px; box-sizing: border-box; padding: 0 16px; '
+            f'border: 1.5px solid {BLUE}; border-radius: 999px; background: {WHITE}; color: {BLUE}; '
+            f'font-family: inherit; font-size: 14px; line-height: 20px; font-weight: 600;">{label}</button>')
+
+
 def small_primary(label):
     return (f'<button style="flex: none; min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px; '
             f'background: {BLUE}; color: {WHITE}; font-family: inherit; font-size: 14px; line-height: 20px; '
             f'font-weight: 600;">{label}</button>')
 
 
+TEXT_COLUMN_BUTTON = "width: 100%; border: 0; background: transparent; text-align: left; font-family: inherit;"
+
+
+def row(left_html, right_html, first=False, bg="", left_pad="10px", button=False):
+    tag = "button" if button else "div"
+    reset = TEXT_COLUMN_BUTTON if button else ""
+    top = "" if first else f" border-top: 1px solid {BORDER};"
+    if FULL:
+        return (
+            f'<{tag} style="display: flex; align-items: stretch; padding: 0 0 0 {left_pad}; {reset}{bg}">'
+            f'<span style="display: flex; align-items: center; gap: 12px; flex: none;">{left_html}</span>'
+            f'<span style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 64px; '
+            f'box-sizing: border-box; margin-left: 12px; padding: 12px 16px 12px 0;{top}">{right_html}</span></{tag}>'
+        )
+    return (
+        f'<{tag} style="display: flex; align-items: center; gap: 12px; min-height: 64px; box-sizing: border-box; '
+        f'{reset} padding: 12px 16px 12px {left_pad};{top}{bg}">{left_html}{right_html}</{tag}>'
+    )
+
+
 def person(num, name, meta_text, first=False, you=False, trailing="", guest=False, out=False):
     bg = f" background: {LIME14};" if you else ""
-    top = "" if first else f" border-top: 1px solid {BORDER};"
     you_chip = chip("Você") if you else ""
     av = guest_avatar() if guest else avatar(name, muted=out)
     meta_html = (f'<span style="font-size: 14px; line-height: 20px; color: {MUTED}; white-space: nowrap; overflow: hidden; '
                  f'text-overflow: ellipsis;">{meta_text}</span>' if meta_text else "")
     left = "16px" if num is None else "10px"
     num_html = "" if num is None else number_cell(num)
-    return (
-        f'<div style="display: flex; align-items: center; gap: 12px; min-height: 64px; box-sizing: border-box; '
-        f'padding: 12px 16px 12px {left};{top}{bg}">'
-        f'{num_html}{av}'
-        f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
-        f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {NAVY}; white-space: nowrap; '
-        f'overflow: hidden; text-overflow: ellipsis;">{name}</span>{meta_html}</span>'
-        f'{you_chip}{trailing}</div>'
-    )
+    text = (f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
+            f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {NAVY}; white-space: nowrap; '
+            f'overflow: hidden; text-overflow: ellipsis;">{name}</span>{meta_html}</span>')
+    return row(f"{num_html}{av}", f"{text}{you_chip}{trailing}", first=first, bg=bg, left_pad=left)
 
 
 def open_slot(num, first=False, sub=None, label="Vaga aberta"):
-    top = "" if first else f" border-top: 1px solid {BORDER};"
     sub_html = (f'<span style="font-size: 14px; line-height: 20px; color: {MUTED};">{sub}</span>' if sub else "")
-    return (
-        f'<div style="display: flex; align-items: center; gap: 12px; min-height: 64px; box-sizing: border-box; '
-        f'padding: 12px 16px 12px 10px;{top}">'
-        f'{number_cell(num)}'
-        f'<span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; border-radius: 20px; '
-        f'border: 1.5px dashed {PLACEHOLDER};"></span>'
-        f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
-        f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {MUTED};">{label}</span>'
-        f'{sub_html}</span></div>'
-    )
+    left = (f'{number_cell(num)}<span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; '
+            f'border-radius: 20px; border: 1.5px dashed {PLACEHOLDER};"></span>')
+    text = (f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
+            f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {MUTED};">{label}</span>'
+            f'{sub_html}</span>')
+    return row(left, text, first=first)
 
 
-def open_slot_action(num, label, sub):
-    return (
-        f'<button style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; box-sizing: border-box; '
-        f'padding: 12px 16px 12px 10px; border: 0; border-top: 1px solid {BORDER}; background: transparent; '
-        f'text-align: left; font-family: inherit;">'
-        f'{number_cell(num)}'
-        f'<span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; border-radius: 20px; '
-        f'border: 1.5px dashed {BLUE}; display: flex; align-items: center; justify-content: center; color: {BLUE};">'
-        f'{icon("plus", 20)}</span>'
-        f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
-        f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {BLUE};">{label}</span>'
-        f'<span style="font-size: 14px; line-height: 20px; color: {MUTED};">{sub}</span></span></button>'
-    )
+def open_slot_action(num, label, sub, first=False):
+    left = (f'{number_cell(num)}<span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; '
+            f'border-radius: 20px; border: 1.5px dashed {BLUE}; display: flex; align-items: center; '
+            f'justify-content: center; color: {BLUE};">{icon("plus", 20)}</span>')
+    text = (f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
+            f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {BLUE};">{label}</span>'
+            f'<span style="font-size: 14px; line-height: 20px; color: {MUTED};">{sub}</span></span>')
+    return row(left, text, first=first, button=True)
 
 
-def action_row(icon_name, label, sub):
-    return (
-        f'<button style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; box-sizing: border-box; '
-        f'padding: 12px 16px 12px 10px; border: 0; border-top: 1px solid {BORDER}; background: transparent; '
-        f'text-align: left; font-family: inherit;">'
-        f'<span style="width: 26px; flex: none;"></span>'
-        f'<span style="width: 40px; height: 40px; flex: none; box-sizing: border-box; border-radius: 20px; '
-        f'border: 1.5px dashed {BLUE}; display: flex; align-items: center; justify-content: center; color: {BLUE};">'
-        f'{icon(icon_name, 18)}</span>'
-        f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
-        f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {BLUE};">{label}</span>'
-        f'<span style="font-size: 14px; line-height: 20px; color: {MUTED};">{sub}</span></span></button>'
-    )
+def action_row(icon_name, label, sub, first=False):
+    left = (f'<span style="width: 26px; flex: none;"></span><span style="width: 40px; height: 40px; flex: none; '
+            f'box-sizing: border-box; border-radius: 20px; border: 1.5px dashed {BLUE}; display: flex; '
+            f'align-items: center; justify-content: center; color: {BLUE};">{icon(icon_name, 18)}</span>')
+    text = (f'<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">'
+            f'<span style="font-size: 16px; line-height: 23px; font-weight: 600; color: {BLUE};">{label}</span>'
+            f'<span style="font-size: 14px; line-height: 20px; color: {MUTED};">{sub}</span></span>')
+    return row(left, text, first=first, button=True)
 
 
 def group_header(label, complete, count, missing=0, first=False):
@@ -413,7 +458,7 @@ def group_header(label, complete, count, missing=0, first=False):
         right = (f'<span style="display: flex; align-items: center; gap: 8px;">'
                  f'<span style="font-size: 13px; line-height: 16px; font-weight: 600; color: {MUTED};">{count}</span>'
                  f'{chip(f"{word} {missing}", "warning")}</span>')
-    top = "" if first else f" border-top: 1px solid {BORDER};"
+    top = "" if first or FULL else f" border-top: 1px solid {BORDER};"
     return (
         f'<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; '
         f'box-sizing: border-box; padding: 8px 16px; background: {ICE};{top}">'
@@ -423,6 +468,9 @@ def group_header(label, complete, count, missing=0, first=False):
 
 def note(text, first=False):
     top = "" if first else f" border-top: 1px solid {BORDER};"
+    if FULL:
+        return (f'<p style="margin: 0 0 0 100px; padding: 12px 16px 14px 0; font-size: 14px; line-height: 20px; '
+                f'color: {MUTED};{top}">{text}</p>')
     return (f'<p style="margin: 0; padding: 12px 16px 14px 48px; font-size: 14px; line-height: 20px; color: {MUTED};{top}">'
             f'{text}</p>')
 
@@ -499,15 +547,15 @@ def board_c():
 def board_d():
     rows = [
         group_header("Ponteiros(as)", True, "2/2", first=True),
-        person("1", "Bia Souza", "Mensalista", trailing=more_button("Bia Souza")),
+        person("1", "Bia Souza", "Mensalista", first=True, trailing=more_button("Bia Souza")),
         person("2", "Felipe Nunes", "Avulso", trailing=more_button("Felipe Nunes")),
         group_header("Centrais", False, "1/2", missing=1),
-        person("1", "Thiago Melo", "Mensalista", trailing=more_button("Thiago Melo")),
+        person("1", "Thiago Melo", "Mensalista", first=True, trailing=more_button("Thiago Melo")),
         open_slot_action("2", "Vaga de central", "Toque para colocar alguém"),
         group_header("Oposto(a)", True, "1/1"),
-        person("1", "Carla Mendes", "Avulsa", trailing=more_button("Carla Mendes")),
+        person("1", "Carla Mendes", "Avulsa", first=True, trailing=more_button("Carla Mendes")),
         group_header("Levantador(a)", True, "1/1"),
-        person("1", "Lucas Prado", "Mensalista", you=True),
+        person("1", "Lucas Prado", "Mensalista", first=True, you=True),
         action_row("user_plus", "Levar convidado", "Entra na lista de espera."),
     ]
     inner = hero([
@@ -518,7 +566,32 @@ def board_d():
         answered("Sua presença está confirmada."),
         pending_row("4 pessoas sem resposta"),
         lime_line("Falta 1 central"),
-        placar([("5", "/6", "Vão", LIME, True), ("1", "", "Na espera", WHITE, False),
+        placar([("5", "/6", "Vão", LIME, True), ("2", "", "Na espera", WHITE, False),
+                ("2", "", "Não vão", W70, False)]),
+    ]) + body(rows)
+    return inner
+
+
+def board_h():
+    """Organizador no 5-1, escolha manual: a aba Na espera com o botão de colocar cada pessoa no jogo."""
+    rows = [
+        group_header("Ponteiros(as)", True, "2/2", first=True),
+        person("1º", "Duda Alves", "Avulsa", first=True,
+               trailing=small_secondary("Colocar") + more_button("Duda Alves")),
+        group_header("Centrais", False, "1/2", missing=1),
+        person("1º", "Caio Lima", "Avulso", first=True,
+               trailing=small_primary("Colocar") + more_button("Caio Lima")),
+        note("Você escolhe quem entra. Em posição completa, quem você colocar fica acima das vagas."),
+    ]
+    inner = hero([
+        kicker_row("Confirmações abertas", CHIP),
+        title("Terça, 19h30"),
+        COMMON_INFO,
+        deadline("Prioridade dos mensalistas até 17h30."),
+        answered("Sua presença está confirmada."),
+        pending_row("4 pessoas sem resposta"),
+        lime_line("Falta 1 central"),
+        placar([("5", "/6", "Vão", LIME, False), ("2", "", "Na espera", WHITE, True),
                 ("2", "", "Não vão", W70, False)]),
     ]) + body(rows)
     return inner
@@ -528,20 +601,20 @@ def board_g():
     """5-1 visto pelo atleta que ainda não respondeu: a lista de quem vai em uma seção por posição."""
     rows = [
         group_header("Ponteiros(as)", True, "4/4", first=True),
-        person("1", "Bia Souza", ""),
+        person("1", "Bia Souza", "", first=True),
         person("2", "Felipe Nunes", ""),
         person("3", "Marcos Lima", ""),
         person("4", "Júlia Rocha", "Convidada de Bia Souza", guest=True),
         group_header("Centrais", False, "3/4", missing=1),
-        person("1", "Thiago Melo", ""),
+        person("1", "Thiago Melo", "", first=True),
         person("2", "Igor Santos", ""),
         person("3", "Paulo Reis", ""),
         open_slot("4", label="Vaga de central"),
         group_header("Opostos(as)", False, "1/2", missing=1),
-        person("1", "Carla Mendes", ""),
+        person("1", "Carla Mendes", "", first=True),
         open_slot("2", label="Vaga de oposto"),
         group_header("Levantadores(as)", True, "2/2"),
-        person("1", "Lucas Prado", ""),
+        person("1", "Lucas Prado", "", first=True),
         person("2", "Gabi Torres", ""),
     ]
     inner = hero([
@@ -682,6 +755,7 @@ BOARDS = {
     "Confirmado-nao-vao": ("Tela de jogo · confirmado, aba Não vão", lambda h: screen(board_b(), h)),
     "Na-espera": ("Tela de jogo · na lista de espera", lambda h: screen(board_c(), h)),
     "Organizador": ("Tela de jogo · organizador com posições", lambda h: screen(board_d(), h, menu=True)),
+    "Organizador-espera": ("Tela de jogo · organizador, lista de espera do 5-1", lambda h: screen(board_h(), h, menu=True)),
     "Rascunho": ("Tela de jogo · rascunho", lambda h: screen(board_f1(), h, menu=True)),
     "Encerrado": ("Tela de jogo · jogo encerrado", lambda h: screen(board_f2(), h, menu=True)),
 }
@@ -689,6 +763,12 @@ BOARDS = {
 
 def menu_root(h):
     behind, sheet = board_e()
+    if FULL:
+        return (
+            f'<div style="width: 390px; height: {h}px; box-sizing: border-box; background: {WHITE}; {UI}; color: {NAVY}; '
+            f'display: flex; flex-direction: column; overflow: hidden; position: relative;">'
+            f'{behind.replace(APPBAR_MARK, appbar_blue(True))}{sheet}</div>'
+        )
     return (
         f'<div style="width: 390px; height: {h}px; box-sizing: border-box; background: {CANVAS}; {UI}; color: {NAVY}; '
         f'display: flex; flex-direction: column; overflow: hidden; position: relative;">'
@@ -697,17 +777,25 @@ def menu_root(h):
     )
 
 
+def write_set(heights, prefix="", suffix=""):
+    for name, (page_title, make) in BOARDS.items():
+        key = prefix + name
+        h = heights.get(key, 1600)
+        with open(os.path.join(PROJECT, f"{key}.dc.html"), "w") as f:
+            f.write(dc_html(page_title + suffix, make(h), h))
+        with open(os.path.join(RENDER, f"{key}.html"), "w") as f:
+            f.write(preview_html(make(h)))
+    key = prefix + "Menu-do-jogo"
+    h = heights.get(key, 844)
+    with open(os.path.join(PROJECT, f"{key}.dc.html"), "w") as f:
+        f.write(dc_html("Tela de jogo · menu do jogo" + suffix, menu_root(h), h))
+    with open(os.path.join(RENDER, f"{key}.html"), "w") as f:
+        f.write(preview_html(menu_root(h)).replace("r.style.height='auto';", ""))
+
+
 if __name__ == "__main__":
     heights = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
-    for name, (page_title, make) in BOARDS.items():
-        h = heights.get(name, 1600)
-        with open(os.path.join(PROJECT, f"{name}.dc.html"), "w") as f:
-            f.write(dc_html(page_title, make(h), h))
-        with open(os.path.join(RENDER, f"{name}.html"), "w") as f:
-            f.write(preview_html(make(h)))
-    h = heights.get("Menu-do-jogo", 844)
-    with open(os.path.join(PROJECT, "Menu-do-jogo.dc.html"), "w") as f:
-        f.write(dc_html("Tela de jogo · menu do jogo", menu_root(h), h))
-    with open(os.path.join(RENDER, "Menu-do-jogo.html"), "w") as f:
-        f.write(preview_html(menu_root(h)).replace("r.style.height='auto';", ""))
+    write_set(heights)
+    FULL = True
+    write_set(heights, prefix="Cheia-", suffix=" · tela cheia")
     print("ok")
