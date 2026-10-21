@@ -104,6 +104,7 @@ class HttpGooglePlayPurchasesApi(
             latestOrderId = line.text("latestSuccessfulOrderId") ?: root.text("latestOrderId"),
             acknowledged = root.text("acknowledgementState") == "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED",
             testPurchase = root.has("testPurchase"),
+            offerId = line.path("offerDetails").text("offerId"),
         )
     }
 

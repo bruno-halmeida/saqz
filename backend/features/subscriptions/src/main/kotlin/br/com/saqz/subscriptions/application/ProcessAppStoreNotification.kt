@@ -31,6 +31,7 @@ class ProcessAppStoreNotification(
     private val transaction: SubscriptionsTransactionRunner,
     private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
+    private val couponAttribution: CouponStoreAttribution? = null,
 ) {
     fun execute(signedPayload: String): ProcessAppStoreNotificationResult {
         val notification = verifier.verifyNotification(signedPayload)
@@ -58,6 +59,7 @@ class ProcessAppStoreNotification(
         val updated = current.applying(verified, product).let { if (renewal != null) it.applying(renewal) else it }
         subscriptions.save(updated)
         subscriptions.recordTransaction(verified, current.ownerUserId)
+        couponAttribution?.appStore(verified, current.ownerUserId)
         return current.ownerUserId.takeIf { updated.isEntitlingAt(clock.instant()) }
     }
 

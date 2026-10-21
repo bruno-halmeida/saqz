@@ -1,5 +1,6 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.subscriptions.application.CouponStoreAttribution
 import br.com.saqz.sharedkernel.actor.AuthenticatedActorResolver
 import br.com.saqz.subscriptions.adapter.input.http.AppStoreNotificationController
 import br.com.saqz.subscriptions.adapter.input.http.AppStoreSubscriptionController
@@ -57,7 +58,8 @@ class AppStoreSubscriptionsConfiguration {
         transaction: SubscriptionsTransactionRunner,
         unpaidCheckout: CancelUnpaidWebCheckout,
         clock: java.time.Clock,
-    ) = SubmitAppStoreTransaction(verifier, subscriptions, transaction, unpaidCheckout, clock)
+        couponAttribution: CouponStoreAttribution,
+    ) = SubmitAppStoreTransaction(verifier, subscriptions, transaction, unpaidCheckout, clock, couponAttribution)
 
     @Bean
     fun processAppStoreNotification(
@@ -67,7 +69,8 @@ class AppStoreSubscriptionsConfiguration {
         transaction: SubscriptionsTransactionRunner,
         unpaidCheckout: CancelUnpaidWebCheckout,
         clock: java.time.Clock,
-    ) = ProcessAppStoreNotification(verifier, subscriptions, notifications, transaction, unpaidCheckout, clock)
+        couponAttribution: CouponStoreAttribution,
+    ) = ProcessAppStoreNotification(verifier, subscriptions, notifications, transaction, unpaidCheckout, clock, couponAttribution)
 
     @Bean
     fun appStoreSubscriptionController(

@@ -20,6 +20,8 @@ data class AppStoreTransaction(
     val priceMillis: Long?,
     val currency: String?,
     val signedAt: Instant,
+    /** `offerIdentifier` quando a transação veio de um código de oferta (`offerType` 3). */
+    val offerCodeIdentifier: String? = null,
 )
 
 /** Estado da renovação automática, já verificado. */

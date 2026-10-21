@@ -31,6 +31,7 @@ class SubmitAppStoreTransaction(
     private val transaction: SubscriptionsTransactionRunner,
     private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
     private val clock: java.time.Clock = java.time.Clock.systemUTC(),
+    private val couponAttribution: CouponStoreAttribution? = null,
 ) {
     fun execute(ownerUserId: UUID, signedTransaction: String): SubmitAppStoreTransactionResult {
         val verified = verifier.verifyTransaction(signedTransaction)
@@ -53,6 +54,7 @@ class SubmitAppStoreTransaction(
             val saved = owned.applying(verified, product)
             subscriptions.save(saved)
             subscriptions.recordTransaction(verified, ownerUserId)
+            couponAttribution?.appStore(verified, ownerUserId)
             giveAccess = saved.isEntitlingAt(clock.instant())
             SubmitAppStoreTransactionResult.Accepted
         }

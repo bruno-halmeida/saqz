@@ -65,6 +65,8 @@ data class GooglePlayPurchase(
     /** Troca adiada (DEFERRED): produto e plano base que entram na renovação. */
     val pendingProductId: String? = null,
     val pendingBasePlanId: String? = null,
+    /** Oferta aplicada à linha que dá acesso (`offerDetails.offerId`), como a de um cupom. */
+    val offerId: String? = null,
 ) {
     /** Plano que entra na renovação; troca só de ciclo no mesmo plano não conta, como na App Store. */
     fun pendingPlanAfter(current: GooglePlayProduct): Plan? {

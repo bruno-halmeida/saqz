@@ -10,6 +10,7 @@ import com.apple.itunes.storekit.model.AutoRenewStatus
 import com.apple.itunes.storekit.model.Environment
 import com.apple.itunes.storekit.model.JWSRenewalInfoDecodedPayload
 import com.apple.itunes.storekit.model.JWSTransactionDecodedPayload
+import com.apple.itunes.storekit.model.OfferType
 import com.apple.itunes.storekit.verification.SignedDataVerifier
 import com.apple.itunes.storekit.verification.VerificationException
 import com.apple.itunes.storekit.verification.VerificationStatus
@@ -124,6 +125,7 @@ class AppleSignedDataVerifier(
         priceMillis = price,
         currency = currency,
         signedAt = Instant.ofEpochMilli(signedDate),
+        offerCodeIdentifier = offerIdentifier?.takeIf { offerType == OfferType.OFFER_CODE },
     )
 
     private fun JWSRenewalInfoDecodedPayload.toDomain() = AppStoreRenewalInfo(

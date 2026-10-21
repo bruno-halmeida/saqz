@@ -29,8 +29,9 @@ class SubmitGooglePlayPurchase(
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock = Clock.systemUTC(),
     private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
+    private val couponAttribution: CouponStoreAttribution? = null,
 ) {
-    private val sync = GooglePlayPurchaseSync(api, subscriptions, clock)
+    private val sync = GooglePlayPurchaseSync(api, subscriptions, clock, couponAttribution)
 
     fun execute(ownerUserId: UUID, productId: String, purchaseToken: String): SubmitGooglePlayPurchaseResult {
         val purchase = when (val lookup = api.subscription(purchaseToken)) {
@@ -80,8 +81,9 @@ class ProcessGooglePlayNotification(
     private val transaction: SubscriptionsTransactionRunner,
     private val clock: Clock = Clock.systemUTC(),
     private val unpaidCheckout: CancelUnpaidWebCheckout? = null,
+    private val couponAttribution: CouponStoreAttribution? = null,
 ) {
-    private val sync = GooglePlayPurchaseSync(api, subscriptions, clock)
+    private val sync = GooglePlayPurchaseSync(api, subscriptions, clock, couponAttribution)
 
     fun execute(token: String?, command: GooglePlayNotificationCommand): ProcessGooglePlayNotificationResult {
         if (!authorized(token)) return ProcessGooglePlayNotificationResult.Unauthorized
@@ -118,6 +120,7 @@ internal class GooglePlayPurchaseSync(
     private val api: GooglePlayPurchasesApi,
     private val subscriptions: GooglePlaySubscriptionRepository,
     private val clock: Clock,
+    private val couponAttribution: CouponStoreAttribution? = null,
 ) {
     /** Produto do Saqz de uma compra que já pode virar assinatura; null para ignorar. */
     fun recordable(purchase: GooglePlayPurchase): GooglePlayProduct? {
@@ -134,6 +137,7 @@ internal class GooglePlayPurchaseSync(
         subscriptions.save(updated)
         purchase.linkedPurchaseToken?.let { subscriptions.supersede(it, clock.instant()) }
         if (updated.latestOrderId != null) subscriptions.recordOrder(updated)
+        couponAttribution?.googlePlay(purchase, product, owner, clock.instant())
         return updated
     }
 

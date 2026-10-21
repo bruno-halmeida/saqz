@@ -8,6 +8,7 @@ import br.com.saqz.subscriptions.adapter.output.jdbc.JdbcCouponStoreOfferReposit
 import br.com.saqz.subscriptions.application.AppStoreOffersApi
 import br.com.saqz.subscriptions.application.CouponEligibilityLookup
 import br.com.saqz.subscriptions.application.CouponRepository
+import br.com.saqz.subscriptions.application.CouponStoreAttribution
 import br.com.saqz.subscriptions.application.CouponStoreOfferRepository
 import br.com.saqz.subscriptions.application.GooglePlayOffersApi
 import br.com.saqz.subscriptions.application.PaidHistoryCouponEligibility
@@ -37,6 +38,10 @@ class CouponCampaignConfiguration {
     @Bean
     fun couponEligibilityLookup(dataSource: DataSource, plans: SubscriptionPlanLookup): CouponEligibilityLookup =
         PaidHistoryCouponEligibility(JdbcPaidSubscriptionHistory(dataSource) as PaidSubscriptionHistory, plans)
+
+    @Bean
+    fun couponStoreAttribution(offers: CouponStoreOfferRepository, coupons: CouponRepository) =
+        CouponStoreAttribution(offers, coupons)
 
     @Bean
     fun syncCouponStoreOffers(
