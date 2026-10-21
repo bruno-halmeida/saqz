@@ -36,3 +36,6 @@ configMapGenerator:
       # Janela de presença: cartão ao vivo (Live Activity no iPhone, Live Update no Android) de 8 h antes do prazo até o prazo (DEB-113).
       # Decisão do dono em 20/10: já nasce ligada em produção. Para desligar, apague a linha e faça o deploy.
       - SAQZ_NOTIFICATIONS_ATTENDANCE_WINDOW_ENABLED=true
+      # Cupom de campanha: cria as ofertas no Google Play e os códigos na App Store (docs/subscriptions, seção Cupons).
+      # Só produção liga: dev usa as mesmas lojas. A chave da App Store Connect fica no backend.env (Secret).
+      - SAQZ_COUPON_STORE_SYNC=true
