@@ -263,7 +263,7 @@ private fun WaitingRow(
         name = person.name,
         meta = personMeta(state, person.athletePosition, person.isMensalista, person.guest, confirmed = false),
         number = stringResource(Res.string.game_queue_ordinal, queue),
-        isYou = false,
+        isYou = person.isYou,
         guest = person.guest != null,
         divider = divider,
         hasActions = person.canRemove || person.guest?.canRemove == true || force,

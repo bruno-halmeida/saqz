@@ -38,7 +38,7 @@ import br.com.saqz.groups.presentation.ui.components.OwnChargeTicket
 import br.com.saqz.groups.presentation.ui.components.OwnChargeTicketTags
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorScreen
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailPreviewData
-import br.com.saqz.groups.presentation.ui.gamedetail.GameWaitlistSection
+import br.com.saqz.groups.presentation.ui.gamedetail.GameWaitingList
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -126,7 +126,7 @@ class RotulosScreenshotTest {
 
     @Test
     fun listaDeEspera() = capture("lista-de-espera") {
-        GameWaitlistSection(GameDetailPreviewData.admin, {})
+        Column { GameWaitingList(GameDetailPreviewData.admin, {}) }
     }
 
     @Test

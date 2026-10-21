@@ -265,6 +265,8 @@ data class GameDetailWaitlistUi(
     val guest: GameGuestRowUi? = null,
     /** O gestor pode tirar esta pessoa (membro que não é ele mesmo). */
     val canRemove: Boolean = false,
+    /** Quem olha está nesta linha da espera (DEB-116): a linha ganha o fundo lima e o "Você". */
+    val isYou: Boolean = false,
 )
 
 /** Por que "Tirar"/"Colocar" não deu certo: o jogo fechou para mudanças, ou uma falha qualquer (tentar de novo). */

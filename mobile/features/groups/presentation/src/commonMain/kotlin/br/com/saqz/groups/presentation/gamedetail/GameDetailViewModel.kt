@@ -1038,6 +1038,7 @@ class GameDetailViewModel(
         isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
         guest = guestRow(isAdmin, open, tone),
         canRemove = canRemoveMember(isAdmin, tone),
+        isYou = !isGuest && memberId == selfId,
     )
 
     /** Quem não vai: só nome, posição e vínculo; ninguém mexe nessa lista. */
