@@ -21,6 +21,7 @@ HTML + React UMD + `dc-runtime.js` + `saqz-design-system.js`; não há etapa de 
 - Assinaturas: lista, detalhe e cancelamento.
 - Cupons: consulta, criação e desativação.
 - Usuários, grupos e assinaturas: páginas de 25, Anterior/Próxima, atualização e retentativa; controles bloqueados durante carga. Filtros são preservados na navegação, e o índice volta a 1 quando mudam. Se o total encolher, consulta a última página válida.
+- Usuários, grupos e assinaturas: clicar no título da coluna ordena no servidor (`sort` e `dir`, antes da paginação): ascendente, descendente e de volta à ordem padrão. Volta à página 1, mantém busca e filtros, vale para Anterior/Próxima, fica bloqueada durante a carga e some no logout.
 - Expiração/logout limpa dados administrativos e impede que respostas da sessão antiga repovoem a tela.
 
 **Suporte e moderação continuam demonstrativos e sem persistência.** A definição de origem das denúncias, privacidade e efeitos da resolução está pendente no VUL-171. Não tratar as ações dessa seção como atendimento real.
