@@ -18,7 +18,15 @@ class JdbcAdminUserDirectoryRepository(
 ) : AdminUserDirectory {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun list(query: String?, plan: String?, status: String?, page: Int, size: Int): AdminUserPage {
+    override fun list(
+        query: String?,
+        plan: String?,
+        status: String?,
+        page: Int,
+        size: Int,
+        sort: String?,
+        descending: Boolean,
+    ): AdminUserPage {
         data class Row(val summary: AdminUserSummary, val total: Long)
 
         val rows = jdbc.sql(
@@ -43,7 +51,7 @@ class JdbcAdminUserDirectoryRepository(
               AND (:status::text IS NULL
                    OR (:status = 'suspended' AND u.suspended_at IS NOT NULL)
                    OR (:status = 'active' AND u.suspended_at IS NULL))
-            ORDER BY u.created_at DESC, u.id
+            ORDER BY ${orderBy(sort, descending)}
             LIMIT :size OFFSET :offset
             """.trimIndent(),
         )
@@ -178,6 +186,22 @@ class JdbcAdminUserDirectoryRepository(
     override fun reactivate(userId: UUID): Boolean = jdbc.sql(
         "UPDATE access_users SET suspended_at = NULL WHERE id = :id AND deleted_at IS NULL",
     ).param("id", userId).update() > 0
+
+    // Lista fechada: só trechos fixos entram no SQL; o id desempata para a paginação ficar estável.
+    private fun orderBy(sort: String?, descending: Boolean): String {
+        val column = when (sort) {
+            null -> return "u.created_at DESC, u.id"
+            "name" -> "lower(u.display_name)"
+            "city" -> "lower(u.city)"
+            "groups" -> "memberships"
+            "plan" -> "p.plan"
+            "status" -> "(u.suspended_at IS NOT NULL)"
+            "lastSeen" -> "u.updated_at"
+            "createdAt" -> "u.created_at"
+            else -> throw IllegalArgumentException("ordenação desconhecida: $sort")
+        }
+        return "$column ${if (descending) "DESC" else "ASC"} NULLS LAST, u.id"
+    }
 
     private fun ResultSet.instant(column: String): Instant =
         getObject(column, OffsetDateTime::class.java).toInstant()

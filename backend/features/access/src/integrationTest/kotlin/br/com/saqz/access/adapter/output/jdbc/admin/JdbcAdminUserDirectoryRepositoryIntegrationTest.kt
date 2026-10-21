@@ -53,6 +53,29 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `ordena por nome e por grupos nos dois sentidos antes da paginacao`() {
+        val bia = insertUser("a", name = "bianca", email = "a@saqz.test", createdAt = now.minusSeconds(100))
+        insertUser("b", name = "Ana", email = "b@saqz.test", createdAt = now.minusSeconds(200))
+        val caio = insertUser("c", name = "Caio", email = "c@saqz.test", createdAt = now.minusSeconds(300))
+        val grupo = insertGroup(caio, "Grupo do Caio")
+        insertMembership(grupo, caio, "ADMIN")
+        insertMembership(grupo, bia, "ATHLETE")
+        insertMembership(insertGroup(caio, "Outro"), caio, "ADMIN")
+
+        fun names(sort: String, desc: Boolean, page: Int = 1, size: Int = 10) =
+            repository.list(null, null, null, page, size, sort, desc).items.map { it.displayName }
+
+        assertEquals(listOf("Ana", "bianca", "Caio"), names("name", desc = false))
+        assertEquals(listOf("Caio", "bianca", "Ana"), names("name", desc = true))
+        assertEquals(listOf("Ana", "bianca", "Caio"), names("groups", desc = false))
+        assertEquals(listOf("Caio", "bianca", "Ana"), names("groups", desc = true))
+        // Página 2 continua a ordem pedida, não a padrão (mais novos primeiro).
+        assertEquals(listOf("Ana", "bianca"), names("name", desc = false, page = 1, size = 2))
+        assertEquals(listOf("Caio"), names("name", desc = false, page = 2, size = 2))
+        assertEquals(listOf("bianca", "Ana", "Caio"), repository.list(null, null, null, 1, 10).items.map { it.displayName })
+    }
+
+    @Test
     fun `filtra por plano real e por FREE`() {
         val pagante = insertUser("pagante", name = "Paga Plano", email = "paga@saqz.test")
         insertUser("gratis", name = "Sem Plano", email = "gratis@saqz.test")

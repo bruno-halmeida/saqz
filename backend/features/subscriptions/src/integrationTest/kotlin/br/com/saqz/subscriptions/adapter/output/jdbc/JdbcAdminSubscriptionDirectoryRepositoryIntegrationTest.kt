@@ -50,6 +50,25 @@ class JdbcAdminSubscriptionDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `ordena por assinante e por plano nos dois sentidos antes da paginacao`() {
+        insertSubscription(insertUser(name = "bianca", email = "b@saqz.test"), plan = "TITULAR", createdAt = now.minusSeconds(100))
+        insertSubscription(insertUser(name = "Ana", email = "a@saqz.test"), plan = "ORGANIZADOR", createdAt = now.minusSeconds(300))
+        insertSubscription(insertUser(name = "Caio", email = "c@saqz.test"), plan = "ILIMITADO", createdAt = now.minusSeconds(200))
+
+        fun names(sort: String, desc: Boolean, page: Int = 1, size: Int = 10) =
+            repository.list(null, null, null, page, size, null, sort, desc).items.map { it.ownerName }
+
+        assertEquals(listOf("Ana", "bianca", "Caio"), names("owner", desc = false))
+        assertEquals(listOf("Caio", "bianca", "Ana"), names("owner", desc = true))
+        assertEquals(listOf("Caio", "Ana", "bianca"), names("plan", desc = false))
+        assertEquals(listOf("bianca", "Ana", "Caio"), names("plan", desc = true))
+        // Página 2 continua a ordem pedida, não a padrão (mais novas primeiro).
+        assertEquals(listOf("Ana", "bianca"), names("owner", desc = false, page = 1, size = 2))
+        assertEquals(listOf("Caio"), names("owner", desc = false, page = 2, size = 2))
+        assertEquals(listOf("bianca", "Caio", "Ana"), repository.list(null, null, null, 1, 10).items.map { it.ownerName })
+    }
+
+    @Test
     fun `cupom ativo aplica desconto e esgotado volta ao preco cheio sem expor o codigo`() {
         val cupom = insertCoupon(code = "GALERA10", discountPercent = 10)
         val comDesconto = insertUser(name = "Com Desconto", email = "cd@saqz.test")

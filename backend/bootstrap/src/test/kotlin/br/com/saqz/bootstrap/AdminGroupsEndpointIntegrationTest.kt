@@ -75,6 +75,9 @@ class AdminGroupsEndpointIntegrationTest {
     fun `parametros invalidos retornam 400 e comum recebe 403`() {
         assertEquals(400, get("/admin/groups?status=arquivado", token = "admin-token").statusCode())
         assertEquals(400, get("/admin/groups?page=0", token = "admin-token").statusCode())
+        assertEquals(400, get("/admin/groups?sort=id", token = "admin-token").statusCode())
+        assertEquals(400, get("/admin/groups?sort=name&dir=DESC", token = "admin-token").statusCode())
+        assertEquals(200, get("/admin/groups?sort=members&dir=desc", token = "admin-token").statusCode())
         assertEquals(403, get("/admin/groups", token = "user-token").statusCode())
     }
 
@@ -85,7 +88,14 @@ class AdminGroupsEndpointIntegrationTest {
     }
 
     class StubGroupDirectory : AdminGroupDirectory {
-        override fun list(query: String?, status: String?, page: Int, size: Int) = AdminGroupPage(
+        override fun list(
+            query: String?,
+            status: String?,
+            page: Int,
+            size: Int,
+            sort: String?,
+            descending: Boolean,
+        ) = AdminGroupPage(
             items = listOf(
                 AdminGroupSummary(
                     groupId = GROUP_ID,

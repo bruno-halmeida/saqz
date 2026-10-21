@@ -21,10 +21,14 @@ class AdminGroupsController(
         @RequestParam(required = false) status: String?,
         @RequestParam(defaultValue = "1") page: Int,
         @RequestParam(defaultValue = "25") size: Int,
+        @RequestParam(required = false) sort: String?,
+        @RequestParam(required = false) dir: String?,
     ): ResponseEntity<AdminGroupPage> {
         if (page < 1 || size !in 1..MAX_PAGE_SIZE) return ResponseEntity.badRequest().build()
         if (status != null && status !in VALID_STATUSES) return ResponseEntity.badRequest().build()
-        return ResponseEntity.ok(directory.list(query, status, page, size))
+        if (sort != null && sort !in AdminGroupDirectory.SORT_KEYS) return ResponseEntity.badRequest().build()
+        if (dir != null && dir !in SORT_DIRECTIONS) return ResponseEntity.badRequest().build()
+        return ResponseEntity.ok(directory.list(query, status, page, size, sort, dir == "desc"))
     }
 
     @GetMapping("/admin/groups/{id}")

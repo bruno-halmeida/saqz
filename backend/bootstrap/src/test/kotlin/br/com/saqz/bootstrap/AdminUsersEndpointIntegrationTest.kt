@@ -72,6 +72,14 @@ class AdminUsersEndpointIntegrationTest {
         assertEquals(400, exchange("GET", "/admin/users?size=101", "admin-token").statusCode())
         assertEquals(400, exchange("GET", "/admin/users?plan=QUADRA_CHEIA", "admin-token").statusCode())
         assertEquals(400, exchange("GET", "/admin/users?status=banido", "admin-token").statusCode())
+        assertEquals(400, exchange("GET", "/admin/users?sort=email", "admin-token").statusCode())
+        assertEquals(400, exchange("GET", "/admin/users?sort=name&dir=up", "admin-token").statusCode())
+    }
+
+    @Test
+    fun `ordenacao conhecida e aceita`() {
+        assertEquals(200, exchange("GET", "/admin/users?sort=lastSeen&dir=desc", "admin-token").statusCode())
+        assertEquals(200, exchange("GET", "/admin/users?sort=name", "admin-token").statusCode())
     }
 
     @Test
@@ -131,7 +139,15 @@ class AdminUsersEndpointIntegrationTest {
     }
 
     class StubDirectory : AdminUserDirectory {
-        override fun list(query: String?, plan: String?, status: String?, page: Int, size: Int) = AdminUserPage(
+        override fun list(
+            query: String?,
+            plan: String?,
+            status: String?,
+            page: Int,
+            size: Int,
+            sort: String?,
+            descending: Boolean,
+        ) = AdminUserPage(
             items = listOf(
                 AdminUserSummary(
                     userId = USER_ID,

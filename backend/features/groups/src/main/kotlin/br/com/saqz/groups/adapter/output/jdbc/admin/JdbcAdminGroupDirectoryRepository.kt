@@ -17,7 +17,14 @@ class JdbcAdminGroupDirectoryRepository(
 ) : AdminGroupDirectory {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun list(query: String?, status: String?, page: Int, size: Int): AdminGroupPage {
+    override fun list(
+        query: String?,
+        status: String?,
+        page: Int,
+        size: Int,
+        sort: String?,
+        descending: Boolean,
+    ): AdminGroupPage {
         data class Row(val summary: AdminGroupSummary, val total: Long)
 
         val rows = jdbc.sql(
@@ -40,7 +47,7 @@ class JdbcAdminGroupDirectoryRepository(
                    OR (:status = 'active' AND g.deleted_at IS NULL)
                    OR (:status = 'deleted' AND g.deleted_at IS NOT NULL)
               )
-            ORDER BY g.created_at DESC, g.id
+            ORDER BY ${orderBy(sort, descending)}
             LIMIT :size OFFSET :offset
             """.trimIndent(),
         )
@@ -152,6 +159,22 @@ class JdbcAdminGroupDirectoryRepository(
             .list()
 
         return group.copy(lastGames = games)
+    }
+
+    // Lista fechada: só trechos fixos entram no SQL; o id desempata para a paginação ficar estável.
+    private fun orderBy(sort: String?, descending: Boolean): String {
+        val column = when (sort) {
+            null -> return "g.created_at DESC, g.id"
+            "name" -> "lower(g.name)"
+            "owner" -> "lower(u.display_name)"
+            "ownerPlan" -> "p.plan"
+            "members" -> "members"
+            "games" -> "games_played"
+            "status" -> "(g.deleted_at IS NOT NULL)"
+            "createdAt" -> "g.created_at"
+            else -> throw IllegalArgumentException("ordenação desconhecida: $sort")
+        }
+        return "$column ${if (descending) "DESC" else "ASC"} NULLS LAST, g.id"
     }
 
     private fun ResultSet.instant(column: String): Instant =

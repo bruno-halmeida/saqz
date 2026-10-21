@@ -60,11 +60,25 @@ data class AdminSubscriptionDetail(
 /**
  * Diretório administrativo de assinaturas (adm-web · Receita). Busca por nome/e-mail
  * do dono; filtros por plano, status e origem; página 1-based. Lista todas as origens (site, lojas, cortesia e teste ativos); detalhe só do site.
+ * Ordenação opcional por uma das [SORT_KEYS] ("asc" | "desc"), antes da paginação; sem ela, mais novas primeiro.
  */
 interface AdminSubscriptionDirectory {
-    fun list(query: String?, plan: String?, status: String?, page: Int, size: Int, source: String? = null): AdminSubscriptionPage
+    fun list(
+        query: String?,
+        plan: String?,
+        status: String?,
+        page: Int,
+        size: Int,
+        source: String? = null,
+        sort: String? = null,
+        descending: Boolean = false,
+    ): AdminSubscriptionPage
 
     fun find(ownerUserId: UUID): AdminSubscriptionDetail?
+
+    companion object {
+        val SORT_KEYS = setOf("owner", "source", "plan", "cycle", "coupon", "status", "createdAt")
+    }
 }
 
 /**

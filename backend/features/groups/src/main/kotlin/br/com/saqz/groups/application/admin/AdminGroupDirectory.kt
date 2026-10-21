@@ -51,9 +51,21 @@ data class AdminGroupDetail(
 /**
  * Diretório administrativo de grupos (adm-web). Busca por nome do grupo ou do dono;
  * filtro por status "active" | "deleted"; página 1-based.
+ * Ordenação opcional por uma das [SORT_KEYS] ("asc" | "desc"), antes da paginação; sem ela, mais novos primeiro.
  */
 interface AdminGroupDirectory {
-    fun list(query: String?, status: String?, page: Int, size: Int): AdminGroupPage
+    fun list(
+        query: String?,
+        status: String?,
+        page: Int,
+        size: Int,
+        sort: String? = null,
+        descending: Boolean = false,
+    ): AdminGroupPage
 
     fun find(groupId: UUID): AdminGroupDetail?
+
+    companion object {
+        val SORT_KEYS = setOf("name", "owner", "ownerPlan", "members", "games", "status", "createdAt")
+    }
 }

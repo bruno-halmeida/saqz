@@ -120,6 +120,9 @@ class AdminSubscriptionsEndpointIntegrationTest {
     fun `parametros invalidos retornam 400 e comum recebe 403`() {
         assertEquals(400, exchange("GET", "/admin/subscriptions?plan=QUADRA_CHEIA").statusCode())
         assertEquals(400, exchange("GET", "/admin/subscriptions?status=atrasada").statusCode())
+        assertEquals(400, exchange("GET", "/admin/subscriptions?sort=price").statusCode())
+        assertEquals(400, exchange("GET", "/admin/subscriptions?sort=plan&dir=x").statusCode())
+        assertEquals(200, exchange("GET", "/admin/subscriptions?sort=owner&dir=asc").statusCode())
         assertEquals(403, exchange("GET", "/admin/subscriptions", token = "user-token").statusCode())
     }
 
@@ -152,7 +155,16 @@ class AdminSubscriptionsEndpointIntegrationTest {
             source = "COURTESY", billing = "NO_CHARGE",
         )
 
-        override fun list(query: String?, plan: String?, status: String?, page: Int, size: Int, source: String?) =
+        override fun list(
+            query: String?,
+            plan: String?,
+            status: String?,
+            page: Int,
+            size: Int,
+            source: String?,
+            sort: String?,
+            descending: Boolean,
+        ) =
             AdminSubscriptionPage(listOf(if (source == "COURTESY") courtesy else summary), 1, page, size)
 
         override fun find(ownerUserId: UUID): AdminSubscriptionDetail? {

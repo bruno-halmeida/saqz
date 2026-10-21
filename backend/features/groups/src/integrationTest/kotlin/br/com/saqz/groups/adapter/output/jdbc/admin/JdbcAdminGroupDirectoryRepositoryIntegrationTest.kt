@@ -60,6 +60,30 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
     }
 
     @Test
+    fun `ordena por nome e por membros nos dois sentidos antes da paginacao`() {
+        val dona = insertUser("dona", name = "Camila")
+        val outra = insertUser("outra", name = "Bruna")
+        val alfa = insertGroup(dona, name = "alfa", createdAt = now.minusSeconds(300))
+        insertGroup(dona, name = "Beta", createdAt = now.minusSeconds(100))
+        val gama = insertGroup(dona, name = "Gama", createdAt = now.minusSeconds(200))
+        insertMembership(gama, dona)
+        insertMembership(gama, outra)
+        insertMembership(alfa, dona)
+
+        fun names(sort: String, desc: Boolean, page: Int = 1, size: Int = 10) =
+            repository.list(null, null, page, size, sort, desc).items.map { it.name }
+
+        assertEquals(listOf("alfa", "Beta", "Gama"), names("name", desc = false))
+        assertEquals(listOf("Gama", "Beta", "alfa"), names("name", desc = true))
+        assertEquals(listOf("Beta", "alfa", "Gama"), names("members", desc = false))
+        assertEquals(listOf("Gama", "alfa", "Beta"), names("members", desc = true))
+        // Página 2 continua a ordem pedida, não a padrão (mais novos primeiro).
+        assertEquals(listOf("Gama", "Beta"), names("name", desc = true, page = 1, size = 2))
+        assertEquals(listOf("alfa"), names("name", desc = true, page = 2, size = 2))
+        assertEquals(listOf("Beta", "Gama", "alfa"), repository.list(null, null, 1, 10).items.map { it.name })
+    }
+
+    @Test
     fun `dono sem assinatura aparece sem plano`() {
         val dono = insertUser("gratis", name = "Sem Plano")
         insertGroup(dono, name = "Grupo Gratis", createdAt = now)

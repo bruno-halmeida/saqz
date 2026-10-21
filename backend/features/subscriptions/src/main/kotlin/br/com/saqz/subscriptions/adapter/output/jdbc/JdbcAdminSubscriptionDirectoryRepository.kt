@@ -22,7 +22,16 @@ class JdbcAdminSubscriptionDirectoryRepository(
 ) : AdminSubscriptionDirectory {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun list(query: String?, plan: String?, status: String?, page: Int, size: Int, source: String?): AdminSubscriptionPage {
+    override fun list(
+        query: String?,
+        plan: String?,
+        status: String?,
+        page: Int,
+        size: Int,
+        source: String?,
+        sort: String?,
+        descending: Boolean,
+    ): AdminSubscriptionPage {
         data class Row(val summary: AdminSubscriptionSummary, val total: Long)
 
         val rows = jdbc.sql(
@@ -30,7 +39,7 @@ class JdbcAdminSubscriptionDirectoryRepository(
             $ALL_SOURCES
             SELECT *, count(*) OVER () AS total FROM all_subscriptions
             WHERE $FILTERS
-            ORDER BY created_at DESC, source, owner_user_id
+            ORDER BY ${orderBy(sort, descending)}
             LIMIT :size OFFSET :offset
             """.trimIndent(),
         )
@@ -147,6 +156,22 @@ class JdbcAdminSubscriptionDirectoryRepository(
             billing = getString("billing"),
             courtesy = getString("courtesy_plan")?.let { AdminSubscriptionCourtesy(it, instantOrNull("courtesy_ends_at")) },
         )
+    }
+
+    // Lista fechada: só trechos fixos entram no SQL; origem e dono desempatam para a paginação ficar estável.
+    private fun orderBy(sort: String?, descending: Boolean): String {
+        val column = when (sort) {
+            null -> return "created_at DESC, source, owner_user_id"
+            "owner" -> "lower(owner_name)"
+            "source" -> "source"
+            "plan" -> "plan"
+            "cycle" -> "cycle"
+            "coupon" -> "coupon_code"
+            "status" -> "status"
+            "createdAt" -> "created_at"
+            else -> throw IllegalArgumentException("ordenação desconhecida: $sort")
+        }
+        return "$column ${if (descending) "DESC" else "ASC"} NULLS LAST, source, owner_user_id"
     }
 
     private fun ResultSet.instant(column: String): Instant =

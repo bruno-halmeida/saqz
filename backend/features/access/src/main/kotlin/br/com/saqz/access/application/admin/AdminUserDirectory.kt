@@ -65,9 +65,18 @@ data class AdminUserDetail(
 /**
  * Diretório administrativo de usuários (adm-web). Busca por nome/e-mail, filtro por
  * plano (nome do plano real ou "FREE") e status ("active" | "suspended"); página 1-based.
+ * Ordenação opcional por uma das [SORT_KEYS] ("asc" | "desc"), antes da paginação; sem ela, mais novos primeiro.
  */
 interface AdminUserDirectory {
-    fun list(query: String?, plan: String?, status: String?, page: Int, size: Int): AdminUserPage
+    fun list(
+        query: String?,
+        plan: String?,
+        status: String?,
+        page: Int,
+        size: Int,
+        sort: String? = null,
+        descending: Boolean = false,
+    ): AdminUserPage
 
     fun find(userId: UUID): AdminUserDetail?
 
@@ -75,4 +84,8 @@ interface AdminUserDirectory {
     fun suspend(userId: UUID): Boolean
 
     fun reactivate(userId: UUID): Boolean
+
+    companion object {
+        val SORT_KEYS = setOf("name", "city", "groups", "plan", "status", "lastSeen", "createdAt")
+    }
 }
