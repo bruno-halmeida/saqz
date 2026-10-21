@@ -4,17 +4,19 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const script = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+const qrLib = fs.readFileSync(path.resolve(__dirname, '../assets/qrcode.js'), 'utf8');
 const code = 'A'.repeat(43);
 const play = 'https://play.google.com/store/apps/details?id=app.saqz';
 const appStore = 'https://apps.apple.com/br/app/id6812743525';
 
-function page(userAgent, pathname, search = '', { source = script, hidden = false, fetch, wasm = WebAssembly, clipboard } = {}) {
+function page(userAgent, pathname, search = '', { source = script, hidden = false, fetch, wasm = WebAssembly, clipboard, qr = true } = {}) {
   const elements = {
     heading: { textContent: 'Este link abre no app Saqz' },
     lead: { textContent: 'Entre no grupo ou confirme sua presença no Saqz.' },
     primary: { href: 'https://saqz.app', textContent: 'Acessar site do Saqz', hidden: false, addEventListener(event, callback) { this.clicks = { ...this.clicks, [event]: callback }; } },
     secondary: { hidden: true },
     tertiary: { hidden: true },
+    qr: { hidden: true, innerHTML: '', attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } },
   };
   const location = { pathname, search, replace(url) { this.replaced = url; } };
   const timers = [];
@@ -39,7 +41,8 @@ function page(userAgent, pathname, search = '', { source = script, hidden = fals
   };
   // Sem `fetch` no contexto o script segue o caminho do app, como num navegador sem a API.
   if (fetch) context.fetch = (url, options) => { requests.push(url); return fetch(url, options); };
-  vm.runInNewContext(source, context);
+  // A página carrega assets/qrcode.js antes do script; `qr: false` simula a lib que não carregou.
+  vm.runInNewContext((qr ? qrLib + '\n' : '') + source, context);
   // Roda o relógio: só dispara o que não foi cancelado (ids são as posições + 1).
   const elapse = () => timers.forEach((timer, index) => { if (!cleared.has(index + 1)) timer.callback(); });
   return { ...elements, location, timers, listeners, elapse, requests, copied, legacyCopies, field };
@@ -155,11 +158,14 @@ test('iPhone without a link code shows a plain App Store link and copies nothing
   assert.equal(result.secondary.hidden, true);
 });
 
-test('desktop keeps the site, asks for the phone and never redirects', () => {
+test('desktop invite shows the QR code and the stores and never redirects', () => {
   const result = page('Macintosh', '/', '?saqz_invite=' + code);
-  assert.equal(result.primary.href, 'https://saqz.app');
-  assert.equal(result.secondary.hidden, true);
-  assert.equal(result.lead.textContent, 'Abra este link no celular para continuar no app.');
+  assert.equal(result.lead.textContent, 'Aponte a câmera do celular para o QR code e continue no app.');
+  assert.equal(result.primary.href, appStore);
+  assert.equal(result.primary.textContent, 'Baixar na App Store');
+  assert.equal(result.secondary.href, play);
+  assert.equal(result.secondary.textContent, 'Baixar no Google Play');
+  assert.equal(result.qr.hidden, false);
   assert.equal(result.location.href, undefined);
   assert.equal(result.location.replaced, undefined);
 });
@@ -181,6 +187,7 @@ const webDown = () => Promise.resolve({ ok: false });
 const settle = () => new Promise(resolve => setImmediate(resolve));
 const iPhone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)';
 const desktop = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)';
+const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130';
 
 test('iPhone never asks for the web app and never redirects by itself', async () => {
   for (const [pathname, search] of [['/', '?saqz_invite=' + code], ['/attendance/' + code, '?saqz_intent=decline'], ['/', '']]) {
@@ -198,14 +205,73 @@ test('desktop onboarding opens the web app too', async () => {
   assert.equal(result.location.replaced, 'https://saqz.app/app/?saqz_onboarding=' + code);
 });
 
-test('desktop with the web app down keeps the site and asks for the phone', async () => {
-  const result = page(desktop, '/', '?saqz_invite=' + code, { fetch: webDown });
+// Convite e presença no computador (DEB-118): QR com o link canônico, as duas lojas e, discreto, o web app.
+const qrDrawn = result => result.qr.hidden === false && /<svg[\s\S]*<path d="M/.test(result.qr.innerHTML);
+
+test('desktop invite: QR with the canonical link, both stores and "Continuar no computador", no redirect', async () => {
+  const result = page(desktop, '/', '?saqz_invite=' + code, { fetch: webUp });
   await settle();
   assert.equal(result.location.replaced, undefined);
-  assert.match(result.lead.textContent, /Abra este link no celular/);
+  assert.equal(result.location.href, undefined);
+  assert.equal(result.heading.textContent, 'Entre no grupo no Saqz');
+  assert.ok(qrDrawn(result));
+  assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_invite=' + code);
+  assert.equal(result.primary.href, appStore);
+  assert.equal(result.secondary.href, play);
+  assert.equal(result.tertiary.href, 'https://saqz.app/app/?saqz_invite=' + code);
+  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+  assert.equal(result.tertiary.hidden, false);
 });
 
-const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130';
+test('desktop attendance: QR and "Continuar no computador" carry the token, decline included', async () => {
+  const confirm = page(desktop, '/attendance/' + code, '', { fetch: webUp });
+  await settle();
+  assert.equal(confirm.heading.textContent, 'Responda no Saqz');
+  assert.equal(confirm.qr.attributes['data-link'], 'https://links.saqz.app/attendance/' + code);
+  assert.equal(confirm.tertiary.href, 'https://saqz.app/app/?saqz_attendance=' + code);
+  assert.equal(confirm.location.replaced, undefined);
+  const decline = page(desktop, '/attendance/' + code, '?saqz_intent=decline', { fetch: webUp });
+  await settle();
+  assert.ok(qrDrawn(decline));
+  assert.equal(decline.qr.attributes['data-link'], `https://links.saqz.app/attendance/${code}?saqz_intent=decline`);
+  assert.equal(decline.tertiary.href, `https://saqz.app/app/?saqz_attendance=${code}&saqz_intent=decline`);
+  assert.equal(decline.location.replaced, undefined);
+});
+
+test('desktop without the web app (down, failing or no WasmGC): QR and stores, no "Continuar no computador"', async () => {
+  const cases = [{ fetch: webDown }, { fetch: () => Promise.reject(new Error('rede')) }, { fetch: webUp, wasm: { validate: () => false } }];
+  for (const options of cases) {
+    const result = page(desktop, '/', '?saqz_invite=' + code, options);
+    await settle();
+    assert.equal(result.tertiary.hidden, true);
+    assert.ok(qrDrawn(result));
+    assert.equal(result.primary.href, appStore);
+    assert.equal(result.secondary.href, play);
+    assert.equal(result.location.replaced, undefined);
+  }
+});
+
+test('desktop without the QR library hides the QR and keeps the stores and the web app link', async () => {
+  const result = page(desktop, '/', '?saqz_invite=' + code, { fetch: webUp, qr: false });
+  await settle();
+  assert.equal(result.qr.hidden, true);
+  assert.equal(result.primary.href, appStore);
+  assert.equal(result.secondary.href, play);
+  assert.equal(result.tertiary.textContent, 'Continuar no computador');
+  assert.equal(result.location.replaced, undefined);
+});
+
+test('phones never show the QR code', async () => {
+  for (const userAgent of [iPhone, android]) {
+    for (const [pathname, search] of [['/', '?saqz_invite=' + code], ['/attendance/' + code, '?saqz_intent=decline']]) {
+      const result = page(userAgent, pathname, search, { fetch: webUp, clipboard: () => Promise.resolve() });
+      await settle();
+      assert.equal(result.qr.hidden, true);
+      assert.equal(result.qr.innerHTML, '');
+    }
+  }
+});
+
 
 test('Android invite and attendance go to Google Play with the referrer, and the web app is never the main path', async () => {
   const cases = [
@@ -291,10 +357,12 @@ test('short invite code is normalized: lowercase and hyphen open the same invite
   assert.equal(phone.secondary.href, 'saqz:///?saqz_invite=44DF8SA8');
 });
 
-test('short invite code reaches the web app (desktop) with the canonical code', async () => {
+test('short invite code on the desktop: QR and web app link carry the normalized code', async () => {
   const result = page(desktop, '/', '?saqz_invite=44df-8sa8', { fetch: () => Promise.resolve({ ok: true }) });
   await settle();
-  assert.equal(result.location.replaced, 'https://saqz.app/app/?saqz_invite=44DF8SA8');
+  assert.equal(result.location.replaced, undefined);
+  assert.equal(result.qr.attributes['data-link'], 'https://links.saqz.app/?saqz_invite=44DF8SA8');
+  assert.equal(result.tertiary.href, 'https://saqz.app/app/?saqz_invite=44DF8SA8');
 });
 
 test('short invite codes with ambiguous characters or wrong size are not invites', () => {

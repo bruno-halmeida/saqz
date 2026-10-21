@@ -86,8 +86,12 @@ No celular a página redireciona sozinha, sem clique; os botões ficam de reserv
   `23456789ABCDEFGHJKMNPQRSTUVWXYZ`, mostrado como `44DF-8SA8`) e o token longo dos links já
   enviados. A página aceita minúsculas e hífen e segue adiante sempre com o código em maiúscula e
   sem hífen (`?saqz_invite=44DF8SA8`); o que não for um dos dois formatos não é convite.
-- **Computador:** vai para o web app (`https://saqz.app/app/`) com o mesmo código na query; se o
-  web app não responder, fica na página com o pedido para abrir no celular.
+- **Computador:** convite e presença não redirecionam (DEB-118). A página mostra um QR code com o link
+  canônico (`https://links.saqz.app/?saqz_invite=<código normalizado>` ou `/attendance/<token>`, com
+  `?saqz_intent=decline` no "não vou"), os botões das duas lojas e, discreto, "Continuar no computador"
+  para o web app (`https://saqz.app/app/` com a mesma query), só se `disponivel.json` responde e há
+  WasmGC. Onboarding no computador continua indo direto ao web app; link sem código fica como antes.
+- **QR code:** `assets/qrcode.js` é o `qrcode-generator` 1.4.4 (Kazuhiko Arase, MIT, pacote npm), sem CDN.
 - **iPhone sem App Store:** enquanto `appStore` estiver vazio, também vai para o web app
   (`/app/?saqz_invite=…`, `?saqz_onboarding=…`, `?saqz_attendance=…[&saqz_intent=decline]`). A página
   só redireciona depois que `https://saqz.app/app/disponivel.json` responde; fora do ar, vale o aviso
