@@ -339,7 +339,7 @@ class GroupSetupScreenTest {
     fun whatsAppListModeShowsScheduledByDefaultOnlyToTheOwnerAndReportsTheChoice() = runComposeUiTest {
         val intents = mutableListOf<GroupSetupIntent>()
         val owner = monthlyState().copy(
-            canChangeAttendanceUpdates = true,
+            canDelete = true,
             form = monthlyState().form.copy(attendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED),
         )
         var state by mutableStateOf(owner)
@@ -352,7 +352,7 @@ class GroupSetupScreenTest {
         waitForIdle()
         assertTrue(GroupSetupIntent.SelectAttendanceUpdatesMode(AttendanceUpdatesMode.ON_CHANGE) in intents)
 
-        state = owner.copy(canChangeAttendanceUpdates = false)
+        state = owner.copy(canDelete = false)
         waitForIdle()
         onNodeWithTag(GroupSetupTags.AttendanceUpdatesMode).assertDoesNotExist()
     }

@@ -106,8 +106,6 @@ data class GroupSetupState(
     val canDelete: Boolean = false,
     /** Configurações de jogo são visíveis apenas ao OWNER/ADMIN. */
     val canManageGameConfig: Boolean = false,
-    /** Modo da lista no grupo do WhatsApp: só o OWNER troca. */
-    val canChangeAttendanceUpdates: Boolean = false,
     // NÃO se deriva de `form.regularSlots.isEmpty()`: ligado e sem horário é o `2g`.
     // Na criação começa desligado: o primeiro cadastro são só os três campos à vista, e
     // quadra e horários (obrigatórios com a recorrência) ficam para as opções avançadas.
@@ -172,6 +170,9 @@ data class GroupSetupState(
      * grupo, se o backend mandou o campo e o grupo cobra mensalidade: tem mensalidade padrão **ou** algum
      * mensalista com valor próprio, como o item "Mensalistas" da checklist da Início.
      */
+    /** Modo da lista no grupo do WhatsApp: só o OWNER troca, como excluir o grupo. */
+    val canChangeAttendanceUpdates: Boolean get() = canDelete
+
     /** Cartão "Mensalidade": valor e dia padrão, na edição, para quem gere o grupo (o convite de mensalistas exige). */
     val showsMonthlyFee: Boolean = isEditing && canManageGameConfig
 

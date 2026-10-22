@@ -49,6 +49,7 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
         execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
         execute("ALTER TABLE access_groups ADD COLUMN monthly_late_join_policy varchar(32) NOT NULL DEFAULT 'GROUP_DUE_DATE'")
+        execute("ALTER TABLE access_groups ADD COLUMN attendance_updates_mode varchar(12) NOT NULL DEFAULT 'SCHEDULED'")
         // As migrations de access não trazem games nem game_series_slots; esta tabela reproduz a FK sem
         // ON DELETE que elas têm para group_venues (fk_games_venue, fk_game_series_slots_venue).
         execute(

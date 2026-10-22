@@ -157,10 +157,8 @@ class GroupSetupViewModel(
                 onGameConfigChange { copy(mensalistaPriority = intent.value) }
             is GroupSetupIntent.SelectPromotionMode ->
                 onGameConfigChange { copy(promotionMode = intent.value) }
-            is GroupSetupIntent.SelectAttendanceUpdatesMode -> {
-                onFormChange { copy(attendanceUpdatesMode = intent.value) }
-                savedState[KeyAttendanceUpdatesMode] = intent.value.name
-            }
+            is GroupSetupIntent.SelectAttendanceUpdatesMode ->
+                onGameConfigChange { copy(attendanceUpdatesMode = intent.value) }
             is GroupSetupIntent.SelectMonthlyLateJoinPolicy -> {
                 onFormChange { copy(monthlyLateJoinPolicy = intent.value) }
                 savedState[KeyMonthlyLateJoinPolicy] = intent.value.name
@@ -214,7 +212,6 @@ class GroupSetupViewModel(
                             saveFailed = false,
                             canDelete = group.role == GroupRole.OWNER,
                             canManageGameConfig = group.role != GroupRole.ATHLETE,
-                            canChangeAttendanceUpdates = group.role == GroupRole.OWNER,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
                             form = group.toForm(),
@@ -501,6 +498,7 @@ class GroupSetupViewModel(
         val form = state.value.form
         savedState[KeyMensalistaPriority] = form.mensalistaPriority
         savedState[KeyPromotionMode] = form.promotionMode.name
+        form.attendanceUpdatesMode?.let { savedState[KeyAttendanceUpdatesMode] = it.name }
     }
 }
 
