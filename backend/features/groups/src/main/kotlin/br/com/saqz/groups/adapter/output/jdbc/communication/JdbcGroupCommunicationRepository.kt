@@ -1,13 +1,13 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
-import br.com.saqz.groups.application.communication.AttendanceDigest
 import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.communication.AttendanceWindowCandidate
 import br.com.saqz.groups.application.communication.GroupCommunicationRepository
 import br.com.saqz.groups.application.communication.GroupMessage
 import br.com.saqz.groups.application.communication.GroupNotification
 import br.com.saqz.groups.application.communication.MessageChannel
+import br.com.saqz.groups.application.communication.OnChangeActivity
 import br.com.saqz.groups.application.communication.NotificationPreferences
 import br.com.saqz.groups.application.communication.PushPreferences
 import br.com.saqz.groups.application.communication.ReminderCandidate
@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.sql.Types
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
@@ -250,26 +251,27 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
 
     override fun openGameCandidates(): List<ReminderCandidate> = candidates(deadlineOpen = true, mode = null)
 
-    override fun attendanceDigest(gameId: UUID): AttendanceDigest? = jdbc.sql(
-        "SELECT roster_digest, last_message_at, day, day_count FROM group_attendance_digest WHERE game_id = :game FOR UPDATE",
-    ).param("game", gameId).query { rs, _ -> AttendanceDigest(
-        digest = rs.getString("roster_digest"),
-        lastMessageAt = rs.getTimestamp("last_message_at").toInstant(),
-        day = rs.getObject("day", LocalDate::class.java),
-        dayCount = rs.getInt("day_count"),
-    ) }.optional().orElse(null)
+    override fun attendanceDigest(gameId: UUID): String? = jdbc.sql(
+        "SELECT roster_digest FROM group_attendance_digest WHERE game_id = :game FOR UPDATE",
+    ).param("game", gameId).query(String::class.java).optional().orElse(null)
 
-    override fun saveAttendanceDigest(gameId: UUID, digest: AttendanceDigest) {
+    override fun saveAttendanceDigest(gameId: UUID, digest: String) {
         jdbc.sql(
             """
-            INSERT INTO group_attendance_digest (game_id, roster_digest, last_message_at, day, day_count)
-            VALUES (:game, :digest, :at, :day, :count)
-            ON CONFLICT (game_id) DO UPDATE SET roster_digest = EXCLUDED.roster_digest,
-                last_message_at = EXCLUDED.last_message_at, day = EXCLUDED.day, day_count = EXCLUDED.day_count
+            INSERT INTO group_attendance_digest (game_id, roster_digest) VALUES (:game, :digest)
+            ON CONFLICT (game_id) DO UPDATE SET roster_digest = EXCLUDED.roster_digest, updated_at = now()
             """.trimIndent(),
-        ).param("game", gameId).param("digest", digest.digest).param("at", Timestamp.from(digest.lastMessageAt))
-            .param("day", digest.day).param("count", digest.dayCount).update()
+        ).param("game", gameId).param("digest", digest).update()
     }
+
+    override fun onChangeActivity(groupId: UUID, dayStart: Instant): OnChangeActivity = jdbc.sql(
+        """
+        SELECT max(created_at) AS last_at, count(*) FILTER (WHERE created_at >= :dayStart) AS today
+        FROM group_messages WHERE group_id = :group AND reminder_origin = 'ON_CHANGE'
+        """.trimIndent(),
+    ).param("group", groupId).param("dayStart", Timestamp.from(dayStart)).query { rs, _ ->
+        OnChangeActivity(rs.getTimestamp("last_at")?.toInstant(), rs.getInt("today"))
+    }.single()
 
     private fun candidates(deadlineOpen: Boolean, mode: AttendanceUpdatesMode?): List<ReminderCandidate> = jdbc.sql(
         """

@@ -58,9 +58,9 @@ class ReminderLayoutTest {
         )
         assertEquals(
             "$header\nVagas: 3/6\n\n" +
-                "✅ Confirmados:\nLevantador:\n1. Bia\n\nPonta:\n1. Ana\n2. Cris\n\nCentral:\n1.\n2.\n\nOposto:\n1.\n\n" +
-                "🕒 Lista de espera:\nPonta:\n1. Duda\n2. Edu\n\nCentral:\n1. Fabi\n\n" +
-                "❌ Fora:\nOposto:\nGil\n\nSem posição:\nHugo",
+                "✅ Confirmados:\nLevantadores(as):\n1. Bia\n\nPonteiros(as):\n1. Ana\n2. Cris\n\nCentrais:\n1.\n2.\n\nOpostos(as):\n1.\n\n" +
+                "🕒 Lista de espera:\nPonteiros(as):\n1. Duda\n2. Edu\n\nCentrais:\n1. Fabi\n\n" +
+                "❌ Fora:\nOpostos(as):\nGil\n\nSem posição:\nHugo",
             reminderBody(game(6), roster),
         )
     }
@@ -72,7 +72,7 @@ class ReminderLayoutTest {
             numberedWaitlist = false,
         )
         assertEquals(
-            "$header\nVagas: 0/1\n\n✅ Confirmados:\nPonta:\n1.\n\n🕒 Lista de espera:\nPonta:\nDuda\nEdu",
+            "$header\nVagas: 0/1\n\n✅ Confirmados:\nPonteiros(as):\n1.\n\n🕒 Lista de espera:\nPonteiros(as):\nDuda\nEdu",
             reminderBody(game(1), roster),
         )
     }

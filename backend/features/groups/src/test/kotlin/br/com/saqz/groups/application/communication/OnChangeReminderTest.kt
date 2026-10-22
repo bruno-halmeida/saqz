@@ -29,62 +29,81 @@ class OnChangeReminderTest {
         repository.onChangeReminders = listOf(candidate)
     }
 
+    private fun pass(at: Instant): Int {
+        repository.clock = at
+        return service.remindOnChanges(at)
+    }
+
     @Test fun `the first pass publishes and marks the message as ON_CHANGE`() {
         roster(confirmed = listOf("Ana"))
-        assertEquals(1, service.remindOnChanges(noon))
+        assertEquals(1, pass(noon))
         val sent = repository.published.single()
         assertEquals(AttendanceUpdatesMode.ON_CHANGE, sent.reminderOrigin)
         assertEquals(MessageChannel.REMINDER, sent.channel)
         assertEquals(owner, sent.actor)
         assertTrue("✅ Confirmados:\nAna" in sent.body)
-        assertEquals(1, repository.digests.getValue(candidate.gameId).dayCount)
+        assertTrue(candidate.gameId in repository.digests)
     }
 
     @Test fun `no change publishes nothing`() {
         roster(confirmed = listOf("Ana"))
-        service.remindOnChanges(noon)
-        assertEquals(0, service.remindOnChanges(noon.plusMinutes(30)))
+        pass(noon)
+        assertEquals(0, pass(noon.plusMinutes(30)))
         assertEquals(1, repository.published.size)
     }
 
     @Test fun `publishes when a name changes bucket either way and when a new name arrives`() {
         roster(confirmed = listOf("Ana"))
-        service.remindOnChanges(noon)
+        pass(noon)
         roster(declined = listOf("Ana"))
-        assertEquals(1, service.remindOnChanges(noon.plusMinutes(16)))
+        assertEquals(1, pass(noon.plusMinutes(16)))
         roster(confirmed = listOf("Ana"))
-        assertEquals(1, service.remindOnChanges(noon.plusMinutes(32)))
+        assertEquals(1, pass(noon.plusMinutes(32)))
         roster(confirmed = listOf("Ana", "Bia"))
-        assertEquals(1, service.remindOnChanges(noon.plusMinutes(48)))
+        assertEquals(1, pass(noon.plusMinutes(48)))
         assertEquals(4, repository.published.size)
     }
 
     @Test fun `a change 5 minutes later waits and goes out after 15 minutes`() {
         roster(confirmed = listOf("Ana"))
-        service.remindOnChanges(noon)
+        pass(noon)
         roster(confirmed = listOf("Ana", "Bia"))
-        assertEquals(0, service.remindOnChanges(noon.plusMinutes(5)))
-        assertEquals(1, service.remindOnChanges(noon.plusMinutes(16)))
+        assertEquals(0, pass(noon.plusMinutes(5)))
+        assertEquals(1, pass(noon.plusMinutes(16)))
         assertTrue("Bia" in repository.published.last().body)
     }
 
     @Test fun `the 12th message of the day goes out, the 13th does not, and the next day resets`() {
         repeat(12) { index ->
             roster(confirmed = List(index + 1) { "Atleta $it" })
-            assertEquals(1, service.remindOnChanges(noon.plusMinutes(20L * index - 200)), "mensagem ${index + 1}")
+            assertEquals(1, pass(noon.plusMinutes(20L * index - 200)), "mensagem ${index + 1}")
         }
         roster(confirmed = listOf("Outro"))
-        assertEquals(0, service.remindOnChanges(noon.plusMinutes(60)))
-        assertEquals(12, repository.digests.getValue(candidate.gameId).dayCount)
+        assertEquals(0, pass(noon.plusMinutes(60)))
         // 00h05 do dia seguinte em São Paulo
-        assertEquals(1, service.remindOnChanges(Instant.parse("2026-09-19T03:05:00Z")))
-        assertEquals(1, repository.digests.getValue(candidate.gameId).dayCount)
+        assertEquals(1, pass(Instant.parse("2026-09-19T03:05:00Z")))
+    }
+
+    @Test fun `the brake is per group, the next game waits for the day and for 15 minutes after the last message`() {
+        repeat(12) { index ->
+            roster(confirmed = List(index + 1) { "Atleta $it" })
+            assertEquals(1, pass(noon.plusMinutes(20L * index - 200)))
+        }
+        val next = candidate.copy(gameId = UUID.randomUUID())
+        repository.onChangeReminders = listOf(next)
+        assertEquals(0, pass(noon.plusMinutes(60)), "13ª do grupo no dia, mesmo num jogo novo")
+        assertTrue(next.gameId !in repository.digests)
+        // Dia seguinte, mas a 10 min da última mensagem do jogo anterior: espera.
+        val lastOfA = Instant.parse("2026-09-19T02:55:00Z")
+        repository.onChangeAt += group to lastOfA
+        assertEquals(0, pass(lastOfA.plusMinutes(10)))
+        assertEquals(1, pass(lastOfA.plusMinutes(16)))
     }
 
     @Test fun `a frozen group gets nothing`() {
         frozen = true
         roster(confirmed = listOf("Ana"))
-        assertEquals(0, service.remindOnChanges(noon))
+        assertEquals(0, pass(noon))
         assertTrue(repository.published.isEmpty())
     }
 

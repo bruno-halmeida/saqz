@@ -108,12 +108,13 @@ private val POSITION_ORDER = listOf(
     AthletePosition.LEVANTADOR, AthletePosition.PONTA, AthletePosition.CENTRAL, AthletePosition.OPOSTO, AthletePosition.LIBERO,
 )
 
+/** O plural das seções da tela de jogo no 5-1 (`position_plural_*` do app), com inicial maiúscula. */
 private val POSITION_LABELS = mapOf(
-    AthletePosition.LEVANTADOR to "Levantador",
-    AthletePosition.PONTA to "Ponta",
-    AthletePosition.CENTRAL to "Central",
-    AthletePosition.OPOSTO to "Oposto",
-    AthletePosition.LIBERO to "Líbero",
+    AthletePosition.LEVANTADOR to "Levantadores(as)",
+    AthletePosition.PONTA to "Ponteiros(as)",
+    AthletePosition.CENTRAL to "Centrais",
+    AthletePosition.OPOSTO to "Opostos(as)",
+    AthletePosition.LIBERO to "Líberos",
 )
 
 private const val NO_POSITION = "Sem posição"

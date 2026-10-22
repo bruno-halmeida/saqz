@@ -9,14 +9,15 @@ ALTER TABLE group_messages
     ADD COLUMN reminder_origin varchar(12),
     ADD CONSTRAINT ck_group_messages_reminder_origin CHECK (reminder_origin IS NULL OR reminder_origin IN ('SCHEDULED', 'ON_CHANGE'));
 
--- Assinatura da última lista publicada no modo ON_CHANGE, com o freio: 15 min entre mensagens e 12 por dia (São Paulo).
+-- Assinatura da última lista publicada no modo ON_CHANGE, por jogo. O freio (15 min e 12 por dia) é do grupo e sai das
+-- próprias mensagens ON_CHANGE em group_messages.
 CREATE TABLE group_attendance_digest (
     game_id uuid PRIMARY KEY REFERENCES games (id) ON DELETE CASCADE,
     roster_digest text NOT NULL,
-    last_message_at timestamptz NOT NULL DEFAULT now(),
-    day date NOT NULL DEFAULT (now() AT TIME ZONE 'America/Sao_Paulo')::date,
-    day_count integer NOT NULL DEFAULT 0
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX ix_group_messages_on_change ON group_messages (group_id, created_at) WHERE reminder_origin = 'ON_CHANGE';
 
 -- O resto do gatilho é o da V142.
 CREATE OR REPLACE FUNCTION enqueue_notification_whatsapp_group() RETURNS trigger LANGUAGE plpgsql AS $$

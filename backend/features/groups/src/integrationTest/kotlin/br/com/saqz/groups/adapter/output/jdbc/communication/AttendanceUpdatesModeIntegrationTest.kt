@@ -79,7 +79,30 @@ class AttendanceUpdatesModeIntegrationTest {
         assertEquals(listOf("SCHEDULED" to false, "ON_CHANGE" to true), reminders())
         assertEquals(listOf(silent), recipients("SCHEDULED"))
         assertEquals(emptyList(), recipients("ON_CHANGE"))
-        assertEquals(1, jdbc.sql("SELECT day_count FROM group_attendance_digest WHERE game_id = :g").param("g", game).query(Int::class.java).single())
+        assertEquals(1L, jdbc.sql("SELECT count(*) FROM group_attendance_digest WHERE game_id = :g").param("g", game).query(Long::class.java).single())
+    }
+
+    @Test fun `the brake counts the whole group, a new game waits for the day cap and for 15 minutes after the last message`() {
+        mode("ON_CHANGE")
+        val earlier = game()
+        // 12 mensagens ON_CHANGE do jogo A hoje; A começou e B vira o candidato.
+        repeat(12) { onChangeMessage(earlier, "now() - interval '${20 + it} minutes'") }
+        jdbc.sql("UPDATE games SET confirmation_deadline = now() - interval '2 minutes', starts_at = now() - interval '1 minute' WHERE id = :g").param("g", earlier).update()
+        game().also { attend(it, member("Ana"), "CONFIRMED") }
+        assertEquals(0, service.remindOnChanges())
+
+        // Sem teto, mas a última mensagem do grupo tem 5 min: espera os 15.
+        jdbc.sql("TRUNCATE group_messages CASCADE").update()
+        onChangeMessage(earlier, "now() - interval '5 minutes'")
+        assertEquals(0, service.remindOnChanges())
+        jdbc.sql("UPDATE group_messages SET created_at = now() - interval '16 minutes'").update()
+        assertEquals(1, service.remindOnChanges())
+    }
+
+    private fun onChangeMessage(game: UUID, createdAt: String) {
+        jdbc.sql("""INSERT INTO group_messages (id, group_id, author_id, author_name, channel, body, request_id, game_id, reminder_origin, created_at)
+            VALUES (gen_random_uuid(), :g, :owner, 'Dono', 'REMINDER', 'lista', gen_random_uuid(), :game, 'ON_CHANGE', $createdAt)""")
+            .param("g", group).param("owner", owner).param("game", game).update()
     }
 
     @Test fun `the manual reminder and the notice reach the WhatsApp group in both modes`() {
@@ -129,8 +152,8 @@ class AttendanceUpdatesModeIntegrationTest {
         val body = service.remind(owner, group, game, UUID.randomUUID()).success().body
         assertTrue(
             body.endsWith(
-                "Vagas: 2/6\n\n✅ Confirmados:\nLevantador:\n1. Bia\n\nPonta:\n1. Ana\n2.\n\nCentral:\n1.\n2.\n\nOposto:\n1.\n\n" +
-                    "🕒 Lista de espera:\nLevantador:\nCaio\n\n❌ Fora:\nCentral:\nDuda\n\nSem posição:\nEdu",
+                "Vagas: 2/6\n\n✅ Confirmados:\nLevantadores(as):\n1. Bia\n\nPonteiros(as):\n1. Ana\n2.\n\nCentrais:\n1.\n2.\n\nOpostos(as):\n1.\n\n" +
+                    "🕒 Lista de espera:\nLevantadores(as):\nCaio\n\n❌ Fora:\nCentrais:\nDuda\n\nSem posição:\nEdu",
             ),
             body,
         )

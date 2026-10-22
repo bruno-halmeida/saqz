@@ -85,8 +85,8 @@ data class ReminderGame(
  */
 enum class AttendanceUpdatesMode { SCHEDULED, ON_CHANGE }
 
-/** Última lista publicada no modo [AttendanceUpdatesMode.ON_CHANGE] de um jogo, com o freio do dia (São Paulo). */
-data class AttendanceDigest(val digest: String, val lastMessageAt: Instant, val day: LocalDate, val dayCount: Int)
+/** Mensagens ON_CHANGE do grupo para o freio: a última e quantas desde o início do dia (São Paulo). */
+data class OnChangeActivity(val lastMessageAt: Instant?, val today: Int)
 
 data class ReminderCandidate(
     val gameId: UUID,
@@ -147,8 +147,11 @@ interface GroupCommunicationRepository {
     fun reminderCandidates(mode: AttendanceUpdatesMode? = null): List<ReminderCandidate>
 
     /** Trava e lê a assinatura da última lista publicada do jogo no modo ON_CHANGE. */
-    fun attendanceDigest(gameId: UUID): AttendanceDigest?
-    fun saveAttendanceDigest(gameId: UUID, digest: AttendanceDigest)
+    fun attendanceDigest(gameId: UUID): String?
+    fun saveAttendanceDigest(gameId: UUID, digest: String)
+
+    /** O freio é do grupo, não do jogo: mensagens ON_CHANGE do grupo, a última e quantas desde [dayStart]. */
+    fun onChangeActivity(groupId: UUID, dayStart: Instant): OnChangeActivity
 
     /** Próximo jogo publicado de cada grupo com prazo E início no futuro: o aviso de jogo liberado (GAME_OPEN). */
     fun openGameCandidates(): List<ReminderCandidate>

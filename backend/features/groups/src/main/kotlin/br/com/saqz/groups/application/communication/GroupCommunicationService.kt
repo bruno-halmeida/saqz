@@ -15,16 +15,16 @@ import java.util.UUID
 
 private val SAO_PAULO = ZoneId.of("America/Sao_Paulo")
 
-/** Freio do modo ON_CHANGE: no mínimo 15 min entre mensagens e no máximo 12 por dia (São Paulo) por jogo. */
+/** Freio do modo ON_CHANGE: no mínimo 15 min entre mensagens e no máximo 12 por dia (São Paulo) por grupo. */
 const val ON_CHANGE_DEBOUNCE_MINUTES = 15L
 const val ON_CHANGE_DAILY_LIMIT = 12
 
 /** Publica quando a lista mudou (sem assinatura gravada também é mudança) e o freio deixa. */
-fun shouldPublishChange(stored: AttendanceDigest?, digest: String, now: Instant): Boolean {
-    if (stored == null) return true
-    if (stored.digest == digest) return false
-    if (now.isBefore(stored.lastMessageAt.plusSeconds(ON_CHANGE_DEBOUNCE_MINUTES * 60))) return false
-    return stored.day != now.atZone(SAO_PAULO).toLocalDate() || stored.dayCount < ON_CHANGE_DAILY_LIMIT
+fun shouldPublishChange(stored: String?, digest: String, activity: OnChangeActivity, now: Instant): Boolean {
+    if (stored == digest) return false
+    val last = activity.lastMessageAt
+    if (last != null && now.isBefore(last.plusSeconds(ON_CHANGE_DEBOUNCE_MINUTES * 60))) return false
+    return activity.today < ON_CHANGE_DAILY_LIMIT
 }
 
 class GroupCommunicationService(
@@ -93,7 +93,8 @@ class GroupCommunicationService(
     /**
      * Lista no grupo do WhatsApp a cada mudança (modo ON_CHANGE, a cada 5 min): mesmos candidatos e mesmo corpo do
      * [remindAutomatically], só dos grupos nesse modo e sem central nem push, e só quando a lista mudou desde a última publicada (a primeira
-     * passada de um jogo publica). Freio anti-spam: 15 min entre mensagens e 12 por dia (São Paulo) por jogo; a mudança
+     * passada de um jogo publica). Freio anti-spam: 15 min entre mensagens e 12 por dia (São Paulo) por grupo, contando todos
+     * os jogos; a assinatura é por jogo. A mudança
      * segurada pelo freio sai na próxima passada livre, porque a assinatura só é gravada quando publica.
      */
     fun remindOnChanges(now: Instant = Instant.now()): Int = logPublished("attendance_updates", "reminder_published", transaction.inTransaction {
@@ -101,12 +102,11 @@ class GroupCommunicationService(
             val roster = repository.reminderRoster(candidate.groupId, candidate.gameId)
             val digest = rosterDigest(roster)
             val stored = repository.attendanceDigest(candidate.gameId)
-            if (!shouldPublishChange(stored, digest, now)) return@mapNotNull null
-            val today = now.atZone(SAO_PAULO).toLocalDate()
-            repository.saveAttendanceDigest(
-                candidate.gameId,
-                AttendanceDigest(digest, now, today, if (stored?.day == today) stored.dayCount + 1 else 1),
-            )
+            val dayStart = now.atZone(SAO_PAULO).toLocalDate().atStartOfDay(SAO_PAULO).toInstant()
+            if (!shouldPublishChange(stored, digest, repository.onChangeActivity(candidate.groupId, dayStart), now)) {
+                return@mapNotNull null
+            }
+            repository.saveAttendanceDigest(candidate.gameId, digest)
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
                 reminderBody(candidate.game, roster, now), candidate.gameId, AttendanceUpdatesMode.ON_CHANGE,

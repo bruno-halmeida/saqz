@@ -42,7 +42,10 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     var roster = ReminderRoster(emptyList(), emptyList(), emptyList())
     var reminders = emptyList<ReminderCandidate>()
     var onChangeReminders = emptyList<ReminderCandidate>()
-    val digests = mutableMapOf<UUID, AttendanceDigest>()
+    val digests = mutableMapOf<UUID, String>()
+    /** Hora gravada nas mensagens publicadas (o `created_at` do banco). */
+    var clock: Instant = Instant.parse("2026-09-18T15:00:00Z")
+    val onChangeAt = mutableListOf<Pair<UUID, Instant>>()
     var openGames = emptyList<ReminderCandidate>()
     var single: ReminderCandidate? = null
     var windows = emptyList<AttendanceWindowCandidate>()
@@ -63,6 +66,7 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
         reminderOrigin: AttendanceUpdatesMode?,
     ): GroupMessage {
         published += PublishedMessage(groupId, actor, channel, requestId, body, gameId, reminderOrigin)
+        if (reminderOrigin == AttendanceUpdatesMode.ON_CHANGE) onChangeAt += groupId to clock
         return message(groupId, actor, channel, body, gameId, sequence = published.size.toLong())
     }
     override fun publishGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, body: String): GroupMessage {
@@ -74,7 +78,11 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     override fun reminderCandidates(mode: AttendanceUpdatesMode?) =
         if (mode == AttendanceUpdatesMode.ON_CHANGE) onChangeReminders else reminders
     override fun attendanceDigest(gameId: UUID) = digests[gameId]
-    override fun saveAttendanceDigest(gameId: UUID, digest: AttendanceDigest) { digests[gameId] = digest }
+    override fun saveAttendanceDigest(gameId: UUID, digest: String) { digests[gameId] = digest }
+    override fun onChangeActivity(groupId: UUID, dayStart: Instant): OnChangeActivity {
+        val times = onChangeAt.filter { it.first == groupId }.map { it.second }
+        return OnChangeActivity(times.maxOrNull(), times.count { !it.isBefore(dayStart) })
+    }
     override fun openGameCandidates() = openGames
     override fun reminderCandidate(groupId: UUID) = single
     override fun attendanceWindowCandidates() = windows
