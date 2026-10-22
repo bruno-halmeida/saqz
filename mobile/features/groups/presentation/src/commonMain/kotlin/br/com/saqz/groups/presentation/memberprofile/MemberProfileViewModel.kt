@@ -93,6 +93,7 @@ class MemberProfileViewModel(
                     games = numbers?.games?.toString(),
                     attendance = numbers?.attendanceRate?.let { "$it%" },
                     absences = numbers?.absences?.toString(),
+                    noShows = numbers?.noShows?.takeIf { it > 0 }?.toString(),
                     statsFailed = statsFailed,
                     isSelf = isSelf,
                     blocked = userId in blocks.blocked.value,

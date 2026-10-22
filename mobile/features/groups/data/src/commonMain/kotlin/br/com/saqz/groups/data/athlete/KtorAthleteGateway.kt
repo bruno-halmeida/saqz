@@ -154,6 +154,8 @@ private data class AthleteStatsDto(
     val games: Int = 0,
     val attendanceRate: Int? = null,
     val absences: Int = 0,
+    /** PRES-016: só na resposta para dono e admin; ausente para o atleta e no servidor antigo. */
+    val noShows: Int? = null,
 )
 
 class KtorAthleteGateway(
@@ -271,7 +273,7 @@ class KtorAthleteGateway(
             "api/groups/${groupId.value}/athletes/$userId/stats",
             AthleteStatsDto.serializer(),
         )
-    }.mapResult { AthleteStats(it.games, it.attendanceRate, it.absences) }
+    }.mapResult { AthleteStats(it.games, it.attendanceRate, it.absences, it.noShows) }
 
     override suspend fun removeAthlete(
         groupId: GroupId,

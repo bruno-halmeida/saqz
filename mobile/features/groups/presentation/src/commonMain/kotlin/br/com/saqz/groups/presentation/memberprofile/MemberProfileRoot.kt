@@ -37,6 +37,7 @@ import br.com.saqz.groups.resources.member_profile_title
 import br.com.saqz.groups.resources.member_profile_games
 import br.com.saqz.groups.resources.member_profile_attendance
 import br.com.saqz.groups.resources.member_profile_absences
+import br.com.saqz.groups.resources.member_profile_absences_with_no_show
 import br.com.saqz.groups.resources.member_profile_stats_retry
 import br.com.saqz.groups.resources.moderation_action_block
 import br.com.saqz.groups.resources.moderation_action_report
@@ -51,6 +52,7 @@ object MemberProfileTags {
     const val Phone = "member-profile-phone"
     const val Report = "member-profile-report"
     const val Block = "member-profile-block"
+    const val Absences = "member-profile-absences"
 }
 
 @Composable
@@ -120,7 +122,13 @@ internal fun MemberProfileScreen(
                     if (state.games != null) SaqzCard {
                         Text(stringResource(Res.string.member_profile_games, state.games))
                         state.attendance?.let { Text(stringResource(Res.string.member_profile_attendance, it)) }
-                        state.absences?.let { Text(stringResource(Res.string.member_profile_absences, it)) }
+                        state.absences?.let { absences ->
+                            Text(
+                                state.noShows?.let { stringResource(Res.string.member_profile_absences_with_no_show, absences, it) }
+                                    ?: stringResource(Res.string.member_profile_absences, absences),
+                                modifier = Modifier.testTag(MemberProfileTags.Absences),
+                            )
+                        }
                     }
                     if (state.statsFailed) SaqzButton(label = stringResource(Res.string.member_profile_stats_retry), onClick = onRetry)
                     if (state.moderationVisible) MemberModerationActions(state.blocked, onReport, onToggleBlock)

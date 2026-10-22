@@ -4,4 +4,5 @@
     <string name="member_profile_games">Jogos: %1$s</string>
     <string name="member_profile_attendance">Presença: %1$s</string>
     <string name="member_profile_absences">Faltas: %1$s</string>
+    <string name="member_profile_absences_with_no_show">Faltas: %1$s avisadas · %2$s sem avisar</string>
 </resources>

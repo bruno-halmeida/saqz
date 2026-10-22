@@ -119,6 +119,8 @@ data class AthleteStats(
     val games: Int,
     val attendanceRate: Int?,
     val absences: Int,
+    /** PRES-016: "faltou sem avisar"; só o gestor recebe (nulo para o atleta). */
+    val noShows: Int? = null,
 )
 
 data class OwnAthleteMembership(

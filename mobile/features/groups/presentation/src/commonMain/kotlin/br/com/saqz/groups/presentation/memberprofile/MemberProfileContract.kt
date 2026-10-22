@@ -14,6 +14,8 @@ data class MemberProfileState(
     val games: String? = null,
     val attendance: String? = null,
     val absences: String? = null,
+    /** PRES-016: faltas sem avisar, só na visão do gestor e só quando houver; "Não vou" fica em [absences]. */
+    val noShows: String? = null,
     val statsFailed: Boolean = false,
     /** O próprio perfil não oferece denunciar nem bloquear. */
     val isSelf: Boolean = false,
