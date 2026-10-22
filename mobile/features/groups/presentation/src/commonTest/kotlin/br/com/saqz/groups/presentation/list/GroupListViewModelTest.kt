@@ -261,4 +261,80 @@ class GroupListViewModelTest {
         assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
         assertEquals(2, athlete.ownProfileCalls)
     }
+
+    private fun membershipProfile() = SaqzResult.Success(
+        br.com.saqz.groups.domain.athlete.OwnAthleteProfile(
+            userId = "me",
+            displayName = "Bruno",
+            phone = null,
+            memberships = listOf(
+                OwnAthleteMembership(
+                    groupId = br.com.saqz.domain.GroupId("group-1"),
+                    groupName = "Old name",
+                    role = GroupRole.ADMIN,
+                    position = null,
+                    membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA,
+                    active = true,
+                ),
+            ),
+        ),
+    )
+
+    private fun loadedList(athlete: FakeAthleteGateway) = GroupListViewModel(
+        athlete,
+        FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
+        noPlan,
+        gameGateway = FakeGameGateway(),
+    )
+
+    @Test
+    fun `pull refresh keeps the groups on screen and ends not refreshing`() = runTest {
+        val athlete = FakeAthleteGateway(ownProfileResult = membershipProfile())
+        val viewModel = loadedList(athlete)
+        val gate = CompletableDeferred<Unit>()
+        athlete.ownProfileGate = gate
+
+        viewModel.onIntent(GroupListIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
+
+        gate.complete(Unit)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertEquals(listOf("group-1"), viewModel.state.value.groups.map { it.id })
+    }
+
+    @Test
+    fun `pull refresh failure keeps the groups and warns`() = runTest {
+        val athlete = FakeAthleteGateway(ownProfileResult = membershipProfile())
+        val viewModel = loadedList(athlete)
+        athlete.ownProfileResult = SaqzResult.Failure(
+            br.com.saqz.groups.domain.athlete.AthleteError.DataFailure(DataError.Connectivity),
+        )
+
+        viewModel.onIntent(GroupListIntent.PullRefresh)
+
+        val state = viewModel.state.value
+        assertFalse(state.isRefreshing)
+        assertFalse(state.loadFailed)
+        assertTrue(state.refreshFailed)
+        assertEquals(listOf("group-1"), state.groups.map { it.id })
+        viewModel.onIntent(GroupListIntent.DismissRefreshFailed)
+        assertFalse(viewModel.state.value.refreshFailed)
+    }
+
+    @Test
+    fun `two pulls in a row fetch once`() = runTest {
+        val athlete = FakeAthleteGateway(ownProfileResult = membershipProfile())
+        val viewModel = loadedList(athlete)
+        val gate = CompletableDeferred<Unit>()
+        athlete.ownProfileGate = gate
+
+        viewModel.onIntent(GroupListIntent.PullRefresh)
+        viewModel.onIntent(GroupListIntent.PullRefresh)
+        gate.complete(Unit)
+
+        assertEquals(2, athlete.ownProfileCalls)
+        assertFalse(viewModel.state.value.isRefreshing)
+    }
 }

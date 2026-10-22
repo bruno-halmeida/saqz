@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzBottomNav
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzNavItem
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.presentation.list.GroupCardAttendance
@@ -23,6 +25,7 @@ import br.com.saqz.groups.presentation.list.GroupCardUi
 import br.com.saqz.groups.presentation.list.GroupInviteUi
 import br.com.saqz.groups.presentation.list.GroupListIntent
 import br.com.saqz.groups.presentation.list.GroupListState
+import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.groups.presentation.ui.invite.InviteLinkSheet
 
 internal object GroupListTags {
@@ -81,34 +84,45 @@ fun GroupListScreen(
                 isPlanOwner = isPlanOwner,
             )
 
-            else -> LazyColumn(
+            else -> SaqzPullToRefresh(
+                refreshing = state.isRefreshing,
+                onRefresh = { onIntent(GroupListIntent.PullRefresh) },
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = metrics.horizontalPadding,
-                    end = metrics.horizontalPadding,
-                    top = metrics.subGrid,
-                    bottom = ListBottomPadding,
-                ),
-                verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
-                items(state.groups, key = { it.id }) { group ->
-                    GroupCard(
-                        group = group,
-                        onClick = { onIntent(GroupListIntent.OpenGroup(group.id)) },
-                    )
-                }
-                state.invite?.let { invite ->
-                    item(key = invite.id) {
-                        GroupInviteCard(
-                            invite = invite,
-                            onAccept = { onIntent(GroupListIntent.AcceptInvite(invite.id)) },
-                            onDecline = { onIntent(GroupListIntent.DeclineInvite(invite.id)) },
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = metrics.horizontalPadding,
+                        end = metrics.horizontalPadding,
+                        top = metrics.subGrid,
+                        bottom = ListBottomPadding,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                ) {
+                    items(state.groups, key = { it.id }) { group ->
+                        GroupCard(
+                            group = group,
+                            onClick = { onIntent(GroupListIntent.OpenGroup(group.id)) },
                         )
+                    }
+                    state.invite?.let { invite ->
+                        item(key = invite.id) {
+                            GroupInviteCard(
+                                invite = invite,
+                                onAccept = { onIntent(GroupListIntent.AcceptInvite(invite.id)) },
+                                onDecline = { onIntent(GroupListIntent.DeclineInvite(invite.id)) },
+                            )
+                        }
                     }
                 }
             }
         }
         }
+        RefreshFailedToast(
+            visible = state.refreshFailed,
+            onDismiss = { onIntent(GroupListIntent.DismissRefreshFailed) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
         InviteLinkSheet(
             open = state.inviteSheetOpen,
             link = state.inviteLink,

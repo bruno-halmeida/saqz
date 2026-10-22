@@ -10,6 +10,10 @@ import br.com.saqz.groups.presentation.GroupUiError
 @Immutable
 data class GroupListState(
     val isLoading: Boolean = true,
+    /** Puxar para atualizar em andamento (GER-002); os grupos continuam na tela. */
+    val isRefreshing: Boolean = false,
+    /** O último puxar falhou: a lista fica e o aviso aparece. */
+    val refreshFailed: Boolean = false,
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val groups: List<GroupCardUi> = emptyList(),
@@ -65,6 +69,11 @@ sealed interface GroupListIntent {
 
     /** Recarrega a lista sem esqueleto, mantendo os grupos na tela enquanto busca. */
     data object Refresh : GroupListIntent
+
+    /** Puxar para atualizar (GER-002): como [Refresh], mas mostra a bola e avisa se falhar. */
+    data object PullRefresh : GroupListIntent
+
+    data object DismissRefreshFailed : GroupListIntent
 
     /**
      * A lista apareceu: voltou de outra tela, da troca de aba ou do segundo plano. A primeira

@@ -147,6 +147,9 @@ class FakeAthleteGateway(
     var lastUpdateCommand: br.com.saqz.groups.domain.athlete.UpdateAthleteCommand? = null
     var lastStatsUserId: String? = null
     var ownProfileCalls = 0
+
+    /** Segura a resposta de [ownProfile] para a carga ficar em voo. */
+    var ownProfileGate: CompletableDeferred<Unit>? = null
     var ownEntryRequestCalls = 0
     var lastSaveEntryRequestProfileCommand: UpdateOwnAthleteProfileCommand? = null
 
@@ -232,6 +235,7 @@ class FakeAthleteGateway(
 
     override suspend fun ownProfile(): SaqzResult<OwnAthleteProfile, AthleteError> {
         ownProfileCalls += 1
+        ownProfileGate?.await()
         return ownProfileResult
     }
 }

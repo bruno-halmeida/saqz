@@ -45,6 +45,8 @@ class GroupListViewModel(
             is GroupListIntent.DeclineInvite -> dismissInvite(intent.id)
             GroupListIntent.Retry -> load()
             GroupListIntent.Refresh -> refreshSilently()
+            GroupListIntent.PullRefresh -> pullRefresh()
+            GroupListIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             GroupListIntent.Appeared -> if (appeared) refreshSilently() else appeared = true
             is GroupListInviteSheetIntent -> handleInviteSheet(intent)
         }
@@ -93,7 +95,15 @@ class GroupListViewModel(
         if (!state.value.isLoading) load(softRefresh = true)
     }
 
-    private fun load(softRefresh: Boolean = false) {
+    // GER-002: puxar com a lista ainda carregando, ou já atualizando, não dispara outra busca.
+    private fun pullRefresh() {
+        val current = state.value
+        if (current.isLoading || current.isRefreshing) return
+        update { it.copy(isRefreshing = true, refreshFailed = false) }
+        load(softRefresh = true, pulled = true)
+    }
+
+    private fun load(softRefresh: Boolean = false, pulled: Boolean = false) {
         val generation = ++loadGeneration
         update {
             if (softRefresh) {
@@ -102,11 +112,16 @@ class GroupListViewModel(
                 it.copy(isLoading = true, loadFailed = false, error = null)
             }
         }
-        viewModelScope.launch {
+        // Recarga por baixo que falha não derruba a lista; só a puxada avisa.
+        val fail: (GroupUiError) -> Unit = { error ->
+            when {
+                !softRefresh -> showFailure(generation, error)
+                pulled && generation == loadGeneration -> update { it.copy(refreshFailed = true) }
+            }
+        }
+        val job = viewModelScope.launch {
             when (val result = athleteGateway.ownProfile()) {
-                is SaqzResult.Failure -> if (!softRefresh) {
-                    showFailure(generation, result.error.toUiError())
-                }
+                is SaqzResult.Failure -> fail(result.error.toUiError())
                 is SaqzResult.Success -> {
                     val memberships = result.value.memberships.filter(OwnAthleteMembership::active)
                     val loadedCards = mutableListOf<GroupCardUi>()
@@ -116,7 +131,7 @@ class GroupListViewModel(
                         val group = when (val read = groupGateway.read(membership.groupId)) {
                             is SaqzResult.Success -> read.value.group
                             is SaqzResult.Failure -> {
-                                if (!softRefresh) showFailure(generation, read.error.toUiError())
+                                fail(read.error.toUiError())
                                 return@launch
                             }
                         }
@@ -124,7 +139,7 @@ class GroupListViewModel(
                         val games = when (val read = gameGateway.list(membership.groupId)) {
                             is SaqzResult.Success -> read.value
                             is SaqzResult.Failure -> {
-                                showFailure(generation, read.error.toUiError())
+                                fail(read.error.toUiError())
                                 return@launch
                             }
                         }
@@ -140,6 +155,9 @@ class GroupListViewModel(
                 }
             }
         }
+        // Pelo fim do job: os `return@launch` e o descarte por geração também soltam a bola. Uma
+        // carga mais nova que tomou a vez é quem a solta quando terminar.
+        job.invokeOnCompletion { if (generation == loadGeneration) update { it.copy(isRefreshing = false) } }
     }
 
     private fun showFailure(generation: Int, error: GroupUiError) {
