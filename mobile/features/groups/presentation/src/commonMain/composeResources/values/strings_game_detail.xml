@@ -4,7 +4,6 @@
     <string name="game_detail_title">Jogo</string>
     <string name="game_detail_status_draft">Rascunho</string>
     <string name="game_detail_status_published">Aberto para confirmações</string>
-    <string name="game_detail_status_deadline_closed">Prazo encerrado</string>
     <string name="game_detail_status_in_progress">Em andamento</string>
     <string name="game_detail_status_cancelled">Cancelado</string>
     <string name="game_detail_status_completed">Encerrado</string>

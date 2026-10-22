@@ -56,7 +56,7 @@ internal object GroupWaitingPreviewData {
 
     val failed = idle.copy(notificationFailed = true)
 
-    /** Prazo vencido com o jogo por começar: o "Avisar" continua, com "Prazo encerrado" no lugar do prazo. */
+    /** Prazo vencido com o jogo por começar: o "Avisar" continua, sem linha de prazo (DEB-137). */
     val closed = idle.copy(nextGame = nextGame.copy(confirmationOpen = false))
 
     /** Jogo já começou: a linha de quórum some. */

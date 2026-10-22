@@ -808,6 +808,38 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `failed promotion reloads the list and drops the warning when someone else already promoted`() = runTest {
+        val attendance = FakeAttendanceGateway()
+        val deferred = CompletableDeferred<SaqzResult<br.com.saqz.groups.domain.attendance.VersionedAttendanceMutation, AttendanceError>>()
+        attendance.promoteDeferred = deferred
+        val group = sampleVersionedGroup().copy(
+            group = sampleVersionedGroup().group.copy(
+                gameConfig = GroupGameConfig(
+                    promotionMode = br.com.saqz.groups.domain.group.PromotionMode.MANUAL,
+                ),
+            ),
+        )
+        val viewModel = GameDetailViewModel(
+            "group-1", "game-1", FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame(openGame()))), FakeGroupGateway(SaqzResult.Success(group)),
+            attendance, FakeAthleteGateway(),
+        )
+        viewModel.onIntent(GameDetailIntent.Promote("wait-1", "Escolha do organizador"))
+        // Outro gestor colocou a pessoa antes: o servidor recusa e a lista nova já a traz confirmada.
+        attendance.rosterResult = SaqzResult.Success(
+            AttendanceRoster(
+                confirmed = listOf(AttendanceRosterMember("confirmed-1", "Ana"), AttendanceRosterMember("wait-1", "Caio")),
+                waitlisted = listOf(AttendanceRosterMember("wait-2", "Duda", 1)),
+            ),
+        )
+
+        deferred.complete(SaqzResult.Failure(AttendanceError.Validation(DataError.Validation(br.com.saqz.domain.ValidationDetails(emptyList(), mapOf("promotion" to listOf("is required or invalid")))))))
+
+        assertEquals(listOf("wait-2"), viewModel.state.value.waitlist.map { it.id })
+        assertTrue(viewModel.state.value.confirmedRoster.any { it.id == "wait-1" })
+        assertFalse(viewModel.state.value.promotionFailed)
+    }
+
+    @Test
     fun `after the game started promote and the capacity sheet are ignored`() = runTest {
         val attendance = FakeAttendanceGateway()
         val viewModel = manualWaitlist(attendance, game = openGame().copy(startsAt = "2020-01-01T20:00:00-03:00"))

@@ -29,7 +29,6 @@ import br.com.saqz.groups.presentation.ui.components.WaitingRow
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.communication_failure
 import br.com.saqz.groups.resources.communication_remind_refused
-import br.com.saqz.groups.resources.game_detail_status_deadline_closed
 import br.com.saqz.groups.resources.communication_reminded
 import br.com.saqz.groups.resources.group_details_waiting_notify
 import br.com.saqz.groups.resources.group_details_waiting_quorum
@@ -152,7 +151,8 @@ private fun QuorumRow(
             ?: stringResource(Res.string.communication_failure)
         state.notificationRefused -> stringResource(Res.string.communication_remind_refused)
         state.notificationFailed -> stringResource(Res.string.communication_failure)
-        state.nextGame?.confirmationOpen == false -> stringResource(Res.string.game_detail_status_deadline_closed)
+        // O prazo só encerra a prioridade dos mensalistas (DEB-137): passado, a linha fica sem data, como a lista do grupo.
+        state.nextGame?.confirmationOpen == false -> null
         else -> state.nextGame?.deadlineShort?.ifEmpty { null }
     }
     val sentBadge: (@Composable () -> Unit)? = if (notified != null) { { QuorumSentBadge() } } else null

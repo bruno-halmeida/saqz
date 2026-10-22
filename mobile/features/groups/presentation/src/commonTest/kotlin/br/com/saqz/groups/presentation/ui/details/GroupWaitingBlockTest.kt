@@ -1,12 +1,14 @@
 package br.com.saqz.groups.presentation.ui.details
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -112,12 +114,14 @@ class GroupWaitingBlockTest {
         onNodeWithTag(GroupDetailsTags.NotifyPending).assertIsEnabled()
     }
 
-    // DEB-093: o prazo vencido não tira o "Avisar"; só o início do jogo tira.
+    // DEB-093: o prazo vencido não tira o "Avisar"; só o início do jogo tira. DEB-137: passado o prazo, sem linha de prazo.
     @Test
-    fun closedConfirmationsKeepTheQuorumRowWithDeadlineClosed() = runComposeUiTest {
+    fun closedConfirmationsKeepTheQuorumRowWithoutADeadlineLine() = runComposeUiTest {
         setDetailsScreen(GroupWaitingPreviewData.closed)
 
-        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Prazo encerrado")
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum)
+            .assert(!hasText("Prazo encerrado", substring = true))
+            .assert(!hasText("Prioridade", substring = true))
         onNodeWithTag(GroupDetailsTags.NotifyPending).performScrollTo().assertIsEnabled()
     }
 

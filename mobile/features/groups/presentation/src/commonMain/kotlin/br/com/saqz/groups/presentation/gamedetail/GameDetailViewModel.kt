@@ -101,6 +101,9 @@ class GameDetailViewModel(
     private var versionToken: GameVersionToken? = null
     private var selfId: String? = null
 
+    /** Linha de quem não subiu da espera: o aviso de falha fica só enquanto ela ainda espera na lista recarregada. */
+    private var failedPromotionRowId: String? = null
+
     /** Membros ativos da última carga: é de onde sai a lista de "Colocar alguém no jogo". */
     private var athletes: List<AthleteRosterEntry> = emptyList()
 
@@ -466,6 +469,8 @@ class GameDetailViewModel(
                 val header = game.toHeader()
                 val open = header.confirmationOpen
                 val tone = header.statusTone
+                val waitlist = roster.waitlisted.map { member -> member.toWaitlist(byId[member.memberId], isAdmin, open, tone) }
+                failedPromotionRowId = failedPromotionRowId?.takeIf { id -> waitlist.any { it.id == id } }
                 update {
                     it.copy(
                         isLoading = false,
@@ -478,9 +483,7 @@ class GameDetailViewModel(
                         confirmedRoster = roster.confirmed.map { member ->
                             member.toConfirmed(byId[member.memberId], isAdmin, open, tone)
                         },
-                        waitlist = roster.waitlisted.map { member ->
-                            member.toWaitlist(byId[member.memberId], isAdmin, open, tone)
-                        },
+                        waitlist = waitlist,
                         declinedRoster = roster.declined?.map { member -> member.toDeclined(byId[member.memberId]) },
                         groupName = groupName,
                         hero = hero,
@@ -495,7 +498,7 @@ class GameDetailViewModel(
                         promotionMode = promotionMode,
                         isAdmin = isAdmin,
                         promotingMemberId = null,
-                        promotionFailed = false,
+                        promotionFailed = failedPromotionRowId != null,
                         publishAfterPlanEnd = it.publishAfterPlanEnd && startsAt == publishRefusedStart,
                         organizer = GameOrganizerUi(),
                         capacitySheetOpen = false,
@@ -526,6 +529,7 @@ class GameDetailViewModel(
         if (previousWaitlist.none { it.id == rowId }) return
         val loadAtStart = loadGeneration
         val generation = ++promotionGeneration
+        failedPromotionRowId = null
         update {
             it.copy(
                 waitlist = it.waitlist.filterNot { member -> member.id == rowId },
@@ -559,13 +563,19 @@ class GameDetailViewModel(
                     }
                     refreshRoster(Operation.Promotion, generation, loadAtStart)
                 }
-                is SaqzResult.Failure -> update {
-                    it.copy(
-                        waitlist = previousWaitlist,
-                        attendance = previousAttendance,
-                        promotingMemberId = null,
-                        promotionFailed = true,
-                    )
+                is SaqzResult.Failure -> {
+                    update {
+                        it.copy(
+                            waitlist = previousWaitlist,
+                            attendance = previousAttendance,
+                            promotingMemberId = null,
+                            promotionFailed = true,
+                        )
+                    }
+                    // A lista pode ter mudado por outro gestor (a pessoa já subiu ou saiu): recarrega por baixo em
+                    // vez de deixar a linha velha para um "tente de novo" que falharia igual.
+                    failedPromotionRowId = rowId
+                    load(softRefresh = true)
                 }
             }
         }
