@@ -49,7 +49,7 @@ _As linhas da janela de presença (a partir de "Janela ligada") foram decididas 
 | Mudou o horário | Todos, menos "Não vou", recebem push com o novo horário | ☐ | ☐ |
 | Rascunho | Nenhum aviso | ☐ | ☐ |
 | Jogo já começou | Nenhum lembrete | ☐ | ☐ |
-| Lembretes por dia | No máximo 2 | ☐ | ☐ |
+| Lembretes por dia | No máximo 3 (9h, 12h30 e 18h) | ☐ | ☐ |
 | Janela ligada, jogo publicado, sem resposta | 8 h antes do prazo de confirmação abre o cartão ao vivo com a contagem de vagas, "Confirmar" e "Não vou" | ☐ | ☐ |
 | Jogo publicado já dentro das 8 h antes do prazo | O cartão abre na primeira passada do job | ☐ | ☐ |
 | Já respondeu ("Vou", confirmado ou na espera, ou "Não vou") antes da janela | Não recebe o cartão nem o push da janela | ☐ | ☐ |
@@ -127,3 +127,23 @@ _As linhas da janela de presença (a partir de "Janela ligada") foram decididas 
 | Mudança de horário | Aparece no WhatsApp (alvo) | ☐ | ☐ |
 | Número removido do grupo de WhatsApp | Vínculo quebrado; pendentes canceladas | ☐ | ☐ |
 | Provedor fora do ar | Tenta de novo | ☐ | ☐ |
+
+## NOT-008 · A lista no grupo do WhatsApp: por horário ou a cada confirmação [MULTI]
+
+_Decidida em 22/10/2026; vale depois da entrega do DEB-127 (app 1.0.12 onde houver tela)._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Grupo sem mudar nada | 3 listas por dia no grupo do WhatsApp, como antes | ☐ | ☐ |
+| Dono troca para "A cada confirmação" (configurações do grupo) | Admin não vê o seletor; atleta não vê | ☐ | ☐ |
+| A cada confirmação, alguém confirma | Lista no grupo (se passou 15 min da última) | ☐ | ☐ |
+| Segunda mudança 5 min depois | Não sai; sai na próxima passada depois dos 15 min | ☐ | ☐ |
+| 13ª mudança no dia | Não sai; o contador zera no dia seguinte | ☐ | ☐ |
+| Mudança às 23h | Não sai; vai às 8h se a lista ainda mudou | ☐ | ☐ |
+| A cada confirmação, 9h/12h30/18h | Push e central como sempre; nada no grupo do WhatsApp por horário | ☐ | ☐ |
+| "Avisar" do organizador | Vai ao grupo nos dois modos | ☐ | ☐ |
+| Jogo 6-0 com 6 de 12 | Linhas 1 a 6 com nomes, 7 a 12 só com o número | ☐ | ☐ |
+| Jogo 5-1 | Uma seção por posição, vagas numeradas dentro dela | ☐ | ☐ |
+| Espera em FIFO sem prioridade de mensalista | Numerada | ☐ | ☐ |
+| Espera com prioridade de mensalista ou escolha manual | Sem número | ☐ | ☐ |
+| Jogo sem sistema de jogo (legado) | Formato de antes, sem numeração | ☐ | ☐ |

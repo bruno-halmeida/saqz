@@ -6,14 +6,14 @@ Um arquivo por feature, gerado das tabelas de QA do cofre. Complementa `tests/pr
 | --- | ---: | ---: | ---: |
 | [Acesso e conta](acesso-e-conta.md) | 6 | 2 | 2 |
 | [Assinatura e teste grátis](assinatura-e-teste-gratis.md) | 6 | 2 | 1 |
-| [Avisos e notificações](avisos-e-notificacoes.md) | 7 | 1 | 7 |
+| [Avisos e notificações](avisos-e-notificacoes.md) | 8 | 1 | 8 |
 | [Convites e entrada no grupo](convites-e-entrada-no-grupo.md) | 11 | 5 | 11 |
 | [Financeiro](financeiro.md) | 8 | 3 | 6 |
-| [Geral](geral.md) | 1 | 0 | 0 |
-| [Jogos](jogos.md) | 10 | 2 | 6 |
+| [Geral](geral.md) | 2 | 0 | 0 |
+| [Jogos](jogos.md) | 11 | 2 | 7 |
 | [Link de presença do WhatsApp](link-de-presenca-do-whatsapp.md) | 6 | 0 | 5 |
 | [Membros e papéis](membros-e-papeis.md) | 5 | 0 | 4 |
-| [Presença e lista de espera](presenca-e-lista-de-espera.md) | 22 | 7 | 20 |
+| [Presença e lista de espera](presenca-e-lista-de-espera.md) | 23 | 7 | 21 |
 | [Saída do grupo e exclusão de conta](saida-do-grupo-e-exclusao-de-conta.md) | 9 | 1 | 9 |
 
 ## Como rodar

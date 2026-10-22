@@ -11,3 +11,14 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 Para cada ação: tocar duas e três vezes rápido e conferir que acontece um só efeito (uma linha, um aviso, uma cobrança). Repetir
 com rede lenta. Casos já conhecidos que a regra reabre: P1-15 ("Cobrar" manda dois avisos), WA-4c ("Avisar" sem trava) e BE-4b
 (`VERSION_CONFLICT` ao cobrar cobrança paga).
+
+## GER-002 · Puxar para atualizar
+
+_Decidida em 22/10/2026; vale depois da entrega do DEB-130 (app 1.0.12 onde houver tela)._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Puxar na Início, Grupos, detalhe do grupo, jogo, Caixa, Jogos anteriores e Perfil | Bola gira, dados novos, bola some | ☐ | ☐ |
+| Puxar sem internet | Dados antigos ficam; aviso de erro | ☐ | ☐ |
+| Puxar duas vezes rápido | Uma busca só | ☐ | ☐ |
+| Leitor de tela | Ação de atualizar anunciada | ☐ | ☐ |

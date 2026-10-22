@@ -196,6 +196,22 @@ Precisa de um grupo 5-1 com vagas por posição (ex. 4 ponteiros(as), 4 centrais
 | Rótulos de posição | Ponteiro(a), Central, Oposto(a), Levantador(a), Líbero; plurais ponteiros(as), opostos(as), levantadores(as); cadastro, membros e espera seguem Ponteiro/Ponteira | ☐ | ☐ |
 | Selo "Você vai" | Texto verde escuro (`successForeground`, AA ≥ 4,5:1) | ☐ | ☐ |
 
+## PRES-016 · Faltou: confirmou e não apareceu [MULTI]
+
+_Decidida em 22/10/2026; vale depois da entrega do DEB-129 (app 1.0.12 onde houver tela)._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Gestor marca avulso com diária de R$ 25 (⋮ em Jogaram → Marcar falta) | Aba Faltaram com ele; diária pendente com "Faltou" no acerto | ☐ | ☐ |
+| Gestor dispensa no acerto | Dispensada, sai do "falta receber" | ☐ | ☐ |
+| Gestor desfaz | Volta para Jogaram; etiqueta some | ☐ | ☐ |
+| 8 dias depois do jogo | Não marca nem desfaz (sem ⋮) | ☐ | ☐ |
+| Atleta abre o jogo | Vê a pessoa em Jogaram, sem aba Faltaram | ☐ | ☐ |
+| Pessoa marcada | Não recebe aviso; "Jogos realizados" do perfil dela sem esse jogo | ☐ | ☐ |
+| Gestor abre o perfil do membro | "Faltas" separa "Não vou" de falta sem aviso | ☐ | ☐ |
+| Atleta tenta marcar pela API | 403 | ☐ | ☐ |
+| Mensalista marcado | Só o registro, sem cobrança | ☐ | ☐ |
+
 ## PROM-001 · O que libera uma vaga [CRÍTICO] [MULTI]
 
 | Evento | Libera? | A fila anda | iOS | Android |

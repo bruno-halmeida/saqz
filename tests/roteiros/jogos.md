@@ -107,3 +107,24 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Horários pausados | Nenhum jogo novo; os existentes continuam | ☐ | ☐ |
 | Grupo sem quadra padrão | Nada é gerado | ☐ | ☐ |
 | Teste grátis vencido sem assinatura | O futuro da série é cancelado | ☐ | ☐ |
+
+## JOGO-011 · Jogos anteriores [MULTI]
+
+_Decidida em 22/10/2026; vale depois da entrega do DEB-128 (app 1.0.12 onde houver tela)._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Gestor com 3 próximos e anteriores | Rodapé de "Próximos jogos" com "Ver mais N jogos" e "Jogos anteriores" | ☐ | ☐ |
+| Gestor sem próximo jogo, com anteriores | Seção só com o botão "Jogos anteriores" | ☐ | ☐ |
+| Grupo que nunca teve jogo anterior | Sem o botão | ☐ | ☐ |
+| Atleta | Lista como hoje, sem botão; a rota recusa (403) | ☐ | ☐ |
+| Abre a lista | Do mais recente para trás, separada por mês | ☐ | ☐ |
+| Jogo encerrado | "N de M foram", selo Encerrado | ☐ | ☐ |
+| Encerrado com diária aberta | Linha âmbar "Acerto pendente · N pessoas, R$ X" | ☐ | ☐ |
+| Cancelado depois de publicado | Na lista, apagado, "Cancelado" | ☐ | ☐ |
+| Rascunho de série cancelado | Fora da lista | ☐ | ☐ |
+| 45 jogos anteriores | 20, depois mais 20 ao rolar, depois 5, sem repetir | ☐ | ☐ |
+| Toque num jogo | Abre o detalhe do jogo | ☐ | ☐ |
+| Detalhe de realizado já acertado (gestor) | Botão "Ver acerto" | ☐ | ☐ |
+| Detalhe de realizado com pendência (gestor) | Botão "Encerrar jogo e acertar" | ☐ | ☐ |
+| Detalhe de cancelado | Abas "Confirmados | Não iam" | ☐ | ☐ |
