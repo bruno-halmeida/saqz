@@ -19,6 +19,8 @@ internal data class PastGamesState(
     val loadMoreFailed: Boolean = false,
     /** Recarga por cima (voltar à tela ou puxar para atualizar): a lista na tela fica. */
     val isRefreshing: Boolean = false,
+    /** O puxão (GER-002) não conseguiu atualizar: a lista fica e o aviso aparece. */
+    val refreshFailed: Boolean = false,
 )
 
 @Immutable
@@ -45,6 +47,10 @@ internal sealed interface PastGamesIntent {
 
     /** O fim da lista apareceu: busca a próxima página (uma por vez). */
     data object LoadMore : PastGamesIntent
+
+    /** Puxar para atualizar (GER-002). */
+    data object PullRefresh : PastGamesIntent
+    data object DismissRefreshFailed : PastGamesIntent
     data class OpenGame(val gameId: String) : PastGamesIntent
 }
 

@@ -32,7 +32,9 @@ import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzCard
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzDivider
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.designsystem.SaqzSkeleton
+import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
@@ -68,8 +70,7 @@ internal object PastGamesTags {
 private const val LoadMoreThresholdPx = 400
 
 /**
- * JOGO-011. A tela recebe o [listState] de fora para o "puxar para atualizar" (DEB-130) poder
- * envolvê-la sem mexer aqui; a recarga já existe como [PastGamesIntent.Refresh].
+ * JOGO-011. Puxar para atualizar (GER-002) envolve a lista; a falha mantém a lista e mostra o aviso.
  */
 @Composable
 internal fun PastGamesScreen(
@@ -96,7 +97,20 @@ internal fun PastGamesScreen(
                 color = SaqzTheme.colors.textSecondary,
                 modifier = Modifier.padding(metrics.horizontalPadding).testTag(PastGamesTags.Empty),
             )
-            else -> PastGamesList(state, onIntent, listState)
+            else -> Box(modifier = Modifier.fillMaxSize()) {
+                SaqzPullToRefresh(
+                    refreshing = state.isRefreshing,
+                    onRefresh = { onIntent(PastGamesIntent.PullRefresh) },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    PastGamesList(state, onIntent, listState)
+                }
+                RefreshFailedToast(
+                    visible = state.refreshFailed,
+                    onDismiss = { onIntent(PastGamesIntent.DismissRefreshFailed) },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
         }
     }
 }

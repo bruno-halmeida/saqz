@@ -178,6 +178,75 @@ class PastGamesViewModelTest {
     }
 
     @Test
+    fun `puxar atualiza mantendo a lista e liga a bola ate terminar`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val gateway = FakePastGames(pages = mapOf(null to PastGamesPage(listOf(game("g1", "2026-10-20T23:00:00Z")), null)))
+        val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())
+        gateway.gateOn = null
+        gateway.gate = gate
+
+        vm.onIntent(PastGamesIntent.PullRefresh)
+        assertTrue(vm.state.value.isRefreshing)
+        assertEquals(1, vm.state.value.rows.size)
+        // Segundo puxão com a atualização no ar pega carona: nenhuma busca a mais.
+        vm.onIntent(PastGamesIntent.PullRefresh)
+        gate.complete(Unit)
+
+        assertEquals(listOf<String?>(null, null), gateway.cursors)
+        assertFalse(vm.state.value.isRefreshing)
+        assertFalse(vm.state.value.refreshFailed)
+    }
+
+    @Test
+    fun `puxar com carregar mais no ar pega carona sem outra busca`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val gateway = FakePastGames(
+            pages = mapOf(
+                null to PastGamesPage(listOf(game("g1", "2026-10-20T23:00:00Z")), "c1"),
+                "c1" to PastGamesPage(listOf(game("g2", "2026-10-13T23:00:00Z")), null),
+            ),
+            gateOn = "c1",
+            gate = gate,
+        )
+        val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())
+
+        vm.onIntent(PastGamesIntent.LoadMore)
+        vm.onIntent(PastGamesIntent.PullRefresh)
+        assertTrue(vm.state.value.isRefreshing)
+        gate.complete(Unit)
+
+        assertEquals(listOf(null, "c1"), gateway.cursors)
+        assertFalse(vm.state.value.isRefreshing)
+        assertEquals(2, vm.state.value.rows.size)
+    }
+
+    @Test
+    fun `puxao que falha mantem a lista e mostra o aviso`() = runTest {
+        val gateway = FakePastGames(pages = mapOf(null to PastGamesPage(listOf(game("g1", "2026-10-20T23:00:00Z")), null)))
+        val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())
+        gateway.failure = GameError.Data(DataError.Connectivity)
+
+        vm.onIntent(PastGamesIntent.PullRefresh)
+
+        assertTrue(vm.state.value.refreshFailed)
+        assertFalse(vm.state.value.isRefreshing)
+        assertEquals(1, vm.state.value.rows.size)
+        vm.onIntent(PastGamesIntent.DismissRefreshFailed)
+        assertFalse(vm.state.value.refreshFailed)
+    }
+
+    @Test
+    fun `volta do detalhe que falha nao mostra aviso`() = runTest {
+        val gateway = FakePastGames(pages = mapOf(null to PastGamesPage(listOf(game("g1", "2026-10-20T23:00:00Z")), null)))
+        val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())
+        gateway.failure = GameError.Data(DataError.Connectivity)
+
+        vm.onIntent(PastGamesIntent.Refresh)
+
+        assertFalse(vm.state.value.refreshFailed)
+    }
+
+    @Test
     fun `toque abre o jogo`() = runTest {
         val gateway = FakePastGames(pages = mapOf(null to PastGamesPage(emptyList(), null)))
         val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())
@@ -200,8 +269,8 @@ class PastGamesViewModelTest {
     private class FakePastGames(
         var pages: Map<String?, PastGamesPage>,
         var failure: GameError? = null,
-        val gateOn: String? = null,
-        val gate: CompletableDeferred<Unit>? = null,
+        var gateOn: String? = null,
+        var gate: CompletableDeferred<Unit>? = null,
     ) : PastGamesGateway {
         val cursors = mutableListOf<String?>()
 

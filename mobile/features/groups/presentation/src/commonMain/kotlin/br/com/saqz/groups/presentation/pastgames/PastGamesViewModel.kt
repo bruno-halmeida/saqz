@@ -46,6 +46,9 @@ internal class PastGamesViewModel(
     /** Quadra padrão do grupo: a linha só mostra o local quando o jogo foi em outro (regra da agenda). */
     private var defaultVenueName: String? = null
 
+    /** O gestor puxou: a falha da carga que está no ar (a dele ou a de carona) vira aviso. */
+    private var pulled = false
+
     init {
         load(soft = false)
     }
@@ -55,6 +58,8 @@ internal class PastGamesViewModel(
             PastGamesIntent.Retry -> load(soft = false)
             PastGamesIntent.Refresh -> if (!state.value.isLoading) load(soft = true)
             PastGamesIntent.LoadMore -> loadMore()
+            PastGamesIntent.PullRefresh -> pullRefresh()
+            PastGamesIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             is PastGamesIntent.OpenGame -> emit(PastGamesEffect.OpenGame(intent.gameId))
         }
     }
@@ -85,6 +90,24 @@ internal class PastGamesViewModel(
      * Atualização por baixo (volta do detalhe): busca de novo até a quantidade já carregada e mescla por id. A lista não
      * encolhe nem perde a posição; o que ficar além do que voltou continua como estava. Falha não mexe na lista.
      */
+    /**
+     * GER-002: puxão com atualização ou "carregar mais" no ar pega carona nela — a bola fica até a carga terminar,
+     * sem outra busca; sem carga no ar, é a mesma atualização por baixo da volta do detalhe.
+     */
+    private fun pullRefresh() {
+        val current = state.value
+        if (current.isLoading || current.loadFailed) return
+        pulled = true
+        when {
+            current.isRefreshing -> update { it.copy(refreshFailed = false) }
+            current.isLoadingMore -> update { it.copy(isRefreshing = true, refreshFailed = false) }
+            else -> {
+                update { it.copy(refreshFailed = false) }
+                refresh()
+            }
+        }
+    }
+
     private fun refresh() {
         val loaded = state.value.rows
         if (state.value.isLoadingMore || state.value.isRefreshing) return
@@ -103,7 +126,8 @@ internal class PastGamesViewModel(
                         next = page.value.nextCursor
                     }
                     is SaqzResult.Failure -> {
-                        if (current == generation) update { it.copy(isRefreshing = false) }
+                        if (current == generation) update { it.copy(isRefreshing = false, refreshFailed = pulled) }
+                        pulled = false
                         return@launch
                     }
                 }
@@ -114,6 +138,7 @@ internal class PastGamesViewModel(
             val rows = fresh + loaded.filterNot { it.gameId in freshIds }
             // O laço só para com a quantidade alcançada ou no fim: a próxima página parte da última buscada.
             cursor = next
+            pulled = false
             update { it.copy(rows = rows, isRefreshing = false, canLoadMore = cursor != null) }
         }
     }
@@ -135,9 +160,17 @@ internal class PastGamesViewModel(
                     cursor = page.value.nextCursor
                     val known = state.value.rows.mapTo(HashSet()) { it.gameId }
                     val rows = page.value.games.filterNot { it.id in known }.mapNotNull { it.toRow() }
-                    update { it.copy(rows = it.rows + rows, isLoadingMore = false, canLoadMore = cursor != null) }
+                    update {
+                        it.copy(rows = it.rows + rows, isLoadingMore = false, canLoadMore = cursor != null, isRefreshing = false)
+                    }
+                    pulled = false
                 }
-                is SaqzResult.Failure -> update { it.copy(isLoadingMore = false, loadMoreFailed = true) }
+                is SaqzResult.Failure -> {
+                    update {
+                        it.copy(isLoadingMore = false, loadMoreFailed = true, isRefreshing = false, refreshFailed = pulled)
+                    }
+                    pulled = false
+                }
             }
         }
     }
