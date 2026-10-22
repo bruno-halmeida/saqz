@@ -396,6 +396,24 @@ class GameSettlementViewModelTest {
     }
 
     @Test
+    fun `no-show diarist carries the mark and can be waived like who withdrew PRES-016`() = runTest {
+        val finance = SettlementFinanceGateway(noShowCharges(), expenses())
+        val viewModel = viewModel(finance)
+
+        val pending = viewModel.state.value.diarists.first { it.chargeId == "game-pending" }
+        assertTrue(pending.noShow)
+        assertFalse(pending.withdrew)
+        assertTrue(viewModel.state.value.debtors.single().noShow)
+        viewModel.onIntent(GameSettlementIntent.OpenWaive("game-pending"))
+        assertEquals("game-pending", viewModel.state.value.waiveSheetChargeId)
+
+        viewModel.onIntent(GameSettlementIntent.Waive("game-pending"))
+
+        assertEquals(ChargeStatusCommand(ChargeStatus.Waived), finance.lastCommand)
+        assertFalse(viewModel.state.value.diarists.first { it.chargeId == "game-pending" }.noShow)
+    }
+
+    @Test
     fun `waive opens a confirmation only for a pending charge of someone who withdrew`() = runTest {
         val viewModel = viewModel(SettlementFinanceGateway(withdrewCharges(), expenses()))
 
@@ -856,6 +874,8 @@ class GameSettlementViewModelTest {
     )
 
     /** Pedro confirmou, desistiu e a diária dele segue pendente. */
+    private fun noShowCharges() = charges().map { if (it.id == "game-pending") it.copy(noShow = true) else it }
+
     private fun withdrewCharges() = charges().map { if (it.id == "game-pending") it.copy(withdrew = true) else it }
 
     private fun charges() = listOf(

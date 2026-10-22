@@ -106,6 +106,23 @@ class GameSettlementScreenTest {
     }
 
     @Test
+    fun `no-show diarist shows Faltou and the waive action PRES-016`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        val noShowState = progressState.copy(
+            debtors = listOf(debtor("pending-1", "Ana").copy(noShow = true)),
+            diarists = progressState.diarists.map { if (it.chargeId == "pending-1") it.copy(noShow = true) else it },
+        )
+        setScreen(noShowState, intents::add)
+
+        onNodeWithTag(GameSettlementTags.noShow("pending-1")).performScrollTo().assertExists()
+        onNodeWithText("Faltou").assertExists()
+        onNodeWithTag(GameSettlementTags.withdrew("pending-1")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.waive("pending-1")).performScrollTo().assertIsEnabled().performClick()
+
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenWaive("pending-1")), intents)
+    }
+
+    @Test
     fun `diarist who did not withdraw has neither the tag nor the waive action`() = runComposeUiTest {
         setScreen(progressState, {})
 

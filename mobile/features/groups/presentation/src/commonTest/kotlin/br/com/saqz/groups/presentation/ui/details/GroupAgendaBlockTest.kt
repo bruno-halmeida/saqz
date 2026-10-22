@@ -68,6 +68,45 @@ class GroupAgendaBlockTest {
     }
 
     @Test
+    fun adminWithPastGamesSplitsTheFooterWithMore() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
+        setDetailsScreen(GroupAgendaPreviewData.memberMore.copy(isAdmin = true, hasPastGames = true)) { intents += it }
+
+        onNodeWithTag(GroupDetailsTags.AgendaMore).assertTextEquals("Ver mais 2 jogos")
+        onNodeWithTag(GroupDetailsTags.AgendaPast)
+            .assertTextEquals("Jogos anteriores")
+            .assertHeightIsAtLeast(48.dp)
+            .performScrollTo()
+            .performClick()
+
+        assertEquals(GroupDetailsIntent.OpenPastGames, intents.last())
+    }
+
+    @Test
+    fun adminWithoutUpcomingButWithPastGamesSeesOnlyTheButton() = runComposeUiTest {
+        setDetailsScreen(GroupDetailsPreviewData.admin.copy(agenda = emptyList(), hasPastGames = true))
+
+        onNodeWithTag(GroupDetailsTags.Agenda).assertExists()
+        onNodeWithTag(GroupDetailsTags.AgendaPast).assertExists()
+        onAllNodesWithTag(GroupDetailsTags.AgendaMore).assertCountEquals(0)
+    }
+
+    @Test
+    fun adminWithoutPastGamesHasNoPastButton() = runComposeUiTest {
+        setDetailsScreen(GroupAgendaPreviewData.memberMore.copy(isAdmin = true, hasPastGames = false))
+
+        onAllNodesWithTag(GroupDetailsTags.AgendaPast).assertCountEquals(0)
+    }
+
+    @Test
+    fun athleteNeverSeesPastGames() = runComposeUiTest {
+        setDetailsScreen(GroupAgendaPreviewData.memberMore.copy(isAdmin = false, hasPastGames = true))
+
+        onAllNodesWithTag(GroupDetailsTags.AgendaPast).assertCountEquals(0)
+        onNodeWithTag(GroupDetailsTags.AgendaMore).assertExists()
+    }
+
+    @Test
     fun rowTapOpensThatGame() = runComposeUiTest {
         val intents = mutableListOf<GroupDetailsIntent>()
         setDetailsScreen(GroupAgendaPreviewData.member) { intents += it }
