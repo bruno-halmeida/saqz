@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.read
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
@@ -87,6 +88,7 @@ data class GroupFinanceDefaultsReadModel(
 data class GroupGameConfigReadModel(
     val mensalistaPriority: Boolean,
     val promotionMode: PromotionMode,
+    val attendanceUpdatesMode: AttendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED,
 )
 
 sealed interface GetGroupResult {

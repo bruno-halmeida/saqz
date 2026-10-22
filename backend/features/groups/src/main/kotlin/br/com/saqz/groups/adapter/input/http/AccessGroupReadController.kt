@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.read.GetGroupResult
 import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
@@ -83,6 +84,8 @@ data class GroupFinanceDefaultsReadResponse(
 data class GroupGameConfigReadResponse(
     val mensalistaPriority: Boolean,
     val promotionMode: PromotionMode,
+    // Lista no grupo do WhatsApp: por horário (SCHEDULED, o de sempre) ou a cada confirmação (ON_CHANGE).
+    val attendanceUpdatesMode: AttendanceUpdatesMode,
     // Sempre false (DEB-040): os apps 1.0.4–1.0.6 ainda leem o campo.
     val autoConfirmEnabled: Boolean,
 )
@@ -129,6 +132,7 @@ fun GroupView.toResponse() = GroupReadResponse(
     gameConfig = GroupGameConfigReadResponse(
         mensalistaPriority = gameConfig?.mensalistaPriority ?: true,
         promotionMode = gameConfig?.promotionMode ?: PromotionMode.FIFO,
+        attendanceUpdatesMode = gameConfig?.attendanceUpdatesMode ?: AttendanceUpdatesMode.SCHEDULED,
         autoConfirmEnabled = false,
     ),
     entryRequiresApproval = entryRequiresApproval,

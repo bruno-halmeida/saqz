@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.settings
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.application.game.series.ScheduleSeriesSync
 import br.com.saqz.groups.application.read.GroupReadKey
@@ -7,6 +8,7 @@ import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupAccessDecision
 import br.com.saqz.groups.domain.GroupAccessPolicy
+import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.GroupAction
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidation
@@ -60,6 +62,11 @@ class UpdateGroupSettings(
             if (current.version != expectedVersion) {
                 return@inTransaction UpdateGroupSettingsResult.VersionConflict
             }
+            // O modo da lista no grupo do WhatsApp é do dono; o admin pode reenviar o valor atual com o resto do perfil.
+            val currentMode = current.gameConfig?.attendanceUpdatesMode ?: AttendanceUpdatesMode.SCHEDULED
+            if (input.attendanceUpdatesMode != null && input.attendanceUpdatesMode != currentMode && current.role != GroupRole.OWNER) {
+                return@inTransaction UpdateGroupSettingsResult.AccessForbidden
+            }
             val validProfile = (profileValidation as GroupProfileDefaultsValidation.Valid).value
             when (
                 val write = settingsRepository.update(
@@ -73,6 +80,7 @@ class UpdateGroupSettings(
                         regularSlotIds = input.regularSlotIds,
                         entryRequiresApproval = input.entryRequiresApproval,
                         monthlyLateJoinPolicy = input.monthlyLateJoinPolicy,
+                        attendanceUpdatesMode = input.attendanceUpdatesMode,
                     ),
                 )
             ) {
@@ -87,6 +95,7 @@ class UpdateGroupSettings(
                         write.settings.version,
                         write.settings.profileStatus,
                         write.settings.entryRequiresApproval,
+                        write.settings.attendanceUpdatesMode,
                     ),
                 )
             }
@@ -141,6 +150,7 @@ class UpdateGroupSettings(
                         write.settings.version,
                         write.settings.profileStatus,
                         write.settings.entryRequiresApproval,
+                        write.settings.attendanceUpdatesMode,
                     ),
                 )
             }

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.settings.UpdateGroupSettings
 import br.com.saqz.groups.application.settings.UpdateGroupSettingsField
 import br.com.saqz.groups.application.settings.UpdateGroupSettingsResult
@@ -72,6 +73,8 @@ data class UpdateGroupProfileRequest @JsonCreator constructor(
     @JsonProperty("entryRequiresApproval") val entryRequiresApproval: Boolean? = null,
     // Ausente = não muda (app antigo segue funcionando).
     @JsonProperty("monthlyLateJoinPolicy") val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
+    // Ausente = não muda (app antigo segue funcionando). Só o dono troca.
+    @JsonProperty("attendanceUpdatesMode") val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
 )
 
 data class UpdateGroupVenueRequest @JsonCreator constructor(
@@ -215,6 +218,7 @@ private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(
     regularSlotIds = regularSlots.orEmpty().map { it.id },
     entryRequiresApproval = entryRequiresApproval,
     monthlyLateJoinPolicy = monthlyLateJoinPolicy,
+    attendanceUpdatesMode = attendanceUpdatesMode,
 )
 
 private fun UpdatedGroupSettings.toResponse() = GroupSettingsResponse(

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.application.settings
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.domain.AccessName
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.IanaTimeZone
@@ -20,6 +21,7 @@ data class UpdateGroupSettingsCommand(
     val regularSlotIds: List<UUID?> = emptyList(),
     val entryRequiresApproval: Boolean? = null,
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
+    val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
 )
 
 data class UpdateGroupProfileInput(
@@ -28,6 +30,8 @@ data class UpdateGroupProfileInput(
     val regularSlotIds: List<UUID?> = emptyList(),
     val entryRequiresApproval: Boolean? = null,
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
+    /** Ausente = não muda. Só o dono troca. */
+    val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
 )
 
 data class StoredGroupSettings(
@@ -37,6 +41,7 @@ data class StoredGroupSettings(
     val version: Long,
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
     val entryRequiresApproval: Boolean = false,
+    val attendanceUpdatesMode: AttendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED,
 )
 
 data class UpdatedGroupSettings(
@@ -47,6 +52,7 @@ data class UpdatedGroupSettings(
     val version: Long,
     val profileStatus: GroupProfileStatus = GroupProfileStatus.COMPLETE,
     val entryRequiresApproval: Boolean = false,
+    val attendanceUpdatesMode: AttendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED,
 )
 
 enum class UpdateGroupSettingsField {

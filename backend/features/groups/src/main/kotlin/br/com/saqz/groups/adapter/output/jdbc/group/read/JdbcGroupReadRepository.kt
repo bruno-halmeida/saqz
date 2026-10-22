@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.group.read
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.read.GroupReadKey
 import br.com.saqz.groups.application.read.GroupReadRepository
 import br.com.saqz.groups.application.read.GroupReadSnapshot
@@ -71,6 +72,7 @@ class JdbcGroupReadRepository(
             groups.monthly_late_join_policy,
             groups.mensalista_priority,
             groups.promotion_mode,
+            groups.attendance_updates_mode,
             groups.pix_key,
             groups.pix_label,
             default_venue.id AS default_venue_id,
@@ -135,6 +137,7 @@ class JdbcGroupReadRepository(
             gameConfig = GroupGameConfigReadModel(
                 mensalistaPriority = first.mensalistaPriority,
                 promotionMode = first.promotionMode,
+                attendanceUpdatesMode = first.attendanceUpdatesMode,
             ),
         )
     }
@@ -182,6 +185,7 @@ class JdbcGroupReadRepository(
         ),
         mensalistaPriority = getBoolean("mensalista_priority"),
         promotionMode = PromotionMode.valueOf(getString("promotion_mode")),
+        attendanceUpdatesMode = AttendanceUpdatesMode.valueOf(getString("attendance_updates_mode")),
         pixKey = getString("pix_key"),
         pixLabel = getString("pix_label"),
     )
@@ -220,6 +224,7 @@ class JdbcGroupReadRepository(
         val financeDefaults: GroupFinanceDefaultsReadModel,
         val mensalistaPriority: Boolean,
         val promotionMode: PromotionMode,
+        val attendanceUpdatesMode: AttendanceUpdatesMode,
         val pixKey: String?,
         val pixLabel: String?,
     )

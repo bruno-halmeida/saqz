@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.group.settings
 
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.settings.GroupSettingsRepository
 import br.com.saqz.groups.application.settings.SettingsWriteResult
 import br.com.saqz.groups.application.settings.StoredGroupSettings
@@ -36,7 +37,7 @@ class JdbcGroupSettingsRepository(
             WHERE id = :groupId
                 AND deleted_at IS NULL
                 AND version = :expectedVersion
-            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval
+            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval, attendance_updates_mode
             """.trimIndent(),
         )
             .param("name", command.name.value)
@@ -91,12 +92,14 @@ class JdbcGroupSettingsRepository(
                 END,
                 entry_requires_approval = COALESCE(CAST(:entryRequiresApproval AS boolean), entry_requires_approval),
                 monthly_late_join_policy = COALESCE(CAST(:monthlyLateJoinPolicy AS varchar), monthly_late_join_policy),
+                attendance_updates_mode = COALESCE(CAST(:attendanceUpdatesMode AS varchar), attendance_updates_mode),
                 version = version + 1,
                 updated_at = now()
             WHERE id = :groupId
                 AND deleted_at IS NULL
                 AND version = :expectedVersion
-            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval, default_venue_id
+            RETURNING id, name, time_zone, version, profile_status, entry_requires_approval, attendance_updates_mode,
+                default_venue_id
             """.trimIndent(),
         )
             .param("name", profile.name)
@@ -119,6 +122,7 @@ class JdbcGroupSettingsRepository(
             .param("pixLabel", profile.pixLabel)
             .param("entryRequiresApproval", command.entryRequiresApproval)
             .param("monthlyLateJoinPolicy", command.monthlyLateJoinPolicy?.name)
+            .param("attendanceUpdatesMode", command.attendanceUpdatesMode?.name)
             .param("groupId", command.groupId)
             .param("expectedVersion", command.expectedVersion)
             .query { result, _ ->
@@ -203,5 +207,6 @@ class JdbcGroupSettingsRepository(
         version = getLong("version"),
         profileStatus = GroupProfileStatus.valueOf(getString("profile_status")),
         entryRequiresApproval = getBoolean("entry_requires_approval"),
+        attendanceUpdatesMode = AttendanceUpdatesMode.valueOf(getString("attendance_updates_mode")),
     )
 }
