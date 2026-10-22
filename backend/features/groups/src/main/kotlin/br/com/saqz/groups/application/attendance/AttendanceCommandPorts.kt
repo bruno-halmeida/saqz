@@ -167,8 +167,8 @@ fun interface AttendanceDetailQuery {
         emptyMap()
 }
 
-// Names reuse the AttendanceShareSnapshotPerson convention, read from the
-// attendance row snapshot instead of the live membership name.
+// Nome de membro montado na hora (apelido do grupo, do perfil, nome; DEB-136); convidado mantém o
+// nome gravado na linha de presença.
 data class AttendanceRosterMember(
     val memberId: UUID,
     val displayName: String,

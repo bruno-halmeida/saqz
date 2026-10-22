@@ -554,7 +554,7 @@ class JdbcAttendanceCommandRepository(
             WHERE g.group_id=:group AND g.id=:game
         """
         // Linha nova: sem ON CONFLICT DO UPDATE (ver [write]). Conflito = 0 linhas = escrita perdida.
-        const val INSERT = """
+        val INSERT = """
             INSERT INTO game_attendance
                 (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq,position,forced)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
