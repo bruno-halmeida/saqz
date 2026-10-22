@@ -177,6 +177,8 @@ data class AttendanceRosterMember(
     val hostDisplayName: String? = null,
     val position: AthletePosition? = null,
     val forced: Boolean = false,
+    /** Marcado como falta no jogo encerrado (PRES-016); só vem verdadeiro para dono e admin. */
+    val noShow: Boolean = false,
 )
 
 /**

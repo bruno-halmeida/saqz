@@ -92,6 +92,8 @@ data class AttendanceRosterMemberResponse(
     val forced: Boolean = false,
     /** Foto de perfil do membro (MEM-006); convidado (guestSeq > 0) não tem. */
     val photoTag: String? = null,
+    /** PRES-016: confirmou e não apareceu. Só dono e admin recebem verdadeiro; campo novo, apps antigos ignoram. */
+    val noShow: Boolean = false,
 )
 data class AttendanceRosterResponse(
     val confirmed: List<AttendanceRosterMemberResponse>,
@@ -332,6 +334,7 @@ private fun List<br.com.saqz.groups.domain.attendance.PositionLoad>.summary() =
 private fun AttendanceRosterMember.response(tags: Map<UUID, String>) = AttendanceRosterMemberResponse(
     memberId, displayName, waitlistPosition, guestSeq, hostDisplayName, position?.name, forced,
     photoTag = tags[memberId].takeIf { guestSeq == 0 },
+    noShow = noShow,
 )
 private fun AttendanceRoster.response(tags: Map<UUID, String>) = AttendanceRosterResponse(
     confirmed.map { it.response(tags) }, waitlisted.map { it.response(tags) }, positions.summary(), declined.map { it.response(tags) },

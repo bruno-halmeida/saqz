@@ -139,6 +139,9 @@ data class AthleteStatsResponse(
     val games: Int,
     val attendanceRate: Int?,
     val absences: Int,
+    /** PRES-016: "faltou sem avisar", só na resposta para dono e admin (ausente para o atleta). */
+    @get:com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    val noShows: Int? = null,
 )
 
 @RestController
@@ -361,4 +364,4 @@ private fun AthleteRosterEntry.toResponse(viewerRole: GroupRole?): AthleteRoster
     )
 }
 
-private fun AthleteStats.toResponse() = AthleteStatsResponse(games, attendanceRate, absences)
+private fun AthleteStats.toResponse() = AthleteStatsResponse(games, attendanceRate, absences, noShows)

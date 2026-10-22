@@ -9,12 +9,15 @@ data class AthleteStatsAggregate(
     val games: Int,
     val eligibleGames: Int,
     val absences: Int,
+    val noShows: Int = 0,
 )
 
 data class AthleteStats(
     val games: Int,
     val attendanceRate: Int?,
     val absences: Int,
+    /** PRES-016: "faltou sem avisar". Só para dono e admin; nulo para o próprio atleta. */
+    val noShows: Int? = null,
 )
 
 fun interface AthleteStatsRepository {
@@ -49,7 +52,7 @@ class GetAthleteStats(
             .takeIf { it > 0 }
             ?.let { aggregate.confirmedGames() * 100 / it }
         return GetAthleteStatsResult.Success(
-            AthleteStats(aggregate.games, attendanceRate, aggregate.absences),
+            AthleteStats(aggregate.games, attendanceRate, aggregate.absences, aggregate.noShows.takeIf { role != GroupRole.ATHLETE }),
         )
     }
 

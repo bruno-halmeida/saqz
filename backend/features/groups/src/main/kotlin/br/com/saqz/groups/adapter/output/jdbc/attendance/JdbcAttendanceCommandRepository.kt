@@ -423,6 +423,7 @@ class JdbcAttendanceCommandRepository(
                     rs.getString("host_display_name"),
                     rs.position("position"),
                     rs.getBoolean("forced"),
+                    rs.getBoolean("no_show"),
                 )
             }
             .list()
@@ -480,10 +481,11 @@ class JdbcAttendanceCommandRepository(
         val hostDisplayName: String?,
         val position: AthletePosition?,
         val forced: Boolean,
+        val noShow: Boolean,
     ) {
         fun member(position: Long? = waitlistSequence) = AttendanceRosterMember(
             requireNotNull(memberId), requireNotNull(displayName), position, guestSeq, hostDisplayName,
-            this.position, forced,
+            this.position, forced, noShow,
         )
     }
 
@@ -741,6 +743,9 @@ class JdbcAttendanceCommandRepository(
         const val ROSTER = """
             SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,
                    m.membership_type,a.guest_seq,a.position,coalesce(a.forced,false) AS forced,
+                   -- PRES-016: a falta só vai para dono e admin; para os outros a pessoa segue em "Jogaram".
+                   (a.no_show_marked_at IS NOT NULL
+                       AND (ag.owner_user_id=:actor OR member.role::text IN ('OWNER','ADMIN'))) AS no_show,
                    (SELECT coalesce(u.nickname, u.display_name) FROM access_users u WHERE u.id=a.member_user_id AND a.guest_seq>0) AS host_display_name
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL

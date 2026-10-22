@@ -1,6 +1,7 @@
 package br.com.saqz.groups.adapter.input.http
 
 import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
+import br.com.saqz.groups.application.game.PastGames
 import br.com.saqz.groups.application.read.GetGroup
 import br.com.saqz.groups.application.read.GetGroupResult
 import br.com.saqz.groups.application.read.GroupFinanceDefaultsReadModel
@@ -40,6 +41,8 @@ data class GroupReadResponse(
     val financeDefaults: GroupFinanceDefaultsReadResponse?,
     val gameConfig: GroupGameConfigReadResponse,
     val entryRequiresApproval: Boolean,
+    /** JOGO-011: o grupo já teve jogo anterior (encerrado ou cancelado publicado). Só para dono e admin; nulo para o atleta. */
+    val hasPastGames: Boolean? = null,
 )
 
 data class GroupProfileReadResponse(
@@ -98,6 +101,7 @@ class AccessForbiddenException : RuntimeException()
 class AccessGroupReadController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val getGroup: GetGroup,
+    private val pastGames: PastGames? = null,
 ) {
     @GetMapping("/api/groups/{groupId}")
     fun get(
@@ -113,7 +117,13 @@ class AccessGroupReadController(
             is GetGroupResult.Success -> ResponseEntity
                 .ok()
                 .eTag(result.group.version.toString())
-                .body(result.group.toResponse())
+                .body(
+                    result.group.toResponse().copy(
+                        hasPastGames = pastGames
+                            ?.takeIf { result.group.role != GroupRole.ATHLETE }
+                            ?.hasPastGames(result.group.id, result.group.role),
+                    ),
+                )
         }
     }
 }

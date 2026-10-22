@@ -543,7 +543,17 @@ class AccessSessionConfiguration {
     fun accessGroupReadController(
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         getGroup: GetGroup,
-    ) = AccessGroupReadController(verifiedGroupActorResolver, getGroup)
+        pastGames: br.com.saqz.groups.application.game.PastGames,
+    ) = AccessGroupReadController(verifiedGroupActorResolver, getGroup, pastGames)
+
+    @Bean
+    fun pastGames(transaction: JdbcTransactionRunner, dataSource: DataSource) = br.com.saqz.groups.application.game.PastGames(
+        transaction, br.com.saqz.groups.adapter.output.jdbc.game.JdbcPastGamesRepository(dataSource), Instant::now,
+    )
+
+    @Bean
+    fun pastGamesController(actor: VerifiedGroupActorResolver, pastGames: br.com.saqz.groups.application.game.PastGames) =
+        br.com.saqz.groups.adapter.input.http.PastGamesController(actor, pastGames)
 
     @Bean
     fun groupSummariesReadRepository(dataSource: DataSource) = JdbcGroupSummariesReadRepository(dataSource)
