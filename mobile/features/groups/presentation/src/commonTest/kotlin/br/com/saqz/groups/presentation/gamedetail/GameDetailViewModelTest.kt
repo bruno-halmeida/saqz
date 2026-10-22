@@ -316,6 +316,27 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `pull during a load in flight rides it and warns when it fails`() = runTest {
+        val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val second = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val gateway = FakeGameGateway(reads = ArrayDeque(listOf(first, second)))
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        gateway.completeRead(0, SaqzResult.Success(sampleVersionedGame()))
+        viewModel.onIntent(GameDetailIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GameDetailIntent.Refresh)
+
+        viewModel.onIntent(GameDetailIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertEquals(2, gateway.readCalls)
+
+        gateway.completeRead(1, SaqzResult.Failure(GameError.Data(DataError.Connectivity)))
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertTrue(viewModel.state.value.refreshFailed)
+        assertNotNull(viewModel.state.value.header)
+    }
+
+    @Test
     fun `two pulls in a row fetch once`() = runTest {
         val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val second = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()

@@ -462,6 +462,45 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `pull during a load in flight rides it and warns when it fails`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val groups = FakeGroupGateway()
+        val vm = viewModel(groupGateway = groups, gameGateway = games)
+        games.listDeferred = CompletableDeferred()
+        vm.onIntent(GroupDetailsIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        assertEquals(2, groups.readCalls)
+
+        vm.onIntent(GroupDetailsIntent.PullRefresh)
+        assertTrue(vm.state.value.isRefreshing)
+        assertEquals(2, groups.readCalls)
+
+        games.listDeferred!!.complete(SaqzResult.Failure(br.com.saqz.groups.domain.game.GameError.HiddenResource))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isRefreshing)
+        assertEquals(GroupDetailsToast.RefreshFailed, vm.state.value.toast)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+    }
+
+    @Test
+    fun `pull during a load in flight ends with it when it succeeds`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val groups = FakeGroupGateway()
+        val vm = viewModel(groupGateway = groups, gameGateway = games)
+        games.listDeferred = CompletableDeferred()
+        vm.onIntent(GroupDetailsIntent.Refresh)
+        vm.onIntent(GroupDetailsIntent.Refresh)
+
+        vm.onIntent(GroupDetailsIntent.PullRefresh)
+        games.listDeferred!!.complete(SaqzResult.Success(listOf(sampleGame())))
+        advanceUntilIdle()
+
+        assertEquals(2, groups.readCalls)
+        assertFalse(vm.state.value.isRefreshing)
+        assertNull(vm.state.value.toast)
+    }
+
+    @Test
     fun `two pulls in a row fetch once`() = runTest {
         val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
         val groups = FakeGroupGateway()

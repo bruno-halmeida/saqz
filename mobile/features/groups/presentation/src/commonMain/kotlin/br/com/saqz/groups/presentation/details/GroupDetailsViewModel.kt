@@ -370,15 +370,20 @@ class GroupDetailsViewModel(
 
     /**
      * Puxar para atualizar (GER-002): a recarga por baixo com a bola na tela e aviso se falhar.
-     * As mesmas guardas do [refresh] — com carga ou escrita no ar, o puxão não dispara nada.
+     * Escrita no ar (resposta, roster, saída, lembrete) ignora o puxão, como o [refresh]; carga no ar
+     * leva o puxão de carona — a bola mostra a espera e a falha dela avisa —, sem outra busca.
      */
     private fun pullRefresh() {
         val current = state.value
         if (current.isLoading || current.loadFailed || current.isRefreshing) return
-        val busy = loadInFlight || current.responding || current.rosterRefreshing || current.leaving || current.notifying
-        if (busy) return
+        val writing = current.responding || current.rosterRefreshing || current.leaving || current.notifying
+        if (writing) return
         autoRetry.reset()
         update { it.copy(isRefreshing = true) }
+        if (loadInFlight) {
+            pulledGeneration = loadGeneration
+            return
+        }
         // Antes do `load`: a falha pode chegar antes de ele voltar.
         pulledGeneration = loadGeneration + 1
         load(softRefresh = true)

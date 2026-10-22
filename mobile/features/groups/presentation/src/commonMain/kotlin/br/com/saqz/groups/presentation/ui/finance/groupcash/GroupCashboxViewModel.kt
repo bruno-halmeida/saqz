@@ -339,12 +339,19 @@ class GroupCashboxViewModel(
         load(softRefresh = !current.loadFailed)
     }
 
-    /** GER-002: as guardas do [refresh] — carga no ar, folha aberta ou baixa em andamento ignoram o puxão. */
+    /**
+     * GER-002: folha aberta ou baixa em andamento ignoram o puxão, como o [refresh]; carga no ar leva o
+     * puxão de carona — a bola mostra a espera e a falha dela avisa —, sem outra busca.
+     */
     private fun pullRefresh() {
         val current = state.value
         val showingContent = !current.isLoading && !current.loadFailed
-        if (loadInFlight || !showingContent || current.isRefreshing || current.interacting()) return
+        if (!showingContent || current.isRefreshing || current.interacting()) return
         update { it.copy(isRefreshing = true, refreshFailed = false) }
+        if (loadInFlight) {
+            pulledGeneration = loadGeneration
+            return
+        }
         // Antes do `load`: a falha pode chegar antes de ele voltar.
         pulledGeneration = loadGeneration + 1
         load(softRefresh = true)

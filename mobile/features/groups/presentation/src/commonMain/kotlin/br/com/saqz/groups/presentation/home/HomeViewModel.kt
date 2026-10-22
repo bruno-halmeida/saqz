@@ -166,6 +166,9 @@ class HomeViewModel(
      */
     private var loadInFlight = false
 
+    /** Geração da carga que um puxão acompanha — só ela avisa quando falha. */
+    private var pulledGeneration = -1L
+
     /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
     private val autoRetry = AutoRetry(viewModelScope) { load() }
 
@@ -263,15 +266,24 @@ class HomeViewModel(
         }
     }
 
-    /** GER-002: puxar com uma carga já no ar não dispara outra — ela já traz o dado novo. */
+    /**
+     * GER-002: com uma carga já no ar o puxão pega carona nela — a bola mostra a espera e a falha
+     * dela avisa —, sem disparar outra busca.
+     */
     private fun pullRefresh() {
-        if (loadInFlight || state.value.isRefreshing) return
+        if (state.value.isRefreshing) return
         autoRetry.reset()
         update { it.copy(isRefreshing = true) }
-        load(softRefresh = true, pulled = true)
+        if (loadInFlight) {
+            pulledGeneration = loadGeneration
+            return
+        }
+        // Antes do `load`: a falha pode chegar antes de ele voltar.
+        pulledGeneration = loadGeneration + 1
+        load(softRefresh = true)
     }
 
-    private fun load(softRefresh: Boolean = false, pulled: Boolean = false) {
+    private fun load(softRefresh: Boolean = false) {
         // A guarda é sobre carga concorrente, não sobre "primeira vez": a faixa pode entrar
         // em composição muito depois da carga inicial, com dado velho e nada em voo, e aí a
         // recarga é exatamente o que se quer.
@@ -304,14 +316,14 @@ class HomeViewModel(
                 is SaqzResult.Failure -> if (!softRefresh) {
                     showFailure(generation, homeResult.error.toUiError())
                 } else {
-                    if (pulled) update { it.copy(toast = HomeToast.RefreshFailed) }
+                    if (generation == pulledGeneration) update { it.copy(toast = HomeToast.RefreshFailed) }
                     retryOfflineResponse()
                 }
                 is SaqzResult.Success -> when (profileResult) {
                     is SaqzResult.Failure -> if (!softRefresh) {
                         showFailure(generation, profileResult.error.toUiError())
                     } else {
-                        if (pulled) update { it.copy(toast = HomeToast.RefreshFailed) }
+                        if (generation == pulledGeneration) update { it.copy(toast = HomeToast.RefreshFailed) }
                         retryOfflineResponse()
                     }
                     is SaqzResult.Success -> {

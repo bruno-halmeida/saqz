@@ -211,6 +211,25 @@ class FinanceOverviewViewModelTest {
     }
 
     @Test
+    fun `pull during a load in flight rides it and warns when it fails`() = runTest {
+        val second = CompletableDeferred<SaqzResult<FinanceOverview, FinanceError>>()
+        val gateway = DeferredFinanceOverviewGateway(CompletableDeferred(SaqzResult.Success(overview())), second)
+        val viewModel = FinanceOverviewViewModel(gateway, now)
+        viewModel.onIntent(FinanceOverviewIntent.TabActive) // o primeiro é descartado
+        viewModel.onIntent(FinanceOverviewIntent.TabActive)
+        assertEquals(2, gateway.calls)
+
+        viewModel.onIntent(FinanceOverviewIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertEquals(2, gateway.calls)
+
+        second.complete(SaqzResult.Failure(FinanceError.Data(br.com.saqz.domain.DataError.Connectivity)))
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertTrue(viewModel.state.value.refreshFailed)
+        assertEquals("R$ 60,00", viewModel.state.value.balance)
+    }
+
+    @Test
     fun `two pulls in a row fetch once`() = runTest {
         val second = CompletableDeferred<SaqzResult<FinanceOverview, FinanceError>>()
         val gateway = DeferredFinanceOverviewGateway(CompletableDeferred(SaqzResult.Success(overview())), second)

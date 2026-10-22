@@ -850,6 +850,28 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `pull during a load in flight rides it and warns when it fails`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val loaded = viewModel.state.value.debtors
+        organizer.beforeCharges = { reply.await() }
+        organizer.chargesResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity))
+        viewModel.onIntent(GroupCashboxIntent.Refresh) // o primeiro, logo após o `init`, é descartado
+        viewModel.onIntent(GroupCashboxIntent.Refresh)
+        assertEquals(2, organizer.chargeReads)
+
+        viewModel.onIntent(GroupCashboxIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+
+        reply.complete(Unit)
+        assertEquals(2, organizer.chargeReads)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertTrue(viewModel.state.value.refreshFailed)
+        assertEquals(loaded, viewModel.state.value.debtors)
+    }
+
+    @Test
     fun `two pulls in a row fetch once`() = runTest {
         val reply = CompletableDeferred<Unit>()
         val organizer = FakeOrganizerFinanceGateway()

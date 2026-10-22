@@ -331,13 +331,20 @@ class GameDetailViewModel(
     }
 
 
-    /** GER-002: as mesmas guardas da recarga por baixo — carga no ar, escrita ou folha aberta ignoram o puxão. */
+    /**
+     * GER-002: escrita ou folha aberta ignoram o puxão, como a recarga por baixo; carga no ar leva o
+     * puxão de carona — a bola mostra a espera e a falha dela avisa —, sem outra busca.
+     */
     private fun pullRefresh() {
         val current = state.value
         val showingContent = !current.isLoading && !current.loadFailed
-        if (!showingContent || current.isRefreshing || loadInFlight || current.busy) return
+        if (!showingContent || current.isRefreshing || current.busy) return
         autoRetry.reset()
         update { it.copy(isRefreshing = true, refreshFailed = false) }
+        if (loadInFlight) {
+            pulledGeneration = loadGeneration
+            return
+        }
         // Antes do `load`: a falha pode chegar antes de ele voltar.
         pulledGeneration = loadGeneration + 1
         load(softRefresh = true)

@@ -213,6 +213,36 @@ class OwnProfileViewModelTest {
     }
 
     @Test
+    fun `pull during a load in flight rides it and warns when it fails`() = runTest(dispatcher) {
+        val fake = FakeProfileGateway()
+        val held = CompletableDeferred<Unit>()
+        var bootstrapCalls = 0
+        val gateway = object : ProfileGateway by fake {
+            override suspend fun bootstrap(): SaqzResult<Profile, ProfileError> {
+                if (++bootstrapCalls > 1) held.await()
+                return fake.bootstrap()
+            }
+        }
+        val viewModel = OwnProfileViewModel(gateway)
+        advanceUntilIdle()
+        viewModel.onIntent(OwnProfileIntent.Appeared) // o primeiro é descartado
+        viewModel.onIntent(OwnProfileIntent.Appeared)
+        advanceUntilIdle()
+        fake.statsError = ProfileError.DataFailure(DataError.Connectivity)
+
+        viewModel.onIntent(OwnProfileIntent.PullRefresh)
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isRefreshing)
+
+        held.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(2, bootstrapCalls)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertTrue(viewModel.state.value.refreshFailed)
+        assertNotNull(viewModel.state.value.user)
+    }
+
+    @Test
     fun `pull refresh failure keeps the profile and warns`() = runTest(dispatcher) {
         val gateway = FakeProfileGateway()
         val viewModel = OwnProfileViewModel(gateway)

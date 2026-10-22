@@ -25,6 +25,9 @@ class FinanceOverviewViewModel(
     private var loadGeneration = 0L
     private var loadInFlight = false
 
+    /** Geração da carga que um puxão acompanha — só ela avisa quando falha. */
+    private var pulledGeneration = -1L
+
     init {
         load(FinanceOverviewPeriodSelection.CurrentMonth)
     }
@@ -50,19 +53,21 @@ class FinanceOverviewViewModel(
         load(current.selectedPeriod, softRefresh = !current.loadFailed)
     }
 
-    /** GER-002: com carga no ar, ou já atualizando, o puxão não dispara outra busca. */
+    /** GER-002: com carga no ar o puxão pega carona nela — a bola mostra a espera e a falha dela avisa. */
     private fun pullRefresh() {
         val current = state.value
-        if (loadInFlight || current.isLoading || current.loadFailed || current.isRefreshing) return
+        if (current.isLoading || current.loadFailed || current.isRefreshing) return
         update { it.copy(isRefreshing = true, refreshFailed = false) }
-        load(current.selectedPeriod, softRefresh = true, pulled = true)
+        if (loadInFlight) {
+            pulledGeneration = loadGeneration
+            return
+        }
+        // Antes do `load`: a falha pode chegar antes de ele voltar.
+        pulledGeneration = loadGeneration + 1
+        load(current.selectedPeriod, softRefresh = true)
     }
 
-    private fun load(
-        selection: FinanceOverviewPeriodSelection,
-        softRefresh: Boolean = false,
-        pulled: Boolean = false,
-    ) {
+    private fun load(selection: FinanceOverviewPeriodSelection, softRefresh: Boolean = false) {
         val periods = financeOverviewPeriodOptions(financeOverviewDate(nowPort.now()))
         val period = periods.first { it.selection == selection }
         val generation = ++loadGeneration
@@ -81,7 +86,7 @@ class FinanceOverviewViewModel(
                 is SaqzResult.Failure -> {
                     if (generation < loadGeneration) return@launch
                     if (!softRefresh) update { it.copy(isLoading = false, loadFailed = true) }
-                    if (pulled) update { it.copy(refreshFailed = true) }
+                    if (generation == pulledGeneration) update { it.copy(refreshFailed = true) }
                 }
 
                 is SaqzResult.Success -> {

@@ -1462,6 +1462,30 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `pull during a load in flight rides it and warns when it fails`() = runTest {
+        val second = CompletableDeferred<SaqzResult<HomeReadModel, HomeError>>()
+        val gateway = DeferredHomeGateway(
+            CompletableDeferred(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+            second,
+        )
+        val viewModel = viewModel(homeGateway = gateway)
+        advanceUntilIdle()
+        viewModel.onIntent(HomeIntent.Refresh)
+        advanceUntilIdle()
+
+        viewModel.onIntent(HomeIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+
+        second.complete(SaqzResult.Failure(HomeError.Data(DataError.Connectivity)))
+        advanceUntilIdle()
+        // Uma busca do init, uma do Refresh; o puxão não abriu uma terceira.
+        assertEquals(2, gateway.reads)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertEquals(HomeToast.RefreshFailed, viewModel.state.value.toast)
+        assertEquals(2, viewModel.state.value.ownCharges?.groups?.size)
+    }
+
+    @Test
     fun `two pulls in a row fetch once`() = runTest {
         val gate = CompletableDeferred<Unit>()
         val gateway = HeldAfterFirstHomeGateway(SaqzResult.Success(sampleHome()), gate)
@@ -1714,7 +1738,8 @@ private class DeferredHomeGateway(
     private val first: CompletableDeferred<SaqzResult<HomeReadModel, HomeError>>,
     private val second: CompletableDeferred<SaqzResult<HomeReadModel, HomeError>>,
 ) : HomeGateway {
-    private var reads = 0
+    var reads = 0
+        private set
 
     override suspend fun read(): SaqzResult<HomeReadModel, HomeError> =
         if (reads++ == 0) first.await() else second.await()
