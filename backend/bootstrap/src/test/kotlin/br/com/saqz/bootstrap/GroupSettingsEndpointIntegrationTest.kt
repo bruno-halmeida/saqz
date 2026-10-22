@@ -228,6 +228,40 @@ class GroupSettingsEndpointIntegrationTest {
     }
 
     @Test
+    fun `the owner switches the WhatsApp list to every change and old apps leave it as it is`() {
+        val response = putProfile(
+            """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","attendanceUpdatesMode":"ON_CHANGE"}""",
+        )
+        assertEquals(200, response.statusCode())
+        assertEquals(
+            br.com.saqz.groups.application.communication.AttendanceUpdatesMode.ON_CHANGE,
+            write.commands.single().attendanceUpdatesMode,
+        )
+        assertEquals("ON_CHANGE", json(response)["gameConfig"]["attendanceUpdatesMode"].stringValue())
+
+        val old = putProfile("""{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN"}""", "\"8\"")
+        assertEquals(200, old.statusCode())
+        assertEquals(null, write.commands.last().attendanceUpdatesMode)
+        assertEquals("ON_CHANGE", json(old)["gameConfig"]["attendanceUpdatesMode"].stringValue())
+    }
+
+    @Test
+    fun `an admin cannot change the WhatsApp list mode but can resend the current one`() {
+        read.snapshot = snapshot(GroupRole.ADMIN)
+        val changed = putProfile(
+            """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","attendanceUpdatesMode":"ON_CHANGE"}""",
+        )
+        assertEquals(403, changed.statusCode())
+        assertTrue(write.commands.isEmpty())
+
+        val same = putProfile(
+            """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","attendanceUpdatesMode":"SCHEDULED"}""",
+        )
+        assertEquals(200, same.statusCode())
+        assertEquals("SCHEDULED", json(same)["gameConfig"]["attendanceUpdatesMode"].stringValue())
+    }
+
+    @Test
     fun `profile update rejects an unknown late join policy`() {
         val response = putProfile(
             """{"name":"Beach Club","modality":"BEACH_VOLLEYBALL","composition":"WOMEN","monthlyLateJoinPolicy":"PRORATA"}""",
@@ -428,6 +462,13 @@ class GroupSettingsEndpointIntegrationTest {
                             ?: current.financeDefaults?.monthlyLateJoinPolicy
                             ?: br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy.GROUP_DUE_DATE,
                     ),
+                    gameConfig = command.attendanceUpdatesMode?.let {
+                        br.com.saqz.groups.application.read.GroupGameConfigReadModel(
+                            mensalistaPriority = true,
+                            promotionMode = br.com.saqz.groups.domain.group.PromotionMode.FIFO,
+                            attendanceUpdatesMode = it,
+                        )
+                    } ?: current.gameConfig,
                 )
             }
             return SettingsWriteResult.Updated(
