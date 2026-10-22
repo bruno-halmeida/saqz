@@ -3,6 +3,7 @@ package br.com.saqz.groups.presentation.game
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_detail_long_date
 import br.com.saqz.groups.resources.game_menu_title
+import br.com.saqz.groups.resources.history_subtitle
 import br.com.saqz.groups.resources.home_date
 import br.com.saqz.groups.resources.home_game_display
 import br.com.saqz.groups.resources.home_game_meta
@@ -88,6 +89,10 @@ internal suspend fun LocalDate.gameLongDateLabel(): String =
 /** "Jogo de terça, 28/07" (título do menu ⋯ do jogo, DEB-116). */
 internal suspend fun LocalDate.gameMenuTitle(): String =
     getString(Res.string.game_menu_title, getString(dayOfWeek.longWeekdayResource()), gameDateLabel())
+
+/** "Jogo de terça, 28/07 · 19h30" (barra do histórico de respostas, JOGO-012). */
+internal suspend fun LocalDateTime.gameHistorySubtitle(): String =
+    getString(Res.string.history_subtitle, date.gameMenuTitle(), gameTimeLabel())
 
 /**
  * Card da reserva. Não promete aviso: ninguém é avisado sozinho ao subir da fila (a lista vai ao grupo do

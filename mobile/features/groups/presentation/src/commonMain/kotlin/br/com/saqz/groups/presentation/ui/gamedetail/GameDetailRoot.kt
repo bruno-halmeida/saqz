@@ -24,6 +24,8 @@ fun GameDetailRoot(
     onCancel: () -> Unit = onBack,
     /** "Vou" em jogo com posições: a tela de escolher posição (DEB-107). */
     onPickPosition: () -> Unit = {},
+    /** "Histórico de respostas" do ⋯ (JOGO-012), com o subtítulo da barra. */
+    onOpenHistory: (String) -> Unit = {},
     mapPort: GroupMapPort = koinInject(),
     viewModel: GameDetailViewModel = koinViewModel(
         key = "game-detail/$groupId/$gameId",
@@ -39,6 +41,7 @@ fun GameDetailRoot(
             GameDetailEffect.OpenSettlement -> onOpenSettlement()
             GameDetailEffect.Cancelled -> onCancel()
             GameDetailEffect.PickPosition -> onPickPosition()
+            is GameDetailEffect.OpenHistory -> onOpenHistory(effect.subtitle)
             // O mesmo caminho do "Ver no mapa" do grupo: falhar deixa o aviso colado na linha da quadra.
             is GameDetailEffect.OpenMap -> mapPort.open(venueMapUrl(effect.address)) { opened ->
                 if (!opened) viewModel.onIntent(GameDetailIntent.MapOpenFailed)

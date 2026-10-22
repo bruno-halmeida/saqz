@@ -16,6 +16,12 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.GameWriteCommand
+import br.com.saqz.groups.domain.game.AttendanceHistoryEntry
+import br.com.saqz.groups.domain.game.AttendanceHistoryGateway
+import br.com.saqz.groups.domain.game.AttendanceHistoryKind
+import br.com.saqz.groups.domain.game.AttendanceHistoryPage
+import br.com.saqz.groups.domain.game.AttendanceHistorySource
+import br.com.saqz.groups.domain.game.AttendanceHistoryStatus
 import br.com.saqz.groups.domain.game.PastGame
 import br.com.saqz.groups.domain.game.PastGamesGateway
 import br.com.saqz.groups.domain.game.PastGamesPage
@@ -470,5 +476,69 @@ private fun PastGameTransport.toDomain(): PastGame? {
     return PastGame(
         id, localDate, localTime.take(5), zoneId, startsAt, parsed,
         confirmedCount, capacity, venueName, pendingChargeCount, pendingChargeCents,
+    )
+}
+
+@Serializable
+internal data class AttendanceHistoryEntryTransport(
+    val id: String,
+    val occurredAt: String,
+    val kind: String,
+    val memberId: String,
+    val memberName: String = "",
+    val photoTag: String? = null,
+    val guestSeq: Int = 0,
+    val guestName: String? = null,
+    val actorName: String = "",
+    val source: String,
+    val oldStatus: String? = null,
+    val newStatus: String,
+    val reason: String? = null,
+    val afterDeadline: Boolean = false,
+    val freedByName: String? = null,
+    val freedByGuest: Boolean = false,
+)
+
+@Serializable
+internal data class AttendanceHistoryPageTransport(
+    val entries: List<AttendanceHistoryEntryTransport> = emptyList(),
+    val nextCursor: String? = null,
+)
+
+/** JOGO-012: histórico de respostas do jogo, só do gestor. */
+class KtorAttendanceHistoryGateway(private val network: AuthenticatedNetworkClient) : AttendanceHistoryGateway {
+    override suspend fun page(groupId: GroupId, gameId: String, cursor: String?): SaqzResult<AttendanceHistoryPage, GameError> {
+        // Query no NetworkRequest, nunca no path: o path percent-encoda o "?" (VUL-120).
+        val request = NetworkRequest(query = cursor?.let { mapOf("cursor" to it) }.orEmpty())
+        val result = retryTransport(RetrySafety.Read) {
+            network.execute(
+                HttpMethod.Get,
+                "api/groups/${groupId.value}/games/$gameId/attendance/history",
+                AttendanceHistoryPageTransport.serializer(),
+                request,
+            )
+        }
+        return when (result) {
+            is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
+            is NetworkResult.Success -> SaqzResult.Success(
+                AttendanceHistoryPage(
+                    result.value.entries.mapNotNull { it.toDomain() },
+                    result.value.nextCursor?.takeIf(String::isNotBlank),
+                ),
+            )
+        }
+    }
+}
+
+/** Tipo, origem ou estado que este app não conhece (servidor mais novo): a linha fica de fora. */
+private fun AttendanceHistoryEntryTransport.toDomain(): AttendanceHistoryEntry? {
+    fun status(value: String?) = AttendanceHistoryStatus.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+    val kind = AttendanceHistoryKind.entries.firstOrNull { it.name.equals(kind.replace("_", ""), ignoreCase = true) } ?: return null
+    val source = AttendanceHistorySource.entries.firstOrNull { it.name.equals(source, ignoreCase = true) } ?: return null
+    val new = status(newStatus) ?: return null
+    return AttendanceHistoryEntry(
+        id, occurredAt, kind, memberId, memberName, photoTag?.takeIf(String::isNotBlank), guestSeq,
+        guestName?.takeIf(String::isNotBlank), actorName, source, status(oldStatus), new, reason?.takeIf(String::isNotBlank),
+        afterDeadline, freedByName?.takeIf(String::isNotBlank), freedByGuest,
     )
 }

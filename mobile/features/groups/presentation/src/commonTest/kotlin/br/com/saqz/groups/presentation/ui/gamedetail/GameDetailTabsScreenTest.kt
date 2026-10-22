@@ -110,12 +110,31 @@ class GameDetailTabsScreenTest {
         onNodeWithText("Hoje são 12 vagas").assertExists()
         onNodeWithTag(GameDetailTags.MenuEdit).performClick()
         onNodeWithTag(GameDetailTags.MenuCapacity).performClick()
+        onNodeWithText("Quem confirmou, desistiu e quando").assertExists()
+        onNodeWithTag(GameDetailTags.MenuHistory).performClick()
         onNodeWithTag(GameDetailTags.MenuCancel).performClick()
 
         assertEquals<List<GameDetailIntent>>(
-            listOf(GameDetailIntent.Edit, GameDetailIntent.OpenCapacitySheet, GameDetailIntent.RequestCancel),
+            listOf(
+                GameDetailIntent.Edit, GameDetailIntent.OpenCapacitySheet, GameDetailIntent.OpenHistory,
+                GameDetailIntent.RequestCancel,
+            ),
             intents,
         )
+    }
+
+    /** JOGO-012: o histórico também fica no ⋯ do jogo realizado e do cancelado. */
+    @Test
+    fun historicoNoMenuDoRealizadoEDoCancelado() {
+        listOf(GameDetailStatusTone.Completed, GameDetailStatusTone.Cancelled).forEach { tone ->
+            runComposeUiTest {
+                val intents = mutableListOf<GameDetailIntent>()
+                setScreen(admin.copy(gameMenuOpen = true, header = GameDetailPreviewData.header.copy(statusTone = tone)), intents::add)
+                onNodeWithTag(GameDetailTags.MenuHistory).performClick()
+                onAllNodesWithTag(GameDetailTags.MenuCancel).assertCountEquals(0)
+                assertEquals<List<GameDetailIntent>>(listOf(GameDetailIntent.OpenHistory), intents)
+            }
+        }
     }
 
     @Test

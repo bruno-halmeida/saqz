@@ -56,6 +56,7 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.groups.domain.communication.CommunicationGateway
 import br.com.saqz.groups.presentation.game.gameHeroDisplay
 import br.com.saqz.groups.presentation.game.gameLongDateLabel
+import br.com.saqz.groups.presentation.game.gameHistorySubtitle
 import br.com.saqz.groups.presentation.game.gameMenuTitle
 import br.com.saqz.groups.presentation.game.gamePrioritySentence
 import br.com.saqz.groups.presentation.game.gameTimeLabel
@@ -159,6 +160,10 @@ class GameDetailViewModel(
             GameDetailIntent.Edit -> {
                 update { it.copy(gameMenuOpen = false) }
                 emit(GameDetailEffect.OpenEditor)
+            }
+            GameDetailIntent.OpenHistory -> if (state.value.hasGameMenu) {
+                update { it.copy(gameMenuOpen = false) }
+                emit(GameDetailEffect.OpenHistory(state.value.hero?.historySubtitle.orEmpty()))
             }
             GameDetailIntent.OpenSettlement -> if (
                 state.value.isAdmin && state.value.header?.statusTone == GameDetailStatusTone.Completed ||
@@ -1116,6 +1121,7 @@ class GameDetailViewModel(
             endTime = (start + durationMinutes.minutes).toLocalDateTime(zone).gameTimeLabel(),
             address = venue.address.trim(),
             menuTitle = local.date.gameMenuTitle(),
+            historySubtitle = local.gameHistorySubtitle(),
             deadlineLine = deadline?.takeIf { priority }
                 ?.gamePrioritySentence(Clock.System.now().toLocalDateTime(zone).date).orEmpty(),
         )

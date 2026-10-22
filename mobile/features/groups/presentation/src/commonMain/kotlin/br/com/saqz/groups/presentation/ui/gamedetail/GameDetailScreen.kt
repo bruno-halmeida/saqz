@@ -90,6 +90,7 @@ internal object GameDetailTags {
     const val MenuSheet = "game-detail-menu-sheet"
     const val MenuEdit = "game-detail-menu-edit"
     const val MenuCapacity = "game-detail-menu-capacity"
+    const val MenuHistory = "game-detail-menu-history"
     const val MenuCancel = "game-detail-menu-cancel"
     const val PersonSheet = "game-detail-person-sheet"
     const val TabGoing = "game-tab-going"

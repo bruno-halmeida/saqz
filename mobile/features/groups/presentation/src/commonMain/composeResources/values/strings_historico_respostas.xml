@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- JOGO-012 · histórico de respostas do jogo (DEB-135). -->
+    <string name="history_menu_label">Histórico de respostas</string>
+    <string name="history_menu_hint">Quem confirmou, desistiu e quando</string>
+    <string name="history_title">Histórico de respostas</string>
+    <string name="history_subtitle">%1$s · %2$s</string>
+    <string name="history_empty">Ninguém respondeu ainda.</string>
+    <string name="history_today">Hoje</string>
+    <string name="history_yesterday">Ontem</string>
+    <string name="history_day">%1$s, %2$s</string>
+    <string name="history_loading_more">Carregando mais…</string>
+    <string name="history_load_more_failed">Não deu para carregar o resto.</string>
+    <string name="history_load_more_retry">Tentar de novo</string>
+
+    <string name="history_confirmed">%1$s confirmou</string>
+    <string name="history_waitlisted">%1$s entrou na espera</string>
+    <string name="history_declined">%1$s disse que não vai</string>
+    <string name="history_gave_up">%1$s desistiu</string>
+    <string name="history_left_waitlist">%1$s saiu da espera</string>
+    <string name="history_promoted">%1$s subiu da espera</string>
+    <string name="history_organizer_added">%1$s colocou %2$s no jogo</string>
+    <string name="history_organizer_waitlisted">%1$s colocou %2$s na espera</string>
+    <string name="history_organizer_removed">%1$s tirou %2$s do jogo</string>
+    <string name="history_system_removed">%1$s saiu do jogo</string>
+    <string name="history_system_waitlisted">%1$s voltou para a espera</string>
+    <string name="history_guest_joined">%1$s levou um convidado</string>
+    <string name="history_guest_left">O convidado de %1$s saiu</string>
+    <string name="history_guest_of">convidado(a) de %1$s</string>
+
+    <string name="history_meta">%1$s · %2$s</string>
+    <string name="history_by_system">automático</string>
+    <string name="history_by_organizer">organizador</string>
+    <string name="history_freed_by">automático, a vaga de %1$s abriu</string>
+    <string name="history_freed_by_guest">automático, a vaga do convidado de %1$s abriu</string>
+    <string name="history_was_confirmed">estava confirmado(a)</string>
+    <string name="history_game_full">jogo estava cheio</string>
+    <string name="history_after_deadline">depois do prazo</string>
+    <string name="history_reason">Motivo: "%1$s"</string>
+
+    <string name="history_status_confirmed">Vai</string>
+    <string name="history_status_waitlisted">Espera</string>
+    <string name="history_status_declined">Não vai</string>
+</resources>

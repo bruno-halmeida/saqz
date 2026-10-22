@@ -67,6 +67,9 @@ fun groupsDataModule(): Module = module {
     single<br.com.saqz.groups.domain.game.PastGamesGateway> {
         br.com.saqz.groups.data.game.KtorPastGamesGateway(get())
     }
+    single<br.com.saqz.groups.domain.game.AttendanceHistoryGateway> {
+        br.com.saqz.groups.data.game.KtorAttendanceHistoryGateway(get())
+    }
     single<KtorHomeGateway> { KtorHomeGateway(get()) }
     single<HomeGateway> { get<KtorHomeGateway>() }
     single<KtorGroupMembershipGateway> { KtorGroupMembershipGateway(get()) }

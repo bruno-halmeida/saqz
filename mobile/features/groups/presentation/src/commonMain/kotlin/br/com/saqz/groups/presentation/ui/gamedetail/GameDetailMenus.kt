@@ -34,6 +34,8 @@ import br.com.saqz.groups.resources.game_detail_title
 import br.com.saqz.groups.resources.game_menu_cancel_hint
 import br.com.saqz.groups.resources.game_menu_capacity_hint
 import br.com.saqz.groups.resources.game_menu_edit_hint
+import br.com.saqz.groups.resources.history_menu_hint
+import br.com.saqz.groups.resources.history_menu_label
 import br.com.saqz.groups.resources.game_person_remove
 import br.com.saqz.groups.resources.game_person_remove_guest
 import br.com.saqz.groups.resources.game_waitlist_adjust_capacity
@@ -70,6 +72,14 @@ internal fun GameMenuSheet(state: GameDetailState, onIntent: (GameDetailIntent) 
             modifier = Modifier.testTag(GameDetailTags.MenuCapacity),
         )
     }
+    // JOGO-012: o menu só abre para o gestor; vale para jogo aberto, realizado e cancelado.
+    SaqzSheetAction(
+        icon = SaqzIcons.History,
+        label = stringResource(Res.string.history_menu_label),
+        hint = stringResource(Res.string.history_menu_hint),
+        onClick = { onIntent(GameDetailIntent.OpenHistory) },
+        modifier = Modifier.testTag(GameDetailTags.MenuHistory),
+    )
     if (state.header?.statusTone == GameDetailStatusTone.Published) {
         SaqzSheetAction(
             icon = SaqzIcons.CircleX,

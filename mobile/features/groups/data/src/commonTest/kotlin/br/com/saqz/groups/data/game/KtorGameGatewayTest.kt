@@ -345,6 +345,35 @@ class KtorGameGatewayTest {
         assertNull(page.nextCursor)
     }
 
+    @Test
+    fun `DEB-135 history sends the cursor as query maps the kinds and drops what this app does not know`() = runTest {
+        var seen: io.ktor.http.Url? = null
+        val engine = MockEngine { request ->
+            seen = request.url
+            respond(
+                """{"entries":[""" +
+                    """{"id":"e1","occurredAt":"2026-10-22T22:32:00Z","kind":"GAVE_UP","memberId":"m1","memberName":"Carla Dias",""" +
+                    """"photoTag":"","guestSeq":0,"actorId":"m1","actorName":"Carla Dias","source":"SELF","oldStatus":"CONFIRMED",""" +
+                    """"newStatus":"DECLINED","reason":null,"afterDeadline":false,"freedByName":null,"freedByGuest":false},""" +
+                    """{"id":"e2","occurredAt":"2026-10-22T22:00:00Z","kind":"SOMETHING_NEW","memberId":"m2","source":"SELF","newStatus":"CONFIRMED"}""" +
+                    """],"nextCursor":"next"}""",
+                headers = jsonHeaders(),
+            )
+        }
+        val network = NetworkClient(engine, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"))
+        val history = KtorAttendanceHistoryGateway(AuthenticatedNetworkClient(network, Tokens(), NoopInvalidator()))
+
+        val page = assertIs<SaqzResult.Success<br.com.saqz.groups.domain.game.AttendanceHistoryPage>>(history.page(GROUP, GAME, "abc=")).value
+
+        assertEquals("/api/groups/group-1/games/$GAME/attendance/history", seen?.encodedPath)
+        assertEquals("abc=", seen?.parameters?.get("cursor"))
+        val entry = page.entries.single()
+        assertEquals(br.com.saqz.groups.domain.game.AttendanceHistoryKind.GaveUp, entry.kind)
+        assertEquals(br.com.saqz.groups.domain.game.AttendanceHistoryStatus.Confirmed, entry.oldStatus)
+        assertNull(entry.photoTag)
+        assertEquals("next", page.nextCursor)
+    }
+
     private fun gateway(
         delay: suspend (Long) -> Unit = {},
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,

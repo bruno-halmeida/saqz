@@ -173,6 +173,8 @@ data class GameDetailHeroUi(
     val address: String,
     /** "Jogo de terça, 28/07" (título do menu ⋯). */
     val menuTitle: String,
+    /** "Jogo de terça, 28/07 · 19h30" (barra do histórico de respostas, JOGO-012). */
+    val historySubtitle: String = menuTitle,
     /**
      * "Prioridade dos mensalistas até hoje às 17h30.", a mesma frase da Início e do grupo; vazia quando o jogo não tem
      * janela de prioridade, e a linha some.
@@ -442,6 +444,9 @@ sealed interface GameDetailIntent {
     data class RequestForceEntry(val rowId: String) : GameDetailIntent
     data class ConfirmForceEntry(val defaultReason: String) : GameDetailIntent
     data object Edit : GameDetailIntent
+
+    /** "Histórico de respostas" do ⋯ (JOGO-012, só gestor). */
+    data object OpenHistory : GameDetailIntent
     data object OpenSettlement : GameDetailIntent
     data object RequestCancel : GameDetailIntent
     data object ConfirmCancel : GameDetailIntent
@@ -502,4 +507,7 @@ sealed interface GameDetailEffect {
 
     /** "Ver no mapa": o endereço do jogo. */
     data class OpenMap(val address: String) : GameDetailEffect
+
+    /** "Histórico de respostas" (JOGO-012): "Jogo de quinta, 22/10 · 20h00" vai para a barra da tela. */
+    data class OpenHistory(val subtitle: String) : GameDetailEffect
 }

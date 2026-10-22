@@ -125,6 +125,36 @@ class GameDetailViewModelTest {
         assertEquals(false, athlete.state.value.isAdmin)
     }
 
+    /** JOGO-012: "Histórico de respostas" do ⋯ abre a tela com o jogo na barra; atleta não abre. */
+    @Test
+    fun `history opens only for the organizer with the game in the subtitle`() = runTest {
+        val organizer = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+            FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+        organizer.onIntent(GameDetailIntent.OpenGameMenu)
+        organizer.onIntent(GameDetailIntent.OpenHistory)
+
+        val effect = organizer.effects.first() as GameDetailEffect.OpenHistory
+        assertTrue(effect.subtitle.startsWith("Jogo de "), effect.subtitle)
+        assertTrue(" · " in effect.subtitle, effect.subtitle)
+        assertFalse(organizer.state.value.gameMenuOpen)
+
+        val athlete = GameDetailViewModel(
+            "group-1", "game-1",
+            FakeGameGateway(readResult = SaqzResult.Success(sampleVersionedGame())),
+            FakeGroupGateway(
+                SaqzResult.Success(sampleVersionedGroup(sampleGroup(role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE))),
+            ),
+            FakeAttendanceGateway(), FakeAthleteGateway(),
+        )
+        val effects = mutableListOf<GameDetailEffect>()
+        backgroundScope.launch(dispatcher) { athlete.effects.collect { effects += it } }
+        athlete.onIntent(GameDetailIntent.OpenHistory)
+        assertEquals(emptyList(), effects)
+    }
+
     @Test
     fun `cancelled game with charges to review opens the settlement for the organizer`() = runTest {
         val cancelled = sampleVersionedGame().copy(

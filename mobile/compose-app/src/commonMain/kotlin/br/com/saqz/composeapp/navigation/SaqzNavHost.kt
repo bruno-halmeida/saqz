@@ -1201,6 +1201,14 @@ internal fun SaqzNavHost(
                         onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
                     )
                 }
+                entry<GroupsRoute.AttendanceHistory> { route ->
+                    br.com.saqz.groups.presentation.ui.attendancehistory.AttendanceHistoryRoot(
+                        groupId = route.groupId,
+                        gameId = route.gameId,
+                        subtitle = route.subtitle,
+                        onBack = pop,
+                    )
+                }
                 entry<GroupsRoute.GameEditor> { route ->
                     GameEditorRoot(
                         groupId = route.groupId,
@@ -1257,6 +1265,9 @@ internal fun SaqzNavHost(
                         },
                         onPickPosition = {
                             backStack.add(GroupsRoute.PositionPicker(route.groupId, route.gameId, PositionPickerOrigin.Game.routeValue))
+                        },
+                        onOpenHistory = { subtitle ->
+                            backStack.add(GroupsRoute.AttendanceHistory(route.groupId, route.gameId, subtitle))
                         },
                     )
                 }
