@@ -29,6 +29,8 @@ class OwnProfileViewModel(
         when (intent) {
             OwnProfileIntent.Refresh -> load()
             OwnProfileIntent.Appeared -> appeared()
+            OwnProfileIntent.PullRefresh -> pullRefresh()
+            OwnProfileIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             OwnProfileIntent.EditData -> emit(OwnProfileEffect.OpenEditor)
             OwnProfileIntent.ChangePassword -> emit(OwnProfileEffect.OpenPasswordRecovery)
             OwnProfileIntent.DeleteAccount -> emit(OwnProfileEffect.OpenAccountDeletion)
@@ -50,7 +52,7 @@ class OwnProfileViewModel(
 
     /**
      * A aba reaparece (troca de aba, volta de filha, primeiro plano, edição salva): recarga por
-     * baixo, sem o indicador do puxar-para-atualizar e sem tela de erro — falha mantém o perfil
+     * baixo, sem o indicador do puxar-para-atualizar ([pullRefresh]) e sem tela de erro — falha mantém o perfil
      * que está na tela. Com carga em voo fica pendente e roda quando ela termina; sem conteúdo (erro)
      * carrega por inteiro.
      */
@@ -64,13 +66,21 @@ class OwnProfileViewModel(
         load(softRefresh = !current.loadError)
     }
 
-    private fun load(softRefresh: Boolean = false) {
+    /** GER-002: com carga no ar, ou já atualizando, o puxão não dispara outra busca. */
+    private fun pullRefresh() {
+        val current = state.value
+        if (loadInFlight || current.isLoading || current.loadError || current.isRefreshing) return
+        update { it.copy(isRefreshing = true, refreshFailed = false) }
+        load(softRefresh = true, pulled = true)
+    }
+
+    private fun load(softRefresh: Boolean = false, pulled: Boolean = false) {
         val generation = ++loadGeneration
         loadInFlight = true
         if (!softRefresh) update { it.copy(isLoading = true, loadError = false) }
         viewModelScope.launch {
             try {
-                fetchAndShow(generation, softRefresh)
+                fetchAndShow(generation, softRefresh, pulled)
             } finally {
                 // Dentro da própria carga (e não num completion handler): o estado novo e o fim da carga são
                 // observados juntos, sem janela em que o perfil já aparece mas o pedido de recarga ainda é descartado.
@@ -81,12 +91,13 @@ class OwnProfileViewModel(
 
     private fun finishLoad() {
         loadInFlight = false
+        update { it.copy(isRefreshing = false) }
         if (!refreshPending) return
         refreshPending = false
         load(softRefresh = !state.value.loadError)
     }
 
-    private suspend fun fetchAndShow(generation: Int, softRefresh: Boolean) {
+    private suspend fun fetchAndShow(generation: Int, softRefresh: Boolean, pulled: Boolean) {
         val profileResult = gateway.bootstrap()
         val statsResult = gateway.stats()
         val athleteResult = gateway.athleteProfile()
@@ -97,6 +108,7 @@ class OwnProfileViewModel(
             athleteResult is SaqzResult.Failure
         ) {
             if (!softRefresh) update { it.copy(isLoading = false, loadError = true) }
+            if (pulled) update { it.copy(refreshFailed = true) }
             return
         }
 

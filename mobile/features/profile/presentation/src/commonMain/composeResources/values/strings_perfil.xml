@@ -25,4 +25,6 @@
     <string name="profile_help">Ajuda e contato</string>
     <string name="profile_terms">Termos de uso</string>
     <string name="profile_app_version">Versão %1$s</string>
+    <!-- Puxar para atualizar (GER-002) que falhou: o perfil na tela fica. -->
+    <string name="profile_refresh_failed">Não foi possível atualizar. Verifique sua conexão e tente de novo.</string>
 </resources>

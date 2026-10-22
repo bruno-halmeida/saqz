@@ -21,10 +21,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.pullRefreshIndicatorTransform
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -55,7 +51,9 @@ import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIconButton
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
-import br.com.saqz.designsystem.SaqzSpinner
+import br.com.saqz.designsystem.SaqzPullToRefresh
+import br.com.saqz.designsystem.SaqzToast
+import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.saqzInitials
@@ -97,12 +95,14 @@ import br.com.saqz.profile.resources.profile_play_style
 import br.com.saqz.profile.resources.profile_retry
 import br.com.saqz.profile.resources.profile_settings_content_description
 import br.com.saqz.profile.resources.profile_sign_out
+import br.com.saqz.profile.resources.profile_refresh_failed
 import br.com.saqz.profile.resources.profile_title
 import org.jetbrains.compose.resources.stringResource
 
 internal object OwnProfileTags {
     const val Screen = "own-profile"
     const val Settings = "own-profile-settings"
+    const val RefreshFailed = "own-profile-refresh-failed"
     const val EditData = "own-profile-edit-data"
     const val Stats = "own-profile-stats"
     const val Attendance = "own-profile-attendance"
@@ -125,7 +125,6 @@ internal object OwnProfileTags {
     fun groupAvatar(id: String) = "own-profile-group-avatar-$id"
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun OwnProfileScreen(
     state: OwnProfileState,
@@ -139,11 +138,6 @@ fun OwnProfileScreen(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = state.isLoading,
-        onRefresh = { onIntent(OwnProfileIntent.Refresh) },
-    )
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -163,11 +157,13 @@ fun OwnProfileScreen(
                 }
             },
         )
-        Box(
+        // A primeira carga também é a bola no círculo: a lista fica vazia até o perfil chegar.
+        SaqzPullToRefresh(
+            refreshing = state.isLoading || state.isRefreshing,
+            onRefresh = { onIntent(OwnProfileIntent.PullRefresh) },
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .pullRefresh(pullRefreshState, enabled = !state.isLoading),
+                .weight(1f),
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -254,13 +250,18 @@ fun OwnProfileScreen(
                     }
                 }
             }
-            SaqzSpinner(
-                animating = state.isLoading,
-                onDark = true,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .pullRefreshIndicatorTransform(pullRefreshState, scale = true),
-            )
+            if (state.refreshFailed) {
+                SaqzToast(
+                    visible = true,
+                    onDismiss = { onIntent(OwnProfileIntent.DismissRefreshFailed) },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(metrics.horizontalPadding)
+                        .testTag(OwnProfileTags.RefreshFailed),
+                ) {
+                    SaqzToastText(text = stringResource(Res.string.profile_refresh_failed))
+                }
+            }
         }
     }
 }

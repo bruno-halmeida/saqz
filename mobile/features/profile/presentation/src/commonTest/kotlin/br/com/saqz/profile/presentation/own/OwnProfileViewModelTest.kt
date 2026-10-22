@@ -20,6 +20,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -179,6 +180,56 @@ class OwnProfileViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, bootstrapCalls)
+    }
+
+    @Test
+    fun `pull refresh keeps the profile and ends not refreshing`() = runTest(dispatcher) {
+        val fake = FakeProfileGateway()
+        val held = CompletableDeferred<Unit>()
+        var bootstrapCalls = 0
+        val gateway = object : ProfileGateway by fake {
+            override suspend fun bootstrap(): SaqzResult<Profile, ProfileError> {
+                if (++bootstrapCalls > 1) held.await()
+                return fake.bootstrap()
+            }
+        }
+        val viewModel = OwnProfileViewModel(gateway)
+        advanceUntilIdle()
+        fake.profile = fake.profile.copy(user = fake.profile.user.copy(displayName = "Novo nome"))
+
+        viewModel.onIntent(OwnProfileIntent.PullRefresh)
+        viewModel.onIntent(OwnProfileIntent.PullRefresh)
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertFalse(viewModel.state.value.isLoading)
+        assertNotNull(viewModel.state.value.user)
+
+        held.complete(Unit)
+        advanceUntilIdle()
+        // Dois puxões seguidos = uma busca.
+        assertEquals(2, bootstrapCalls)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertEquals("Novo nome", viewModel.state.value.user?.displayName)
+    }
+
+    @Test
+    fun `pull refresh failure keeps the profile and warns`() = runTest(dispatcher) {
+        val gateway = FakeProfileGateway()
+        val viewModel = OwnProfileViewModel(gateway)
+        advanceUntilIdle()
+        gateway.statsError = ProfileError.DataFailure(DataError.Connectivity)
+
+        viewModel.onIntent(OwnProfileIntent.PullRefresh)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertFalse(state.isRefreshing)
+        assertFalse(state.loadError)
+        assertTrue(state.refreshFailed)
+        assertNotNull(state.user)
+        assertNotNull(state.stats)
+        viewModel.onIntent(OwnProfileIntent.DismissRefreshFailed)
+        assertFalse(viewModel.state.value.refreshFailed)
     }
 
     @Test

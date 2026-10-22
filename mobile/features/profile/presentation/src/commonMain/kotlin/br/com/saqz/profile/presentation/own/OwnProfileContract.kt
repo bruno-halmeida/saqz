@@ -6,6 +6,10 @@ import androidx.compose.runtime.Immutable
 data class OwnProfileState(
     val isLoading: Boolean = true,
     val loadError: Boolean = false,
+    /** Puxar para atualizar em andamento (GER-002); o perfil continua na tela. */
+    val isRefreshing: Boolean = false,
+    /** O último puxar falhou: o perfil fica e o aviso aparece. */
+    val refreshFailed: Boolean = false,
     val user: OwnProfileUserUi? = null,
     val stats: OwnProfileStatsUi? = null,
     val groups: List<OwnProfileGroupUi> = emptyList(),
@@ -47,6 +51,10 @@ sealed interface OwnProfileIntent {
 
     /** A aba reaparece: recarga por baixo, sem indicador nem tela de erro. */
     data object Appeared : OwnProfileIntent
+
+    /** Puxar para atualizar (GER-002): recarga por baixo com a bola na tela e aviso se falhar. */
+    data object PullRefresh : OwnProfileIntent
+    data object DismissRefreshFailed : OwnProfileIntent
     data object EditData : OwnProfileIntent
     data object OpenPrivacy : OwnProfileIntent
     data object OpenTerms : OwnProfileIntent
