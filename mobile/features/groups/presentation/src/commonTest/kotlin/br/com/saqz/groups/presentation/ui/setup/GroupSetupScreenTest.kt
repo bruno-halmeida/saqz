@@ -23,6 +23,12 @@ import br.com.saqz.groups.model.GroupVenueForm
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import br.com.saqz.groups.model.AttendanceUpdatesMode
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.presentation.setup.GroupSetupError
@@ -355,6 +361,28 @@ class GroupSetupScreenTest {
         state = owner.copy(canDelete = false)
         waitForIdle()
         onNodeWithTag(GroupSetupTags.AttendanceUpdatesMode).assertDoesNotExist()
+    }
+
+    @Test
+    fun whatsAppListModeHintsFitOneLineAt390() = runComposeUiTest {
+        var state by mutableStateOf(
+            monthlyState().copy(
+                canDelete = true,
+                form = monthlyState().form.copy(attendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED),
+            ),
+        )
+        setContent { SaqzTheme { Box(Modifier.width(390.dp)) { GroupSetupScreen(state, {}, {}) } } }
+
+        fun lines(text: String): Int {
+            val node = onNodeWithText(text).performScrollTo().fetchSemanticsNode()
+            val layouts = mutableListOf<TextLayoutResult>()
+            node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            return layouts.single().lineCount
+        }
+        assertEquals(1, lines("Envia a lista às 9h, 12h30 e 18h."))
+        state = state.copy(form = state.form.copy(attendanceUpdatesMode = AttendanceUpdatesMode.ON_CHANGE))
+        waitForIdle()
+        assertEquals(1, lines("Envia quando a lista muda, das 8h às 22h."))
     }
 
     @Test

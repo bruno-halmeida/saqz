@@ -19,9 +19,20 @@ private val SAO_PAULO = ZoneId.of("America/Sao_Paulo")
 const val ON_CHANGE_DEBOUNCE_MINUTES = 15L
 const val ON_CHANGE_DAILY_LIMIT = 12
 
-/** Publica quando a lista mudou (sem assinatura gravada também é mudança) e o freio deixa. */
-fun shouldPublishChange(stored: String?, digest: String, activity: OnChangeActivity, now: Instant): Boolean {
+/** Silêncio do modo ON_CHANGE (decisão do dono, 22/10): nada sai das 22h00 às 7h59 de São Paulo. */
+const val ON_CHANGE_QUIET_FROM_HOUR = 22
+const val ON_CHANGE_QUIET_UNTIL_HOUR = 8
+
+/**
+ * Publica quando a lista mudou (sem assinatura gravada também é mudança), fora do silêncio e com o freio livre. A mudança
+ * segurada sai na primeira passada livre, porque a assinatura só é gravada quando publica.
+ */
+fun shouldPublishChange(
+    stored: String?, digest: String, activity: OnChangeActivity, now: Instant, quietHours: Boolean = true,
+): Boolean {
     if (stored == digest) return false
+    val hour = now.atZone(SAO_PAULO).hour
+    if (quietHours && (hour >= ON_CHANGE_QUIET_FROM_HOUR || hour < ON_CHANGE_QUIET_UNTIL_HOUR)) return false
     val last = activity.lastMessageAt
     if (last != null && now.isBefore(last.plusSeconds(ON_CHANGE_DEBOUNCE_MINUTES * 60))) return false
     return activity.today < ON_CHANGE_DAILY_LIMIT
@@ -31,6 +42,8 @@ class GroupCommunicationService(
     private val transaction: TransactionRunner,
     private val groups: GroupReadRepository,
     private val repository: GroupCommunicationRepository,
+    /** Silêncio das 22h às 8h no ON_CHANGE; só os testes de banco, que usam o relógio real, desligam. */
+    private val quietHours: Boolean = true,
     /** Mesmo critério das escritas: grupo congelado (dono sem plano ativo) não recebe comunicação automática (DEB-074). */
     private val writeAccess: GroupWriteAccess = GroupWriteAccess.Unrestricted,
 ) {
@@ -103,7 +116,7 @@ class GroupCommunicationService(
             val digest = rosterDigest(roster)
             val stored = repository.attendanceDigest(candidate.gameId)
             val dayStart = now.atZone(SAO_PAULO).toLocalDate().atStartOfDay(SAO_PAULO).toInstant()
-            if (!shouldPublishChange(stored, digest, repository.onChangeActivity(candidate.groupId, dayStart), now)) {
+            if (!shouldPublishChange(stored, digest, repository.onChangeActivity(candidate.groupId, dayStart), now, quietHours)) {
                 return@mapNotNull null
             }
             repository.saveAttendanceDigest(candidate.gameId, digest)

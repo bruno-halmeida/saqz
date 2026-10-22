@@ -17,7 +17,7 @@ class OnChangeReminderTest {
     private val repository = MemoryCommunicationRepository()
     private var frozen = false
     private val service = GroupCommunicationService(
-        CountingTransaction(), FixedRoleGroups(group, GroupRole.OWNER), repository, GroupWriteAccess { !frozen },
+        CountingTransaction(), FixedRoleGroups(group, GroupRole.OWNER), repository, writeAccess = GroupWriteAccess { !frozen },
     )
     private val candidate = ReminderCandidate(
         UUID.randomUUID(), group, owner, ReminderGame(LocalDate.of(2026, 9, 20), LocalTime.of(19, 30), "Arena Central"),
@@ -80,8 +80,8 @@ class OnChangeReminderTest {
         }
         roster(confirmed = listOf("Outro"))
         assertEquals(0, pass(noon.plusMinutes(60)))
-        // 00h05 do dia seguinte em São Paulo
-        assertEquals(1, pass(Instant.parse("2026-09-19T03:05:00Z")))
+        // 8h do dia seguinte em São Paulo: o contador do dia zerou
+        assertEquals(1, pass(Instant.parse("2026-09-19T11:00:00Z")))
     }
 
     @Test fun `the brake is per group, the next game waits for the day and for 15 minutes after the last message`() {
@@ -94,7 +94,7 @@ class OnChangeReminderTest {
         assertEquals(0, pass(noon.plusMinutes(60)), "13ª do grupo no dia, mesmo num jogo novo")
         assertTrue(next.gameId !in repository.digests)
         // Dia seguinte, mas a 10 min da última mensagem do jogo anterior: espera.
-        val lastOfA = Instant.parse("2026-09-19T02:55:00Z")
+        val lastOfA = Instant.parse("2026-09-19T11:00:00Z")
         repository.onChangeAt += group to lastOfA
         assertEquals(0, pass(lastOfA.plusMinutes(10)))
         assertEquals(1, pass(lastOfA.plusMinutes(16)))
@@ -113,6 +113,26 @@ class OnChangeReminderTest {
         repository.gameForReminder = candidate.game
         service.remind(owner, group, candidate.gameId, UUID.randomUUID())
         assertEquals(listOf(AttendanceUpdatesMode.SCHEDULED, null), repository.published.map { it.reminderOrigin })
+    }
+
+    @Test fun `nothing goes out from 22h to 8h and the held change goes out at 8h`() {
+        roster(confirmed = listOf("Ana"))
+        // 21h55 em São Paulo, freio livre: sai
+        assertEquals(1, pass(Instant.parse("2026-09-19T00:55:00Z")))
+        roster(confirmed = listOf("Ana", "Bia"))
+        // 22h10: segura
+        assertEquals(0, pass(Instant.parse("2026-09-19T01:10:00Z")))
+        // 7h59: ainda segura
+        assertEquals(0, pass(Instant.parse("2026-09-19T10:59:00Z")))
+        // 8h00: sai com a lista do momento
+        assertEquals(1, pass(Instant.parse("2026-09-19T11:00:00Z")))
+        assertTrue("Bia" in repository.published.last().body)
+    }
+
+    @Test fun `the first pass of a game also waits for 8h`() {
+        roster(confirmed = listOf("Ana"))
+        assertEquals(0, pass(Instant.parse("2026-09-19T05:00:00Z")))
+        assertTrue(repository.digests.isEmpty())
     }
 
     private fun roster(confirmed: List<String> = emptyList(), declined: List<String> = emptyList()) {

@@ -32,7 +32,8 @@ class AttendanceUpdatesModeIntegrationTest {
     private val jdbc = JdbcClient.create(source)
     private val transaction = JdbcTransactionRunner(source)
     private val repository = JdbcGroupCommunicationRepository(source)
-    private val service = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), repository)
+    // Relógio real: o silêncio das 22h às 8h fica nos testes unitários.
+    private val service = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), repository, quietHours = false)
     private val queue = JdbcNotificationWhatsAppGroup(source, transaction, PublicAttendanceLinkFactory(URI("https://links.saqz.app")))
     private val owner = user("Dono")
     private val group = UUID.randomUUID()

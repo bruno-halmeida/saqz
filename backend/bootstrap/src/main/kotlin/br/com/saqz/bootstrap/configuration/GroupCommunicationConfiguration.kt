@@ -23,7 +23,7 @@ class GroupCommunicationConfiguration {
     @Bean fun groupCommunicationRepository(dataSource: DataSource) = JdbcGroupCommunicationRepository(dataSource)
     @Bean fun groupCommunicationService(transaction: JdbcTransactionRunner, groups: JdbcGroupReadRepository, repository: JdbcGroupCommunicationRepository,
         writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) =
-        GroupCommunicationService(transaction, groups, repository, writeAccess)
+        GroupCommunicationService(transaction, groups, repository, writeAccess = writeAccess)
     @Bean fun groupCommunicationController(actors: VerifiedGroupActorResolver, service: GroupCommunicationService,
         photos: br.com.saqz.groups.application.photo.MemberPhotoDirectory) =
         GroupCommunicationController(actors, service, photos)

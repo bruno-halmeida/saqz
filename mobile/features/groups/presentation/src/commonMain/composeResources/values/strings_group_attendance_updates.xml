@@ -5,5 +5,5 @@
     <string name="group_attendance_updates_scheduled">Por horário</string>
     <string name="group_attendance_updates_on_change">A cada confirmação</string>
     <string name="group_attendance_updates_hint_scheduled">Envia a lista às 9h, 12h30 e 18h.</string>
-    <string name="group_attendance_updates_hint_on_change">Envia a lista quando ela muda (no máx. 1 a cada 15 min, até 12/dia).</string>
+    <string name="group_attendance_updates_hint_on_change">Envia quando a lista muda, das 8h às 22h.</string>
 </resources>
