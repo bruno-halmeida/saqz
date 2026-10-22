@@ -195,7 +195,7 @@ jobs:
           name: aab-para-envio
           path: ${{ runner.temp }}/aab
       - name: Ruby e fastlane
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@e1bd6146574da5e0795075b5319b300edb30c5b0 # v1
         with:
           ruby-version: "3.4"
           bundler-cache: true
@@ -253,7 +253,7 @@ jobs:
           mkdir -p mobile/ios-app/SaqzIOS/Config/Prod
           printf '%s' "$PLIST_B64" | openssl base64 -d -A > mobile/ios-app/SaqzIOS/Config/Prod/GoogleService-Info.plist
       - name: Ruby e fastlane
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@e1bd6146574da5e0795075b5319b300edb30c5b0 # v1
         with:
           ruby-version: "3.4"
           bundler-cache: true
@@ -309,7 +309,7 @@ jobs:
           name: ipa-para-envio
           path: ${{ runner.temp }}/ipa
       - name: Ruby e fastlane
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@e1bd6146574da5e0795075b5319b300edb30c5b0 # v1
         with:
           ruby-version: "3.4"
           bundler-cache: true
