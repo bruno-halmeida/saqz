@@ -321,6 +321,30 @@ class KtorGameGatewayTest {
         assertEquals(expectedType, assertIs<SaqzResult.Failure<*>>(result).error::class.simpleName)
     }
 
+    @Test
+    fun `DEB-128 past games sends the cursor as query not inside the path and maps the page`() = runTest {
+        var seen: io.ktor.http.Url? = null
+        val engine = MockEngine { request ->
+            seen = request.url
+            respond(
+                """{"games":[{"id":"g1","localDate":"2026-10-20","localTime":"20:00:00","zoneId":"America/Sao_Paulo",""" +
+                    """"startsAt":"2026-10-20T23:00:00Z","status":"CANCELLED","confirmedCount":8,"capacity":12,""" +
+                    """"venueName":"CERET","pendingChargeCount":0,"pendingChargeCents":0}],"nextCursor":null}""",
+                headers = jsonHeaders(),
+            )
+        }
+        val network = NetworkClient(engine, NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/"))
+        val past = KtorPastGamesGateway(AuthenticatedNetworkClient(network, Tokens(), NoopInvalidator()))
+
+        val page = assertIs<SaqzResult.Success<br.com.saqz.groups.domain.game.PastGamesPage>>(past.page(GROUP, "abc=")).value
+
+        assertEquals("/api/groups/group-1/games/past", seen?.encodedPath)
+        assertEquals("abc=", seen?.parameters?.get("cursor"))
+        assertEquals(GameStatus.Cancelled, page.games.single().status)
+        assertEquals("20:00", page.games.single().localTime)
+        assertNull(page.nextCursor)
+    }
+
     private fun gateway(
         delay: suspend (Long) -> Unit = {},
         handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData,

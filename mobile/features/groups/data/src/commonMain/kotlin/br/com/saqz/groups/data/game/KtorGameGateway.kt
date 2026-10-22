@@ -37,7 +37,6 @@ import br.com.saqz.network.RetrySafety
 import br.com.saqz.network.retryTransport
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
-import io.ktor.http.encodeURLQueryComponent
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
@@ -436,9 +435,10 @@ internal data class PastGamesPageTransport(val games: List<PastGameTransport> = 
 /** JOGO-011 e PRES-016: rotas só do gestor. */
 class KtorPastGamesGateway(private val network: AuthenticatedNetworkClient) : PastGamesGateway {
     override suspend fun page(groupId: GroupId, cursor: String?): SaqzResult<PastGamesPage, GameError> {
-        val query = cursor?.let { "?cursor=${it.encodeURLQueryComponent()}" }.orEmpty()
+        // Query no NetworkRequest, nunca no path: o path percent-encoda o "?" (VUL-120).
+        val request = NetworkRequest(query = cursor?.let { mapOf("cursor" to it) }.orEmpty())
         val result = retryTransport(RetrySafety.Read) {
-            network.execute(HttpMethod.Get, "api/groups/${groupId.value}/games/past$query", PastGamesPageTransport.serializer())
+            network.execute(HttpMethod.Get, "api/groups/${groupId.value}/games/past", PastGamesPageTransport.serializer(), request)
         }
         return when (result) {
             is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
