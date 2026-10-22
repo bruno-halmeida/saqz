@@ -28,7 +28,7 @@ test('SaqzDev runs Debug with sandbox push and the public links domain', () => {
   assert.deepEqual(entitlements['com.apple.developer.associated-domains'], [
     'applinks:$(LINKS_DOMAIN)',
   ]);
-  assert.match(scheme('SaqzDev'), /<LaunchAction\s+buildConfiguration="Debug"/);
+  assert.match(scheme('SaqzDev'), /<LaunchAction\s+buildConfiguration\s*=\s*"Debug"/);
 });
 
 test('SaqzProd preserves Associated Domains in Release', () => {
@@ -38,7 +38,7 @@ test('SaqzProd preserves Associated Domains in Release', () => {
   assert.deepEqual(entitlements['com.apple.developer.associated-domains'], [
     'applinks:$(LINKS_DOMAIN)',
   ]);
-  assert.match(scheme('SaqzProd'), /<LaunchAction\s+buildConfiguration="Release"/);
+  assert.match(scheme('SaqzProd'), /<LaunchAction\s+buildConfiguration\s*=\s*"Release"/);
 });
 
 test('development signing preserves app identity, links domain and native saqz links', () => {
