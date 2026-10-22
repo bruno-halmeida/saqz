@@ -539,6 +539,26 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     }
 
     @Test
+    fun `second organizer promoting someone already promoted succeeds without another event or charge`() {
+        val f = fullFixture()
+        execute("UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='${f.group}'")
+        val selected = member(f.group, "selected", "AVULSO")
+        waitlist(f, selected, 1)
+        f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.DECLINE)
+        assertIs<AttendanceCommandResult.Success>(f.service.promote(f.owner, f.group, f.game, selected, UUID.randomUUID(), "Escolha do organizador"))
+        val events = count("attendance_events")
+
+        val late = assertIs<AttendanceCommandResult.Success>(
+            f.service.promote(f.owner, f.group, f.game, selected, UUID.randomUUID(), "Escolha do organizador"),
+        )
+
+        assertEquals(AttendanceStatus.CONFIRMED, late.attendance.status)
+        assertEquals(null, late.event)
+        assertEquals(events, count("attendance_events"))
+        assertEquals(1, int("SELECT count(*) FROM group_charges WHERE member_user_id='$selected'"))
+    }
+
+    @Test
     fun `directed promotion is rejected in fifo mode`() {
         val f = fixture()
         attendance(f, f.member, "CONFIRMED")

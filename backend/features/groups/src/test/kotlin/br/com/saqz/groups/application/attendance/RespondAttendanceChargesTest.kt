@@ -11,6 +11,7 @@ import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -347,11 +348,16 @@ class RespondAttendanceChargesTest {
             AttendanceCommandResult.Denied(AttendanceDenial.NO_CAPACITY),
             responses.promote(owner, group, game, first, UUID.randomUUID(), "Chegou"),
         )
-        // Quem já está confirmado não sobe de novo.
+        // Quem já está confirmado (outro gestor colocou antes) não sobe de novo: o pedido dá certo sem mudar nada.
         repository.capacity = 3
+        val already = assertIs<AttendanceCommandResult.Success>(responses.promote(owner, group, game, owner, UUID.randomUUID(), "Chegou"))
+        assertEquals(AttendanceStatus.CONFIRMED, already.attendance.status)
+        assertNull(already.event)
+        // Quem saiu da espera com "Não vou" continua negado.
+        repository.record(second, AttendanceStatus.DECLINED)
         assertEquals(
             AttendanceCommandResult.Denied(AttendanceDenial.NOT_WAITLISTED),
-            responses.promote(owner, group, game, owner, UUID.randomUUID(), "Chegou"),
+            responses.promote(owner, group, game, second, UUID.randomUUID(), "Chegou"),
         )
         assertEquals(AttendanceStatus.WAITLISTED, repository.status(first))
         assertTrue(charges.calls.isEmpty())

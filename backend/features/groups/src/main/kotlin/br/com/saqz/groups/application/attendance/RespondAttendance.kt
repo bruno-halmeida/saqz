@@ -124,7 +124,12 @@ class RespondAttendance(
             timestamp = now(),
             ids = ids,
         )) {
-            is AttendancePromotionResult.Denied -> AttendanceCommandResult.Denied(result.reason)
+            // Dois gestores tocando em "Colocar no jogo" na mesma pessoa: quem chega depois encontra o que pediu e
+            // não leva erro. Sem evento nem cobrança novos; o jogo fechado continua negado antes daqui.
+            is AttendancePromotionResult.Denied ->
+                scoped.current?.takeIf { result.reason == AttendanceDenial.NOT_WAITLISTED && it.status == AttendanceStatus.CONFIRMED }
+                    ?.let { AttendanceCommandResult.Success(it) }
+                    ?: AttendanceCommandResult.Denied(result.reason)
             is AttendancePromotionResult.Success -> result.result()
         }
     }
