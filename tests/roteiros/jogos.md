@@ -130,3 +130,18 @@ _Decidida em 22/10/2026; vale depois da entrega do DEB-128 (app 1.0.12 onde houv
 | Detalhe de realizado já acertado (gestor) | Botão "Ver acerto" | ☐ | ☐ |
 | Detalhe de realizado com pendência (gestor) | Botão "Encerrar jogo e acertar" | ☐ | ☐ |
 | Detalhe de cancelado | Abas "Confirmados | Não iam" | ☐ | ☐ |
+
+## JOGO-012 · Histórico de respostas do jogo [MULTI]
+
+_Decidida em 22/10/2026; vale depois da entrega do DEB-135 (app 1.0.12)._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Gestor abre ⋯ do jogo | Item "Histórico de respostas" entre "Ajustar vagas" e "Cancelar jogo" | ☐ | ☐ |
+| Atleta abre o jogo | Sem o item; rota do histórico responde 403 | ☐ | ☐ |
+| Atleta confirma | "Fulano confirmou", hora, Vai | ☐ | ☐ |
+| Confirmado desiste e o 1º da espera sobe | "desistiu · estava confirmado(a)" e "subiu da espera · automático, a vaga de Fulano abriu" | ☐ | ☐ |
+| Organizador tira alguém com motivo | "Bruno tirou Fulano do jogo · organizador" e a linha do motivo | ☐ | ☐ |
+| Anfitrião leva convidado | "Fulano levou um convidado" | ☐ | ☐ |
+| Jogo realizado e cancelado | Item no ⋯ e histórico completo | ☐ | ☐ |
+| Jogo sem resposta | "Ninguém respondeu ainda." | ☐ | ☐ |

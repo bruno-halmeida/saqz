@@ -10,7 +10,7 @@ Um arquivo por feature, gerado das tabelas de QA do cofre. Complementa `tests/pr
 | [Convites e entrada no grupo](convites-e-entrada-no-grupo.md) | 11 | 5 | 11 |
 | [Financeiro](financeiro.md) | 8 | 3 | 6 |
 | [Geral](geral.md) | 2 | 0 | 0 |
-| [Jogos](jogos.md) | 11 | 2 | 7 |
+| [Jogos](jogos.md) | 12 | 2 | 8 |
 | [Link de presença do WhatsApp](link-de-presenca-do-whatsapp.md) | 6 | 0 | 5 |
 | [Membros e papéis](membros-e-papeis.md) | 5 | 0 | 4 |
 | [Presença e lista de espera](presenca-e-lista-de-espera.md) | 23 | 7 | 21 |
