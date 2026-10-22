@@ -1,5 +1,7 @@
 package br.com.saqz.groups.application.places
 
+import br.com.saqz.groups.application.ratelimit.PerUserRateLimiter
+import br.com.saqz.groups.application.ratelimit.UserRateLimitedException
 import java.time.Clock
 
 data class PlaceSuggestion(val placeId: String, val name: String, val address: String, val description: String)
@@ -26,33 +28,10 @@ class PlacesUnavailableException : RuntimeException("places unavailable")
 
 class PlacesUpstreamException(message: String, cause: Throwable? = null) : RuntimeException(message, cause)
 
-class PlacesRateLimitedException(val retryAfterSeconds: Int) : RuntimeException()
+typealias PlacesRateLimitedException = UserRateLimitedException
 
-/** Janela fixa de um minuto por usuário, em memória; entradas de janelas passadas são descartadas. */
-class PlacesRateLimiter(private val clock: Clock, private val limitPerMinute: Int = 60) {
-    private class Window(val minute: Long, var count: Int)
-
-    private val windows = HashMap<String, Window>()
-    private var lastSweepMinute = Long.MIN_VALUE
-
-    @Synchronized
-    fun acquire(userKey: String) {
-        val nowMillis = clock.millis()
-        val minute = Math.floorDiv(nowMillis, 60_000L)
-        if (minute != lastSweepMinute) {
-            windows.values.removeIf { it.minute < minute }
-            lastSweepMinute = minute
-        }
-        val window = windows[userKey]?.takeIf { it.minute == minute } ?: Window(minute, 0).also { windows[userKey] = it }
-        if (window.count >= limitPerMinute) {
-            val retry = (((minute + 1) * 60_000L - nowMillis + 999) / 1000).toInt().coerceIn(1, 60)
-            throw PlacesRateLimitedException(retry)
-        }
-        window.count++
-    }
-
-    internal fun trackedUsers(): Int = synchronized(this) { windows.size }
-}
+/** Sessenta chamadas por minuto por usuário (ver [PerUserRateLimiter]). */
+class PlacesRateLimiter(clock: Clock, limitPerMinute: Int = 60) : PerUserRateLimiter(clock, limitPerMinute)
 
 class PlacesLookup(private val provider: PlacesProvider?, private val limiter: PlacesRateLimiter) {
     val enabled: Boolean get() = provider != null
