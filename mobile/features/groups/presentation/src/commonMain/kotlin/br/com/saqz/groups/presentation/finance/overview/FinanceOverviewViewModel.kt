@@ -35,6 +35,8 @@ class FinanceOverviewViewModel(
             is FinanceOverviewIntent.OpenGroup -> emit(FinanceOverviewEffect.OpenGroup(intent.groupId))
             FinanceOverviewIntent.TabActive -> if (!isFirstAppearance()) refresh()
             FinanceOverviewIntent.Retry -> load(state.value.selectedPeriod)
+            FinanceOverviewIntent.PullRefresh -> pullRefresh()
+            FinanceOverviewIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
         }
     }
 
@@ -48,7 +50,19 @@ class FinanceOverviewViewModel(
         load(current.selectedPeriod, softRefresh = !current.loadFailed)
     }
 
-    private fun load(selection: FinanceOverviewPeriodSelection, softRefresh: Boolean = false) {
+    /** GER-002: com carga no ar, ou já atualizando, o puxão não dispara outra busca. */
+    private fun pullRefresh() {
+        val current = state.value
+        if (loadInFlight || current.isLoading || current.loadFailed || current.isRefreshing) return
+        update { it.copy(isRefreshing = true, refreshFailed = false) }
+        load(current.selectedPeriod, softRefresh = true, pulled = true)
+    }
+
+    private fun load(
+        selection: FinanceOverviewPeriodSelection,
+        softRefresh: Boolean = false,
+        pulled: Boolean = false,
+    ) {
         val periods = financeOverviewPeriodOptions(financeOverviewDate(nowPort.now()))
         val period = periods.first { it.selection == selection }
         val generation = ++loadGeneration
@@ -67,6 +81,7 @@ class FinanceOverviewViewModel(
                 is SaqzResult.Failure -> {
                     if (generation < loadGeneration) return@launch
                     if (!softRefresh) update { it.copy(isLoading = false, loadFailed = true) }
+                    if (pulled) update { it.copy(refreshFailed = true) }
                 }
 
                 is SaqzResult.Success -> {
@@ -75,7 +90,12 @@ class FinanceOverviewViewModel(
                 }
             }
         }
-        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+        job.invokeOnCompletion {
+            if (generation == loadGeneration) {
+                loadInFlight = false
+                update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 }
 

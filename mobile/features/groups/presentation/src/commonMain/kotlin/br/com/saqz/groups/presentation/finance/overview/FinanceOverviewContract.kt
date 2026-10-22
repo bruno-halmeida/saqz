@@ -38,6 +38,10 @@ data class FinanceOverviewTransactionUi(
 @Immutable
 data class FinanceOverviewState(
     val isLoading: Boolean = true,
+    /** Puxar para atualizar em andamento (GER-002); o caixa continua na tela. */
+    val isRefreshing: Boolean = false,
+    /** O último puxar falhou: o caixa fica e o aviso aparece. */
+    val refreshFailed: Boolean = false,
     val loadFailed: Boolean = false,
     val selectedPeriod: FinanceOverviewPeriodSelection = FinanceOverviewPeriodSelection.CurrentMonth,
     val periods: List<FinanceOverviewPeriodOption> = emptyList(),
@@ -56,6 +60,11 @@ sealed interface FinanceOverviewIntent {
     data class SelectPeriod(val selection: FinanceOverviewPeriodSelection) : FinanceOverviewIntent
     data class OpenGroup(val groupId: String) : FinanceOverviewIntent
     data object TabActive : FinanceOverviewIntent
+
+    /** Puxar para atualizar (GER-002): recarga por baixo com a bola na tela e aviso se falhar. */
+    data object PullRefresh : FinanceOverviewIntent
+
+    data object DismissRefreshFailed : FinanceOverviewIntent
     data object Retry : FinanceOverviewIntent
 }
 

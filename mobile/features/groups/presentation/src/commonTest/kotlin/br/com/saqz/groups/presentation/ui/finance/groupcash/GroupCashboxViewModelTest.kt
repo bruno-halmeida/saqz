@@ -813,6 +813,57 @@ class GroupCashboxViewModelTest {
         assertEquals(GroupCashboxEffect.OpenGroupSettings("group-1"), viewModel.effects.first())
     }
 
+    @Test
+    fun `pull refresh keeps the cashbox and ends not refreshing`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val loaded = viewModel.state.value.debtors
+        organizer.beforeCharges = { reply.await() }
+
+        viewModel.onIntent(GroupCashboxIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(loaded, viewModel.state.value.debtors)
+
+        reply.complete(Unit)
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertEquals(loaded, viewModel.state.value.debtors)
+    }
+
+    @Test
+    fun `pull refresh failure keeps the cashbox and warns`() = runTest {
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        val loaded = viewModel.state.value.debtors
+        organizer.chargesResult = SaqzResult.Failure(FinanceError.Data(DataError.Connectivity))
+
+        viewModel.onIntent(GroupCashboxIntent.PullRefresh)
+
+        val state = viewModel.state.value
+        assertFalse(state.isRefreshing)
+        assertFalse(state.loadFailed)
+        assertTrue(state.refreshFailed)
+        assertEquals(loaded, state.debtors)
+        viewModel.onIntent(GroupCashboxIntent.DismissRefreshFailed)
+        assertFalse(viewModel.state.value.refreshFailed)
+    }
+
+    @Test
+    fun `two pulls in a row fetch once`() = runTest {
+        val reply = CompletableDeferred<Unit>()
+        val organizer = FakeOrganizerFinanceGateway()
+        val viewModel = viewModel(organizer = organizer)
+        organizer.beforeCharges = { reply.await() }
+
+        viewModel.onIntent(GroupCashboxIntent.PullRefresh)
+        viewModel.onIntent(GroupCashboxIntent.PullRefresh)
+        reply.complete(Unit)
+
+        assertEquals(2, organizer.chargeReads)
+        assertFalse(viewModel.state.value.isRefreshing)
+    }
+
     private fun viewModel(
         group: FakeGroupGateway = FakeGroupGateway(
             readResult = SaqzResult.Success(
@@ -881,8 +932,11 @@ class GroupCashboxViewModelTest {
 
         var chargeReads = 0
 
+        var beforeCharges: suspend () -> Unit = {}
+
         override suspend fun charges(groupId: GroupId): SaqzResult<ChargeList, FinanceError> {
             chargeReads++
+            beforeCharges()
             return chargesResult
         }
 

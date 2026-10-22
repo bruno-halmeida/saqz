@@ -40,6 +40,9 @@ class GroupCashboxViewModel(
     private var receiptGeneration = 0L
     private var loadInFlight = false
 
+    /** Geração da carga que veio de um puxão — só ela avisa quando falha. */
+    private var pulledGeneration = -1L
+
     init {
         load()
     }
@@ -49,6 +52,8 @@ class GroupCashboxViewModel(
         when (intent) {
             GroupCashboxIntent.Retry -> load()
             GroupCashboxIntent.Refresh -> refresh()
+            GroupCashboxIntent.PullRefresh -> pullRefresh()
+            GroupCashboxIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             GroupCashboxIntent.ChargeMissing -> openChargeSheet()
             is GroupCashboxIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
             GroupCashboxIntent.Register -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
@@ -334,6 +339,16 @@ class GroupCashboxViewModel(
         load(softRefresh = !current.loadFailed)
     }
 
+    /** GER-002: as guardas do [refresh] — carga no ar, folha aberta ou baixa em andamento ignoram o puxão. */
+    private fun pullRefresh() {
+        val current = state.value
+        if (loadInFlight || current.isLoading || current.loadFailed || current.isRefreshing || current.interacting()) return
+        update { it.copy(isRefreshing = true, refreshFailed = false) }
+        // Antes do `load`: a falha pode chegar antes de ele voltar.
+        pulledGeneration = loadGeneration + 1
+        load(softRefresh = true)
+    }
+
     private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
         loadInFlight = true
@@ -386,7 +401,12 @@ class GroupCashboxViewModel(
                 ).keepingNoticesFrom(it, softRefresh)
             }
         }
-        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+        job.invokeOnCompletion {
+            if (generation == loadGeneration) {
+                loadInFlight = false
+                update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     private fun markReceived(chargeId: String, paidMethod: PaidMethod) {
@@ -461,7 +481,11 @@ class GroupCashboxViewModel(
 
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o caixa que está na tela fica. */
     private fun failLoad(generation: Long, softRefresh: Boolean) {
-        if (generation != loadGeneration || softRefresh) return
+        if (generation != loadGeneration) return
+        if (softRefresh) {
+            if (generation == pulledGeneration) update { it.copy(refreshFailed = true) }
+            return
+        }
         update { it.copy(isLoading = false, loadFailed = true) }
     }
 

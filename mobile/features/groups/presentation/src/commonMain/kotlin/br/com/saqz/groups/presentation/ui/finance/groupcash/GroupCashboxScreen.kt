@@ -37,6 +37,7 @@ import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ChargeMissing
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.CopyPix
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxIntent.ChargeIndividual
@@ -79,6 +80,7 @@ import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.UndoSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
+import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.groups.resources.group_cashbox_settled_received
 import br.com.saqz.groups.resources.group_cashbox_settled_title
 import br.com.saqz.groups.resources.group_cashbox_settled_waived
@@ -159,14 +161,25 @@ internal fun GroupCashboxScreen(
             when {
                 state.isLoading -> LoadingContent()
                 state.loadFailed -> LoadFailure(onRetry = { onIntent(Retry) })
-                else -> LoadedContent(
-                    state = state,
-                    onIntent = onIntent,
-                    onOpenChargePayment = onOpenChargePayment,
-                    remindedChargeIds = reminder.remindedChargeIds,
-                )
+                else -> SaqzPullToRefresh(
+                    refreshing = state.isRefreshing,
+                    onRefresh = { onIntent(GroupCashboxIntent.PullRefresh) },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    LoadedContent(
+                        state = state,
+                        onIntent = onIntent,
+                        onOpenChargePayment = onOpenChargePayment,
+                        remindedChargeIds = reminder.remindedChargeIds,
+                    )
+                }
             }
         }
+        RefreshFailedToast(
+            visible = state.refreshFailed,
+            onDismiss = { onIntent(GroupCashboxIntent.DismissRefreshFailed) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
         ChargeSheet(
             open = state.chargeSheetOpen,
             debtors = chargeDebtors,

@@ -38,12 +38,14 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewGroupUi
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewIntent
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewPeriodOption
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewPeriodSelection
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewState
 import br.com.saqz.groups.presentation.finance.overview.FinanceOverviewTransactionUi
+import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.finance_overview_all_clear
 import br.com.saqz.groups.resources.finance_overview_balance_eyebrow
@@ -114,8 +116,19 @@ fun FinanceOverviewScreen(
             state.isLoading -> FinanceOverviewLoading(branchModifier)
             state.loadFailed -> FinanceOverviewFailure(onIntent, branchModifier)
             state.isEmpty -> FinanceOverviewEmpty(branchModifier)
-            else -> FinanceOverviewContent(state, onIntent, branchModifier)
+            else -> SaqzPullToRefresh(
+                refreshing = state.isRefreshing,
+                onRefresh = { onIntent(FinanceOverviewIntent.PullRefresh) },
+                modifier = branchModifier,
+            ) {
+                FinanceOverviewContent(state, onIntent, Modifier.fillMaxSize())
+            }
         }
+        RefreshFailedToast(
+            visible = state.refreshFailed,
+            onDismiss = { onIntent(FinanceOverviewIntent.DismissRefreshFailed) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 

@@ -9,6 +9,10 @@ import br.com.saqz.groups.domain.finance.PaidMethod
 @Immutable
 data class GroupCashboxState(
     val isLoading: Boolean = true,
+    /** Puxar para atualizar em andamento (GER-002); o caixa continua na tela. */
+    val isRefreshing: Boolean = false,
+    /** O último puxar falhou: o caixa fica e o aviso aparece. */
+    val refreshFailed: Boolean = false,
     val loadFailed: Boolean = false,
     val groupName: String = "",
     val monthKey: String = "",
@@ -119,6 +123,11 @@ sealed interface GroupCashboxIntent {
 
     /** Volta à tela: recarga por baixo, sem esqueleto nem tela de erro. */
     data object Refresh : GroupCashboxIntent
+
+    /** Puxar para atualizar (GER-002): recarga por baixo com a bola na tela e aviso se falhar. */
+    data object PullRefresh : GroupCashboxIntent
+
+    data object DismissRefreshFailed : GroupCashboxIntent
     data object ChargeMissing : GroupCashboxIntent
     data class ChargeIndividual(val chargeId: String) : GroupCashboxIntent
     data object Register : GroupCashboxIntent

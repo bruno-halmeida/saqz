@@ -171,6 +171,59 @@ class FinanceOverviewViewModelTest {
         assertFalse(viewModel.state.value.isLoading)
     }
 
+    @Test
+    fun `pull refresh keeps the cashbox and ends not refreshing`() = runTest {
+        val second = CompletableDeferred<SaqzResult<FinanceOverview, FinanceError>>()
+        val viewModel = FinanceOverviewViewModel(
+            DeferredFinanceOverviewGateway(CompletableDeferred(SaqzResult.Success(overview())), second),
+            now,
+        )
+
+        viewModel.onIntent(FinanceOverviewIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals("R$ 60,00", viewModel.state.value.balance)
+
+        second.complete(SaqzResult.Success(overview(balanceCents = 200)))
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertEquals("R$ 2,00", viewModel.state.value.balance)
+    }
+
+    @Test
+    fun `pull refresh failure keeps the cashbox and warns`() = runTest {
+        val viewModel = FinanceOverviewViewModel(
+            DeferredFinanceOverviewGateway(
+                CompletableDeferred(SaqzResult.Success(overview())),
+                CompletableDeferred(SaqzResult.Failure(FinanceError.Data(br.com.saqz.domain.DataError.Connectivity))),
+            ),
+            now,
+        )
+
+        viewModel.onIntent(FinanceOverviewIntent.PullRefresh)
+
+        val state = viewModel.state.value
+        assertFalse(state.isRefreshing)
+        assertFalse(state.loadFailed)
+        assertTrue(state.refreshFailed)
+        assertEquals("R$ 60,00", state.balance)
+        viewModel.onIntent(FinanceOverviewIntent.DismissRefreshFailed)
+        assertFalse(viewModel.state.value.refreshFailed)
+    }
+
+    @Test
+    fun `two pulls in a row fetch once`() = runTest {
+        val second = CompletableDeferred<SaqzResult<FinanceOverview, FinanceError>>()
+        val gateway = DeferredFinanceOverviewGateway(CompletableDeferred(SaqzResult.Success(overview())), second)
+        val viewModel = FinanceOverviewViewModel(gateway, now)
+
+        viewModel.onIntent(FinanceOverviewIntent.PullRefresh)
+        viewModel.onIntent(FinanceOverviewIntent.PullRefresh)
+        second.complete(SaqzResult.Success(overview()))
+
+        assertEquals(2, gateway.calls)
+        assertFalse(viewModel.state.value.isRefreshing)
+    }
+
     private fun overview(
         balanceCents: Long = 6_000,
         groups: List<FinanceOverviewGroup> = listOf(
@@ -231,6 +284,7 @@ class FinanceOverviewViewModelTest {
         private vararg val responses: CompletableDeferred<SaqzResult<FinanceOverview, FinanceError>>,
     ) : FinanceOverviewGateway {
         private var index = 0
+        val calls: Int get() = index
 
         override suspend fun overview(query: FinanceOverviewQuery): SaqzResult<FinanceOverview, FinanceError> =
             responses[index++].await()
