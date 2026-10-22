@@ -59,11 +59,14 @@ fun attendanceWindowBody(game: ReminderGame, confirmed: Int, capacity: Int, wait
 private val SAO_PAULO = ZoneId.of("America/Sao_Paulo")
 private val WEEKDAYS_SHORT = listOf("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
 
-/** `Confirmações até qui 14h00` antes do prazo, `Prazo encerrado` depois (horário de São Paulo). */
-fun deadlineLine(deadline: Instant, now: Instant): String {
-    if (!now.isBefore(deadline)) return "Prazo encerrado"
+/**
+ * O prazo não encerra a lista, só a prioridade dos mensalistas (PRES): `Prioridade dos mensalistas até qui 14h00` antes
+ * do prazo com a prioridade ligada no grupo; depois do prazo ou sem prioridade, nenhuma linha (horário de São Paulo).
+ */
+fun deadlineLine(deadline: Instant, now: Instant, mensalistaPriority: Boolean): String? {
+    if (!mensalistaPriority || !now.isBefore(deadline)) return null
     val local = deadline.atZone(SAO_PAULO)
-    return "Confirmações até ${WEEKDAYS_SHORT[local.dayOfWeek.value - 1]} ${two(local.hour)}h${two(local.minute)}"
+    return "Prioridade dos mensalistas até ${WEEKDAYS_SHORT[local.dayOfWeek.value - 1]} ${two(local.hour)}h${two(local.minute)}"
 }
 
 /** `Vagas: 10/12` ou `Lista completa` quando os confirmados já preenchem a capacidade. */
@@ -90,7 +93,7 @@ fun reminderBody(game: ReminderGame, roster: ReminderRoster, now: Instant = Inst
     val body = buildString {
         append("Jogo: ").append(gameSchedule(game.localDate, game.localTime))
         append("\nLocal: ").append(game.venue)
-        game.confirmationDeadline?.let { append("\n").append(deadlineLine(it, now)) }
+        game.confirmationDeadline?.let { deadlineLine(it, now, game.mensalistaPriority) }?.let { append("\n").append(it) }
         game.capacity?.let { append("\n").append(vacanciesLine(roster.confirmed.size, it)) }
         sections.forEach { (label, lines) ->
             append("\n\n").append(label).append(":\n").append(lines.joinToString("\n"))

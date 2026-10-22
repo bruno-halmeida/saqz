@@ -60,29 +60,29 @@ class ReminderMessageTest {
         )
     }
 
-    @Test fun `adds the deadline and the vacancies before the deadline`() {
+    @Test fun `adds the monthly priority deadline and the vacancies before the deadline`() {
         // 2026-09-17 17:00Z = quinta 14h00 em São Paulo
         val deadline = Instant.parse("2026-09-17T17:00:00Z")
         val body = reminderBody(
-            game(deadline, 12),
+            game(deadline, 12, priority = true),
             ReminderRoster(List(10) { "Atleta $it" }, emptyList(), emptyList()),
             now = Instant.parse("2026-09-17T14:00:00Z"),
         )
         assertTrue(
             body.startsWith(
-                "Jogo: domingo, 20/09 às 19:30\nLocal: Arena Central\nConfirmações até qui 14h00\nVagas: 10/12\n\n✅ Confirmados:\n",
+                "Jogo: domingo, 20/09 às 19:30\nLocal: Arena Central\nPrioridade dos mensalistas até qui 14h00\nVagas: 10/12\n\n✅ Confirmados:\n",
             ),
             body,
         )
     }
 
-    @Test fun `says the deadline is over and that the list is complete`() {
+    @Test fun `prints no deadline line after the deadline and says the list is complete`() {
         val deadline = Instant.parse("2026-09-17T17:00:00Z")
         assertEquals(
-            "Jogo: domingo, 20/09 às 19:30\nLocal: Arena Central\nPrazo encerrado\nLista completa\n\n" +
+            "Jogo: domingo, 20/09 às 19:30\nLocal: Arena Central\nLista completa\n\n" +
                 "✅ Confirmados:\nAna\nBruno\n\n🕒 Lista de espera:\nCaio",
             reminderBody(
-                game(deadline, 2),
+                game(deadline, 2, priority = true),
                 ReminderRoster(listOf("Ana", "Bruno"), listOf("Caio"), emptyList()),
                 now = Instant.parse("2026-09-18T12:00:00Z"),
             ),
@@ -98,8 +98,17 @@ class ReminderMessageTest {
 
     @Test fun `treats the exact deadline instant as over`() {
         val deadline = Instant.parse("2026-09-17T17:00:00Z")
-        assertEquals("Prazo encerrado", deadlineLine(deadline, deadline))
+        assertEquals(null, deadlineLine(deadline, deadline, mensalistaPriority = true))
     }
 
-    private fun game(deadline: Instant? = null, capacity: Int? = null) = ReminderGame(LocalDate.of(2026, 9, 20), LocalTime.of(19, 30), "Arena Central", deadline, capacity)
+    @Test fun `prints no deadline line when the group has no monthly priority`() {
+        val deadline = Instant.parse("2026-09-17T17:00:00Z")
+        assertEquals(
+            "Jogo: domingo, 20/09 às 19:30\nLocal: Arena Central\nVagas: 1/12\n\n✅ Confirmados:\nAna",
+            reminderBody(game(deadline, 12), ReminderRoster(listOf("Ana"), emptyList(), emptyList()), now = Instant.parse("2026-09-17T14:00:00Z")),
+        )
+    }
+
+    private fun game(deadline: Instant? = null, capacity: Int? = null, priority: Boolean = false) =
+        ReminderGame(LocalDate.of(2026, 9, 20), LocalTime.of(19, 30), "Arena Central", deadline, capacity, priority)
 }

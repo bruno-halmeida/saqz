@@ -63,7 +63,7 @@ class ReminderWaitlistOrderIntegrationTest {
         val automatic = bodies().filter { it != manual }.ifEmpty { bodies().drop(1) }.single()
 
         assertTrue(
-            Regex("^Jogo: .+\nLocal: Arena\nConfirmações até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\nVagas: 2/3\n\n✅ Confirmados:\nAna\nBia$")
+            Regex("^Jogo: .+\nLocal: Arena\nPrioridade dos mensalistas até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\nVagas: 2/3\n\n✅ Confirmados:\nAna\nBia$")
                 .matches(manual), manual,
         )
         assertEquals(automatic, manual)

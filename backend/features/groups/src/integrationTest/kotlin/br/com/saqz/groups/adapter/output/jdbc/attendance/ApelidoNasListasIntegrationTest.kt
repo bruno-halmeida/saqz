@@ -129,6 +129,17 @@ class ApelidoNasListasIntegrationTest {
         assertEquals(listOf("Brunão"), attendance.roster(owner, group, game)!!.confirmed.map { it.displayName })
     }
 
+    @Test fun `a linha da prioridade dos mensalistas so sai com a prioridade ligada e antes do prazo`() {
+        val game = game(capacity = 3)
+        confirm(member("Ana Souza"), game)
+        val off = service.remind(owner, group, game, UUID.randomUUID()).success().body
+        assertTrue("Prioridade" !in off && "Prazo" !in off && "Confirmações até" !in off, off)
+
+        jdbc.sql("UPDATE access_groups SET mensalista_priority = true WHERE id = :g").param("g", group).update()
+        val on = service.remind(owner, group, game, UUID.randomUUID()).success().body
+        assertTrue(Regex("\nPrioridade dos mensalistas até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\nVagas: 1/3").containsMatchIn(on), on)
+    }
+
     private fun confirm(member: UUID, game: UUID) =
         assertIs<AttendanceCommandResult.Success>(respond.execute(member, group, game, intent = AttendanceIntent.CONFIRM))
 

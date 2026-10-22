@@ -56,12 +56,13 @@ class CommunicationBodiesTest {
         )
     }
 
-    @Test fun `prazo aparece em horário de São Paulo antes de vencer e como encerrado a partir do instante dele`() {
+    @Test fun `prioridade dos mensalistas aparece em horário de São Paulo antes do prazo e some a partir do instante dele`() {
         val deadline = Instant.parse("2026-10-14T17:00:00Z")
-        assertEquals("Confirmações até qua 14h00", deadlineLine(deadline, Instant.parse("2026-10-14T16:59:59Z")))
-        assertEquals("Prazo encerrado", deadlineLine(deadline, deadline))
-        assertEquals("Prazo encerrado", deadlineLine(deadline, deadline.plusSeconds(1)))
-        assertEquals("Confirmações até dom 07h05", deadlineLine(Instant.parse("2026-10-18T10:05:00Z"), Instant.parse("2026-10-17T00:00:00Z")))
+        assertEquals("Prioridade dos mensalistas até qua 14h00", deadlineLine(deadline, Instant.parse("2026-10-14T16:59:59Z"), true))
+        assertEquals(null, deadlineLine(deadline, deadline, true))
+        assertEquals(null, deadlineLine(deadline, deadline.plusSeconds(1), true))
+        assertEquals("Prioridade dos mensalistas até dom 07h05", deadlineLine(Instant.parse("2026-10-18T10:05:00Z"), Instant.parse("2026-10-17T00:00:00Z"), true))
+        assertEquals(null, deadlineLine(deadline, Instant.parse("2026-10-14T16:59:59Z"), false))
     }
 
     @Test fun `vagas mostram confirmados sobre capacidade e lista completa quando lota`() {

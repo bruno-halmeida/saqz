@@ -163,6 +163,7 @@ class GroupCommunicationIntegrationTest {
             Triple(declined, "DECLINED", "Bia") to null,
             Triple(waitlisted, "WAITLISTED", "Caio") to 1L,
         )) {
+            // A cópia gravada é só rede (DEB-136): a lista lê o nome da conta.
             val (person, status, name) = row
             jdbc.sql("INSERT INTO game_attendance (game_id, group_id, member_user_id, status, waitlist_sequence, responded_at, updated_at, version, member_display_name) VALUES (:game, :group, :member, :status, :sequence, now(), now(), 1, :name)")
                 .param("game", game).param("group", group).param("member", person)
@@ -175,8 +176,8 @@ class GroupCommunicationIntegrationTest {
         val reminder = service.remind(owner, group, game, request).success()
         assertEquals(1, reminder.recipientCount)
         assertTrue(
-            Regex("Jogo: domingo, 20/09 às 19:30\nLocal: Arena\nConfirmações até \\S+ \\d{2}h\\d{2}\nVagas: 1/12\n\n" +
-                "✅ Confirmados:\nAna\n\n🕒 Lista de espera:\nCaio\n\n❌ Fora:\nBia").matches(reminder.body),
+            Regex("Jogo: domingo, 20/09 às 19:30\nLocal: Arena\nPrioridade dos mensalistas até \\S+ \\d{2}h\\d{2}\nVagas: 1/12\n\n" +
+                "✅ Confirmados:\nConfirmed Person\n\n🕒 Lista de espera:\nWaitlisted Person\n\n❌ Fora:\nDeclined Person").matches(reminder.body),
             reminder.body,
         )
         assertFalse(reminder.body.contains("Inactive Person"))
@@ -208,7 +209,7 @@ class GroupCommunicationIntegrationTest {
         assertEquals(MessageChannel.REMINDER, reminder.channel)
         assertEquals(owner, reminder.authorId)
         assertTrue(
-            Regex("Jogo: domingo, 20/09 às 12:00\nLocal: Arena\nConfirmações até \\S+ \\d{2}h\\d{2}\nVagas: 0/12").matches(reminder.body),
+            Regex("Jogo: domingo, 20/09 às 12:00\nLocal: Arena\nPrioridade dos mensalistas até \\S+ \\d{2}h\\d{2}\nVagas: 0/12").matches(reminder.body),
             reminder.body,
         )
         assertEquals(1, service.remindAutomatically())

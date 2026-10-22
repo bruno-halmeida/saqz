@@ -77,6 +77,8 @@ data class ReminderGame(
     val venue: String,
     val confirmationDeadline: Instant? = null,
     val capacity: Int? = null,
+    /** Prioridade de mensalista ligada no grupo: só então o lembrete mostra até quando ela vale. */
+    val mensalistaPriority: Boolean = false,
 )
 
 /**

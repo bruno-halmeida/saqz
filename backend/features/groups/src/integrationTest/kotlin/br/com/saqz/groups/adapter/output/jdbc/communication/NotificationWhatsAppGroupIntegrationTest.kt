@@ -115,7 +115,7 @@ class NotificationWhatsAppGroupIntegrationTest {
         drain { _, _, text, buttons -> sent += text to buttons; WhatsAppDelivery.Accepted }
         val (text, buttons) = sent.single()
         assertTrue(
-            Regex("Vôlei do CERET\nJogo: domingo, 20/09 às 12:00\nLocal: Arena\nConfirmações até \\S+ \\d{2}h\\d{2}\nVagas: 0/12").matches(text),
+            Regex("Vôlei do CERET\nJogo: domingo, 20/09 às 12:00\nLocal: Arena\nPrioridade dos mensalistas até \\S+ \\d{2}h\\d{2}\nVagas: 0/12").matches(text),
             text,
         )
         // Os links vão como botões: a URL crua nunca entra no texto.

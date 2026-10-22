@@ -180,7 +180,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
 
     /** "Avisar" manual vale do jogo publicado até o início, inclusive com o prazo vencido (PROM-009 / NOT-003). */
     override fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame? = jdbc.sql(
-        "SELECT local_date, local_time, venue_name, confirmation_deadline, capacity FROM games " +
+        "SELECT local_date, local_time, venue_name, confirmation_deadline, capacity, " +
+            "(SELECT mensalista_priority FROM access_groups WHERE id = games.group_id) AS mensalista_priority FROM games " +
             "WHERE group_id = :group AND id = :game " +
             "AND status = 'PUBLISHED' AND starts_at > now()",
     ).param("group", groupId).param("game", gameId).query { rs, _ -> ReminderGame(
@@ -189,6 +190,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         venue = rs.getString("venue_name"),
         confirmationDeadline = rs.getTimestamp("confirmation_deadline").toInstant(),
         capacity = rs.getInt("capacity"),
+        mensalistaPriority = rs.getBoolean("mensalista_priority"),
     ) }.optional().orElse(null)
 
     override fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster {
@@ -280,7 +282,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         """
         SELECT DISTINCT ON (games.group_id)
                games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
-               games.confirmation_deadline, games.capacity, groups.owner_user_id
+               games.confirmation_deadline, games.capacity, groups.owner_user_id, groups.mensalista_priority
         FROM games
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         WHERE games.status = 'PUBLISHED' AND games.starts_at > now()
@@ -293,7 +295,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     override fun reminderCandidate(groupId: UUID): ReminderCandidate? = jdbc.sql(
         """
         SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
-               games.confirmation_deadline, games.capacity, groups.owner_user_id
+               games.confirmation_deadline, games.capacity, groups.owner_user_id, groups.mensalista_priority
         FROM games
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         WHERE games.group_id = :group AND games.status = 'PUBLISHED'
@@ -349,6 +351,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             venue = rs.getString("venue_name"),
             confirmationDeadline = rs.getTimestamp("confirmation_deadline").toInstant(),
             capacity = rs.getInt("capacity"),
+            mensalistaPriority = rs.getBoolean("mensalista_priority"),
         ),
     )
 

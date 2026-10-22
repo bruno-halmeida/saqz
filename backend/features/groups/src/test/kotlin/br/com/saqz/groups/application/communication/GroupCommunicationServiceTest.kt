@@ -168,10 +168,10 @@ class GroupCommunicationServiceTest {
         assertEquals(game, sent.gameId)
     }
 
-    @Test fun `o lembrete manual depois do prazo diz Prazo encerrado`() {
-        repository.gameForReminder = reminderGame().copy(confirmationDeadline = Instant.now().minusSeconds(3600))
+    @Test fun `o lembrete manual depois do prazo sai sem linha de prazo`() {
+        repository.gameForReminder = reminderGame().copy(confirmationDeadline = Instant.now().minusSeconds(3600), mensalistaPriority = true)
         val sent = (service.remind(actor, group, game, request) as CommunicationResult.Success).value
-        assertTrue("\nPrazo encerrado" in sent.body, sent.body)
+        assertTrue("Prazo" !in sent.body && "Prioridade" !in sent.body, sent.body)
     }
 
     @Test fun `jogo que não é desse grupo não gera lembrete`() {

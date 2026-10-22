@@ -77,13 +77,13 @@ class ReminderAfterDeadlineIntegrationTest {
         assertEquals(listOf(next), repository.reminderCandidates().map { it.gameId })
     }
 
-    @Test fun `the reminder after the deadline says so, reaches the group queue and pushes the updated list text`() {
+    @Test fun `the reminder after the deadline has no deadline line, reaches the group queue and pushes the updated list text`() {
         game(deadline = "now() - interval '1 hour'", starts = "now() + interval '5 hours'")
 
         assertEquals(1, service.remindAutomatically())
 
         val body = jdbc.sql("SELECT body FROM group_messages WHERE channel = 'REMINDER'").query(String::class.java).single()
-        assertTrue("\nPrazo encerrado\nVagas: 0/12" in body, body)
+        assertTrue("\nLocal: Arena\nVagas: 0/12" in body, body)
         assertEquals(1L, jdbc.sql("SELECT count(*) FROM notification_whatsapp_group_queue WHERE status = 'PENDING'")
             .query(Long::class.java).single())
         val sent = mutableListOf<NotificationPush>()
@@ -97,7 +97,7 @@ class ReminderAfterDeadlineIntegrationTest {
         service.remindAutomatically()
 
         val body = jdbc.sql("SELECT body FROM group_messages WHERE channel = 'REMINDER'").query(String::class.java).single()
-        assertTrue(Regex("\nConfirmações até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\nVagas: 0/12").containsMatchIn(body), body)
+        assertTrue(Regex("\nPrioridade dos mensalistas até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\nVagas: 0/12").containsMatchIn(body), body)
         val sent = mutableListOf<NotificationPush>()
         push.drain(NotificationPushSender { _, message -> sent += message; PushDelivery.SENT })
         assertEquals(listOf(expectedPushBody()), sent.map { it.body })
@@ -136,15 +136,15 @@ class ReminderAfterDeadlineIntegrationTest {
 
         val sent = assertIs<CommunicationResult.Success<GroupMessage>>(service.remind(admin, group, game, UUID.randomUUID())).value
 
-        assertTrue(Regex("\nConfirmações até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\n").containsMatchIn(sent.body), sent.body)
+        assertTrue(Regex("\nPrioridade dos mensalistas até (seg|ter|qua|qui|sex|sáb|dom) \\d{2}h\\d{2}\n").containsMatchIn(sent.body), sent.body)
     }
 
-    @Test fun `manual notice after the deadline and before the start says Prazo encerrado`() {
+    @Test fun `manual notice after the deadline and before the start has no deadline line`() {
         val game = game(deadline = "now() - interval '1 hour'", starts = "now() + interval '5 hours'")
 
         val sent = assertIs<CommunicationResult.Success<GroupMessage>>(service.remind(admin, group, game, UUID.randomUUID())).value
 
-        assertTrue("\nPrazo encerrado\n" in sent.body, sent.body)
+        assertTrue("\nLocal: Arena\nVagas: " in sent.body, sent.body)
         assertEquals(game, sent.gameId)
     }
 
