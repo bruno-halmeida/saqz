@@ -4,6 +4,7 @@
     <string name="action_hide_password">Ocultar senha</string>
     <string name="action_close">Fechar</string>
     <string name="action_back">Voltar</string>
+    <string name="action_refresh">Atualizar</string>
     <string name="action_decrease">Diminuir</string>
     <string name="action_increase">Aumentar</string>
     <string name="attendance_going">Vou</string>

@@ -32,6 +32,7 @@ data class SaqzShadow(
 data class SaqzShadows(
     val sheet: SaqzShadow,
     val toast: SaqzShadow,
+    val indicator: SaqzShadow,
 ) {
     companion object {
         val Default = SaqzShadows(
@@ -48,6 +49,13 @@ data class SaqzShadows(
                 offsetY = 12.dp,
                 blur = 40.dp,
                 color = SHADOW_NAVY.copy(alpha = 0.20f),
+            ),
+            // `0 4px 12px rgba(14,23,56,.12)` — o círculo do puxar para atualizar (Puxar.dc.html).
+            indicator = SaqzShadow(
+                offsetX = 0.dp,
+                offsetY = 4.dp,
+                blur = 12.dp,
+                color = SHADOW_NAVY.copy(alpha = 0.12f),
             ),
         )
     }
