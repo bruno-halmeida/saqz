@@ -32,6 +32,7 @@
     <string name="group_details_agenda_meta_draft">Só você vê até publicar</string>
     <string name="group_details_agenda_status_draft">Rascunho</string>
     <string name="group_details_agenda_more">Ver mais %1$d jogos</string>
+    <string name="group_details_agenda_past">Jogos anteriores</string>
     <string name="group_details_agenda_more_one">Ver mais 1 jogo</string>
     <!-- Detalhe do grupo novo · mural -->
     <string name="group_details_mural_title">Mural</string>

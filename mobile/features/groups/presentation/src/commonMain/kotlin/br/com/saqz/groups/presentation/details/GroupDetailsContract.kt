@@ -70,6 +70,8 @@ data class GroupDetailsState(
     val pixCopied: Boolean = false,
     /** Próximos jogos do grupo SEM o jogo do hero, em ordem de início; no máximo 12. */
     val agenda: List<GroupAgendaRowUi> = emptyList(),
+    /** JOGO-011: o gestor tem "Jogos anteriores" no rodapé da agenda; atleta nunca. */
+    val hasPastGames: Boolean = false,
     /** "Esperando você" — só gestor. `null` = nenhuma das três linhas. */
     val waiting: GroupWaitingUi? = null,
     /** Status do vínculo com o WhatsApp (só gestor); `null` enquanto não carregou ou se falhou. */
@@ -368,6 +370,9 @@ sealed interface GroupDetailsIntent {
     /** Linha da agenda: abre o jogo tocado. O hero continua em [ViewGame]. */
     data class OpenAgendaGame(val gameId: String) : GroupDetailsIntent
 
+    /** JOGO-011: "Jogos anteriores" do rodapé da agenda (só gestor). */
+    data object OpenPastGames : GroupDetailsIntent
+
     /** Linha "Acertar o jogo": abre o acerto daquele jogo. */
     data class OpenSettlement(val gameId: String) : GroupDetailsIntent
 
@@ -432,6 +437,7 @@ sealed interface GroupDetailsEffect {
     data class OpenCreateGame(val groupId: String, val firstGame: Boolean = false) : GroupDetailsEffect
 
     data class OpenGame(val groupId: String, val gameId: String) : GroupDetailsEffect
+    data class OpenPastGames(val groupId: String) : GroupDetailsEffect
 
     /** "Vou" em jogo com posições: abre a tela de escolher posição (DEB-107); nada é confirmado antes. */
     data class PickPosition(val groupId: String, val gameId: String) : GroupDetailsEffect

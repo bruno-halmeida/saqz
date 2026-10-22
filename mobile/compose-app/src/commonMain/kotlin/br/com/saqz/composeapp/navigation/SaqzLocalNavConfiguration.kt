@@ -66,6 +66,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(GroupsRoute.Members::class, GroupsRoute.Members.serializer())
             subclass(GroupsRoute.MonthlyInvite::class, GroupsRoute.MonthlyInvite.serializer())
             subclass(GroupsRoute.Schedule::class, GroupsRoute.Schedule.serializer())
+            subclass(GroupsRoute.PastGames::class, GroupsRoute.PastGames.serializer())
             subclass(GroupsRoute.Invite::class, GroupsRoute.Invite.serializer())
             subclass(GroupsRoute.InviteMessagePreview::class, GroupsRoute.InviteMessagePreview.serializer())
             subclass(GroupsRoute.InviteQr::class, GroupsRoute.InviteQr.serializer())

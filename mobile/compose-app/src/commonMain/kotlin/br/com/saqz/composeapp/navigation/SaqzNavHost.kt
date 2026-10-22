@@ -1465,6 +1465,8 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         is GroupDetailsEffect.OpenCreateGame -> add(GroupsRoute.GameEditor(effect.groupId))
         // 4c · O card do próximo jogo e a agenda abrem o mesmo detalhe.
         is GroupDetailsEffect.OpenGame -> add(GroupsRoute.GameDetail(effect.groupId, effect.gameId))
+        // JOGO-011 · "Jogos anteriores" do rodapé da agenda (gestor).
+        is GroupDetailsEffect.OpenPastGames -> add(GroupsRoute.PastGames(effect.groupId))
         // "Vou" em jogo com posições (DEB-107).
         is GroupDetailsEffect.PickPosition ->
             add(GroupsRoute.PositionPicker(effect.groupId, effect.gameId, PositionPickerOrigin.Group.routeValue))

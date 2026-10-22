@@ -6,7 +6,17 @@ import br.com.saqz.groups.resources.group_agenda_missing_all
 import br.com.saqz.groups.resources.group_agenda_missing_positions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.groups.resources.group_details_agenda_past
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +51,8 @@ private const val AgendaCollapsedCount = 3
  * "Próximos jogos" do grupo, sem o jogo do hero: data, hora, quantos confirmaram e a resposta
  * do próprio usuário. Toque abre o jogo; "Ver mais" expande no lugar e some. Sem jogos a seção
  * não existe — o "Marcar jogo" de quem não tem agenda mora no hero. Para o gestor, a mesma
- * ação fica no cabeçalho.
+ * ação fica no cabeçalho. Gestor com jogo anterior (JOGO-011) tem "Jogos anteriores" no rodapé,
+ * ao lado do "Ver mais"; sem próximo jogo, a seção aparece só com esse botão.
  */
 @Composable
 internal fun GroupAgendaBlock(
@@ -49,7 +60,8 @@ internal fun GroupAgendaBlock(
     onIntent: (GroupDetailsIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (state.agenda.isEmpty()) return
+    val showPast = state.isAdmin && state.hasPastGames
+    if (state.agenda.isEmpty() && !showPast) return
     val metrics = SaqzTheme.metrics
     // Só visual: não é dado do grupo, então não sobe para o ViewModel.
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -88,26 +100,52 @@ internal fun GroupAgendaBlock(
                     )
                 }
             }
-            if (hidden > 0) {
-                SaqzDivider()
-                SaqzButton(
-                    label = if (hidden == 1) {
-                        stringResource(Res.string.group_details_agenda_more_one)
-                    } else {
-                        stringResource(Res.string.group_details_agenda_more, hidden)
-                    },
-                    onClick = { expanded = true },
-                    // O Sm nasce com 44; o alvo de toque da casa é 48.
-                    modifier = Modifier
-                        .testTag(GroupDetailsTags.AgendaMore)
-                        .heightIn(min = metrics.minimumTouchTarget),
-                    variant = SaqzButtonVariant.Ghost,
-                    size = SaqzButtonSize.Sm,
-                    fullWidth = true,
-                )
+            if (hidden > 0 || showPast) {
+                if (visible.isNotEmpty()) SaqzDivider()
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                    if (hidden > 0) {
+                        AgendaFooterButton(
+                            label = if (hidden == 1) {
+                                stringResource(Res.string.group_details_agenda_more_one)
+                            } else {
+                                stringResource(Res.string.group_details_agenda_more, hidden)
+                            },
+                            onClick = { expanded = true },
+                            tag = GroupDetailsTags.AgendaMore,
+                        )
+                    }
+                    if (hidden > 0 && showPast) {
+                        SaqzDivider(modifier = Modifier.padding(vertical = metrics.blockGap), vertical = true)
+                    }
+                    if (showPast) {
+                        AgendaFooterButton(
+                            label = stringResource(Res.string.group_details_agenda_past),
+                            onClick = { onIntent(GroupDetailsIntent.OpenPastGames) },
+                            tag = GroupDetailsTags.AgendaPast,
+                            icon = SaqzIcons.History,
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun RowScope.AgendaFooterButton(label: String, onClick: () -> Unit, tag: String, icon: ImageVector? = null) {
+    SaqzButton(
+        label = label,
+        onClick = onClick,
+        // O Sm nasce com 44; o alvo de toque da casa é 48.
+        modifier = Modifier
+            .weight(1f)
+            .testTag(tag)
+            .heightIn(min = SaqzTheme.metrics.minimumTouchTarget),
+        variant = SaqzButtonVariant.Ghost,
+        size = SaqzButtonSize.Sm,
+        fullWidth = true,
+        leadingContent = icon?.let { glyph -> { tint -> SaqzIcon(glyph, tint = tint, size = 18.dp) } },
+    )
 }
 
 /** "Faltam: Central, Oposto(a)" ou "Faltam: todas as posições" (DEB-109). */

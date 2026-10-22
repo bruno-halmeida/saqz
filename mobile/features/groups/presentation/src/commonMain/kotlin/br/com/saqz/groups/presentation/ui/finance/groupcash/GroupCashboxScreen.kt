@@ -95,6 +95,7 @@ import br.com.saqz.groups.resources.group_cashbox_cancel_failure
 import br.com.saqz.groups.resources.group_cashbox_waive_action
 import br.com.saqz.groups.resources.group_cashbox_waive_failure
 import br.com.saqz.groups.resources.group_cashbox_withdrew_status
+import br.com.saqz.groups.resources.group_cashbox_no_show_status
 import org.jetbrains.compose.resources.stringResource
 
 internal object GroupCashboxTags {
@@ -126,6 +127,7 @@ internal object GroupCashboxTags {
     fun chargeWaive(chargeId: String) = "group-cashbox-waive-$chargeId"
     fun chargeCancel(chargeId: String) = "group-cashbox-cancel-$chargeId"
     fun chargeWithdrew(chargeId: String) = "group-cashbox-withdrew-$chargeId"
+    fun chargeNoShow(chargeId: String) = "group-cashbox-no-show-$chargeId"
     fun review(chargeId: String) = "group-cashbox-review-$chargeId"
     fun reviewAction(chargeId: String) = "group-cashbox-review-action-$chargeId"
     fun undo(chargeId: String) = "group-cashbox-undo-$chargeId"
@@ -667,6 +669,13 @@ private fun DebtorRow(
                     modifier = Modifier.testTag(GroupCashboxTags.chargeWithdrew(debtor.chargeId)),
                 )
             }
+            if (debtor.noShow) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.group_cashbox_no_show_status),
+                    tone = SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GroupCashboxTags.chargeNoShow(debtor.chargeId)),
+                )
+            }
             if (reminded) {
                 Text(
                     text = stringResource(Res.string.sheet_charge_already_reminded),
@@ -691,7 +700,7 @@ private fun DebtorRow(
                 size = SaqzButtonSize.Sm,
                 loading = debtor.isUpdating,
             )
-            if (debtor.withdrew) {
+            if (debtor.waivable) {
                 SaqzButton(
                     label = stringResource(Res.string.group_cashbox_waive_action),
                     onClick = { onIntent(GroupCashboxIntent.OpenWaive(debtor.chargeId)) },

@@ -79,6 +79,8 @@ data class AttendanceRosterMember(
     val forced: Boolean = false,
     /** Foto de perfil do membro (MEM-006); convidado nunca tem. */
     val photoTag: String? = null,
+    /** PRES-016: confirmou e não apareceu. Só vem verdadeiro para dono e admin. */
+    val noShow: Boolean = false,
 ) {
     val isGuest: Boolean get() = guestSeq > 0
 

@@ -87,6 +87,8 @@ data class Group(
     val financeDefaults: GroupFinanceDefaults? = null,
     val gameConfig: GroupGameConfig = GroupGameConfig(),
     val entryRequiresApproval: Boolean = false,
+    /** JOGO-011: o grupo já teve jogo anterior; só o gestor recebe verdadeiro. */
+    val hasPastGames: Boolean = false,
 ) {
     constructor(
         id: String,

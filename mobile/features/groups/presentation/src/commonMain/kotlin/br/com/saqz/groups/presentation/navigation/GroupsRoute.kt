@@ -23,6 +23,10 @@ sealed interface GroupsRoute : NavKey {
     @Serializable
     data class Schedule(val groupId: String) : GroupsRoute
 
+    /** JOGO-011: jogos que já passaram (encerrados e cancelados), só para o gestor. */
+    @Serializable
+    data class PastGames(val groupId: String) : GroupsRoute
+
     /** Convidar mensalista pelo WhatsApp (CONV-010). */
     @Serializable
     data class MonthlyInvite(val groupId: String) : GroupsRoute

@@ -121,11 +121,11 @@ class GroupCashboxViewModel(
         }
     }
 
-    /** Só quem desistiu tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
+    /** Só quem desistiu ou faltou tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
     private fun openWaiveSheet(chargeId: String) {
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null ||
-            current.debtors.none { it.chargeId == chargeId && it.withdrew }
+            current.debtors.none { it.chargeId == chargeId && it.waivable }
         ) return
         update {
             it.copy(
@@ -448,7 +448,7 @@ class GroupCashboxViewModel(
     private fun waive(chargeId: String) {
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null) return
-        val debtor = current.debtors.firstOrNull { it.chargeId == chargeId && it.withdrew } ?: return
+        val debtor = current.debtors.firstOrNull { it.chargeId == chargeId && it.waivable } ?: return
         val generation = ++receiptGeneration
         val loadAtStart = loadGeneration
         val previous = current
@@ -573,6 +573,7 @@ class GroupCashboxViewModel(
         month = month,
         isOverdue = isOverdue,
         withdrew = withdrew,
+        noShow = noShow && !withdrew,
         referenceLabel = when (kind) {
             ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
             ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"

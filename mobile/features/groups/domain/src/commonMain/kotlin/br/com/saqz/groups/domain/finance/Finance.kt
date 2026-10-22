@@ -79,6 +79,8 @@ data class Charge(
     val withdrew: Boolean = false,
     /** Cobrança com ordem de pagamento eletrônica: a baixa veio do pagamento e não se desfaz à mão. */
     val electronicOrder: Boolean = false,
+    /** PRES-016: confirmou, não apareceu e a diária segue pendente; o gestor cobra ou dispensa. */
+    val noShow: Boolean = false,
 )
 
 data class ChargeTotals(

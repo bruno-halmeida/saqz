@@ -73,7 +73,11 @@ data class DebtorUi(
     val withdrew: Boolean = false,
     /** Foto de perfil de quem deve (MEM-006); convidado não tem. */
     val photo: MemberPhoto? = null,
-)
+    /** PRES-016: faltou sem avisar e a diária segue pendente; mesmo "Dispensar" de quem desistiu. */
+    val noShow: Boolean = false,
+) {
+    val waivable: Boolean get() = withdrew || noShow
+}
 
 /** Cobrança de jogo cancelado que já estava paga ou dispensada: o organizador confere a devolução (DEB-053). */
 @Immutable

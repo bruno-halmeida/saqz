@@ -15,6 +15,7 @@
     <string name="game_settlement_received_status">Recebido</string>
     <string name="game_settlement_waived_status">Dispensado</string>
     <string name="game_settlement_withdrew_status">Desistiu</string>
+    <string name="game_settlement_no_show_status">Faltou</string>
     <string name="game_settlement_waive">Dispensar</string>
     <string name="game_settlement_end">Encerrar acerto</string>
     <string name="game_settlement_end_helper">Registre o pagamento de todos os avulsos para encerrar o acerto.</string>

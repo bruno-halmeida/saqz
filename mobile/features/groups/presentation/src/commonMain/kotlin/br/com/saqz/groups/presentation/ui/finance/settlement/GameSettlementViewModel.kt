@@ -133,11 +133,11 @@ class GameSettlementViewModel(
         }
     }
 
-    /** Só quem desistiu tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
+    /** Só quem desistiu ou faltou tem "Dispensar": cobrança comum segue o caminho do "Recebi". */
     private fun openWaiveSheet(chargeId: String) {
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null) return
-        if (current.diarists.none { it.chargeId == chargeId && it.withdrew && it.status == ChargeStatus.Pending }) return
+        if (current.diarists.none { it.chargeId == chargeId && it.waivable }) return
         update {
             it.copy(
                 waiveSheetChargeId = chargeId,
@@ -466,7 +466,7 @@ class GameSettlementViewModel(
         val current = state.value
         if (current.isLoading || current.updatingChargeId != null) return
         val diarist = current.diarists.firstOrNull {
-            it.chargeId == chargeId && it.withdrew && it.status == ChargeStatus.Pending
+            it.chargeId == chargeId && it.waivable
         } ?: return
         val debtor = current.debtors.firstOrNull { it.chargeId == chargeId } ?: return
         val generation = ++mutationGeneration
@@ -501,7 +501,7 @@ class GameSettlementViewModel(
         return copy(
             diarists = diarists.map {
                 if (it.chargeId == diarist.chargeId) {
-                    it.copy(status = ChargeStatus.Waived, withdrew = false, isUpdating = true)
+                    it.copy(status = ChargeStatus.Waived, withdrew = false, noShow = false, isUpdating = true)
                 } else {
                     it
                 }
@@ -625,6 +625,7 @@ class GameSettlementViewModel(
             chargeVersion = version,
             status = status,
             withdrew = withdrew && status == ChargeStatus.Pending,
+            noShow = noShow && status == ChargeStatus.Pending,
             reviewRequired = reviewRequired,
             canUndo = (status == ChargeStatus.Paid || status == ChargeStatus.Waived) && !electronicOrder,
             referenceLabel = if (guest != null) {
@@ -647,6 +648,7 @@ class GameSettlementViewModel(
         referenceLabel = referenceLabel,
         withdrew = withdrew,
         photo = photo,
+        noShow = noShow,
     )
 
     /** Por baixo ([softRefresh]) a falha não troca a tela por erro: o fechamento que está na tela fica. */

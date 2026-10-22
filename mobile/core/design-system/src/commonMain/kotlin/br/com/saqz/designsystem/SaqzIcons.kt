@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.Ban
+import com.composables.icons.lucide.History
 import com.composables.icons.lucide.Banknote
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.Calendar
@@ -120,6 +121,7 @@ object SaqzIcons {
     val Pencil = Lucide.Pencil
     val UserPlus = Lucide.UserPlus
     val CircleX = Lucide.CircleX
+    val History = Lucide.History
 }
 
 @Composable

@@ -67,13 +67,18 @@ data class GameSettlementDiaristUi(
     val referenceLabel: String,
     val isUpdating: Boolean = false,
     val withdrew: Boolean = false,
+    /** PRES-016: marcado como falta e a diária segue pendente; ganha "Dispensar" como quem desistiu. */
+    val noShow: Boolean = false,
     /** Jogo cancelado com a cobrança já paga ou dispensada: o organizador confere se devolve (DEB-053). */
     val reviewRequired: Boolean = false,
     /** Recebida ou dispensada sem ordem eletrônica: o organizador pode desfazer a baixa (DEB-052). */
     val canUndo: Boolean = false,
     /** Foto de perfil (MEM-006); cobrança de convidado não tem. */
     val photo: MemberPhoto? = null,
-)
+) {
+    /** Quem desistiu ou faltou: a diária pendente pode ser dispensada. */
+    val waivable: Boolean get() = (withdrew || noShow) && status == ChargeStatus.Pending
+}
 
 sealed interface GameSettlementIntent {
     data object Retry : GameSettlementIntent

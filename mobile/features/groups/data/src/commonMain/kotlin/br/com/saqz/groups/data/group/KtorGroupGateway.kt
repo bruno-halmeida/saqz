@@ -108,6 +108,8 @@ internal data class GroupDto(
     val financeDefaults: GroupFinanceDefaultsDto? = null,
     val gameConfig: GroupGameConfigDto = GroupGameConfigDto(),
     val entryRequiresApproval: Boolean = false,
+    /** JOGO-011: só vem para dono e admin; ausente no servidor antigo. */
+    val hasPastGames: Boolean? = null,
 )
 
 @Serializable
@@ -289,6 +291,7 @@ private fun GroupDto.toDomain(): Group? {
                 ?: AttendanceUpdatesMode.SCHEDULED,
         ),
         entryRequiresApproval = entryRequiresApproval,
+        hasPastGames = hasPastGames == true,
     )
 }
 

@@ -51,6 +51,8 @@ internal data class ChargeTransport(
     val guestDisplayName: String? = null,
     val withdrew: Boolean = false,
     val electronicOrder: Boolean = false,
+    /** PRES-016: só na lista do gestor; ausente no servidor antigo. */
+    val noShow: Boolean = false,
 )
 
 @Serializable
@@ -445,6 +447,7 @@ private fun ChargeTransport.toDomain() = Charge(
     guestDisplayName = guestDisplayName,
     withdrew = withdrew,
     electronicOrder = electronicOrder,
+    noShow = noShow,
 )
 
 private fun ChargeAuditTransport.toDomain() =

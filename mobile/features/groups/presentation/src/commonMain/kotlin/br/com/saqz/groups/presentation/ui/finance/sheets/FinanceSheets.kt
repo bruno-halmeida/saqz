@@ -50,6 +50,7 @@ import br.com.saqz.groups.resources.sheet_waive_amount
 import br.com.saqz.groups.resources.sheet_waive_cancel
 import br.com.saqz.groups.resources.sheet_waive_confirm
 import br.com.saqz.groups.resources.sheet_waive_note
+import br.com.saqz.groups.resources.sheet_waive_note_no_show
 import br.com.saqz.groups.resources.sheet_waive_title
 import br.com.saqz.groups.resources.sheet_review_amount
 import br.com.saqz.groups.resources.sheet_review_cancel
@@ -370,7 +371,7 @@ internal fun WaiveSheet(
                 )
             }
             Text(
-                text = stringResource(Res.string.sheet_waive_note),
+                text = stringResource(if (waived.noShow) Res.string.sheet_waive_note_no_show else Res.string.sheet_waive_note),
                 style = SaqzTheme.typography.support,
                 color = SaqzTheme.colors.textSecondary,
                 modifier = Modifier.testTag(FinanceSheetsTags.WaiveNote),

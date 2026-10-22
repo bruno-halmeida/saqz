@@ -241,6 +241,7 @@ class GroupDetailsViewModel(
             }
             is GroupDetailsIntent.Respond -> respondOrPickPosition(intent.intent)
             is GroupDetailsIntent.OpenAgendaGame -> emit(GroupDetailsEffect.OpenGame(groupId, intent.gameId))
+            GroupDetailsIntent.OpenPastGames -> if (state.value.hasPastGames) emit(GroupDetailsEffect.OpenPastGames(groupId))
             is GroupDetailsIntent.OpenSettlement -> emit(GroupDetailsEffect.OpenSettlement(groupId, intent.gameId))
         }
     }
@@ -1197,6 +1198,7 @@ private fun GroupDetailsState.from(group: Group): GroupDetailsState {
     return copy(
         isAdmin = group.role != GroupRole.ATHLETE,
         isOwner = group.role == GroupRole.OWNER,
+        hasPastGames = group.role != GroupRole.ATHLETE && group.hasPastGames,
         header = GroupHeaderUi(
             name = group.name,
             subtitle = listOfNotNull(

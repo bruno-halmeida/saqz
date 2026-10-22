@@ -101,6 +101,8 @@ internal data class AttendanceRosterMemberTransport(
     val position: String? = null,
     val forced: Boolean = false,
     val photoTag: String? = null,
+    /** PRES-016: só vem verdadeiro para dono e admin. */
+    val noShow: Boolean = false,
 )
 
 @Serializable
@@ -481,4 +483,5 @@ private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
     position = position.toPosition(),
     forced = forced,
     photoTag = photoTag?.takeIf { it.isNotBlank() && guestSeq == 0 },
+    noShow = noShow,
 )

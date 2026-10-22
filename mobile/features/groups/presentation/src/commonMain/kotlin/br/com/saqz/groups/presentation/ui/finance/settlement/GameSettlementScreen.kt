@@ -80,6 +80,7 @@ import br.com.saqz.groups.resources.game_settlement_waive
 import br.com.saqz.groups.resources.game_settlement_waive_failure
 import br.com.saqz.groups.resources.game_settlement_waived_status
 import br.com.saqz.groups.resources.game_settlement_withdrew_status
+import br.com.saqz.groups.resources.game_settlement_no_show_status
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -104,6 +105,7 @@ internal object GameSettlementTags {
     fun waive(chargeId: String) = "game-settlement-waive-$chargeId"
     fun cancel(chargeId: String) = "game-settlement-cancel-$chargeId"
     fun withdrew(chargeId: String) = "game-settlement-withdrew-$chargeId"
+    fun noShow(chargeId: String) = "game-settlement-no-show-$chargeId"
     fun review(chargeId: String) = "game-settlement-review-$chargeId"
     fun reviewAction(chargeId: String) = "game-settlement-review-action-$chargeId"
     fun undo(chargeId: String) = "game-settlement-undo-$chargeId"
@@ -458,6 +460,13 @@ private fun DiaristRow(
                     modifier = Modifier.testTag(GameSettlementTags.withdrew(diarist.chargeId)),
                 )
             }
+            if (diarist.noShow) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.game_settlement_no_show_status),
+                    tone = SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GameSettlementTags.noShow(diarist.chargeId)),
+                )
+            }
             if (diarist.reviewRequired) {
                 SaqzStatusChip(
                     text = stringResource(Res.string.game_settlement_review_status),
@@ -484,7 +493,7 @@ private fun DiaristRow(
                     enabled = !diarist.isUpdating,
                     modifier = Modifier.testTag(GameSettlementTags.receipt(diarist.chargeId)),
                 )
-                if (diarist.withdrew) {
+                if (diarist.waivable) {
                     SaqzButton(
                         label = stringResource(Res.string.game_settlement_waive),
                         onClick = { onIntent(GameSettlementIntent.OpenWaive(diarist.chargeId)) },

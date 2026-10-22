@@ -410,3 +410,56 @@ private fun SeriesBoundaryCommand.toRequest() = SeriesBoundaryRequest(
     replacement?.toRequest(),
 )
 private fun invalidGameResponse() = SaqzResult.Failure(GameError.Data(DataError.InvalidResponse))
+
+@Serializable
+internal data class PastGameTransport(
+    val id: String,
+    val localDate: String,
+    val localTime: String,
+    val zoneId: String,
+    val startsAt: String,
+    val status: String,
+    val confirmedCount: Int = 0,
+    val capacity: Int = 0,
+    val venueName: String = "",
+    val pendingChargeCount: Int = 0,
+    val pendingChargeCents: Long = 0,
+)
+
+@Serializable
+internal data class PastGamesPageTransport(val games: List<PastGameTransport> = emptyList(), val nextCursor: String? = null)
+
+/** JOGO-011 e PRES-016: rotas só do gestor. */
+class KtorPastGamesGateway(private val network: AuthenticatedNetworkClient) : br.com.saqz.groups.domain.game.PastGamesGateway {
+    override suspend fun page(groupId: GroupId, cursor: String?): SaqzResult<br.com.saqz.groups.domain.game.PastGamesPage, GameError> {
+        val query = cursor?.let { "?cursor=${io.ktor.http.encodeURLQueryComponent(it)}" }.orEmpty()
+        return when (
+            val result = retryTransport(RetrySafety.Read) {
+                network.execute(HttpMethod.Get, "api/groups/${groupId.value}/games/past$query", PastGamesPageTransport.serializer())
+            }
+        ) {
+            is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
+            is NetworkResult.Success -> SaqzResult.Success(
+                br.com.saqz.groups.domain.game.PastGamesPage(
+                    result.value.games.mapNotNull { game ->
+                        val status = GameStatus.entries.firstOrNull { it.name.equals(game.status, ignoreCase = true) } ?: return@mapNotNull null
+                        br.com.saqz.groups.domain.game.PastGame(
+                            game.id, game.localDate, game.localTime.take(5), game.zoneId, game.startsAt, status,
+                            game.confirmedCount, game.capacity, game.venueName, game.pendingChargeCount, game.pendingChargeCents,
+                        )
+                    },
+                    result.value.nextCursor?.takeIf(String::isNotBlank),
+                ),
+            )
+        }
+    }
+
+    override suspend fun setNoShow(groupId: GroupId, gameId: String, memberId: String, guestSeq: Int, marked: Boolean): SaqzResult<Unit, GameError> {
+        val route = "api/groups/${groupId.value}/games/$gameId/attendance/no-show/$memberId/$guestSeq"
+        // PUT e DELETE são idempotentes no servidor: repetir depois de falha de rede é seguro.
+        return when (val result = retryTransport(RetrySafety.IdempotentWrite) { network.executeNoContent(if (marked) HttpMethod.Put else HttpMethod.Delete, route) }) {
+            is NetworkResult.Success -> SaqzResult.Success(Unit)
+            is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
+        }
+    }
+}
