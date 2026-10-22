@@ -277,6 +277,61 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun `pull refresh keeps the game and ends not refreshing`() = runTest {
+        val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val second = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val gateway = FakeGameGateway(reads = ArrayDeque(listOf(first, second)))
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        gateway.completeRead(0, SaqzResult.Success(sampleVersionedGame()))
+
+        viewModel.onIntent(GameDetailIntent.PullRefresh)
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertFalse(viewModel.state.value.isLoading)
+        assertNotNull(viewModel.state.value.header)
+
+        gateway.completeRead(1, SaqzResult.Success(VersionedGame(sampleCancelledGame(), GameVersionToken("etag-2"))))
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertEquals(GameDetailStatusTone.Cancelled, viewModel.state.value.header?.statusTone)
+    }
+
+    @Test
+    fun `pull refresh failure keeps the game and warns`() = runTest {
+        val gateway = FakeGameGateway(
+            readResults = ArrayDeque(listOf(
+                SaqzResult.Success(sampleVersionedGame()),
+                SaqzResult.Failure(GameError.Data(DataError.Connectivity)),
+            )),
+        )
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+
+        viewModel.onIntent(GameDetailIntent.PullRefresh)
+
+        val state = viewModel.state.value
+        assertFalse(state.isRefreshing)
+        assertFalse(state.loadFailed)
+        assertTrue(state.refreshFailed)
+        assertNotNull(state.header)
+        viewModel.onIntent(GameDetailIntent.DismissRefreshFailed)
+        assertFalse(viewModel.state.value.refreshFailed)
+    }
+
+    @Test
+    fun `two pulls in a row fetch once`() = runTest {
+        val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val second = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
+        val gateway = FakeGameGateway(reads = ArrayDeque(listOf(first, second)))
+        val viewModel = GameDetailViewModel("group-1", "game-1", gateway, FakeGroupGateway(), FakeAttendanceGateway(), FakeAthleteGateway())
+        gateway.completeRead(0, SaqzResult.Success(sampleVersionedGame()))
+
+        viewModel.onIntent(GameDetailIntent.PullRefresh)
+        viewModel.onIntent(GameDetailIntent.PullRefresh)
+        gateway.completeRead(1, SaqzResult.Success(sampleVersionedGame()))
+
+        assertEquals(2, gateway.readCalls)
+        assertFalse(viewModel.state.value.isRefreshing)
+    }
+
+    @Test
     fun `refresh is ignored while a load is in flight and runs again after it ends`() = runTest {
         val first = CompletableDeferred<SaqzResult<VersionedGame, GameError>>()
         val gateway = FakeGameGateway(reads = ArrayDeque(listOf(first)))

@@ -129,6 +129,9 @@ class GameDetailViewModel(
      */
     private var loadInFlight = false
 
+    /** Geração da carga que veio de um puxão — só ela avisa quando falha. */
+    private var pulledGeneration = -1
+
     /** Erro de rede na carga: tenta de novo sozinha até a rede voltar. */
     private val autoRetry = AutoRetry(viewModelScope) { load() }
 
@@ -145,6 +148,8 @@ class GameDetailViewModel(
     override fun handleIntent(intent: GameDetailIntent) {
         when (intent) {
             GameDetailIntent.Retry, GameDetailIntent.Refresh -> reload(intent)
+            GameDetailIntent.PullRefresh -> pullRefresh()
+            GameDetailIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             GameDetailIntent.Edit -> {
                 update { it.copy(gameMenuOpen = false) }
                 emit(GameDetailEffect.OpenEditor)
@@ -326,6 +331,17 @@ class GameDetailViewModel(
     }
 
 
+    /** GER-002: as mesmas guardas da recarga por baixo — carga no ar, escrita ou folha aberta ignoram o puxão. */
+    private fun pullRefresh() {
+        val current = state.value
+        if (current.isLoading || current.loadFailed || current.isRefreshing || loadInFlight || current.busy) return
+        autoRetry.reset()
+        update { it.copy(isRefreshing = true, refreshFailed = false) }
+        // Antes do `load`: a falha pode chegar antes de ele voltar.
+        pulledGeneration = loadGeneration + 1
+        load(softRefresh = true)
+    }
+
     private fun load(softRefresh: Boolean = false) {
         // Recarga por baixo (volta à tela): não repete carga em voo nem atropela escrita ou folha aberta.
         if (softRefresh && (loadInFlight || state.value.busy)) return
@@ -365,7 +381,12 @@ class GameDetailViewModel(
         }
         // Libera pelo fim do job: os `return` da guarda de geração e o cancelamento do escopo também
         // devolvem a chave, e a checagem impede que uma carga velha destrave a nova.
-        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+        job.invokeOnCompletion {
+            if (generation == loadGeneration) {
+                loadInFlight = false
+                update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     /**
@@ -962,6 +983,7 @@ class GameDetailViewModel(
     private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
         if (generation != loadGeneration) return
         if (softRefresh) {
+            if (generation == pulledGeneration) update { it.copy(refreshFailed = true) }
             if (state.value.response.offline) responseRetry.schedule()
             return
         }

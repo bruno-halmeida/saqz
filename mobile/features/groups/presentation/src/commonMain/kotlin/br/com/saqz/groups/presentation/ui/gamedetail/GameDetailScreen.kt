@@ -31,6 +31,7 @@ import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.resources.Res as DsRes
 import br.com.saqz.designsystem.resources.action_back
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.group.PromotionMode
@@ -48,6 +49,7 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameGuestRowUi
 import br.com.saqz.groups.presentation.gamedetail.GamePositionUi
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_detail_cancel
 import br.com.saqz.groups.resources.game_detail_cancel_body
@@ -140,7 +142,13 @@ internal fun GameDetailScreen(
                     accessDeniedTitle = stringResource(Res.string.game_load_access_denied),
                     notFoundTitle = stringResource(Res.string.game_load_not_found),
                 )
-                else -> GameDetailContent(state, onIntent)
+                else -> SaqzPullToRefresh(
+                    refreshing = state.isRefreshing,
+                    onRefresh = { onIntent(GameDetailIntent.PullRefresh) },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    GameDetailContent(state, onIntent)
+                }
             }
         }
         if (state.gameMenuOpen) GameMenuSheet(state, onIntent)
@@ -153,6 +161,11 @@ internal fun GameDetailScreen(
         state.organizer.removal?.let { GameMemberRemoveSheet(state.organizer, it, state.guest.feeLabel, onIntent) }
         if (state.organizer.placeOpen) GamePlaceSheet(state, onIntent)
         GameGuestNotice(state.guest, onIntent, Modifier.align(Alignment.BottomCenter))
+        RefreshFailedToast(
+            visible = state.refreshFailed,
+            onDismiss = { onIntent(GameDetailIntent.DismissRefreshFailed) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 

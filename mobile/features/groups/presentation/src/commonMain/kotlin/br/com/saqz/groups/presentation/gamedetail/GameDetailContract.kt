@@ -15,6 +15,10 @@ import br.com.saqz.groups.presentation.home.HomeWaitlistKind
 @Immutable
 data class GameDetailState(
     val isLoading: Boolean = true,
+    /** Puxar para atualizar em andamento (GER-002); o jogo continua na tela. */
+    val isRefreshing: Boolean = false,
+    /** O último puxar falhou: o jogo fica e o aviso aparece. */
+    val refreshFailed: Boolean = false,
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val header: GameDetailHeaderUi? = null,
@@ -388,6 +392,11 @@ sealed interface GameDetailIntent {
      * foi promovido da fila chega sem reabrir o app.
      */
     data object Refresh : GameDetailIntent
+
+    /** Puxar para atualizar (GER-002): como [Refresh], com a bola na tela e aviso se falhar. */
+    data object PullRefresh : GameDetailIntent
+
+    data object DismissRefreshFailed : GameDetailIntent
     /** "Vou" / "Não vou" (e "Sair da lista", que é um "Não vou"): a resposta de quem olha. */
     data class Respond(val intent: AttendanceIntent) : GameDetailIntent
 
