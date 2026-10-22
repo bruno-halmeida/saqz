@@ -140,7 +140,7 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     @Test fun `roster omits declined members and keeps confirmed positions empty`() { val f = fixture(); attendance(f, f.member, "CONFIRMED", "Ana"); attendance(f, member(f.group, "declined"), "DECLINED", "Zeca"); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(listOf("Ana"), roster.confirmed.map { it.displayName }); assertEquals(listOf(null), roster.confirmed.map { it.waitlistPosition }); assertEquals(emptyList(), roster.waitlisted) }
     @Test fun `roster of a game without responses is empty for a member`() { val f = fixture(); val roster = requireNotNull(rosterOf(f, f.member)); assertEquals(emptyList(), roster.confirmed); assertEquals(emptyList(), roster.waitlisted) }
     @Test fun `roster stays visible to the owner and hidden from nonmembers`() { val f = fixture(); attendance(f, f.member, "CONFIRMED", "Ana"); assertEquals(listOf("Ana"), requireNotNull(rosterOf(f, f.owner)).confirmed.map { it.displayName }); assertNull(rosterOf(f, user("outsider"))); assertNull(rosterOf(fixture("other"), f.member)) }
-    @Test fun `roster names survive a member rename`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='${f.member}'"); assertEquals(listOf("User"), requireNotNull(rosterOf(f, f.member)).confirmed.map { it.displayName }) }
+    @Test fun `roster names follow a member rename (DEB-136)`() { val f = fixture(); success(f.service.execute(f.member, f.group, f.game, intent = AttendanceIntent.CONFIRM)); execute("UPDATE access_users SET display_name='Renomeado' WHERE id='${f.member}'"); assertEquals(listOf("Renomeado"), requireNotNull(rosterOf(f, f.member)).confirmed.map { it.displayName }) }
     @Test fun `detail exposes declined and pending counts`() {
         val f = fixture()
         attendance(f, member(f.group, "declined"), "DECLINED")
@@ -771,13 +771,15 @@ class JdbcAttendanceCommandRepositoryIntegrationTest {
     // timestamptz guarda microssegundos; sem truncar, o objeto devolvido na primeira chamada
     // (nanos da JVM em Linux) nunca bate com o relido do banco no replay.
     private fun now() = Instant.now().truncatedTo(ChronoUnit.MICROS)
-    private fun attendance(f: Fixture, member: UUID, status: String, name: String = "Member") { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','$status',now(),now(),'$name')") }
-    private fun waitlist(f: Fixture, member: UUID, sequence: Long, name: String = "Member") { execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','WAITLISTED',$sequence,now(),now(),'$name')") }
+    private fun attendance(f: Fixture, member: UUID, status: String, name: String = "Member") { if (name != "Member") rename(member, name); execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','$status',now(),now(),'$name')") }
+    private fun waitlist(f: Fixture, member: UUID, sequence: Long, name: String = "Member") { if (name != "Member") rename(member, name); execute("INSERT INTO game_attendance (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,member_display_name) VALUES ('${f.game}','${f.group}','$member','WAITLISTED',$sequence,now(),now(),'$name')") }
     // `membership` stays the third positional parameter so the mensalista/avulso cases keep reading
     // as member(group, subject, "AVULSO"); the display name is opt-in by name for the snapshot cases.
     private fun member(group: UUID, subject: String, membership: String = "MENSALISTA", name: String = "User"): UUID { val id = user(subject, name); execute("INSERT INTO group_memberships (group_id,user_id,role,created_at,updated_at,membership_type) VALUES ('$group','$id','ATHLETE',now(),now(),'$membership')"); return id }
     private fun user(subject: String, name: String = "User"): UUID { val id = UUID.randomUUID(); execute("INSERT INTO access_users (id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$id','$subject-${UUID.randomUUID()}',true,'$name',now(),now())"); return id }
     private fun rosterOf(f: Fixture, actor: UUID) = JdbcAttendanceCommandRepository(dataSource).roster(actor, f.group, f.game)
+    // DEB-136: as listas leem o nome da conta na hora; o nome escolhido pelo teste vira o nome da conta.
+    private fun rename(member: UUID, name: String) = execute("UPDATE access_users SET display_name='$name' WHERE id='$member'")
     private fun snapshotName(member: UUID) = string("SELECT member_display_name FROM game_attendance WHERE member_user_id='$member'")
     private fun success(result: AttendanceCommandResult) = assertIs<AttendanceCommandResult.Success>(result).attendance
     private fun execute(sql: String) { connection().use { c -> c.createStatement().use { it.execute(sql) } } }
