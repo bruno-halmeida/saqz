@@ -11,6 +11,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +26,9 @@ import br.com.saqz.designsystem.resources.action_refresh
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.designsystem.theme.saqzShadow
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 const val SAQZ_PULL_REFRESH_INDICATOR_TAG = "saqzPullRefreshIndicator"
 
@@ -34,7 +38,8 @@ const val SAQZ_PULL_REFRESH_INDICATOR_TAG = "saqzPullRefreshIndicator"
  *
  * O gesto é o `pullRefresh` do Material 2, que já roda em Android e iOS. Puxar com [refreshing]
  * ligado não chama [onRefresh] de novo (GER-001); a ViewModel ainda guarda a busca em voo.
- * O leitor de tela não puxa: o container ganha a ação "Atualizar".
+ * Depois de um puxão aceito, outro nos 5 s seguintes é ignorado (DEB-133), mesmo que a busca já
+ * tenha terminado. O leitor de tela não puxa: o container ganha a ação "Atualizar", com as mesmas regras.
  */
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -42,11 +47,19 @@ fun SaqzPullToRefresh(
     refreshing: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    timeSource: TimeSource = TimeSource.Monotonic,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val currentRefreshing by rememberUpdatedState(refreshing)
     val currentOnRefresh by rememberUpdatedState(onRefresh)
-    val guardedRefresh = { if (!currentRefreshing) currentOnRefresh() }
+    val lastAccepted = remember(timeSource) { arrayOfNulls<TimeMark>(1) }
+    val guardedRefresh = {
+        val last = lastAccepted[0]
+        if (!currentRefreshing && (last == null || last.elapsedNow() >= REFRESH_COOLDOWN)) {
+            lastAccepted[0] = timeSource.markNow()
+            currentOnRefresh()
+        }
+    }
     val state = rememberPullRefreshState(refreshing = refreshing, onRefresh = guardedRefresh)
     val label = stringResource(Res.string.action_refresh)
     Box(
@@ -93,3 +106,4 @@ fun SaqzPullToRefresh(
 private const val INDICATOR_SIZE = 44
 private const val SPINNER_SIZE = 26
 private const val INDICATOR_TRAVEL = INDICATOR_SIZE + 16
+private val REFRESH_COOLDOWN = 5.seconds

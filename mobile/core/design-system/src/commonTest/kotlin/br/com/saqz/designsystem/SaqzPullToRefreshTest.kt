@@ -21,6 +21,9 @@ import androidx.compose.ui.test.swipeDown
 import br.com.saqz.designsystem.theme.SaqzTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 
 @OptIn(ExperimentalTestApi::class)
 class SaqzPullToRefreshTest {
@@ -80,5 +83,71 @@ class SaqzPullToRefreshTest {
         val whileRefreshing = onNodeWithTag("ptr").fetchSemanticsNode().config[SemanticsActions.CustomActions].single()
         runOnIdle { whileRefreshing.action() }
         assertEquals(1, calls)
+    }
+
+    @Test
+    fun pullWithinFiveSecondsOfAcceptedPullIsIgnored() = runComposeUiTest {
+        var calls = 0
+        val clock = TestTimeSource()
+        setContent {
+            SaqzTheme {
+                SaqzPullToRefresh(
+                    refreshing = false,
+                    onRefresh = { calls++ },
+                    modifier = Modifier.fillMaxSize().testTag("ptr"),
+                    timeSource = clock,
+                ) {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) { Text("Conteúdo") }
+                }
+            }
+        }
+        fun pull() {
+            onNodeWithTag("ptr").performTouchInput { swipeDown() }
+            waitForIdle()
+        }
+        pull()
+        assertEquals(1, calls)
+
+        clock += 1.seconds
+        pull()
+        assertEquals(1, calls)
+
+        clock += 3900.milliseconds
+        pull()
+        assertEquals(1, calls)
+
+        clock += 200.milliseconds
+        pull()
+        assertEquals(2, calls)
+    }
+
+    @Test
+    fun refreshActionFollowsFiveSecondInterval() = runComposeUiTest {
+        var calls = 0
+        val clock = TestTimeSource()
+        setContent {
+            SaqzTheme {
+                SaqzPullToRefresh(
+                    refreshing = false,
+                    onRefresh = { calls++ },
+                    modifier = Modifier.fillMaxSize().testTag("ptr"),
+                    timeSource = clock,
+                ) { Text("Conteúdo") }
+            }
+        }
+        fun act() {
+            val action = onNodeWithTag("ptr").fetchSemanticsNode().config[SemanticsActions.CustomActions].single()
+            runOnIdle { action.action() }
+        }
+        act()
+        assertEquals(1, calls)
+
+        clock += 4900.milliseconds
+        act()
+        assertEquals(1, calls)
+
+        clock += 200.milliseconds
+        act()
+        assertEquals(2, calls)
     }
 }
