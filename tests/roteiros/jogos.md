@@ -125,6 +125,8 @@ _Decidida em 22/10/2026; vale depois da entrega do DEB-128 (app 1.0.12 onde houv
 | Rascunho de série cancelado | Fora da lista | ☐ | ☐ |
 | 45 jogos anteriores | 20, depois mais 20 ao rolar, depois 5, sem repetir | ☐ | ☐ |
 | Toque num jogo | Abre o detalhe do jogo | ☐ | ☐ |
+| Abre o 45º jogo e volta | Lista continua com 45, na mesma posição; a linha do jogo aberto atualiza | ☐ | ☐ |
+| Puxar a lista | Bola gira e a lista atualiza sem encolher | ☐ | ☐ |
 | Detalhe de realizado já acertado (gestor) | Botão "Ver acerto" | ☐ | ☐ |
 | Detalhe de realizado com pendência (gestor) | Botão "Encerrar jogo e acertar" | ☐ | ☐ |
 | Detalhe de cancelado | Abas "Confirmados | Não iam" | ☐ | ☐ |

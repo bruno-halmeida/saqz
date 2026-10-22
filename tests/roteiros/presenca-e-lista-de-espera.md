@@ -209,6 +209,8 @@ _Decidida em 22/10/2026; vale depois da entrega do DEB-129 (app 1.0.12 onde houv
 | Atleta abre o jogo | Vê a pessoa em Jogaram, sem aba Faltaram | ☐ | ☐ |
 | Pessoa marcada | Não recebe aviso; "Jogos realizados" do perfil dela sem esse jogo | ☐ | ☐ |
 | Gestor abre o perfil do membro | "Faltas" separa "Não vou" de falta sem aviso | ☐ | ☐ |
+| 10 jogos, 1 "Não vou" e 1 falta | Presença 80% para o gestor e para a pessoa; "Faltas: 1 avisada · 1 sem avisar" só para o gestor | ☐ | ☐ |
+| Acerto do jogo com 1 falta entre 10 confirmados | "9 pessoas jogaram" | ☐ | ☐ |
 | Atleta tenta marcar pela API | 403 | ☐ | ☐ |
 | Mensalista marcado | Só o registro, sem cobrança | ☐ | ☐ |
 
