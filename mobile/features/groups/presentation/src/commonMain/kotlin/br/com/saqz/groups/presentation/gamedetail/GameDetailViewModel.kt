@@ -334,7 +334,8 @@ class GameDetailViewModel(
     /** GER-002: as mesmas guardas da recarga por baixo — carga no ar, escrita ou folha aberta ignoram o puxão. */
     private fun pullRefresh() {
         val current = state.value
-        if (current.isLoading || current.loadFailed || current.isRefreshing || loadInFlight || current.busy) return
+        val showingContent = !current.isLoading && !current.loadFailed
+        if (!showingContent || current.isRefreshing || loadInFlight || current.busy) return
         autoRetry.reset()
         update { it.copy(isRefreshing = true, refreshFailed = false) }
         // Antes do `load`: a falha pode chegar antes de ele voltar.

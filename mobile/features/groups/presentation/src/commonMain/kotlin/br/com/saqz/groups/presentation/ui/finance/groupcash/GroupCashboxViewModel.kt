@@ -342,7 +342,8 @@ class GroupCashboxViewModel(
     /** GER-002: as guardas do [refresh] — carga no ar, folha aberta ou baixa em andamento ignoram o puxão. */
     private fun pullRefresh() {
         val current = state.value
-        if (loadInFlight || current.isLoading || current.loadFailed || current.isRefreshing || current.interacting()) return
+        val showingContent = !current.isLoading && !current.loadFailed
+        if (loadInFlight || !showingContent || current.isRefreshing || current.interacting()) return
         update { it.copy(isRefreshing = true, refreshFailed = false) }
         // Antes do `load`: a falha pode chegar antes de ele voltar.
         pulledGeneration = loadGeneration + 1

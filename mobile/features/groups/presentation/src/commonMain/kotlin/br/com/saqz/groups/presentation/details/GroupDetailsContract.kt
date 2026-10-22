@@ -185,7 +185,9 @@ data class GroupWaitlistUi(
     val rows: List<HomeWaitlistRowUi> = emptyList(),
 )
 
-enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, WaitlistedManual, WaitlistedAfterDeadline, PixCopied, GameCreated, RefreshFailed }
+enum class GroupDetailsToast {
+    Confirmed, Declined, Waitlisted, WaitlistedManual, WaitlistedAfterDeadline, PixCopied, GameCreated, RefreshFailed,
+}
 
 /** A linha de caixa do gestor — só o saldo ("Saldo R$ 380,00"). As mensalidades a receber moram em [GroupWaitingUi]. */
 @Immutable
