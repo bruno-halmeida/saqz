@@ -388,12 +388,23 @@ class PasswordResetTest {
     }
 
     @Test
-    fun `codigo gerado tem sempre quatro digitos`() {
+    fun `codigo gerado tem exatamente o tamanho pedido, com zeros a esquerda`() {
         val secureSecrets = SecureResetSecrets()
-        val generated = List(500) { secureSecrets.code() }
+        for (length in listOf(PasswordReset.LEGACY_CODE_LENGTH, PasswordReset.CODE_LENGTH)) {
+            val generated = List(500) { secureSecrets.code(length) }
 
-        assertTrue(generated.all { it.length == 4 && it.all(Char::isDigit) }, generated.first())
-        assertTrue(generated.toSet().size > 1)
+            assertTrue(generated.all { it.length == length && it.all(Char::isDigit) }, generated.first())
+            assertTrue(generated.toSet().size > 1)
+        }
+        assertFailsWith<IllegalArgumentException> { secureSecrets.code(3) }
+    }
+
+    @Test
+    fun `o tamanho do codigo e de quem pede e vai inteiro para a entrega`() {
+        assertEquals(RequestCodeResult.Accepted, useCase.request("atleta@saqz.test", "10.0.0.1", PasswordReset.CODE_LENGTH))
+
+        assertEquals("123456", notifier.sent.single().second)
+        assertTrue(useCase.verify("atleta@saqz.test", "123456", "10.0.0.1") is VerifyCodeResult.Success)
     }
 
     private fun verify(code: String) = useCase.verify("atleta@saqz.test", code, "10.0.0.1")
@@ -408,8 +419,8 @@ class PasswordResetTest {
         override fun withZone(zone: java.time.ZoneId): Clock = this
     }
 
-    private class FixedSecrets(var nextCode: String = "1234", var nextToken: String = "token-secreto") : ResetSecrets {
-        override fun code(): String = nextCode
+    private class FixedSecrets(var nextCode: String = "123456", var nextToken: String = "token-secreto") : ResetSecrets {
+        override fun code(length: Int): String = nextCode.take(length)
         override fun token(): String = nextToken
     }
 

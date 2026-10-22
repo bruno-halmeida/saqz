@@ -6,6 +6,9 @@ import br.com.saqz.access.application.passwordreset.RequestCodeResult
 import br.com.saqz.access.application.passwordreset.VerifyCodeResult
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
+import br.com.saqz.sharedkernel.client.AppVersion
+import br.com.saqz.sharedkernel.client.CLIENT_APP_REQUEST_ATTRIBUTE
+import br.com.saqz.sharedkernel.client.ClientApp
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
@@ -28,6 +31,9 @@ data class PasswordResetConfirmBody @JsonCreator constructor(
 )
 
 data class PasswordResetTokenResponse(val token: String, val expiraEmSegundos: Long)
+
+/** Quantos dígitos tem o código que acabou de ser enviado (ou não: a resposta é igual exista a conta ou não). */
+data class PasswordResetRequestedResponse(val codeLength: Int)
 
 class PasswordResetRateLimitException(val retryAfterSeconds: Int) : RuntimeException()
 
@@ -55,12 +61,25 @@ class PasswordResetController(
     // confiáveis, senão o cabeçalho vira o próprio jeito de furar o limite.
     @PostMapping("/api/password-reset/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    fun request(@RequestBody body: PasswordResetRequestBody, request: HttpServletRequest) {
-        when (val result = passwordReset.request(body.email.orEmpty(), request.remoteAddr.orEmpty())) {
+    fun request(@RequestBody body: PasswordResetRequestBody, request: HttpServletRequest): PasswordResetRequestedResponse {
+        val codeLength = codeLengthFor(request)
+        when (val result = passwordReset.request(body.email.orEmpty(), request.remoteAddr.orEmpty(), codeLength)) {
             is RequestCodeResult.RateLimited -> throw PasswordResetRateLimitException(result.retryAfterSeconds)
             is RequestCodeResult.TooSoon -> throw PasswordResetRateLimitException(result.retryAfterSeconds)
             RequestCodeResult.Accepted -> Unit
         }
+        return PasswordResetRequestedResponse(codeLength)
+    }
+
+    /**
+     * Seis dígitos para o app que desenha as caixas pelo `codeLength` desta resposta (1.0.12 em diante);
+     * quatro para o 1.0.11 das lojas e para quem não se identifica, cuja tela tem quatro caixas fixas.
+     * Sem esta escolha, o app em revisão na Apple receberia um código que não cabe no campo.
+     */
+    private fun codeLengthFor(request: HttpServletRequest): Int {
+        val app = ClientApp.fromRequestAttribute(request.getAttribute(CLIENT_APP_REQUEST_ATTRIBUTE))
+        val version = (app as? ClientApp.Identified)?.version ?: return PasswordReset.LEGACY_CODE_LENGTH
+        return if (version >= SIX_DIGIT_CODES_FROM) PasswordReset.CODE_LENGTH else PasswordReset.LEGACY_CODE_LENGTH
     }
 
     @PostMapping("/api/password-reset/verify")
@@ -87,5 +106,10 @@ class PasswordResetController(
             ConfirmResetResult.WeakPassword -> throw WeakPasswordException()
             ConfirmResetResult.Success -> Unit
         }
+    }
+
+    companion object {
+        /** Primeira versão do app com a fileira de caixas do tamanho que o servidor responde. */
+        val SIX_DIGIT_CODES_FROM = AppVersion(1, 0, 12)
     }
 }

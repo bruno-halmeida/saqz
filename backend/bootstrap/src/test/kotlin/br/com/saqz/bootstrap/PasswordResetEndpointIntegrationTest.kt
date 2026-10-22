@@ -126,7 +126,8 @@ class PasswordResetEndpointIntegrationTest {
         val response = request("ninguem@saqz.test")
 
         assertEquals(202, response.statusCode())
-        assertTrue(response.body().isEmpty())
+        // O corpo só diz o tamanho do código, igual para quem tem e para quem não tem conta.
+        assertEquals(4, json(response)["codeLength"].asInt())
         assertFalse(smtp.waitForIncomingEmail(1_000, 1))
     }
 
@@ -300,6 +301,28 @@ class PasswordResetEndpointIntegrationTest {
     }
 
     @Test
+    fun `app a partir do 1-0-12 recebe seis digitos, e o codigo de seis vale na verificacao`() {
+        val response = post("request", mapOf("email" to "atleta@saqz.test"), appVersion = "1.0.12")
+
+        assertEquals(202, response.statusCode())
+        assertEquals(6, json(response)["codeLength"].asInt())
+        val code = deliveredCode()
+        assertEquals(6, code.length)
+        assertEquals(200, verify("atleta@saqz.test", code).statusCode())
+    }
+
+    @Test
+    fun `app 1-0-11 das lojas e cliente sem versao seguem com quatro digitos`() {
+        val old = post("request", mapOf("email" to "atleta@saqz.test"), appVersion = "1.0.11")
+        assertEquals(4, json(old)["codeLength"].asInt())
+        assertEquals(4, deliveredCode().length)
+
+        clock.advance(Duration.ofSeconds(61))
+        val anonymous = post("request", mapOf("email" to "outra@saqz.test"))
+        assertEquals(4, json(anonymous)["codeLength"].asInt())
+    }
+
+    @Test
     fun `o codigo nunca aparece em resposta alguma`() {
         request("atleta@saqz.test")
         val code = deliveredCode()
@@ -316,8 +339,8 @@ class PasswordResetEndpointIntegrationTest {
     private fun deliveredCode(expected: Int = 1): String {
         assertTrue(smtp.waitForIncomingEmail(5_000, expected), "e-mail não chegou no GreenMail")
         val body = smtp.receivedMessages.last().plainTextBody() ?: error("e-mail sem corpo text/plain")
-        return Regex("Seu código de acesso é (\\d{4})").find(body)?.groupValues?.get(1)
-            ?: error("corpo sem código de quatro dígitos")
+        return Regex("Seu código de acesso é (\\d{4,8})").find(body)?.groupValues?.get(1)
+            ?: error("corpo sem código numérico")
     }
 
     private fun wrong(code: String): String = if (code == "0000") "1111" else "0000"
@@ -329,10 +352,16 @@ class PasswordResetEndpointIntegrationTest {
     private fun confirm(token: String, novaSenha: String) =
         post("confirm", mapOf("token" to token, "novaSenha" to novaSenha))
 
-    private fun post(step: String, body: Map<String, String>, clientIp: String? = null): HttpResponse<String> = client.send(
+    private fun post(
+        step: String,
+        body: Map<String, String>,
+        clientIp: String? = null,
+        appVersion: String? = null,
+    ): HttpResponse<String> = client.send(
         HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/password-reset/$step"))
             .header("Content-Type", "application/json")
             .apply { if (clientIp != null) header("CF-Connecting-IP", clientIp) }
+            .apply { if (appVersion != null) header("X-Saqz-Platform", "ios").header("X-Saqz-App-Version", appVersion) }
             .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
             .build(),
         HttpResponse.BodyHandlers.ofString(),

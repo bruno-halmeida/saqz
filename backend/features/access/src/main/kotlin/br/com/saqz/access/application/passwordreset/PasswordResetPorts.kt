@@ -10,7 +10,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Digest de código ou token. O número de quatro dígitos nunca é persistido, e a
+ * Digest de código ou token. O número do código nunca é persistido, e a
  * comparação é em tempo constante — sair no primeiro byte diferente vazaria o código
  * pelo tempo de resposta.
  */
@@ -30,9 +30,9 @@ class ResetDigest private constructor(private val bytes: ByteArray) {
 }
 
 /**
- * HMAC-SHA256 com chave de servidor. Hash puro não serve aqui: quatro dígitos são dez
- * mil possibilidades, e quem tivesse leitura do banco inverteria um SHA-256 em
- * milissegundos. Com a chave fora do banco, o dump sozinho não vale nada.
+ * HMAC-SHA256 com chave de servidor. Hash puro não serve aqui: um código de poucos dígitos
+ * tem no máximo um milhão de possibilidades, e quem tivesse leitura do banco inverteria um
+ * SHA-256 em milissegundos. Com a chave fora do banco, o dump sozinho não vale nada.
  *
  * O e-mail continua dentro da mensagem para que a mesma tabela não sirva a duas contas.
  */
@@ -138,13 +138,19 @@ fun interface PasswordChangedNotifier {
 }
 
 interface ResetSecrets {
-    fun code(): String
+    /** Código numérico com exatamente [length] dígitos (zeros à esquerda contam). */
+    fun code(length: Int): String
 
     fun token(): String
 }
 
 class SecureResetSecrets(private val random: SecureRandom = SecureRandom()) : ResetSecrets {
-    override fun code(): String = random.nextInt(10_000).toString().padStart(4, '0')
+    override fun code(length: Int): String {
+        require(length in PasswordReset.MIN_CODE_LENGTH..PasswordReset.MAX_CODE_LENGTH) { "Unsupported reset code length" }
+        var bound = 1
+        repeat(length) { bound *= 10 }
+        return random.nextInt(bound).toString().padStart(length, '0')
+    }
 
     override fun token(): String = ENCODER.encodeToString(ByteArray(32).also(random::nextBytes))
 

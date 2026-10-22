@@ -34,10 +34,12 @@ sealed interface ConfirmResetResult {
 }
 
 /**
- * Recuperação de senha por código de quatro dígitos. Quatro dígitos são dez mil
- * combinações, então cada defesa aqui é o que separa isso de força bruta em minutos:
- * validade curta, teto de tentativas contado atomicamente, janela de reenvio e limite
- * por IP nos dois passos que aceitam palpite.
+ * Recuperação de senha por código numérico curto: seis dígitos para o app atual
+ * ([CODE_LENGTH]) e quatro para o app das lojas anterior a ele ([LEGACY_CODE_LENGTH]), cuja
+ * tela só tem quatro caixas; quem escolhe é o controller, pela versão do app. Poucos dígitos
+ * são poucas combinações, então cada defesa aqui é o que separa isso de força bruta:
+ * validade curta, teto de tentativas contado atomicamente, janela de reenvio, teto de
+ * códigos por e-mail e limite por IP nos dois passos que aceitam palpite.
  */
 class PasswordReset(
     private val repository: PasswordResetRepository,
@@ -48,7 +50,8 @@ class PasswordReset(
     private val clock: Clock,
     private val passwordChanged: PasswordChangedNotifier = PasswordChangedNotifier { },
 ) {
-    fun request(rawEmail: String, ip: String): RequestCodeResult {
+    fun request(rawEmail: String, ip: String, codeLength: Int = LEGACY_CODE_LENGTH): RequestCodeResult {
+        require(codeLength in MIN_CODE_LENGTH..MAX_CODE_LENGTH) { "Unsupported reset code length" }
         val now = clock.instant()
         val window = repository.recordRateLimit("request:$ip", now, now.minus(RATE_LIMIT_WINDOW))
         if (window.count > MAX_REQUESTS_PER_IP) {
@@ -59,7 +62,7 @@ class PasswordReset(
         // já distinguiria pedidos, e a tela 1d segue para o código sem checar nada.
         val email = normalize(rawEmail) ?: return RequestCodeResult.Accepted
 
-        val code = secrets.code()
+        val code = secrets.code(codeLength)
         val outcome = repository.replaceCode(
             NewResetCode(email, hasher.ofCode(email, code), now, now.plus(VALIDITY)),
             now.minus(RESEND_WINDOW),
@@ -177,6 +180,13 @@ class PasswordReset(
     }
 
     companion object {
+        /** O app a partir de 1.0.12 desenha as caixas pelo tamanho que o `request` devolve. */
+        const val CODE_LENGTH = 6
+
+        /** O app 1.0.11 das lojas tem quatro caixas fixas: até ele sair de circulação, recebe quatro. */
+        const val LEGACY_CODE_LENGTH = 4
+        const val MIN_CODE_LENGTH = 4
+        const val MAX_CODE_LENGTH = 8
         val VALIDITY: Duration = Duration.ofMinutes(10)
         val TOKEN_VALIDITY: Duration = Duration.ofMinutes(5)
         val RESEND_WINDOW: Duration = Duration.ofSeconds(60)
