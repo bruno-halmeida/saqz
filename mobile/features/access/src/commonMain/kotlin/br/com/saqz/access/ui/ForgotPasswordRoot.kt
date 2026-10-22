@@ -18,13 +18,13 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ForgotPasswordRoot(
     onBack: () -> Unit,
-    onOpenResetCode: (String) -> Unit,
+    onOpenResetCode: (email: String, codeLength: Int) -> Unit,
     viewModel: ForgotPasswordViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
-            is ForgotPasswordEffect.CodeRequested -> onOpenResetCode(effect.email)
+            is ForgotPasswordEffect.CodeRequested -> onOpenResetCode(effect.email, effect.codeLength)
         }
     }
     ForgotPasswordScreen(

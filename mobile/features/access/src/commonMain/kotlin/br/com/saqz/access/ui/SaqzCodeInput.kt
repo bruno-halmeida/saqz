@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.theme.SaqzTheme
 
-/** Dígitos do código de verificação do fluxo 1. O export só desenha quatro caixas. */
+/** Dígitos do código de verificação do fluxo 1 quando ninguém diz outro tamanho (o export desenha quatro). */
 const val SAQZ_CODE_LENGTH = 4
 
 // Bloco `fluxo1.caixaDeCodigo` do ui-contract.json. Raio e gap não estão aqui porque já
@@ -81,12 +81,14 @@ fun SaqzCodeInput(
     modifier: Modifier = Modifier,
     errorText: String? = null,
     enabled: Boolean = true,
+    /** Quantas caixas: o código de reset vem do servidor com o tamanho dele (quatro ou seis). */
+    length: Int = SAQZ_CODE_LENGTH,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     val shape = RoundedCornerShape(metrics.inputRadius)
     var focused by remember { mutableStateOf(false) }
-    val digits = value.filter { it.isDigit() }.take(SAQZ_CODE_LENGTH)
+    val digits = value.filter { it.isDigit() }.take(length)
     val wrong = errorText != null
 
     Column(
@@ -104,7 +106,7 @@ fun SaqzCodeInput(
             onValueChange = { edit ->
                 // Não-dígito é descartado, não vira caixa vazia — vale para a tecla solta e
                 // para a colagem ("12-34" entra como 1234).
-                onValueChange(edit.text.filter { it.isDigit() }.take(SAQZ_CODE_LENGTH))
+                onValueChange(edit.text.filter { it.isDigit() }.take(length))
             },
             enabled = enabled,
             singleLine = true,
@@ -125,12 +127,12 @@ fun SaqzCodeInput(
                 // `innerTextField` de propósito não é chamado: o texto real é invisível e
                 // quem pinta os dígitos é a fileira abaixo.
                 Row(horizontalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
-                    repeat(SAQZ_CODE_LENGTH) { index ->
+                    repeat(length) { index ->
                         SaqzCodeBox(
                             digit = digits.getOrNull(index),
                             // Só uma caixa é a "da vez": a primeira vazia. Com o código
                             // cheio o foco fica na última, que é onde o backspace apaga.
-                            active = focused && index == digits.length.coerceAtMost(SAQZ_CODE_LENGTH - 1),
+                            active = focused && index == digits.length.coerceAtMost(length - 1),
                             wrong = wrong,
                             enabled = enabled,
                             shape = shape,

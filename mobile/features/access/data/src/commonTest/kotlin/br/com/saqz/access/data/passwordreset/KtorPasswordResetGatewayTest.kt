@@ -1,5 +1,7 @@
 package br.com.saqz.access.data.passwordreset
 
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
+import br.com.saqz.access.domain.passwordreset.PasswordResetCodeRequested
 import br.com.saqz.access.domain.passwordreset.PasswordResetError
 import br.com.saqz.access.domain.passwordreset.PasswordResetTicket
 import br.com.saqz.domain.DataError
@@ -35,11 +37,20 @@ class KtorPasswordResetGatewayTest {
             respond("", HttpStatusCode.Accepted)
         }
 
-        assertIs<SaqzResult.Success<Unit>>(gateway.requestCode("ana@example.test"))
+        // Servidor anterior: 202 sem corpo vale quatro dígitos.
+        assertEquals(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH), gateway.requestCode("ana@example.test").success())
         assertEquals("POST", seen?.method?.value)
         assertEquals("/api/password-reset/request", seen?.url?.encodedPath)
         assertNull(seen?.headers?.get(HttpHeaders.Authorization))
         assertEquals("""{"email":"ana@example.test"}""", seen.bodyText())
+    }
+
+    @Test fun `request reads the code length the server announces and ignores nonsense`() = runTest {
+        val six = gateway { respond("""{"codeLength":6}""", HttpStatusCode.Accepted, jsonHeaders()) }
+        val nonsense = gateway { respond("""{"codeLength":99}""", HttpStatusCode.Accepted, jsonHeaders()) }
+
+        assertEquals(PasswordResetCodeRequested(6), six.requestCode("ana@example.test").success())
+        assertEquals(PasswordResetCodeRequested(4), nonsense.requestCode("ana@example.test").success())
     }
 
     @Test fun `request is not called twice for a single unsafe write`() = runTest {

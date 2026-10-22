@@ -48,6 +48,29 @@ class NetworkClient(
         else NetworkResult.Failure(NetworkError.InvalidResponse)
     }
 
+    /**
+     * Como [execute], mas corpo vazio vale `null`: para rota que passou a responder um corpo que o
+     * servidor anterior ainda não manda (o app novo fala com os dois durante a transição).
+     */
+    suspend fun <T> executeOptional(
+        method: HttpMethod,
+        path: String,
+        responseSerializer: KSerializer<T>,
+        bearerToken: String? = null,
+        request: NetworkRequest = NetworkRequest(),
+    ): NetworkResult<T?> = executeDecoded(method, path, bearerToken, request) { response ->
+        val body = response.bodyAsText()
+        if (body.isBlank()) {
+            NetworkResult.Success(null, response.metadata())
+        } else {
+            runCatching { json.decodeFromString(responseSerializer, body) }
+                .fold(
+                    onSuccess = { NetworkResult.Success(it, response.metadata()) },
+                    onFailure = { NetworkResult.Failure(NetworkError.InvalidResponse) },
+                )
+        }
+    }
+
     suspend fun uploadMedia(
         method: HttpMethod,
         path: String,

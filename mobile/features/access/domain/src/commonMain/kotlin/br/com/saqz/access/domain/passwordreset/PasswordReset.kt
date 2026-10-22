@@ -10,6 +10,16 @@ data class PasswordResetTicket(
     val expiresInSeconds: Long,
 )
 
+/** O servidor anterior não dizia o tamanho: era sempre quatro dígitos. */
+const val PASSWORD_RESET_LEGACY_CODE_LENGTH = 4
+
+/**
+ * O pedido foi aceito (exista a conta ou não) e o código enviado tem [codeLength] dígitos: a 1e
+ * desenha as caixas por este número, e não por constante do app, para o servidor poder mudar o
+ * tamanho sem esperar a loja.
+ */
+data class PasswordResetCodeRequested(val codeLength: Int)
+
 /**
  * A tela 1k desenha duas destas recusas ao mesmo tempo, em elementos diferentes — a linha
  * vermelha com as tentativas restantes e o alerta âmbar de código expirado. Por isso cada
@@ -31,7 +41,7 @@ sealed interface PasswordResetError : SaqzError {
  * gateway não a reinventa.
  */
 interface PasswordResetGateway {
-    suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError>
+    suspend fun requestCode(email: String): SaqzResult<PasswordResetCodeRequested, PasswordResetError>
 
     suspend fun verifyCode(
         email: String,

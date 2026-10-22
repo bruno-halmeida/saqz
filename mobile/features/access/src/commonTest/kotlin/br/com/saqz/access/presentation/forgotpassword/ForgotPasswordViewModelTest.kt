@@ -1,5 +1,7 @@
 package br.com.saqz.access.presentation.forgotpassword
 
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
+import br.com.saqz.access.domain.passwordreset.PasswordResetCodeRequested
 import br.com.saqz.access.domain.passwordreset.PasswordResetError
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetTicket
@@ -39,7 +41,7 @@ class ForgotPasswordViewModelTest {
 
     @Test
     fun `pedido aceito navega com o e-mail digitado`() = runTest(mainDispatcher) {
-        val gateway = FakeGateway(SaqzResult.Success(Unit))
+        val gateway = FakeGateway(SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH)))
         val viewModel = ForgotPasswordViewModel(gateway)
         val effects = collectEffects(viewModel)
 
@@ -48,7 +50,7 @@ class ForgotPasswordViewModelTest {
         runCurrent()
 
         assertEquals(listOf("ana@exemplo.com"), gateway.requested)
-        assertEquals(listOf(ForgotPasswordEffect.CodeRequested("ana@exemplo.com")), effects)
+        assertEquals(listOf(ForgotPasswordEffect.CodeRequested("ana@exemplo.com", PASSWORD_RESET_LEGACY_CODE_LENGTH)), effects)
         assertEquals(false, viewModel.state.value.isSubmitting)
         assertNull(viewModel.state.value.error)
     }
@@ -59,8 +61,21 @@ class ForgotPasswordViewModelTest {
      * efeito, mesmo estado, nenhuma mensagem nova.
      */
     @Test
+    fun `o efeito leva o tamanho do codigo que o servidor anunciou`() = runTest(mainDispatcher) {
+        val gateway = FakeGateway(SaqzResult.Success(PasswordResetCodeRequested(6)))
+        val viewModel = ForgotPasswordViewModel(gateway)
+        val effects = collectEffects(viewModel)
+
+        viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("ana@exemplo.com"))
+        viewModel.onIntent(ForgotPasswordIntent.Submit)
+        runCurrent()
+
+        assertEquals(listOf(ForgotPasswordEffect.CodeRequested("ana@exemplo.com", 6)), effects)
+    }
+
+    @Test
     fun `e-mail sem conta segue igual ao que tem conta`() = runTest(mainDispatcher) {
-        val gateway = FakeGateway(SaqzResult.Success(Unit))
+        val gateway = FakeGateway(SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH)))
         val viewModel = ForgotPasswordViewModel(gateway)
         val effects = collectEffects(viewModel)
 
@@ -68,7 +83,7 @@ class ForgotPasswordViewModelTest {
         viewModel.onIntent(ForgotPasswordIntent.Submit)
         runCurrent()
 
-        assertEquals(listOf(ForgotPasswordEffect.CodeRequested("ninguem@exemplo.com")), effects)
+        assertEquals(listOf(ForgotPasswordEffect.CodeRequested("ninguem@exemplo.com", PASSWORD_RESET_LEGACY_CODE_LENGTH)), effects)
         assertNull(viewModel.state.value.error)
     }
 
@@ -104,7 +119,7 @@ class ForgotPasswordViewModelTest {
         viewModel.onIntent(ForgotPasswordIntent.Submit)
         runCurrent()
         viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("bruna@exemplo.com"))
-        gateway.complete(SaqzResult.Success(Unit))
+        gateway.complete(SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH)))
         runCurrent()
 
         assertEquals(emptyList(), effects)
@@ -145,7 +160,7 @@ class ForgotPasswordViewModelTest {
 
     @Test
     fun `e-mail malformado nem chega ao gateway`() = runTest(mainDispatcher) {
-        val gateway = FakeGateway(SaqzResult.Success(Unit))
+        val gateway = FakeGateway(SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH)))
         val viewModel = ForgotPasswordViewModel(gateway)
         val effects = collectEffects(viewModel)
 
@@ -160,7 +175,7 @@ class ForgotPasswordViewModelTest {
 
     @Test
     fun `digitar limpa a recusa anterior`() = runTest(mainDispatcher) {
-        val viewModel = ForgotPasswordViewModel(FakeGateway(SaqzResult.Success(Unit)))
+        val viewModel = ForgotPasswordViewModel(FakeGateway(SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH))))
 
         viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("ana"))
         viewModel.onIntent(ForgotPasswordIntent.Submit)
@@ -172,7 +187,7 @@ class ForgotPasswordViewModelTest {
 
     @Test
     fun `envio em andamento nao dispara um segundo pedido`() = runTest(mainDispatcher) {
-        val gateway = FakeGateway(SaqzResult.Success(Unit))
+        val gateway = FakeGateway(SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH)))
         val viewModel = ForgotPasswordViewModel(gateway)
 
         viewModel.onIntent(ForgotPasswordIntent.UpdateEmail("ana@exemplo.com"))
@@ -192,11 +207,11 @@ class ForgotPasswordViewModelTest {
     }
 
     private class FakeGateway(
-        private val response: SaqzResult<Unit, PasswordResetError>,
+        private val response: SaqzResult<PasswordResetCodeRequested, PasswordResetError>,
     ) : PasswordResetGateway by NotUsedGateway {
         val requested = mutableListOf<String>()
 
-        override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> {
+        override suspend fun requestCode(email: String): SaqzResult<PasswordResetCodeRequested, PasswordResetError> {
             requested += email
             return response
         }
@@ -204,18 +219,18 @@ class ForgotPasswordViewModelTest {
 
     /** O pedido fica pendurado até o teste responder, que é quando a tela já mudou. */
     private class SuspendingGateway : PasswordResetGateway by NotUsedGateway {
-        private val response = CompletableDeferred<SaqzResult<Unit, PasswordResetError>>()
+        private val response = CompletableDeferred<SaqzResult<PasswordResetCodeRequested, PasswordResetError>>()
 
-        override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> =
+        override suspend fun requestCode(email: String): SaqzResult<PasswordResetCodeRequested, PasswordResetError> =
             response.await()
 
-        fun complete(result: SaqzResult<Unit, PasswordResetError>) {
+        fun complete(result: SaqzResult<PasswordResetCodeRequested, PasswordResetError>) {
             response.complete(result)
         }
     }
 
     private object NotUsedGateway : PasswordResetGateway {
-        override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> =
+        override suspend fun requestCode(email: String): SaqzResult<PasswordResetCodeRequested, PasswordResetError> =
             error("cada fake implementa o seu")
 
         override suspend fun verifyCode(

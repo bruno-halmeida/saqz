@@ -519,12 +519,13 @@ internal fun SaqzNavHost(
                 entry<AccessRoute.ForgotPassword>(metadata = OwnsNavigationInset) {
                     ForgotPasswordRoot(
                         onBack = pop,
-                        onOpenResetCode = { email -> backStack.add(AccessRoute.ResetCode(email)) },
+                        onOpenResetCode = { email, codeLength -> backStack.add(AccessRoute.ResetCode(email, codeLength)) },
                     )
                 }
                 entry<AccessRoute.ResetCode>(metadata = OwnsNavigationInset) { route ->
                     ResetCodeRoot(
                         email = route.email,
+                        codeLength = route.codeLength,
                         onBack = pop,
                         // "Lembrou a senha? Entrar ›" desiste da troca: o stack volta à base.
                         onSignIn = { backStack.abandonPasswordRecovery(state.session) },

@@ -17,12 +17,13 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun ResetCodeRoot(
     email: String,
+    codeLength: Int,
     onBack: () -> Unit,
     onSignIn: () -> Unit,
     onOpenNewPassword: (email: String, token: String) -> Unit,
     viewModel: ResetCodeViewModel = koinViewModel(
         key = "reset-code/$email",
-        parameters = { parametersOf(email) },
+        parameters = { parametersOf(email, codeLength) },
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()

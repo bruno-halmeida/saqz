@@ -43,6 +43,18 @@ class SaqzCodeInputTest {
     }
 
     @Test
+    fun rowGrowsToTheLengthTheServerAsked() = runComposeUiTest {
+        var code by mutableStateOf("")
+        setContent { SaqzTheme { SaqzCodeInput(code, { code = it }, label = LABEL, length = 6) } }
+
+        onNodeWithContentDescription(LABEL).performTextInput("1234567")
+
+        // Seis caixas: o sétimo dígito não cabe, e cada um dos seis tem a sua.
+        assertEquals("123456", code)
+        onNodeWithContentDescription(LABEL).assert(hasText("6"))
+    }
+
+    @Test
     fun backspaceErasesThePreviousDigit() = runComposeUiTest {
         var code by mutableStateOf("")
         setContent { SaqzTheme { SaqzCodeInput(code, { code = it }, label = LABEL) } }

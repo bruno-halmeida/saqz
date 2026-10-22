@@ -1,6 +1,7 @@
 package br.com.saqz.access.presentation.resetcode
 
 import androidx.compose.runtime.Immutable
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
 import br.com.saqz.designsystem.UiText
 
 /**
@@ -22,6 +23,8 @@ const val RESET_CODE_RESEND_SECONDS = 60
 @Immutable
 data class ResetCodeState(
     val email: String,
+    /** Quantas caixas a fileira tem: o servidor diz no `request`, e um reenvio pode mudar. */
+    val codeLength: Int = PASSWORD_RESET_LEGACY_CODE_LENGTH,
     val code: String = "",
     val verifying: Boolean = false,
     val resending: Boolean = false,

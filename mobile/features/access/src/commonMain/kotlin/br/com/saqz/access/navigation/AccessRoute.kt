@@ -1,6 +1,7 @@
 package br.com.saqz.access.navigation
 
 import androidx.navigation3.runtime.NavKey
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
 import kotlinx.serialization.Serializable
 
 /**
@@ -41,7 +42,7 @@ sealed interface AccessRoute : NavKey {
      * sessão de onde tirá-lo, e o subtítulo da 1e o mostra.
      */
     @Serializable
-    data class ResetCode(val email: String) : AccessRoute
+    data class ResetCode(val email: String, val codeLength: Int = PASSWORD_RESET_LEGACY_CODE_LENGTH) : AccessRoute
 
     /**
      * 1g. O token vem do `PasswordResetTicket` que a 1e trocou pelo código; o e-mail

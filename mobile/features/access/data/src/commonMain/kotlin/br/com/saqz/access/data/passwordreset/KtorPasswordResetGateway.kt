@@ -1,5 +1,7 @@
 package br.com.saqz.access.data.passwordreset
 
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
+import br.com.saqz.access.domain.passwordreset.PasswordResetCodeRequested
 import br.com.saqz.access.domain.passwordreset.PasswordResetError
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetTicket
@@ -27,6 +29,10 @@ internal data class PasswordResetConfirmDto(val token: String, val novaSenha: St
 @Serializable
 internal data class PasswordResetTicketDto(val token: String, val expiraEmSegundos: Long)
 
+/** `codeLength` é aditivo: o servidor anterior respondia 202 sem corpo, e aí valem quatro dígitos. */
+@Serializable
+internal data class PasswordResetRequestedDto(val codeLength: Int? = null)
+
 /**
  * Cliente anônimo de propósito: quem esqueceu a senha não tem sessão, então nenhuma
  * destas três chamadas passa pelo `AuthenticatedNetworkClient`. Nenhuma delas é
@@ -36,14 +42,15 @@ class KtorPasswordResetGateway(
     private val network: NetworkClient,
     private val json: Json = Json { explicitNulls = false },
 ) : PasswordResetGateway {
-    override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> =
-        network.executeNoContent(
+    override suspend fun requestCode(email: String): SaqzResult<PasswordResetCodeRequested, PasswordResetError> =
+        network.executeOptional(
             HttpMethod.Post,
             "api/password-reset/request",
+            PasswordResetRequestedDto.serializer(),
             request = NetworkRequest(
                 json.encodeToString(PasswordResetRequestDto.serializer(), PasswordResetRequestDto(email)),
             ),
-        ).toUnitResult()
+        ).toRequestedResult()
 
     override suspend fun verifyCode(
         email: String,
@@ -71,6 +78,19 @@ class KtorPasswordResetGateway(
         ),
     ).toUnitResult()
 }
+
+private fun NetworkResult<PasswordResetRequestedDto?>.toRequestedResult(): SaqzResult<PasswordResetCodeRequested, PasswordResetError> =
+    when (this) {
+        is NetworkResult.Failure -> SaqzResult.Failure(error.toPasswordResetError())
+        is NetworkResult.Success -> SaqzResult.Success(
+            PasswordResetCodeRequested(
+                value?.codeLength?.takeIf { it in MIN_CODE_LENGTH..MAX_CODE_LENGTH } ?: PASSWORD_RESET_LEGACY_CODE_LENGTH,
+            ),
+        )
+    }
+
+private const val MIN_CODE_LENGTH = 4
+private const val MAX_CODE_LENGTH = 8
 
 private fun NetworkResult<Unit>.toUnitResult(): SaqzResult<Unit, PasswordResetError> = when (this) {
     is NetworkResult.Success -> SaqzResult.Success(Unit)

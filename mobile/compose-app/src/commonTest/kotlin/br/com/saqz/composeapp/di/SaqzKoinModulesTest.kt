@@ -361,7 +361,7 @@ class SaqzKoinModulesTest {
         koin.get<GroupSetupViewModel> {
             parametersOf(GroupSetupMode.Edit("ceret"), SavedStateHandle())
         }
-        koin.get<ResetCodeViewModel> { parametersOf("ana@exemplo.com") }
+        koin.get<ResetCodeViewModel> { parametersOf("ana@exemplo.com", 4) }
         koin.get<GroupDetailsViewModel> { parametersOf("ceret") }
         koin.get<br.com.saqz.groups.presentation.memberprofile.MemberProfileViewModel> { parametersOf("ceret", "member") }
         koin.get<br.com.saqz.groups.presentation.monthlypayments.OwnMonthlyPaymentsViewModel>()

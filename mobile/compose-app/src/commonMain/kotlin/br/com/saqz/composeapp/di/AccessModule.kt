@@ -95,7 +95,7 @@ internal val accessPresentationModule = module {
     }
     // `viewModel { params -> }` e não `viewModelOf`: o e-mail vem da rota `ResetCode`, e
     // não do grafo — resolver e-mail por DI seria inventar um singleton de argumento.
-    viewModel { params -> ResetCodeViewModel(params.get(), get()) }
+    viewModel { params -> ResetCodeViewModel(params.get<String>(), params.get<Int>(), get()) }
     // `viewModel { params }` e não `viewModelOf`: o token do 1g é argumento de rota, e
     // não existe — nem deve existir — definição de `String` no grafo. Mesma decisão do
     // `groupsPresentationModule` (VUL-72).

@@ -1,5 +1,7 @@
 package br.com.saqz.access.presentation.newpassword
 
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
+import br.com.saqz.access.domain.passwordreset.PasswordResetCodeRequested
 import br.com.saqz.access.domain.passwordreset.PasswordResetError
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetTicket
@@ -138,7 +140,7 @@ class NewPasswordViewModelTest {
 private class FakeGateway(private val refusal: PasswordResetError?) : PasswordResetGateway {
     val confirmations = mutableListOf<Pair<String, String>>()
 
-    override suspend fun requestCode(email: String) = SaqzResult.Success(Unit)
+    override suspend fun requestCode(email: String) = SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH))
 
     override suspend fun verifyCode(email: String, code: String) =
         SaqzResult.Success(PasswordResetTicket(token = "ticket-do-reset", expiresInSeconds = 900))

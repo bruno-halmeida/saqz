@@ -1,5 +1,7 @@
 package br.com.saqz.access.presentation.resetcode
 
+import br.com.saqz.access.domain.passwordreset.PASSWORD_RESET_LEGACY_CODE_LENGTH
+import br.com.saqz.access.domain.passwordreset.PasswordResetCodeRequested
 import br.com.saqz.access.domain.passwordreset.PasswordResetError
 import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.domain.passwordreset.PasswordResetTicket
@@ -272,6 +274,34 @@ class ResetCodeViewModelTest {
     }
 
     @Test
+    fun `verify waits for as many digits as the server said the code has`() = runTest(mainDispatcher) {
+        val (viewModel, gateway) = fixture(codeLength = 6)
+
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("1234"))
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+        assertEquals(emptyList(), gateway.verified)
+
+        viewModel.onIntent(ResetCodeIntent.UpdateCode("123456"))
+        viewModel.onIntent(ResetCodeIntent.Verify)
+        runCurrent()
+        assertEquals(listOf("ana@exemplo.com" to "123456"), gateway.verified)
+    }
+
+    @Test
+    fun `resend adopts the length of the code the server just sent`() = runTest(mainDispatcher) {
+        val (viewModel, gateway) = fixture(codeLength = 4)
+        gateway.requestResult = SaqzResult.Success(PasswordResetCodeRequested(6))
+        elapse(60_000)
+
+        viewModel.onIntent(ResetCodeIntent.Resend)
+        runCurrent()
+
+        assertEquals(6, viewModel.state.value.codeLength)
+        assertEquals("", viewModel.state.value.code)
+    }
+
+    @Test
     fun `countdown is written the way the export shows it`() {
         assertEquals("1:00", formatResendCountdown(60))
         assertEquals("0:59", formatResendCountdown(59))
@@ -287,10 +317,11 @@ class ResetCodeViewModelTest {
         runCurrent()
     }
 
-    private fun TestScope.fixture(): Pair<ResetCodeViewModel, FakePasswordResetGateway> {
+    private fun TestScope.fixture(codeLength: Int = PASSWORD_RESET_LEGACY_CODE_LENGTH): Pair<ResetCodeViewModel, FakePasswordResetGateway> {
         val gateway = FakePasswordResetGateway()
         val viewModel = ResetCodeViewModel(
             email = "ana@exemplo.com",
+            codeLength = codeLength,
             gateway = gateway,
             // O relógio do contador é o do escalonador virtual: 60 segundos passam sem
             // que o teste espere 60 segundos.
@@ -304,11 +335,12 @@ private class FakePasswordResetGateway : PasswordResetGateway {
     val requested = mutableListOf<String>()
     val verified = mutableListOf<Pair<String, String>>()
 
-    var requestResult: SaqzResult<Unit, PasswordResetError> = SaqzResult.Success(Unit)
+    var requestResult: SaqzResult<PasswordResetCodeRequested, PasswordResetError> =
+        SaqzResult.Success(PasswordResetCodeRequested(PASSWORD_RESET_LEGACY_CODE_LENGTH))
     var verifyResult: SaqzResult<PasswordResetTicket, PasswordResetError> =
         SaqzResult.Success(PasswordResetTicket(token = "ticket-de-troca", expiresInSeconds = 900))
 
-    override suspend fun requestCode(email: String): SaqzResult<Unit, PasswordResetError> {
+    override suspend fun requestCode(email: String): SaqzResult<PasswordResetCodeRequested, PasswordResetError> {
         requested += email
         return requestResult
     }

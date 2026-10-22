@@ -118,6 +118,7 @@ fun ResetCodeScreen(
                     pluralStringResource(Res.plurals.reset_code_error_invalid, it, it)
                 },
                 enabled = !state.busy,
+                length = state.codeLength,
                 modifier = Modifier.testTag(ResetCodeTags.Code),
             )
             // Expirado não conta mais janela de reenvio: quem pede outro código é o

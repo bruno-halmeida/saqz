@@ -23,5 +23,6 @@ sealed interface ForgotPasswordIntent {
  * tem conta no Saqz. Ler a resposta para decidir se navega desfaria a proteção inteira.
  */
 sealed interface ForgotPasswordEffect {
-    data class CodeRequested(val email: String) : ForgotPasswordEffect
+    /** [codeLength] é quantas caixas a 1e desenha: vem do servidor, que sabe que código mandou. */
+    data class CodeRequested(val email: String, val codeLength: Int) : ForgotPasswordEffect
 }

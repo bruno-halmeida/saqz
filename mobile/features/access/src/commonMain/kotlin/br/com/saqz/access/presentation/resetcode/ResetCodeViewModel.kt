@@ -6,7 +6,6 @@ import br.com.saqz.access.domain.passwordreset.PasswordResetGateway
 import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.auth_error_network
 import br.com.saqz.access.resources.auth_error_unknown
-import br.com.saqz.access.ui.SAQZ_CODE_LENGTH
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.designsystem.UiText
 import br.com.saqz.domain.DataError
@@ -38,9 +37,10 @@ import kotlin.time.TimeSource
  */
 class ResetCodeViewModel(
     email: String,
+    codeLength: Int,
     private val gateway: PasswordResetGateway,
     private val elapsedMillis: () -> Long = monotonicElapsedMillis(),
-) : MviViewModel<ResetCodeState, ResetCodeIntent, ResetCodeEffect>(ResetCodeState(email = email)) {
+) : MviViewModel<ResetCodeState, ResetCodeIntent, ResetCodeEffect>(ResetCodeState(email = email, codeLength = codeLength)) {
 
     /**
      * **Dois baldes, dois contadores.** O servidor limita `request` e `verify` em baldes
@@ -74,7 +74,7 @@ class ResetCodeViewModel(
         val current = state.value
         // Intent inválido volta cedo (AGENTS.md §4): código incompleto não vira requisição,
         // e nem tentativa dentro da janela que o servidor pediu para esperar.
-        if (!current.canVerify || current.code.length < SAQZ_CODE_LENGTH) return
+        if (!current.canVerify || current.code.length < current.codeLength) return
         update { it.copy(verifying = true, failure = null) }
         viewModelScope.launch {
             when (val result = gateway.verifyCode(current.email, current.code)) {
@@ -119,10 +119,12 @@ class ResetCodeViewModel(
                 is SaqzResult.Success -> {
                     // O código velho morreu junto com o envio novo: as caixas voltam
                     // vazias, como o 1f desenha, e as recusas do anterior somem com ele.
+                    // O tamanho também é o do envio novo: o servidor pode ter mudado.
                     update {
                         it.copy(
                             resending = false,
                             resent = true,
+                            codeLength = result.value.codeLength,
                             code = "",
                             remainingAttempts = null,
                             expired = false,

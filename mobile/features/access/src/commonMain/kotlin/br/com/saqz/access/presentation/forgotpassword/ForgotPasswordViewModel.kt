@@ -42,7 +42,7 @@ class ForgotPasswordViewModel(
             if (state.value.email.trim() != email) return@launch
             when (result) {
                 // Aceito é aceito, e não se pergunta de quem: navega com o e-mail digitado.
-                is SaqzResult.Success -> emit(ForgotPasswordEffect.CodeRequested(email))
+                is SaqzResult.Success -> emit(ForgotPasswordEffect.CodeRequested(email, result.value.codeLength))
                 is SaqzResult.Failure -> update { it.copy(error = result.error.message()) }
             }
         }
