@@ -284,4 +284,6 @@
     <string name="group_setup_rules_title">Regras dos jogos</string>
     <string name="group_setup_play_style_five_one_hint">No 5-1 cada posição tem as suas vagas.</string>
     <string name="group_setup_currency_prefix">R$</string>
+    <!-- Puxar para atualizar (GER-002) que falhou: o que estava na tela fica. -->
+    <string name="refresh_failed">Não foi possível atualizar. Verifique sua conexão e tente de novo.</string>
 </resources>

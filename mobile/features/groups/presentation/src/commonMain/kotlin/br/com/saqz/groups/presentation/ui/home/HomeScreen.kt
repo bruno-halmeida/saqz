@@ -43,6 +43,7 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzSkeleton
 import br.com.saqz.designsystem.SaqzStatusChip
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.saqzInitials
@@ -95,6 +96,7 @@ import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.resources.home_toast_waitlisted
 import br.com.saqz.groups.resources.home_toast_waitlisted_late
 import br.com.saqz.groups.resources.home_toast_waitlisted_manual
+import br.com.saqz.groups.resources.refresh_failed
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -217,80 +219,86 @@ private fun HomeContent(
             .background(SaqzTheme.colors.background)
             .testTag(HomeTags.Content),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
-            verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
+        SaqzPullToRefresh(
+            refreshing = state.isRefreshing,
+            onRefresh = { onIntent(HomeIntent.PullRefresh) },
+            modifier = Modifier.fillMaxSize(),
         ) {
-            val firstAccess = member?.firstAccess == true
-            HomeHeader(
-                displayName = state.displayName,
-                subtitle = member?.adminSubtitle
-                    ?: stringResource(Res.string.home_first_access_subtitle).takeIf { firstAccess },
-                onIntent = onIntent,
-            )
-            if (state.ownerTrialEnded) HomeTrialEndedNotice()
-            member?.pendingRequests?.forEach {
-                HomePendingRequestNotice(it, cancelEnabled = !state.cancelingEntry, onIntent = onIntent)
-            }
-            if (member == null) {
-                Text(
-                    text = stringResource(Res.string.home_error_message),
-                    style = SaqzTheme.typography.body,
-                    color = SaqzTheme.colors.textSecondary,
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+                verticalArrangement = Arrangement.spacedBy(metrics.sectionGap),
+            ) {
+                val firstAccess = member?.firstAccess == true
+                HomeHeader(
+                    displayName = state.displayName,
+                    subtitle = member?.adminSubtitle
+                        ?: stringResource(Res.string.home_first_access_subtitle).takeIf { firstAccess },
+                    onIntent = onIntent,
                 )
-            } else if (firstAccess) {
-                // Onboarding da Início: só enquanto não há grupo. Com o primeiro grupo a
-                // tela volta ao normal e o guia passa a morar no grupo.
-                if (member.pendingRequests.isNotEmpty()) {
-                    HomePendingCreateGroup(onIntent)
-                } else {
-                    HomeFirstAccessHero(onIntent)
-                    HomeFirstAccessSteps(onIntent)
+                if (state.ownerTrialEnded) HomeTrialEndedNotice()
+                member?.pendingRequests?.forEach {
+                    HomePendingRequestNotice(it, cancelEnabled = !state.cancelingEntry, onIntent = onIntent)
                 }
-            } else {
-                member.nextGame?.let {
-                    if (isAdminOfNextGame(it, member.admin)) {
-                        HomeAdminHero(
-                            game = it,
-                            responding = state.responding,
-                            responseFailed = state.responseFailed,
-                            planPaused = state.responsePlanPaused,
-                            responseOffline = state.responseOffline,
-                            onIntent = onIntent,
-                        )
+                if (member == null) {
+                    Text(
+                        text = stringResource(Res.string.home_error_message),
+                        style = SaqzTheme.typography.body,
+                        color = SaqzTheme.colors.textSecondary,
+                    )
+                } else if (firstAccess) {
+                    // Onboarding da Início: só enquanto não há grupo. Com o primeiro grupo a
+                    // tela volta ao normal e o guia passa a morar no grupo.
+                    if (member.pendingRequests.isNotEmpty()) {
+                        HomePendingCreateGroup(onIntent)
                     } else {
-                        HomeHero(
-                            game = it,
-                            responding = state.responding,
-                            responseFailed = state.responseFailed,
-                            planPaused = state.responsePlanPaused,
-                            responseOffline = state.responseOffline,
-                            onIntent = onIntent,
-                        )
+                        HomeFirstAccessHero(onIntent)
+                        HomeFirstAccessSteps(onIntent)
                     }
-                    // Fora do if: quem está na reserva vê a fila, admin ou não.
-                    HomeWaitlistExtras(game = it)
-                } ?: member.admin?.let { admin -> HomeAdminNoGame(admin = admin, onIntent = onIntent) } ?: HomeNoGame(onIntent)
-                // Dívida vencida é tão pessoal quanto o RSVP: vem logo abaixo do hero (VUL-220).
-                state.ownCharges?.takeIf { it.overdueGroups.isNotEmpty() }?.let {
-                    HomeOwnChargesSection(ownCharges = it, pixCopiedGroupId = state.pixCopiedGroupId, onIntent = onIntent)
-                }
-                // Para o admin, o que o grupo espera dele é tão pessoal quanto o que ele
-                // deve — "Esperando você" sobe para logo abaixo do hero, antes das
-                // seções individuais (VUL-202) e do histórico.
-                member.admin?.let { admin ->
-                    HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
-                    // Sem jogo marcado os dois verbos já estão no hero (HomeAdminNoGame).
-                    if (member.nextGame != null) {
-                        HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                } else {
+                    member.nextGame?.let {
+                        if (isAdminOfNextGame(it, member.admin)) {
+                            HomeAdminHero(
+                                game = it,
+                                responding = state.responding,
+                                responseFailed = state.responseFailed,
+                                planPaused = state.responsePlanPaused,
+                                responseOffline = state.responseOffline,
+                                onIntent = onIntent,
+                            )
+                        } else {
+                            HomeHero(
+                                game = it,
+                                responding = state.responding,
+                                responseFailed = state.responseFailed,
+                                planPaused = state.responsePlanPaused,
+                                responseOffline = state.responseOffline,
+                                onIntent = onIntent,
+                            )
+                        }
+                        // Fora do if: quem está na reserva vê a fila, admin ou não.
+                        HomeWaitlistExtras(game = it)
+                    } ?: member.admin?.let { admin -> HomeAdminNoGame(admin = admin, onIntent = onIntent) } ?: HomeNoGame(onIntent)
+                    // Dívida vencida é tão pessoal quanto o RSVP: vem logo abaixo do hero (VUL-220).
+                    state.ownCharges?.takeIf { it.overdueGroups.isNotEmpty() }?.let {
+                        HomeOwnChargesSection(ownCharges = it, pixCopiedGroupId = state.pixCopiedGroupId, onIntent = onIntent)
                     }
+                    // Para o admin, o que o grupo espera dele é tão pessoal quanto o que ele
+                    // deve — "Esperando você" sobe para logo abaixo do hero, antes das
+                    // seções individuais (VUL-202) e do histórico.
+                    member.admin?.let { admin ->
+                        HomeAdminWaitingSection(admin = admin, onIntent = onIntent)
+                        // Sem jogo marcado os dois verbos já estão no hero (HomeAdminNoGame).
+                        if (member.nextGame != null) {
+                            HomeAdminShortcuts(admin = admin, nextGame = member.nextGame, onIntent = onIntent)
+                        }
+                    }
+                    HomeUpcomingSection(games = member.upcomingGames, onIntent = onIntent)
+                    HomeGroups(member.groups, onIntent)
                 }
-                HomeUpcomingSection(games = member.upcomingGames, onIntent = onIntent)
-                HomeGroups(member.groups, onIntent)
-            }
+        }
         }
         HomeInviteSheet(state = state, onIntent = onIntent)
         HomeCancelEntryRequestSheet(state = state, onIntent = onIntent)
@@ -314,6 +322,7 @@ private fun HomeContent(
                             HomeToast.PixCopied -> Res.string.home_toast_pix_copied
                             HomeToast.EntryRequestCanceled -> Res.string.home_toast_entry_request_canceled
                             HomeToast.EntryRequestCancelFailed -> Res.string.home_toast_entry_request_cancel_failed
+                            HomeToast.RefreshFailed -> Res.string.refresh_failed
                         },
                     ),
                 )

@@ -189,6 +189,7 @@ class HomeViewModel(
                 autoRetry.reset()
                 load(softRefresh = true)
             }
+            HomeIntent.PullRefresh -> pullRefresh()
             is HomeIntent.Respond -> respond(intent.intent)
             HomeIntent.DismissToast -> update { it.copy(toast = null) }
             HomeIntent.OpenGroups -> emit(HomeEffect.OpenGroups)
@@ -262,7 +263,15 @@ class HomeViewModel(
         }
     }
 
-    private fun load(softRefresh: Boolean = false) {
+    /** GER-002: puxar com uma carga já no ar não dispara outra — ela já traz o dado novo. */
+    private fun pullRefresh() {
+        if (loadInFlight || state.value.isRefreshing) return
+        autoRetry.reset()
+        update { it.copy(isRefreshing = true) }
+        load(softRefresh = true, pulled = true)
+    }
+
+    private fun load(softRefresh: Boolean = false, pulled: Boolean = false) {
         // A guarda é sobre carga concorrente, não sobre "primeira vez": a faixa pode entrar
         // em composição muito depois da carga inicial, com dado velho e nada em voo, e aí a
         // recarga é exatamente o que se quer.
@@ -295,12 +304,14 @@ class HomeViewModel(
                 is SaqzResult.Failure -> if (!softRefresh) {
                     showFailure(generation, homeResult.error.toUiError())
                 } else {
+                    if (pulled) update { it.copy(toast = HomeToast.RefreshFailed) }
                     retryOfflineResponse()
                 }
                 is SaqzResult.Success -> when (profileResult) {
                     is SaqzResult.Failure -> if (!softRefresh) {
                         showFailure(generation, profileResult.error.toUiError())
                     } else {
+                        if (pulled) update { it.copy(toast = HomeToast.RefreshFailed) }
                         retryOfflineResponse()
                     }
                     is SaqzResult.Success -> {
@@ -341,7 +352,12 @@ class HomeViewModel(
         // Libera pelo fim do job, e não no corpo dele: os `return@launch` da guarda de
         // geração e um cancelamento do escopo também têm que devolver a chave. A checagem
         // impede que uma carga velha destrave enquanto a nova ainda está no ar.
-        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+        job.invokeOnCompletion {
+            if (generation == loadGeneration) {
+                loadInFlight = false
+                update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     /**

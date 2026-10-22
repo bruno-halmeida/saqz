@@ -1418,6 +1418,66 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `pull refresh keeps the content and ends not refreshing`() = runTest {
+        val second = CompletableDeferred<SaqzResult<HomeReadModel, HomeError>>()
+        val viewModel = viewModel(
+            homeGateway = DeferredHomeGateway(
+                CompletableDeferred(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),
+                second,
+            ),
+        )
+        advanceUntilIdle()
+
+        viewModel.onIntent(HomeIntent.PullRefresh)
+        advanceUntilIdle()
+        // Enquanto atualiza, a tela é a mesma: nada de esqueleto.
+        assertTrue(viewModel.state.value.isRefreshing)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(2, viewModel.state.value.ownCharges?.groups?.size)
+        second.complete(SaqzResult.Success(sampleHome()))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRefreshing)
+        assertNull(viewModel.state.value.ownCharges)
+    }
+
+    @Test
+    fun `pull refresh failure keeps the data and warns`() = runTest {
+        val viewModel = viewModel(
+            homeGateway = SequenceHomeGateway(
+                SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges())),
+                SaqzResult.Failure(HomeError.Data(DataError.Connectivity)),
+            ),
+        )
+        advanceUntilIdle()
+
+        viewModel.onIntent(HomeIntent.PullRefresh)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertFalse(state.isRefreshing)
+        assertFalse(state.loadFailed)
+        assertEquals(2, state.ownCharges?.groups?.size)
+        assertEquals(HomeToast.RefreshFailed, state.toast)
+    }
+
+    @Test
+    fun `two pulls in a row fetch once`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val gateway = HeldAfterFirstHomeGateway(SaqzResult.Success(sampleHome()), gate)
+        val viewModel = viewModel(homeGateway = gateway)
+        advanceUntilIdle()
+
+        viewModel.onIntent(HomeIntent.PullRefresh)
+        viewModel.onIntent(HomeIntent.PullRefresh)
+        gate.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(2, gateway.reads)
+        assertFalse(viewModel.state.value.isRefreshing)
+    }
+
+    @Test
     fun `refresh drops the notice when the admin settles the charge`() = runTest {
         // A volta ao app é a única forma de saber que a cobrança foi baixada lá fora.
         val viewModel = viewModel(
@@ -1632,6 +1692,20 @@ private class CountingHomeGateway(
     override suspend fun read(): SaqzResult<HomeReadModel, HomeError> {
         reads++
         gate?.await()
+        return result
+    }
+}
+
+/** A primeira leitura (o `init`) responde na hora; as seguintes esperam [gate]. */
+private class HeldAfterFirstHomeGateway(
+    private val result: SaqzResult<HomeReadModel, HomeError>,
+    private val gate: CompletableDeferred<Unit>,
+) : HomeGateway {
+    var reads = 0
+        private set
+
+    override suspend fun read(): SaqzResult<HomeReadModel, HomeError> {
+        if (reads++ > 0) gate.await()
         return result
     }
 }

@@ -10,6 +10,8 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 @Immutable
 data class HomeState(
     val isLoading: Boolean = true,
+    /** Puxar para atualizar em andamento (GER-002); o conteúdo continua na tela. */
+    val isRefreshing: Boolean = false,
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val displayName: String? = null,
@@ -209,6 +211,7 @@ enum class HomeToast {
     PixCopied,
     EntryRequestCanceled,
     EntryRequestCancelFailed,
+    RefreshFailed,
 }
 
 @Immutable
@@ -266,6 +269,9 @@ sealed interface HomeIntent {
      * mudou lá fora — o admin baixando a cobrança — só chega por aqui.
      */
     data object Refresh : HomeIntent
+
+    /** Puxar para atualizar (GER-002): como [Refresh], mas mostra a bola e avisa se falhar. */
+    data object PullRefresh : HomeIntent
     data class Respond(val intent: br.com.saqz.groups.domain.attendance.AttendanceIntent) : HomeIntent
     data object DismissToast : HomeIntent
     data object OpenGroups : HomeIntent
