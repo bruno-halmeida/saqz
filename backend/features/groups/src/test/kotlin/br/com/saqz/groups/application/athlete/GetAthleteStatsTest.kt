@@ -30,7 +30,7 @@ class GetAthleteStatsTest {
         val result = service(GroupRole.OWNER, AthleteStatsAggregate(games = 4, eligibleGames = 3, absences = 1))
             .execute(actor, group, target)
 
-        assertEquals(GetAthleteStatsResult.Success(AthleteStats(4, 66, 1)), result)
+        assertEquals(GetAthleteStatsResult.Success(AthleteStats(4, 66, 1, noShows = 0)), result)
     }
 
     @Test
@@ -38,7 +38,7 @@ class GetAthleteStatsTest {
         val result = service(GroupRole.OWNER, AthleteStatsAggregate(games = 1, eligibleGames = 0, absences = 0))
             .execute(actor, group, target)
 
-        assertEquals(GetAthleteStatsResult.Success(AthleteStats(1, null, 0)), result)
+        assertEquals(GetAthleteStatsResult.Success(AthleteStats(1, null, 0, noShows = 0)), result)
     }
 
     @Test
@@ -46,6 +46,14 @@ class GetAthleteStatsTest {
         val service = service(GroupRole.ATHLETE, AthleteStatsAggregate(1, 1, 0))
 
         assertEquals(GetAthleteStatsResult.Success(AthleteStats(1, 100, 0)), service.execute(actor, group, actor))
+    }
+
+    @Test
+    fun `no-show count goes only to owner and admin, never to the athlete (PRES-016)`() {
+        val aggregate = AthleteStatsAggregate(games = 2, eligibleGames = 3, absences = 1, noShows = 1)
+
+        assertEquals(1, (service(GroupRole.ADMIN, aggregate).execute(actor, group, target) as GetAthleteStatsResult.Success).stats.noShows)
+        assertEquals(null, (service(GroupRole.ATHLETE, aggregate).execute(actor, group, actor) as GetAthleteStatsResult.Success).stats.noShows)
     }
 
     @Test
