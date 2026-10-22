@@ -27,6 +27,7 @@ automatiza os recortes abaixo; a contagem de testes não significa features inte
 | `PaymentE2eTest` | APP-R10, recebimento; APP-R12, despesa | Receber R$123,45 pela UI registra PAID/PIX e um único evento; saída de quadra R$120,00 gera um lançamento; caixa/extrato conciliam R$3,45, persistem na reabertura e não afetam G2; atleta vê a mensalidade paga. Geração é precondição, não teste do job. |
 | `ChargeLifecycleE2eTest` | APP-R11, somente negativa de autorização | Atleta não vê o caixa administrativo; tentativas autenticadas de isenção/cancelamento com If-Match válido retornam 403, preservando cobranças, versões, eventos, pendências e extrato. **Não cobre sucesso pela UI: essas ações ainda não existem no app.** |
 | `SettlementE2eTest` | APP-AC01/R12, pendência e reabertura | Cobrança de jogo R$70 bloqueia encerrar; recebimento pela UI habilita conclusão; dois acionamentos não criam nova escrita; reabrir mostra acerto encerrado, mantendo pagamento único, elenco, jogo e extrato. Não induz resposta perdida. |
+| `PastGamesNoShowE2eTest` | JOGO-011 + PRES-016, jogos anteriores e faltou | Gestor abre o grupo → "Jogos anteriores" → jogo encerrado com "Acerto pendente"; ⋮ do avulso → "Marcar falta" leva-o à aba Faltaram (`noShow` no elenco); o acerto mostra "Faltou" e "Dispensar"; dispensar deixa a cobrança `WAIVED` e a linha da lista perde o "Acerto pendente"; o atleta, logado, segue em Jogaram, sem aba, marca ou ⋮, o elenco dele não traz a marca e a rota de anteriores responde 403; "Desfazer" devolve a Jogaram sem ressuscitar a diária. O jogo é levado ao passado por SQL na fixture. Não cobre o prazo de 7 dias nem convidado. |
 
 Fontes dos resultados esperados: [regressão](../../acceptance/app-regressao.feature),
 [ligações](../../acceptance/app-ligacoes.feature) e [financeiro](../../acceptance/financeiro-final.feature).
@@ -56,7 +57,7 @@ Não configure credenciais de produção. A primeira execução pode baixar depe
 Para repetir apenas um recorte, use `--scenario NOME`. Nomes disponíveis:
 `access`, `leave`, `attendance`, `attendance-order`, `attendance-guest`, `communication`, `finance`,
 `notification-settings`, `reminders`, `sports-profile`, `member-privacy`,
-`monthly-history`, `payments`, `charge-lifecycle` e `settlement`. Exemplo:
+`monthly-history`, `payments`, `charge-lifecycle`, `settlement` e `past-games-no-show`. Exemplo:
 
 ```sh
 node tests/e2e/android/run.mjs --serial emulator-5554 --scenario finance
@@ -76,7 +77,7 @@ Nenhum teste de criação de grupo/plano é inferido do seed.
 
 ## Resultado e evidências
 
-Na execução completa, sucesso exige 16 casos executados, sem falhas, erros ou skips, em XML novo.
+Na execução completa, sucesso exige 17 casos executados, sem falhas, erros ou skips, em XML novo.
 Na execução focal, exige a contagem exata do recorte (dois em `access`, um nos demais). Build verde sem
 testes não conta. O processo retorna código diferente de zero em falha de preparação, teste ou limpeza.
 

@@ -16,6 +16,7 @@ const scenarios = {
   payments: ['PaymentE2eTest', 1],
   'charge-lifecycle': ['ChargeLifecycleE2eTest', 1],
   settlement: ['SettlementE2eTest', 1],
+  'past-games-no-show': ['PastGamesNoShowE2eTest', 1],
 };
 
 export function selectScenarios(name) {
