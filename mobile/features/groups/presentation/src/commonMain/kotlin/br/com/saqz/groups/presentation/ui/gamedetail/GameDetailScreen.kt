@@ -71,6 +71,13 @@ internal object GameDetailTags {
     const val CancelSheet = "game-detail-cancel-sheet"
     const val Publish = "game-detail-publish"
     const val Settle = "game-detail-settle"
+    const val SettleView = "game-detail-settle-view"
+    const val TabNoShow = "game-tab-no-show"
+    const val NoShowFooter = "game-no-show-footer"
+    const val NoShowFailed = "game-no-show-failed"
+    fun noShowTag(id: String) = "game-no-show-tag-$id"
+    fun noShowMark(id: String) = "game-no-show-mark-$id"
+    fun noShowUndo(id: String) = "game-no-show-undo-$id"
     const val Hero = "game-detail-hero"
     const val Kicker = "game-detail-kicker"
     const val Map = "game-detail-map"
@@ -190,6 +197,7 @@ private fun GameDetailContent(state: GameDetailState, onIntent: (GameDetailInten
                 when (selected) {
                     GameDetailTab.Going -> GameGoingList(state, onIntent)
                     GameDetailTab.Waiting -> GameWaitingList(state, onIntent)
+                    GameDetailTab.NoShow -> GameNoShowList(state, onIntent)
                     GameDetailTab.Declined -> GameDeclinedList(state)
                 }
             }
@@ -197,10 +205,18 @@ private fun GameDetailContent(state: GameDetailState, onIntent: (GameDetailInten
     }
 }
 
-/** Realizado: "Jogaram" e "Não foram"; cancelado: Vão e Não vão; rascunho: sem placar. */
+/**
+ * Realizado: "Jogaram" e "Não foram", e para o gestor "Faltaram" no meio quando alguém foi marcado (PRES-016);
+ * cancelado: "Confirmados" e "Não iam"; rascunho: sem placar.
+ */
 internal fun GameDetailState.availableTabs(): List<GameDetailTab> = when (header?.statusTone) {
     GameDetailStatusTone.Draft, null -> emptyList()
-    GameDetailStatusTone.Completed, GameDetailStatusTone.Cancelled -> listOf(GameDetailTab.Going, GameDetailTab.Declined)
+    GameDetailStatusTone.Completed -> listOfNotNull(
+        GameDetailTab.Going,
+        GameDetailTab.NoShow.takeIf { noShowRoster.isNotEmpty() },
+        GameDetailTab.Declined,
+    )
+    GameDetailStatusTone.Cancelled -> listOf(GameDetailTab.Going, GameDetailTab.Declined)
     GameDetailStatusTone.Published -> listOf(GameDetailTab.Going, GameDetailTab.Waiting, GameDetailTab.Declined)
 }
 

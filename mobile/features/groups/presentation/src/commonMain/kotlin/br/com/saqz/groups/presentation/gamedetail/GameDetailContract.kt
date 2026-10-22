@@ -66,7 +66,24 @@ data class GameDetailState(
     val gameMenuOpen: Boolean = false,
     /** Linha cujo ⋮ abriu a folha de ações da pessoa. */
     val personActionsId: String? = null,
+    /**
+     * JOGO-011: o jogo encerrado ainda tem diária pendente. `false` troca "Encerrar jogo e acertar" por "Ver acerto";
+     * `null` (não carregou, ou não é gestor) mantém o botão de sempre.
+     */
+    val settlementPending: Boolean? = null,
+    /** PRES-016: "Marcar falta" e "Desfazer" do gestor no jogo encerrado. */
+    val noShow: GameNoShowUi = GameNoShowUi(),
 ) {
+    /** Quem foi marcado como falta: só o gestor recebe a marca, então para o atleta a lista é vazia. */
+    val noShowRoster: List<GameDetailConfirmedUi> get() = confirmedRoster.filter { it.noShow }
+
+    /** "Jogaram": os confirmados sem quem faltou. */
+    val playedRoster: List<GameDetailConfirmedUi> get() = confirmedRoster.filterNot { it.noShow }
+
+    /** O gestor marca ou desfaz a falta: jogo encerrado e dentro dos 7 dias depois do fim (PRES-016). */
+    val canMarkNoShow: Boolean
+        get() = isAdmin && header?.statusTone == GameDetailStatusTone.Completed && noShow.until != null
+
     val hasPositions: Boolean get() = positions.isNotEmpty()
 
     /** A posição com mais vagas livres (empate pela ordem do enum): a mesma regra que o servidor usa sem escolha. */
@@ -116,7 +133,21 @@ data class GameDetailState(
             promotionMode == PromotionMode.MANUAL
 }
 
-enum class GameDetailTab { Going, Waiting, Declined }
+enum class GameDetailTab { Going, Waiting, NoShow, Declined }
+
+/** PRES-016 · "Faltou" no jogo encerrado (só gestor). */
+@Immutable
+data class GameNoShowUi(
+    /** "27 de outubro": até quando dá para marcar; nulo fora do prazo (ou jogo não encerrado). */
+    val until: String? = null,
+    /** "terça, 20 de outubro": o jogo, na linha de apoio da folha. */
+    val gameDay: String = "",
+    /** "R$ 25,00" quando o jogo tem diária; a folha cita o valor só para quem paga diária. */
+    val feeLabel: String? = null,
+    /** Linha com a marca ou o desfazer em voo: trava o toque duplo (GER-001). */
+    val sendingId: String? = null,
+    val failed: Boolean = false,
+)
 
 /** O que falta no jogo, na linha verde-limão do cabeçalho. */
 sealed interface GameLimeLine {
@@ -265,6 +296,8 @@ data class GameDetailConfirmedUi(
     val forced: Boolean = false,
     /** Foto de perfil (MEM-006); convidado nunca tem. */
     val photo: MemberPhoto? = null,
+    /** PRES-016: confirmou e não apareceu; só vem marcado para dono e admin. */
+    val noShow: Boolean = false,
 )
 @Immutable
 data class GameDetailWaitlistUi(
@@ -455,6 +488,9 @@ sealed interface GameDetailIntent {
     data object DismissGameMenu : GameDetailIntent
     data class OpenPersonActions(val rowId: String) : GameDetailIntent
     data object DismissPersonActions : GameDetailIntent
+
+    /** PRES-016: "Marcar falta" ([marked]) ou "Desfazer" na pessoa [rowId] do jogo encerrado. */
+    data class SetNoShow(val rowId: String, val marked: Boolean) : GameDetailIntent
 }
 sealed interface GameDetailEffect {
     data object OpenEditor : GameDetailEffect

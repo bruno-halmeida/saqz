@@ -47,6 +47,9 @@ import br.com.saqz.groups.presentation.gamedetail.canForce
 import br.com.saqz.groups.presentation.ui.pluralLabel
 import br.com.saqz.groups.presentation.ui.singularLabel
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.game_no_show_footer
+import br.com.saqz.groups.resources.game_no_show_footer_closed
+import br.com.saqz.groups.resources.game_no_show_tag
 import br.com.saqz.groups.resources.game_declined_count
 import br.com.saqz.groups.resources.game_declined_empty_body
 import br.com.saqz.groups.resources.game_declined_empty_title
@@ -90,24 +93,24 @@ internal fun GameGoingList(state: GameDetailState, onIntent: (GameDetailIntent) 
         val sections = state.positions.filter { it.slots > 0 }.sortedBy { it.position.ordinal }
         sections.forEach { section ->
             PositionBand(section)
-            val people = state.confirmedRoster.filter { it.position == section.position }
+            val people = state.playedRoster.filter { it.position == section.position }
             people.forEachIndexed { index, person -> ConfirmedRow(state, person, "${index + 1}", index > 0, onIntent) }
             if (slotsOpen) OpenSlots(state, section.missing, people.size, people.isNotEmpty(), section.position, onIntent)
         }
         val known = sections.map { it.position }.toSet()
-        val others = state.confirmedRoster.filter { it.position == null || it.position !in known }
+        val others = state.playedRoster.filter { it.position == null || it.position !in known }
         if (others.isNotEmpty()) {
             NoPositionBand()
             others.forEachIndexed { index, person -> ConfirmedRow(state, person, "${index + 1}", index > 0, onIntent) }
         }
         divider = true
     } else {
-        state.confirmedRoster.forEachIndexed { index, person ->
+        state.playedRoster.forEachIndexed { index, person ->
             ConfirmedRow(state, person, "${index + 1}", index > 0, onIntent)
         }
         val open = state.attendance?.availableSpots ?: 0
-        if (slotsOpen) OpenSlots(state, open, state.confirmedRoster.size, state.confirmedRoster.isNotEmpty(), null, onIntent)
-        divider = state.confirmedRoster.isNotEmpty() || (slotsOpen && open > 0)
+        if (slotsOpen) OpenSlots(state, open, state.playedRoster.size, state.playedRoster.isNotEmpty(), null, onIntent)
+        divider = state.playedRoster.isNotEmpty() || (slotsOpen && open > 0)
     }
     if (state.guest.visible && state.guest.enabled) {
         ActionRow(
@@ -196,9 +199,47 @@ private fun ConfirmedRow(
         isYou = person.isYou,
         guest = person.guest != null,
         divider = divider,
-        hasActions = person.canRemove || person.guest?.canRemove == true,
+        hasActions = person.canRemove || person.guest?.canRemove == true || state.canMarkNoShow,
         onIntent = onIntent,
         photo = person.photo,
+    )
+}
+
+/**
+ * Aba "Faltaram" (PRES-016, só gestor): quem confirmou e não apareceu, com a etiqueta "Faltou" e o ⋮ do Desfazer
+ * enquanto o prazo vale. O rodapé lembra que só o gestor vê e até quando dá para marcar.
+ */
+@Composable
+internal fun GameNoShowList(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) {
+    state.noShowRoster.forEachIndexed { index, person ->
+        PersonRow(
+            id = person.id,
+            name = person.name,
+            meta = personMeta(state, person.position, person.isMensalista, person.guest, confirmed = true),
+            number = null,
+            isYou = person.isYou,
+            guest = person.guest != null,
+            divider = index > 0,
+            hasActions = state.canMarkNoShow,
+            onIntent = onIntent,
+            action = {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.game_no_show_tag),
+                    tone = SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GameDetailTags.noShowTag(person.id)),
+                )
+            },
+            photo = person.photo,
+        )
+    }
+    Text(
+        text = state.noShow.until?.let { stringResource(Res.string.game_no_show_footer, it) }
+            ?: stringResource(Res.string.game_no_show_footer_closed),
+        style = SaqzTheme.typography.caption,
+        color = SaqzTheme.colors.textSecondary,
+        modifier = Modifier
+            .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.blockGap)
+            .testTag(GameDetailTags.NoShowFooter),
     )
 }
 

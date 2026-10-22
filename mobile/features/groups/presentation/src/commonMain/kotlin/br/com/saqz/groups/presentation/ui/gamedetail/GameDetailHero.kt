@@ -82,6 +82,10 @@ import br.com.saqz.groups.resources.game_response_no
 import br.com.saqz.groups.resources.game_response_request_failed
 import br.com.saqz.groups.resources.game_response_yes
 import br.com.saqz.groups.resources.game_settlement_open
+import br.com.saqz.groups.resources.game_settlement_view
+import br.com.saqz.groups.resources.game_tab_cancelled_confirmed
+import br.com.saqz.groups.resources.game_tab_cancelled_declined
+import br.com.saqz.groups.resources.game_tab_no_show
 import br.com.saqz.groups.resources.game_tab_capacity
 import br.com.saqz.groups.resources.game_tab_not_played
 import br.com.saqz.groups.resources.game_tab_played
@@ -143,12 +147,16 @@ internal fun GameDetailHero(
         when (header.statusTone) {
             GameDetailStatusTone.Published -> GamePublishedBlock(state, header, onIntent)
             GameDetailStatusTone.Draft -> if (state.isAdmin) GamePublishBlock(state, onIntent)
+            // JOGO-011: nada pendente vira "Ver acerto" (contorno); com pendência, o lima de sempre.
             GameDetailStatusTone.Completed -> if (state.isAdmin) {
+                val settled = state.settlementPending == false
                 SaqzButton(
-                    label = stringResource(Res.string.game_settlement_open),
+                    label = stringResource(if (settled) Res.string.game_settlement_view else Res.string.game_settlement_open),
                     onClick = { onIntent(GameDetailIntent.OpenSettlement) },
-                    modifier = Modifier.testTag(GameDetailTags.Settle),
-                    variant = SaqzButtonVariant.Accent,
+                    modifier = Modifier.testTag(if (settled) GameDetailTags.SettleView else GameDetailTags.Settle),
+                    variant = if (settled) SaqzButtonVariant.Ghost else SaqzButtonVariant.Accent,
+                    contentColor = if (settled) SaqzTheme.colors.onPrimary else null,
+                    borderColor = if (settled) SaqzTheme.colors.onPrimary else null,
                     fullWidth = true,
                 )
             }
@@ -172,15 +180,28 @@ private fun GameDetailState.kickerResource(header: GameDetailHeaderUi) = when (h
 @Composable
 private fun GameDetailState.scoreTabs(tabs: List<GameDetailTab>): List<SaqzScoreTab> {
     val completed = header?.statusTone == GameDetailStatusTone.Completed
-    val confirmed = attendance?.confirmed ?: confirmedRoster.size
+    val cancelled = header?.statusTone == GameDetailStatusTone.Cancelled
+    // Quem faltou sai de "Jogaram" (PRES-016); só o gestor recebe a marca.
+    val confirmed = (attendance?.confirmed ?: confirmedRoster.size) - noShowRoster.size
     return tabs.map { tab ->
         when (tab) {
             GameDetailTab.Going -> SaqzScoreTab(
                 number = "$confirmed",
-                label = stringResource(if (completed) Res.string.game_tab_played else Res.string.home_admin_score_going),
+                label = stringResource(
+                    when {
+                        completed -> Res.string.game_tab_played
+                        cancelled -> Res.string.game_tab_cancelled_confirmed
+                        else -> Res.string.home_admin_score_going
+                    },
+                ),
                 suffix = attendance?.capacity?.let { stringResource(Res.string.game_tab_capacity, it) },
                 tone = SaqzScoreTabTone.Accent,
                 testTag = GameDetailTags.TabGoing,
+            )
+            GameDetailTab.NoShow -> SaqzScoreTab(
+                number = "${noShowRoster.size}",
+                label = stringResource(Res.string.game_tab_no_show),
+                testTag = GameDetailTags.TabNoShow,
             )
             GameDetailTab.Waiting -> SaqzScoreTab(
                 number = "${waitlist.size}",
@@ -189,7 +210,13 @@ private fun GameDetailState.scoreTabs(tabs: List<GameDetailTab>): List<SaqzScore
             )
             GameDetailTab.Declined -> SaqzScoreTab(
                 number = "$declinedCount",
-                label = stringResource(if (completed) Res.string.game_tab_not_played else Res.string.home_admin_score_out),
+                label = stringResource(
+                    when {
+                        completed -> Res.string.game_tab_not_played
+                        cancelled -> Res.string.game_tab_cancelled_declined
+                        else -> Res.string.home_admin_score_out
+                    },
+                ),
                 tone = SaqzScoreTabTone.Muted,
                 testTag = GameDetailTags.TabDeclined,
             )

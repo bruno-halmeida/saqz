@@ -44,6 +44,25 @@
     <string name="game_lime_open_positions">Tem vaga para %1$s</string>
     <string name="game_lime_and">e</string>
     <string name="game_tab_played">Jogaram</string>
+    <!-- JOGO-011: abas do jogo cancelado e o botão do acerto já fechado. -->
+    <string name="game_tab_cancelled_confirmed">Confirmados</string>
+    <string name="game_tab_cancelled_declined">Não iam</string>
+    <string name="game_settlement_view">Ver acerto</string>
+    <!-- PRES-016 · Faltou (só dono e admin). -->
+    <string name="game_tab_no_show">Faltaram</string>
+    <string name="game_no_show_tag">Faltou</string>
+    <string name="game_no_show_action">Marcar falta</string>
+    <string name="game_no_show_action_hint">Confirmou e não apareceu</string>
+    <string name="game_no_show_undo">Desfazer</string>
+    <string name="game_no_show_undo_hint">Volta para Jogaram</string>
+    <string name="game_no_show_cancel">Cancelar</string>
+    <string name="game_no_show_confirmed_for">%1$s · confirmou para %2$s</string>
+    <string name="game_no_show_kind_guest">Convidado de %1$s</string>
+    <string name="game_no_show_note">Só você e os admins veem a falta, e a pessoa não recebe aviso.</string>
+    <string name="game_no_show_note_fee">Só você e os admins veem a falta, e a pessoa não recebe aviso. A diária de %1$s continua; no acerto você decide se cobra.</string>
+    <string name="game_no_show_footer">Só você e os admins veem quem faltou. Dá para marcar até %1$s.</string>
+    <string name="game_no_show_footer_closed">Só você e os admins veem quem faltou.</string>
+    <string name="game_no_show_failed">Não foi possível salvar a falta. Tente novamente.</string>
     <string name="game_tab_not_played">Não foram</string>
     <string name="game_tab_capacity">/%1$d</string>
     <string name="game_more_actions">Mais ações do jogo</string>

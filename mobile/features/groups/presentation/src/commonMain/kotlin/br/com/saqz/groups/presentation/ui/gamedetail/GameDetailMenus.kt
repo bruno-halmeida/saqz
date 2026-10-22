@@ -3,7 +3,24 @@ package br.com.saqz.groups.presentation.ui.gamedetail
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material.Text
 import br.com.saqz.designsystem.SaqzBottomSheet
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonVariant
+import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.presentation.gamedetail.GameDetailConfirmedUi
+import br.com.saqz.groups.resources.game_no_show_action
+import br.com.saqz.groups.resources.game_no_show_action_hint
+import br.com.saqz.groups.resources.game_no_show_cancel
+import br.com.saqz.groups.resources.game_no_show_confirmed_for
+import br.com.saqz.groups.resources.game_no_show_failed
+import br.com.saqz.groups.resources.game_no_show_kind_guest
+import br.com.saqz.groups.resources.game_no_show_note
+import br.com.saqz.groups.resources.game_no_show_note_fee
+import br.com.saqz.groups.resources.game_no_show_undo
+import br.com.saqz.groups.resources.game_no_show_undo_hint
+import br.com.saqz.groups.resources.group_member_membership_monthly
+import br.com.saqz.groups.resources.group_member_membership_single_game
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSheetAction
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
@@ -75,6 +92,10 @@ internal fun GamePersonActionsSheet(state: GameDetailState, rowId: String, onInt
     val waiting = state.waitlist.firstOrNull { it.id == rowId }
     val name = confirmed?.name ?: waiting?.name ?: return
     val guest = confirmed?.guest ?: waiting?.guest
+    if (confirmed != null && state.canMarkNoShow) {
+        GameNoShowSheet(state, confirmed, onIntent)
+        return
+    }
     SaqzBottomSheet(
         open = true,
         onClose = { onIntent(GameDetailIntent.DismissPersonActions) },
@@ -109,6 +130,73 @@ internal fun GamePersonActionsSheet(state: GameDetailState, rowId: String, onInt
                 onClick = { onIntent(GameDetailIntent.RequestRemoveGuest(rowId)) },
                 destructive = true,
                 modifier = Modifier.testTag(GameGuestTags.remove(rowId)),
+            )
+        }
+    }
+}
+
+/**
+ * PRES-016 · o ⋮ de quem jogou no jogo encerrado (gestor, dentro do prazo): "Marcar falta", com o aviso de que só o
+ * gestor vê, a pessoa não é avisada e a diária continua; em quem já faltou, "Desfazer". Uma ação por vez.
+ */
+@Composable
+private fun GameNoShowSheet(state: GameDetailState, person: GameDetailConfirmedUi, onIntent: (GameDetailIntent) -> Unit) {
+    val sending = state.noShow.sendingId == person.id
+    val kind = when {
+        person.guest != null -> stringResource(Res.string.game_no_show_kind_guest, person.guest.hostName)
+        person.isMensalista -> stringResource(Res.string.group_member_membership_monthly)
+        else -> stringResource(Res.string.group_member_membership_single_game)
+    }
+    // Mensalista não tem diária; convidado paga pelo anfitrião.
+    val fee = state.noShow.feeLabel?.takeIf { !person.isMensalista }
+    SaqzBottomSheet(
+        open = true,
+        onClose = { if (!sending) onIntent(GameDetailIntent.DismissPersonActions) },
+        modifier = Modifier.testTag(GameDetailTags.PersonSheet),
+        title = person.name,
+        description = stringResource(Res.string.game_no_show_confirmed_for, kind, state.noShow.gameDay),
+        footer = {
+            SaqzButton(
+                label = stringResource(Res.string.game_no_show_cancel),
+                onClick = { onIntent(GameDetailIntent.DismissPersonActions) },
+                variant = SaqzButtonVariant.Secondary,
+                enabled = !sending,
+                fullWidth = true,
+            )
+        },
+    ) {
+        if (person.noShow) {
+            SaqzSheetAction(
+                icon = SaqzIcons.Check,
+                label = stringResource(Res.string.game_no_show_undo),
+                hint = stringResource(Res.string.game_no_show_undo_hint),
+                divider = false,
+                onClick = { if (!sending) onIntent(GameDetailIntent.SetNoShow(person.id, marked = false)) },
+                modifier = Modifier.testTag(GameDetailTags.noShowUndo(person.id)),
+            )
+        } else {
+            SaqzSheetAction(
+                icon = SaqzIcons.CircleX,
+                label = stringResource(Res.string.game_no_show_action),
+                hint = stringResource(Res.string.game_no_show_action_hint),
+                divider = false,
+                onClick = { if (!sending) onIntent(GameDetailIntent.SetNoShow(person.id, marked = true)) },
+                destructive = true,
+                modifier = Modifier.testTag(GameDetailTags.noShowMark(person.id)),
+            )
+            Text(
+                text = fee?.let { stringResource(Res.string.game_no_show_note_fee, it) }
+                    ?: stringResource(Res.string.game_no_show_note),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
+        if (state.noShow.failed) {
+            Text(
+                text = stringResource(Res.string.game_no_show_failed),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.errorForeground,
+                modifier = Modifier.testTag(GameDetailTags.NoShowFailed),
             )
         }
     }

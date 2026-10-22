@@ -60,7 +60,9 @@ import br.com.saqz.groups.presentation.game.gameMenuTitle
 import br.com.saqz.groups.presentation.game.gamePrioritySentence
 import br.com.saqz.groups.presentation.game.gameTimeLabel
 import br.com.saqz.groups.presentation.game.gameTimeZone
+import br.com.saqz.groups.presentation.game.gameWeekdayLabel
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -85,6 +87,10 @@ class GameDetailViewModel(
     private val notificationPrompt: NotificationPromptOffer? = null,
     /** "Avisar" quem não respondeu (DEB-116); sem a porta (teste antigo) o botão não envia. */
     private val communications: CommunicationGateway? = null,
+    /** JOGO-011: diária pendente do jogo encerrado decide entre "Encerrar jogo e acertar" e "Ver acerto". */
+    private val organizerFinance: br.com.saqz.groups.domain.finance.OrganizerFinanceGateway? = null,
+    /** PRES-016: "Marcar falta" e "Desfazer"; sem a porta (teste antigo) a ação não aparece. */
+    private val pastGames: br.com.saqz.groups.domain.game.PastGamesGateway? = null,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
     private var promotionGeneration = 0
@@ -266,7 +272,8 @@ class GameDetailViewModel(
             GameDetailIntent.OpenGameMenu -> if (state.value.hasGameMenu) update { it.copy(gameMenuOpen = true) }
             GameDetailIntent.DismissGameMenu -> update { it.copy(gameMenuOpen = false) }
             is GameDetailIntent.OpenPersonActions -> openPersonActions(intent.rowId)
-            GameDetailIntent.DismissPersonActions -> update { it.copy(personActionsId = null) }
+            GameDetailIntent.DismissPersonActions -> update { it.copy(personActionsId = null, noShow = it.noShow.copy(failed = false)) }
+            is GameDetailIntent.SetNoShow -> setNoShow(intent.rowId, intent.marked)
             else -> return false
         }
         return true
@@ -284,7 +291,8 @@ class GameDetailViewModel(
         val current = state.value
         val confirmed = current.confirmedRoster.firstOrNull { it.id == rowId }
         val waiting = current.waitlist.firstOrNull { it.id == rowId }
-        val canAct = confirmed?.canRemove == true || confirmed?.guest?.canRemove == true ||
+        val canAct = (confirmed != null && current.canMarkNoShow && pastGames != null) ||
+            confirmed?.canRemove == true || confirmed?.guest?.canRemove == true ||
             waiting?.canRemove == true || waiting?.guest?.canRemove == true ||
             (waiting != null && current.canForce(waiting))
         if (canAct) update { it.copy(personActionsId = rowId) }
@@ -408,7 +416,7 @@ class GameDetailViewModel(
                 organizer.removal != null || organizer.placeOpen || positionPicker != null || gameMenuOpen ||
                 personActionsId != null
             return writing || interacting || guest.adding || guest.removing || organizer.removing || organizer.placing ||
-                reminder.sending
+                reminder.sending || noShow.sendingId != null
         }
 
     private suspend fun loadAttendance(
@@ -430,6 +438,9 @@ class GameDetailViewModel(
         if (generation != loadGeneration) return
         val profileResult = athleteGateway.ownProfile()
         val hero = game.toHero(AttendanceRule.priorityWindow(groupMensalistaPriority, game.confirmationDeadline, game.startsAt))
+        if (generation != loadGeneration) return
+        val settlementPending = if (isAdmin && game.status == GameStatus.Completed) settlementPending() else null
+        val noShow = game.noShowUi(isAdmin && pastGames != null)
         if (generation != loadGeneration) return
         when {
             detailResult is SaqzResult.Failure -> showFailure(generation, detailResult.error.toUiError(), softRefresh)
@@ -472,6 +483,8 @@ class GameDetailViewModel(
                         showsFeeNote = membershipType == AthleteMembershipType.AVULSO && game.gameFeeCents != null,
                         gameMenuOpen = false,
                         personActionsId = null,
+                        settlementPending = settlementPending,
+                        noShow = noShow,
                         guest = guestUi(game, detail, open, it.guest),
                         response = responseUi(tone == GameDetailStatusTone.Published, detail.ownAttendance, roster, mensalistaPriority),
                         mensalistaPriority = mensalistaPriority,
@@ -1059,6 +1072,7 @@ class GameDetailViewModel(
         isMensalista = !isGuest && athlete?.membershipType == AthleteMembershipType.MENSALISTA,
         forced = forced,
         photo = rosterPhoto(),
+        noShow = noShow,
     )
 
     private fun AttendanceRosterMember.toWaitlist(
@@ -1106,6 +1120,68 @@ class GameDetailViewModel(
             deadlineLine = deadline?.takeIf { priority }
                 ?.gamePrioritySentence(Clock.System.now().toLocalDateTime(zone).date).orEmpty(),
         )
+    }
+
+    /** Alguma diária deste jogo segue pendente; sem a porta ou com falha, `null` (o botão fica como sempre). */
+    private suspend fun settlementPending(): Boolean? =
+        (organizerFinance?.charges(GroupId(groupId)) as? SaqzResult.Success)?.value?.charges
+            ?.any { it.gameId == gameId && it.status == br.com.saqz.groups.domain.finance.ChargeStatus.Pending }
+
+    /** Prazo da falta (início + duração + 7 dias, PRES-016), o dia do jogo e a diária, no fuso do jogo. */
+    private suspend fun Game.noShowUi(manager: Boolean): GameNoShowUi {
+        if (!manager || status != GameStatus.Completed) return GameNoShowUi()
+        val zone = gameTimeZone(zoneId)
+        val start = runCatching { Instant.parse(startsAt) }.getOrNull() ?: return GameNoShowUi()
+        val local = start.toLocalDateTime(zone)
+        val until = start + durationMinutes.minutes + NO_SHOW_WINDOW
+        return GameNoShowUi(
+            until = until.takeIf { it >= Clock.System.now() }?.toLocalDateTime(zone)?.date?.gameLongDateLabel(),
+            gameDay = "${local.date.dayOfWeek.gameWeekdayLabel().lowercase()}, ${local.date.gameLongDateLabel()}",
+            feeLabel = gameFeeCents?.takeIf { it > 0 }?.let(::formatBrl),
+        )
+    }
+
+    /**
+     * "Marcar falta" / "Desfazer": uma por vez (GER-001). O servidor é idempotente, então repetir depois de uma
+     * falha não duplica nada; a linha só muda de aba quando ele confirma.
+     */
+    private fun setNoShow(rowId: String, marked: Boolean) {
+        val current = state.value
+        val gateway = pastGames ?: return
+        if (!current.canMarkNoShow || current.noShow.sendingId != null) return
+        val person = current.confirmedRoster.firstOrNull { it.id == rowId } ?: return
+        if (person.noShow == marked) {
+            update { it.copy(personActionsId = null) }
+            return
+        }
+        val memberId = person.guest?.hostId ?: person.id
+        val guestSeq = person.guest?.guestSeq ?: 0
+        val loadAtStart = loadGeneration
+        update { it.copy(noShow = it.noShow.copy(sendingId = rowId, failed = false)) }
+        viewModelScope.launch {
+            val result = gateway.setNoShow(GroupId(groupId), gameId, memberId, guestSeq, marked)
+            // Uma recarga começou no meio: ela já traz a lista do servidor; só destrava a linha.
+            if (loadAtStart != loadGeneration) {
+                update { it.copy(noShow = it.noShow.copy(sendingId = null), personActionsId = null) }
+                return@launch
+            }
+            when (result) {
+                is SaqzResult.Success -> {
+                    update { state ->
+                        state.copy(
+                            confirmedRoster = state.confirmedRoster.map { if (it.id == rowId) it.copy(noShow = marked) else it },
+                            noShow = state.noShow.copy(sendingId = null),
+                            personActionsId = null,
+                        )
+                    }
+                    // O acerto pendente do jogo muda junto ("Faltou" no acerto): a recarga por baixo traz o resto.
+                    load(softRefresh = true)
+                }
+                is SaqzResult.Failure -> update {
+                    it.copy(noShow = it.noShow.copy(sendingId = null, failed = true))
+                }
+            }
+        }
     }
 
     /** Membro (não convidado, que tem a ação própria) que não é o gestor olhando, em jogo publicado. */
@@ -1386,6 +1462,9 @@ private fun AthleteError.toUiError(): GroupUiError = when (this) {
 private const val MIN_CAPACITY = GameCapacityLimits.Min
 private const val MAX_CAPACITY = GameCapacityLimits.Max
 private const val MAX_GUEST_NAME = 80
+
+/** PRES-016: a falta se marca ou desfaz até 7 dias depois do fim do jogo. */
+private val NO_SHOW_WINDOW = 7.days
 private const val MIN_OVERRIDE_REASON = 2
 private const val MAX_OVERRIDE_REASON = 500
 private fun GameStatus.toTone(): GameDetailStatusTone = when (this) {
