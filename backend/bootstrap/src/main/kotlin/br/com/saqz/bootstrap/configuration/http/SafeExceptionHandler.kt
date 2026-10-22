@@ -365,6 +365,16 @@ class SafeExceptionHandler(
         problemWriter.write(request, response, 503)
     }
 
+    /** Decodificação de imagem no limite de memória do processo: o app tenta de novo em instantes. */
+    @ExceptionHandler(br.com.saqz.sharedkernel.media.ImageDecodeBusyException::class)
+    fun imageDecodeBusy(
+        failure: br.com.saqz.sharedkernel.media.ImageDecodeBusyException,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        problemWriter.write(request, response, 503, retryAfterSeconds = failure.retryAfterSeconds)
+    }
+
     @ExceptionHandler(PlacesUpstreamException::class)
     fun placesUpstream(failure: PlacesUpstreamException, request: HttpServletRequest, response: HttpServletResponse) {
         // Só a mensagem (sem URL nem chave) vai ao log.

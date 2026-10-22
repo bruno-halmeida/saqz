@@ -5,6 +5,7 @@ import br.com.saqz.groups.application.photo.GroupPhotoRejection
 import br.com.saqz.groups.application.photo.GroupPhotoValidationResult
 import br.com.saqz.groups.application.photo.GroupPhotoValidationPort
 import br.com.saqz.groups.application.photo.ValidatedGroupPhoto
+import br.com.saqz.sharedkernel.media.ImageDecodeGate
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -14,6 +15,7 @@ import javax.imageio.ImageIO
 class GroupPhotoValidator(
     private val maximumBytes: Int = 5 * 1024 * 1024,
     private val maximumDimension: Int = 4096,
+    private val decodeGate: ImageDecodeGate = ImageDecodeGate.shared,
 ) : GroupPhotoValidationPort {
     override fun validate(declaredContentType: String, input: InputStream): GroupPhotoValidationResult {
         val bytes = readBounded(input) ?: return rejected(GroupPhotoRejection.TOO_LARGE)
@@ -24,7 +26,11 @@ class GroupPhotoValidator(
         if (declaredType != actualType) return rejected(GroupPhotoRejection.DECLARED_TYPE_MISMATCH)
         if (isAnimated(actualType, bytes)) return rejected(GroupPhotoRejection.ANIMATED)
 
-        return runCatching {
+        return decodeGate.withPermit { decode(bytes, actualType) }
+    }
+
+    private fun decode(bytes: ByteArray, actualType: GroupPhotoMediaType): GroupPhotoValidationResult =
+        runCatching {
             ImageIO.createImageInputStream(ByteArrayInputStream(bytes)).use { imageInput ->
                 val readers = ImageIO.getImageReaders(imageInput)
                 if (!readers.hasNext()) return rejected(GroupPhotoRejection.INVALID_IMAGE)
@@ -52,7 +58,6 @@ class GroupPhotoValidator(
                 }
             }
         }.getOrElse { rejected(GroupPhotoRejection.INVALID_IMAGE) }
-    }
 
     private fun readBounded(input: InputStream): ByteArray? = input.use { source ->
         val output = ByteArrayOutputStream(minOf(maximumBytes, 64 * 1024))

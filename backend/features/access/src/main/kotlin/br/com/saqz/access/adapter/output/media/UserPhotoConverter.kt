@@ -4,6 +4,7 @@ import br.com.saqz.access.application.photo.UserPhotoConversion
 import br.com.saqz.access.application.photo.UserPhotoConversionPort
 import br.com.saqz.access.application.photo.UserPhotoImage
 import br.com.saqz.access.application.photo.UserPhotoRejection
+import br.com.saqz.sharedkernel.media.ImageDecodeGate
 import java.awt.Color
 import java.awt.Image
 import java.awt.geom.AffineTransform
@@ -27,6 +28,7 @@ class UserPhotoConverter(
     private val maximumSourceDimension: Int = 4096,
     private val targetDimension: Int = 512,
     private val quality: Float = 0.85f,
+    private val decodeGate: ImageDecodeGate = ImageDecodeGate.shared,
 ) : UserPhotoConversionPort {
     override fun convert(declaredContentType: String, input: InputStream): UserPhotoConversion {
         val bytes = readBounded(input) ?: return rejected(UserPhotoRejection.TOO_LARGE)
@@ -35,7 +37,10 @@ class UserPhotoConverter(
         if (ACCEPTED_TYPES.none { it.equals(declaredType, ignoreCase = true) }) {
             return rejected(UserPhotoRejection.UNSUPPORTED_TYPE)
         }
-        return runCatching { shrinkToJpeg(bytes) }.getOrElse { rejected(UserPhotoRejection.INVALID_IMAGE) }
+        // A vaga cobre abrir, girar e reduzir: é o trecho que segura dezenas de MB por upload.
+        return decodeGate.withPermit {
+            runCatching { shrinkToJpeg(bytes) }.getOrElse { rejected(UserPhotoRejection.INVALID_IMAGE) }
+        }
     }
 
     private fun shrinkToJpeg(bytes: ByteArray): UserPhotoConversion =
