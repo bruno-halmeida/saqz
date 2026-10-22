@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Verificação de dependências do Gradle, restrita de propósito a um único artefato: o SDK do WhatsApp
+  (uazapi-connector-sdk), que não vem do Maven Central e sim do JitPack, que o compila a partir de uma
+  tag do GitHub. Fixar o SHA-256 do jar garante que uma tag movida, ou um JitPack comprometido, derruba o
+  build (inclusive o da imagem de produção, no Dockerfile) em vez de entrar calado na API.
+
+  Todo o resto (Maven Central e plugins) é confiado pelo regex abaixo. Ao subir a versão do SDK, calcule
+  o hash do jar novo (`shasum -a 256 uazapi-connector-sdk-X.Y.Z.jar`, baixado de
+  https://jitpack.io/com/github/thoughtbruno/uazapi-connector-sdk/X.Y.Z/) e troque aqui o componente;
+  não use `- -write-verification-metadata`, que reescreveria este arquivo com todas as dependências.
+-->
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.3.xsd">
+   <configuration>
+      <verify-metadata>false</verify-metadata>
+      <verify-signatures>false</verify-signatures>
+      <trusted-artifacts>
+         <trust group="^(?!com\.github\.thoughtbruno$).*$" regex="true"/>
+      </trusted-artifacts>
+   </configuration>
+   <components>
+      <component group="com.github.thoughtbruno" name="uazapi-connector-sdk" version="0.1.0">
+         <artifact name="uazapi-connector-sdk-0.1.0.jar">
+            <sha256 value="984e796b193589f5d754711f2ff5808d586423837293856087816263340d59f6" origin="jar baixado do JitPack em 22/10/2026, igual ao do cache local"/>
+         </artifact>
+      </component>
+   </components>
+</verification-metadata>

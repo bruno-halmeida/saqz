@@ -8,7 +8,8 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // SDK do WhatsApp publicado pelo JitPack a partir do release da tag no GitHub.
+        // SDK do WhatsApp publicado pelo JitPack a partir do release da tag no GitHub. O SHA-256 do jar está
+        // fixado em gradle/verification-metadata.xml: tag movida ou JitPack adulterado derrubam o build.
         exclusiveContent {
             forRepository { maven("https://jitpack.io") }
             filter { includeModule("com.github.thoughtbruno", "uazapi-connector-sdk") }
