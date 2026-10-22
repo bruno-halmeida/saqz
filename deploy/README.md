@@ -103,6 +103,17 @@ O servidor precisa aceitar SSH dos runners do GitHub. O pacote transferido cont�
 somente os arquivos de implantação, sem `.env` ou service accounts. Nenhuma etapa
 executa `git pull`, altera a ponte Traefik ou recria os serviços web/Mailpit.
 
+## IP do cliente e freio de enchente
+
+A API só é alcançável pelo túnel da Cloudflare: o router `saqz-prod` do Traefik Docker
+(`deploy/server/traefik-docker.yaml`) recusa com 403 qualquer origem fora da rede Docker,
+aplica um limite genérico por `CF-Connecting-IP` e só então encaminha ao k3s. É por isso
+que o backend lê o IP real desse cabeçalho (`server.tomcat.remoteip.remote-ip-header`);
+o `X-Forwarded-For` atrás do túnel era sempre o IP do cloudflared e deixava os limites
+por IP do reset de senha globais. Para alterar o arquivo em produção, copie-o para
+`/root/applications/server-setup/traefik/dynamic/saqz-prod.yaml`: o provider de arquivo
+recarrega sozinho, sem reiniciar o Traefik.
+
 ## Instalação do servidor
 
 Execute da raiz deste repositório. O script tem etapas independentes com confirmação:

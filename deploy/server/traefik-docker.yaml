@@ -6,9 +6,25 @@ http:
       priority: 1000
       entryPoints: [websecure]
       tls: {}
-      middlewares: [saqz-prod-strip-forwarded]
+      middlewares: [saqz-prod-only-tunnel, saqz-prod-rate-limit, saqz-prod-strip-forwarded]
       service: saqz-prod
   middlewares:
+    # Só o túnel da Cloudflare chega à API. Quem bater direto no IP do servidor com Host api.saqz.app
+    # leva 403: é isso que torna o CF-Connecting-IP confiável para o backend (application.properties).
+    # A faixa é a rede Docker local-server-network, onde o cloudflared mora; o IP dele muda a cada recriação.
+    saqz-prod-only-tunnel:
+      ipAllowList:
+        sourceRange:
+          - 172.18.0.0/16
+    # Freio de enchente por IP real do cliente (a Cloudflare grava o cabeçalho). Generoso de propósito:
+    # o app abre com meia dúzia de chamadas em paralelo e os webhooks das lojas e da Asaas vêm em rajada.
+    # Os limites finos (reset de senha, verificação, preview de convite) ficam no backend.
+    saqz-prod-rate-limit:
+      rateLimit:
+        average: 50
+        burst: 100
+        sourceCriterion:
+          requestHeaderName: CF-Connecting-IP
     saqz-prod-strip-forwarded:
       headers:
         customRequestHeaders:

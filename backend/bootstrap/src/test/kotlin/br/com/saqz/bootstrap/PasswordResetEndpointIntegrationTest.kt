@@ -288,6 +288,18 @@ class PasswordResetEndpointIntegrationTest {
     }
 
     @Test
+    fun `o IP do limite vem do CF-Connecting-IP quando a requisicao chega por um proxy interno`() {
+        // O teste chega por 127.0.0.1, proxy interno para o RemoteIpValve: o cabeçalho vira o remoteAddr.
+        repeat(10) { index ->
+            val response = post("request", mapOf("email" to "pessoa$index@saqz.test"), clientIp = "203.0.113.10")
+            assertEquals(202, response.statusCode(), "pedido $index")
+        }
+
+        assertProblem(post("request", mapOf("email" to "maisum@saqz.test"), clientIp = "203.0.113.10"), 429, "PASSWORD_RESET_RATE_LIMIT")
+        assertEquals(202, post("request", mapOf("email" to "outra@saqz.test"), clientIp = "203.0.113.11").statusCode())
+    }
+
+    @Test
     fun `o codigo nunca aparece em resposta alguma`() {
         request("atleta@saqz.test")
         val code = deliveredCode()
@@ -317,9 +329,10 @@ class PasswordResetEndpointIntegrationTest {
     private fun confirm(token: String, novaSenha: String) =
         post("confirm", mapOf("token" to token, "novaSenha" to novaSenha))
 
-    private fun post(step: String, body: Map<String, String>): HttpResponse<String> = client.send(
+    private fun post(step: String, body: Map<String, String>, clientIp: String? = null): HttpResponse<String> = client.send(
         HttpRequest.newBuilder(URI("http://127.0.0.1:$port/api/password-reset/$step"))
             .header("Content-Type", "application/json")
+            .apply { if (clientIp != null) header("CF-Connecting-IP", clientIp) }
             .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
             .build(),
         HttpResponse.BodyHandlers.ofString(),
