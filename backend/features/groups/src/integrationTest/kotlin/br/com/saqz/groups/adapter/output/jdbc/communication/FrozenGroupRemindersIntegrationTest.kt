@@ -70,7 +70,7 @@ class FrozenGroupRemindersIntegrationTest {
     @Test fun `with an unrestricted access both groups still get the notices`() {
         game(frozen)
         game(paid)
-        val open = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), repository, GroupWriteAccess.Unrestricted)
+        val open = GroupCommunicationService(transaction, JdbcGroupReadRepository(source), repository, writeAccess = GroupWriteAccess.Unrestricted)
 
         assertEquals(2, open.remindAutomatically())
     }
