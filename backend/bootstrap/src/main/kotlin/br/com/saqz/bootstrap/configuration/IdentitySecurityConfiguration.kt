@@ -14,6 +14,12 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean
+import org.springframework.http.HttpMethod
+import org.springframework.security.authorization.AuthorizationDecision
+import org.springframework.security.authorization.AuthorizationManager
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
+import org.springframework.security.web.util.matcher.RequestMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -55,19 +61,11 @@ class IdentitySecurityConfiguration {
         ANONYMOUS_PATHS,
         OPTIONAL_AUTHENTICATION_PATHS,
         EXACT_ANONYMOUS_PATHS,
-        additionalAnonymousRequest = { request ->
-            request.method == "GET" && (
-                request.requestURI == "/public/receivables/checkout-return" ||
-                    request.requestURI.startsWith("/public/receivables/terms/") &&
-                    request.requestURI.removePrefix("/public/receivables/terms/")
-                        .let { it.isNotBlank() && '/' !in it }
-                )
-        },
+        additionalAnonymousRequest = { request -> PUBLIC_RECEIVABLES_READS.any { it.matches(request) } },
         // Dinheiro e exclusão nunca usam o cache do token: revogação vale na hora.
         alwaysVerify = { request ->
-            val uri = request.requestURI
-            request.method != "GET" && (uri.startsWith("/subscriptions") || uri.startsWith("/api/receivables")) ||
-                request.method == "DELETE" && (uri == "/api/session" || GROUP_ROOT.matches(uri))
+            request.method != "GET" && MONEY_ROUTES.any { it.matches(request) } ||
+                SENSITIVE_DELETES.any { it.matches(request) }
         },
     ) { request, response, status, code ->
         problemWriter.write(request, response, status, code)
@@ -175,11 +173,17 @@ class IdentitySecurityConfiguration {
                 .requestMatchers("/public/account-confirmation/*").permitAll()
                 .requestMatchers("/webhooks/asaas", "/api/receivables/webhooks/asaas/*").permitAll()
                 .requestMatchers("/webhooks/app-store", "/webhooks/google-play").permitAll()
+                // Segunda barreira do /admin: a guarda (filtro) decide e deixa o admin aprovado na requisição;
+                // aqui o Spring Security exige essa aprovação pelo caminho decodificado, como o MVC roteia.
+                .requestMatchers(PlatformAdminGuardFilter.ADMIN_PATTERN).access(PLATFORM_ADMIN_APPROVED)
                 .anyRequest().authenticated()
         }
         .exceptionHandling {
             it.authenticationEntryPoint { request, response, _ ->
                 problemWriter.write(request, response, 401, ErrorCode.AUTHENTICATION_REQUIRED)
+            }
+            it.accessDeniedHandler { request, response, _ ->
+                problemWriter.write(request, response, 403, ErrorCode.ACCESS_FORBIDDEN)
             }
         }
         .addFilterBefore(bearerAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
@@ -193,7 +197,26 @@ class IdentitySecurityConfiguration {
         .build()
 
     private companion object {
-        val GROUP_ROOT = Regex("/api/groups/[^/]+")
+        /** Leituras públicas de recebíveis: termos (uma versão por segmento) e a volta do checkout. */
+        val PUBLIC_RECEIVABLES_READS: List<RequestMatcher> = listOf(
+            matcher(HttpMethod.GET, "/public/receivables/checkout-return"),
+            matcher(HttpMethod.GET, "/public/receivables/terms/*"),
+        )
+        val MONEY_ROUTES: List<RequestMatcher> = listOf(matcher("/subscriptions/**"), matcher("/api/receivables/**"))
+        val SENSITIVE_DELETES: List<RequestMatcher> = listOf(
+            matcher(HttpMethod.DELETE, "/api/session"),
+            matcher(HttpMethod.DELETE, "/api/groups/*"),
+        )
+
+        /** Só passa quem a [PlatformAdminGuardFilter] aprovou nesta mesma requisição. */
+        val PLATFORM_ADMIN_APPROVED = AuthorizationManager<RequestAuthorizationContext> { _, context ->
+            AuthorizationDecision(PlatformAdminGuardFilter.approvedAdmin(context.request) != null)
+        }
+
+        fun matcher(pattern: String): RequestMatcher = PathPatternRequestMatcher.withDefaults().matcher(pattern)
+
+        fun matcher(method: HttpMethod, pattern: String): RequestMatcher =
+            PathPatternRequestMatcher.withDefaults().matcher(method, pattern)
 
         /**
          * Quem esqueceu a senha não tem sessão: os três passos do VUL-80 passam sem bearer.

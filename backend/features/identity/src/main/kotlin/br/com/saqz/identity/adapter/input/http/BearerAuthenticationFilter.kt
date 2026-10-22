@@ -10,20 +10,30 @@ import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.MDC
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
+import org.springframework.security.web.util.matcher.RequestMatcher
 import org.springframework.web.filter.OncePerRequestFilter
 
+/**
+ * Os caminhos anônimos são comparados decodificados e por segmento, com o mesmo casador que o
+ * Spring MVC usa para rotear. Um prefixo cobre a si mesmo e tudo abaixo dele; o exato, só ele.
+ */
 class BearerAuthenticationFilter(
     private val verifyRequestIdentity: VerifyRequestIdentity,
-    private val anonymousPaths: Set<String> = setOf("/actuator/health"),
-    private val optionalAuthenticationPaths: Set<String> = emptySet(),
-    private val exactAnonymousPaths: Set<String> = emptySet(),
+    anonymousPaths: Set<String> = setOf("/actuator/health"),
+    optionalAuthenticationPaths: Set<String> = emptySet(),
+    exactAnonymousPaths: Set<String> = emptySet(),
     private val additionalAnonymousRequest: (HttpServletRequest) -> Boolean = { false },
     private val alwaysVerify: (HttpServletRequest) -> Boolean = { false },
     private val writeProblem: (HttpServletRequest, HttpServletResponse, Int, ErrorCode?) -> Unit,
 ) : OncePerRequestFilter() {
+    private val anonymous = anonymousPaths.map(::prefix)
+    private val optionalAuthentication = optionalAuthenticationPaths.map(::prefix)
+    private val exactAnonymous = exactAnonymousPaths.map(::exact)
+
     override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        additionalAnonymousRequest(request) || exactAnonymousPaths.contains(request.requestURI) ||
-            anonymousPaths.any { request.requestURI == it || request.requestURI.startsWith("$it/") }
+        additionalAnonymousRequest(request) || exactAnonymous.any { it.matches(request) } ||
+            anonymous.any { it.matches(request) }
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -32,7 +42,7 @@ class BearerAuthenticationFilter(
     ) {
         val token = bearerToken(request.getHeader("Authorization"))
         if (token == null) {
-            if (matchesPath(request, optionalAuthenticationPaths)) {
+            if (optionalAuthentication.any { it.matches(request) }) {
                 filterChain.doFilter(request, response)
                 return
             }
@@ -67,6 +77,9 @@ class BearerAuthenticationFilter(
         return token.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) }
     }
 
-    private fun matchesPath(request: HttpServletRequest, paths: Set<String>): Boolean =
-        paths.any { request.requestURI == it || request.requestURI.startsWith("$it/") }
+    private companion object {
+        fun prefix(path: String): RequestMatcher = PathPatternRequestMatcher.withDefaults().matcher("$path/**")
+
+        fun exact(path: String): RequestMatcher = PathPatternRequestMatcher.withDefaults().matcher(path)
+    }
 }

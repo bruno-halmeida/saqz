@@ -102,6 +102,24 @@ class PlatformAdminEndpointIntegrationTest {
     }
 
     @Test
+    fun `caminho com percent-encoding nao escapa da guarda`() {
+        // Spring MVC roteia /%61dmin/ping para /admin/ping; a guarda tem que enxergar o mesmo caminho.
+        val response = get("/%61dmin/ping", token = "user-token")
+
+        assertEquals(403, response.statusCode())
+        assertEquals("ACCESS_FORBIDDEN", code(response))
+        assertEquals(listOf("user-subject"), lookup.subjects)
+    }
+
+    @Test
+    fun `admin passa pela guarda tambem no caminho com percent-encoding`() {
+        val response = get("/%61dmin/ping", token = "admin-token")
+
+        assertEquals(200, response.statusCode())
+        assertEquals(listOf("admin-subject"), lookup.subjects)
+    }
+
+    @Test
     fun `rota fora de admin nao consulta a lista de admins`() {
         get("/api/nao-existe", token = "user-token")
 

@@ -13,6 +13,8 @@ dependencies {
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.twelvemonkeys.imageio.webp)
     implementation("org.springframework.security:spring-security-core")
+    // Casador de caminhos decodificados da guarda do /admin (o mesmo que o Spring MVC usa para rotear).
+    implementation("org.springframework.security:spring-security-web")
     implementation("org.springframework:spring-web")
     // O `request` limita por IP, e o IP vem do `remoteAddr` da requisicao.
     compileOnly("jakarta.servlet:jakarta.servlet-api")

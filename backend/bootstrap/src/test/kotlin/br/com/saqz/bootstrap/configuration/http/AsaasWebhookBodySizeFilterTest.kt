@@ -11,6 +11,22 @@ import kotlin.test.assertTrue
 
 class AsaasWebhookBodySizeFilterTest {
     @Test
+    fun `percent-encoded webhook path is capped like the plain one`() {
+        val filter = AsaasWebhookBodySizeFilter(maxBytes = 64) { _, response -> response.status = 413 }
+        val request = object : MockHttpServletRequest("POST", "/webhooks/%61saas") {
+            override fun getContentLength(): Int = 1000
+            override fun getContentLengthLong(): Long = 1000L
+        }.apply { setContent(ByteArray(8)) }
+        val response = MockHttpServletResponse()
+        var chainRan = false
+
+        filter.doFilter(request, response) { _, _ -> chainRan = true }
+
+        assertFalse(chainRan)
+        assertEquals(413, response.status)
+    }
+
+    @Test
     fun `rejects oversized Content-Length before chain runs`() {
         val rejected = mutableListOf<Int>()
         val filter = AsaasWebhookBodySizeFilter(maxBytes = 64) { _, response ->

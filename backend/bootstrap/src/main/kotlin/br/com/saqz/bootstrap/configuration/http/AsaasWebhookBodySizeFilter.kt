@@ -6,6 +6,7 @@ import jakarta.servlet.ServletInputStream
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletRequestWrapper
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
 import org.springframework.web.filter.OncePerRequestFilter
 import java.io.IOException
 import java.io.InputStreamReader
@@ -20,10 +21,8 @@ class AsaasWebhookBodySizeFilter(
     private val maxBytes: Long = DEFAULT_MAX_BYTES,
     private val onTooLarge: (HttpServletRequest, HttpServletResponse) -> Unit,
 ) : OncePerRequestFilter() {
-    override fun shouldNotFilter(request: HttpServletRequest): Boolean =
-        request.requestURI != WEBHOOK_PATH && request.requestURI != APP_STORE_WEBHOOK_PATH &&
-            request.requestURI != GOOGLE_PLAY_WEBHOOK_PATH &&
-            !request.requestURI.startsWith("/api/receivables/webhooks/asaas/")
+    // Caminhos decodificados, como o Spring MVC roteia: pelo `requestURI` cru, `/webhooks/%61saas` passava sem teto.
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean = WEBHOOK_ROUTES.none { it.matches(request) }
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -61,7 +60,10 @@ class AsaasWebhookBodySizeFilter(
         const val WEBHOOK_PATH = "/webhooks/asaas"
         const val APP_STORE_WEBHOOK_PATH = "/webhooks/app-store"
         const val GOOGLE_PLAY_WEBHOOK_PATH = "/webhooks/google-play"
+        const val RECEIVABLES_WEBHOOK_PATTERN = "/api/receivables/webhooks/asaas/*"
         const val DEFAULT_MAX_BYTES: Long = 64 * 1024
+        private val WEBHOOK_ROUTES = listOf(WEBHOOK_PATH, APP_STORE_WEBHOOK_PATH, GOOGLE_PLAY_WEBHOOK_PATH, RECEIVABLES_WEBHOOK_PATTERN)
+            .map { PathPatternRequestMatcher.withDefaults().matcher(it) }
     }
 }
 
