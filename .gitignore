@@ -58,3 +58,12 @@ mobile/**/screenshots/
 # fastlane (CI das lojas mobile): relatório de execução gerado a cada run
 mobile/fastlane/report.xml
 mobile/fastlane/README.md
+
+# Projetos de vídeo (HyperFrames): renders e node_modules passam de 1 GB e não são código do app.
+videos/
+
+# Identidade de pareamento que o go-ios (mobile-mcp no iPhone) grava na pasta de onde roda; tem chave privada.
+selfIdentity.plist
+
+# Lock do `npx skills`; as skills que ele instala em .agents/ já ficam fora do git.
+skills-lock.json
