@@ -60,16 +60,11 @@ internal class PastGamesViewModel(
     }
 
     private fun load(soft: Boolean) {
+        if (soft) return refresh()
         val current = ++generation
-        update {
-            if (soft) {
-                it.copy(isRefreshing = true)
-            } else {
-                PastGamesState(isLoading = true)
-            }
-        }
+        update { PastGamesState(isLoading = true) }
         viewModelScope.launch {
-            val venue = async { (groupGateway.read(GroupId(groupId)) as? SaqzResult.Success)?.value?.group?.profile?.defaultVenue?.name }
+            val venue = async { defaultVenue() }
             val page = gateway.page(GroupId(groupId), cursor = null)
             defaultVenueName = venue.await()
             if (current != generation) return@launch
@@ -77,18 +72,54 @@ internal class PastGamesViewModel(
                 is SaqzResult.Success -> {
                     cursor = page.value.nextCursor
                     val rows = page.value.games.mapNotNull { it.toRow() }
-                    update {
-                        PastGamesState(isLoading = false, rows = rows, canLoadMore = cursor != null)
-                    }
+                    update { PastGamesState(isLoading = false, rows = rows, canLoadMore = cursor != null) }
                 }
-                // Por cima, a falha não troca a lista por erro.
                 is SaqzResult.Failure -> update {
-                    if (soft) it.copy(isRefreshing = false)
-                    else PastGamesState(isLoading = false, loadFailed = true, error = page.error.toUiError())
+                    PastGamesState(isLoading = false, loadFailed = true, error = page.error.toUiError())
                 }
             }
         }
     }
+
+    /**
+     * Atualização por baixo (volta do detalhe): busca de novo até a quantidade já carregada e mescla por id. A lista não
+     * encolhe nem perde a posição; o que ficar além do que voltou continua como estava. Falha não mexe na lista.
+     */
+    private fun refresh() {
+        val loaded = state.value.rows
+        if (state.value.isLoadingMore || state.value.isRefreshing) return
+        val current = ++generation
+        update { it.copy(isRefreshing = true) }
+        viewModelScope.launch {
+            defaultVenueName = defaultVenue() ?: defaultVenueName
+            val fetched = mutableListOf<PastGame>()
+            var next: String? = null
+            var first = true
+            while (first || (next != null && fetched.size < loaded.size)) {
+                first = false
+                when (val page = gateway.page(GroupId(groupId), cursor = next)) {
+                    is SaqzResult.Success -> {
+                        fetched += page.value.games
+                        next = page.value.nextCursor
+                    }
+                    is SaqzResult.Failure -> {
+                        if (current == generation) update { it.copy(isRefreshing = false) }
+                        return@launch
+                    }
+                }
+            }
+            if (current != generation) return@launch
+            val fresh = fetched.distinctBy { it.id }.mapNotNull { it.toRow() }
+            val freshIds = fresh.mapTo(HashSet()) { it.gameId }
+            val rows = fresh + loaded.filterNot { it.gameId in freshIds }
+            // O laço só para com a quantidade alcançada ou no fim: a próxima página parte da última buscada.
+            cursor = next
+            update { it.copy(rows = rows, isRefreshing = false, canLoadMore = cursor != null) }
+        }
+    }
+
+    private suspend fun defaultVenue(): String? =
+        (groupGateway.read(GroupId(groupId)) as? SaqzResult.Success)?.value?.group?.profile?.defaultVenue?.name
 
     private fun loadMore() {
         val current = state.value

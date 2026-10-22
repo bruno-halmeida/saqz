@@ -57,6 +57,14 @@ class GetAthleteStatsTest {
     }
 
     @Test
+    fun `no-show lowers attendance for owner and athlete alike`() {
+        val aggregate = AthleteStatsAggregate(games = 8, eligibleGames = 10, absences = 1, noShows = 1)
+
+        assertEquals(GetAthleteStatsResult.Success(AthleteStats(8, 80, 1, noShows = 1)), service(GroupRole.OWNER, aggregate).execute(actor, group, target))
+        assertEquals(GetAthleteStatsResult.Success(AthleteStats(8, 80, 1)), service(GroupRole.ATHLETE, aggregate).execute(actor, group, actor))
+    }
+
+    @Test
     fun `athlete cannot read another member stats`() {
         val result = service(GroupRole.ATHLETE, AthleteStatsAggregate(1, 1, 0)).execute(actor, group, target)
 

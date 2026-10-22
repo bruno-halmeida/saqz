@@ -148,6 +148,36 @@ class PastGamesViewModelTest {
     }
 
     @Test
+    fun `atualizar depois de 45 carregados mantem os 45 sem repetir e reflete a mudanca`() = runTest {
+        val all = (0 until 45).map { game("g$it", "2026-10-${(20 - it / 3).coerceAtLeast(1).toString().padStart(2, '0')}T23:00:00Z") }
+        val pending = all.mapIndexed { i, g -> if (i == 44) g.copy(pendingChargeCount = 1, pendingChargeCents = 2_500) else g }
+        val gateway = FakePastGames(
+            pages = mapOf(
+                null to PastGamesPage(pending.take(20), "c1"),
+                "c1" to PastGamesPage(pending.subList(20, 40), "c2"),
+                "c2" to PastGamesPage(pending.drop(40), null),
+            ),
+        )
+        val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())
+        vm.onIntent(PastGamesIntent.LoadMore)
+        vm.onIntent(PastGamesIntent.LoadMore)
+        assertTrue(vm.state.value.rows.last().pending != null)
+
+        // O acerto do último jogo foi dispensado no detalhe.
+        gateway.pages = mapOf(
+            null to PastGamesPage(all.take(20), "c1"),
+            "c1" to PastGamesPage(all.subList(20, 40), "c2"),
+            "c2" to PastGamesPage(all.drop(40), null),
+        )
+        vm.onIntent(PastGamesIntent.Refresh)
+
+        assertEquals(45, vm.state.value.rows.size)
+        assertEquals(45, vm.state.value.rows.map { it.gameId }.toSet().size)
+        assertNull(vm.state.value.rows.last().pending)
+        assertFalse(vm.state.value.canLoadMore)
+    }
+
+    @Test
     fun `toque abre o jogo`() = runTest {
         val gateway = FakePastGames(pages = mapOf(null to PastGamesPage(emptyList(), null)))
         val vm = PastGamesViewModel("group-1", gateway, FakeGroupGateway())

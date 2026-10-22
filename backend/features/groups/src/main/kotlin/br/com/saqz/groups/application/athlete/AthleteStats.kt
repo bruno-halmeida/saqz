@@ -56,5 +56,6 @@ class GetAthleteStats(
         )
     }
 
-    private fun AthleteStatsAggregate.confirmedGames(): Int = eligibleGames - absences
+    // A falta sem aviso (PRES-016) baixa a presença para todos; só a contagem dela é do gestor.
+    private fun AthleteStatsAggregate.confirmedGames(): Int = eligibleGames - absences - noShows
 }
