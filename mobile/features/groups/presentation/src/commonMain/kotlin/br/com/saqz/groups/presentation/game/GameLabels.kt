@@ -32,7 +32,6 @@ import br.com.saqz.groups.resources.home_month_september
 import br.com.saqz.groups.resources.home_month_september_long
 import br.com.saqz.groups.resources.home_time
 import br.com.saqz.groups.resources.home_waitlist_reserva_bell
-import br.com.saqz.groups.resources.past_games_month_header
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -73,10 +72,6 @@ internal suspend fun gameShortMonthLabel(month: Int): String = getString(month.s
 
 /** "agosto" — minúsculo, como a chave; [month] de 1 a 12. */
 private suspend fun gameLongMonthLabel(month: Int): String = getString(month.longMonthResource())
-
-/** "OUTUBRO DE 2026" — cabeçalho de mês da lista de jogos anteriores (JOGO-011). */
-internal suspend fun gameMonthYearHeader(month: Int, year: Int): String =
-    getString(Res.string.past_games_month_header, gameLongMonthLabel(month), year).uppercase()
 
 /** "Terça, 19h30" */
 internal suspend fun LocalDateTime.gameHeroDisplay(): String =

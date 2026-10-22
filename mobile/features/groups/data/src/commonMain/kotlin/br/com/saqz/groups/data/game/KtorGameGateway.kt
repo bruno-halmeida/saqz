@@ -16,6 +16,9 @@ import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.game.GameVersionToken
 import br.com.saqz.groups.domain.game.GameWriteCommand
+import br.com.saqz.groups.domain.game.PastGame
+import br.com.saqz.groups.domain.game.PastGamesGateway
+import br.com.saqz.groups.domain.game.PastGamesPage
 import br.com.saqz.groups.domain.game.SeriesBoundaryAction
 import br.com.saqz.groups.domain.game.SeriesBoundaryCommand
 import br.com.saqz.groups.domain.game.SeriesBoundaryScope
@@ -431,36 +434,41 @@ internal data class PastGameTransport(
 internal data class PastGamesPageTransport(val games: List<PastGameTransport> = emptyList(), val nextCursor: String? = null)
 
 /** JOGO-011 e PRES-016: rotas só do gestor. */
-class KtorPastGamesGateway(private val network: AuthenticatedNetworkClient) : br.com.saqz.groups.domain.game.PastGamesGateway {
-    override suspend fun page(groupId: GroupId, cursor: String?): SaqzResult<br.com.saqz.groups.domain.game.PastGamesPage, GameError> {
+class KtorPastGamesGateway(private val network: AuthenticatedNetworkClient) : PastGamesGateway {
+    override suspend fun page(groupId: GroupId, cursor: String?): SaqzResult<PastGamesPage, GameError> {
         val query = cursor?.let { "?cursor=${it.encodeURLQueryComponent()}" }.orEmpty()
-        return when (
-            val result = retryTransport(RetrySafety.Read) {
-                network.execute(HttpMethod.Get, "api/groups/${groupId.value}/games/past$query", PastGamesPageTransport.serializer())
-            }
-        ) {
+        val result = retryTransport(RetrySafety.Read) {
+            network.execute(HttpMethod.Get, "api/groups/${groupId.value}/games/past$query", PastGamesPageTransport.serializer())
+        }
+        return when (result) {
             is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
             is NetworkResult.Success -> SaqzResult.Success(
-                br.com.saqz.groups.domain.game.PastGamesPage(
-                    result.value.games.mapNotNull { game ->
-                        val status = GameStatus.entries.firstOrNull { it.name.equals(game.status, ignoreCase = true) } ?: return@mapNotNull null
-                        br.com.saqz.groups.domain.game.PastGame(
-                            game.id, game.localDate, game.localTime.take(5), game.zoneId, game.startsAt, status,
-                            game.confirmedCount, game.capacity, game.venueName, game.pendingChargeCount, game.pendingChargeCents,
-                        )
-                    },
-                    result.value.nextCursor?.takeIf(String::isNotBlank),
-                ),
+                PastGamesPage(result.value.games.mapNotNull { it.toDomain() }, result.value.nextCursor?.takeIf(String::isNotBlank)),
             )
         }
     }
 
-    override suspend fun setNoShow(groupId: GroupId, gameId: String, memberId: String, guestSeq: Int, marked: Boolean): SaqzResult<Unit, GameError> {
+    override suspend fun setNoShow(
+        groupId: GroupId,
+        gameId: String,
+        memberId: String,
+        guestSeq: Int,
+        marked: Boolean,
+    ): SaqzResult<Unit, GameError> {
         val route = "api/groups/${groupId.value}/games/$gameId/attendance/no-show/$memberId/$guestSeq"
+        val method = if (marked) HttpMethod.Put else HttpMethod.Delete
         // PUT e DELETE são idempotentes no servidor: repetir depois de falha de rede é seguro.
-        return when (val result = retryTransport(RetrySafety.IdempotentWrite) { network.executeNoContent(if (marked) HttpMethod.Put else HttpMethod.Delete, route) }) {
+        return when (val result = retryTransport(RetrySafety.IdempotentWrite) { network.executeNoContent(method, route) }) {
             is NetworkResult.Success -> SaqzResult.Success(Unit)
             is NetworkResult.Failure -> SaqzResult.Failure(result.error.toDomain())
         }
     }
+}
+
+private fun PastGameTransport.toDomain(): PastGame? {
+    val parsed = GameStatus.entries.firstOrNull { it.name.equals(status, ignoreCase = true) } ?: return null
+    return PastGame(
+        id, localDate, localTime.take(5), zoneId, startsAt, parsed,
+        confirmedCount, capacity, venueName, pendingChargeCount, pendingChargeCents,
+    )
 }

@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,9 +115,10 @@ private fun PastGamesList(state: PastGamesState, onIntent: (PastGamesIntent) -> 
                 last.offset + last.size <= info.viewportEndOffset + LoadMoreThresholdPx
         }
     }
+    val currentOnIntent by rememberUpdatedState(onIntent)
     LaunchedEffect(listState, state.canLoadMore) {
         snapshotFlow { nearEnd }.distinctUntilChanged().filter { it }.collect {
-            if (state.canLoadMore) onIntent(PastGamesIntent.LoadMore)
+            if (state.canLoadMore) currentOnIntent(PastGamesIntent.LoadMore)
         }
     }
     LazyColumn(

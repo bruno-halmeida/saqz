@@ -89,7 +89,11 @@ internal fun UpcomingGameRow(
         val trailingSlot = remember { movableContentOf { currentTrailing() } }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
             Column {
-                Text(text = title, style = SaqzTheme.typography.compactTitle, color = if (muted) colors.textSecondary else colors.textPrimary)
+                Text(
+                    text = title,
+                    style = SaqzTheme.typography.compactTitle,
+                    color = if (muted) colors.textSecondary else colors.textPrimary,
+                )
                 Text(text = meta, style = SaqzTheme.typography.compactMeta, color = colors.textSecondary)
                 if (alert != null) {
                     Text(

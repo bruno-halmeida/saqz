@@ -438,7 +438,6 @@ class GameDetailViewModel(
         if (generation != loadGeneration) return
         val profileResult = athleteGateway.ownProfile()
         val hero = game.toHero(AttendanceRule.priorityWindow(groupMensalistaPriority, game.confirmationDeadline, game.startsAt))
-        if (generation != loadGeneration) return
         val settlementPending = if (isAdmin && game.status == GameStatus.Completed) settlementPending() else null
         val noShow = game.noShowUi(isAdmin && pastGames != null)
         if (generation != loadGeneration) return

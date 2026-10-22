@@ -10,7 +10,7 @@ import br.com.saqz.groups.domain.game.PastGame
 import br.com.saqz.groups.domain.game.PastGamesGateway
 import br.com.saqz.groups.domain.group.GroupGateway
 import br.com.saqz.groups.presentation.game.gameDateLabel
-import br.com.saqz.groups.presentation.game.gameMonthYearHeader
+import br.com.saqz.groups.presentation.game.gameLongDateLabel
 import br.com.saqz.groups.presentation.game.gameShortMonthLabel
 import br.com.saqz.groups.presentation.game.gameTimeLabel
 import br.com.saqz.groups.presentation.game.gameTimeZone
@@ -22,6 +22,7 @@ import br.com.saqz.groups.resources.home_upcoming_row_title
 import br.com.saqz.groups.resources.past_games_meta
 import br.com.saqz.groups.resources.past_games_meta_cancelled
 import br.com.saqz.groups.resources.past_games_meta_venue
+import br.com.saqz.groups.resources.past_games_month_header
 import br.com.saqz.groups.resources.past_games_pending
 import br.com.saqz.groups.resources.past_games_status_cancelled
 import br.com.saqz.groups.resources.past_games_status_completed
@@ -125,7 +126,7 @@ internal class PastGamesViewModel(
         }
         return PastGameRowUi(
             gameId = id,
-            monthHeader = gameMonthYearHeader(local.date.month.ordinal + 1, local.date.year),
+            monthHeader = gameMonthYearHeader(local.date),
             day = local.day.toString(),
             month = gameShortMonthLabel(local.date.month.ordinal + 1),
             title = getString(Res.string.home_upcoming_row_title, weekday, time),
@@ -139,3 +140,7 @@ internal class PastGamesViewModel(
         )
     }
 }
+
+/** "OUTUBRO DE 2026": cabeçalho de mês da lista; o mês sai do "20 de outubro" que o app já escreve. */
+private suspend fun gameMonthYearHeader(date: kotlinx.datetime.LocalDate): String =
+    getString(Res.string.past_games_month_header, date.gameLongDateLabel().substringAfter(" de "), date.year).uppercase()
