@@ -177,6 +177,13 @@ class GameSettlementViewModelTest {
     }
 
     @Test
+    fun `header counts who played without who did not show up PRES-016`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(charges = charges(), expenses = expenses()), pedroNoShow = true)
+
+        assertEquals(2, viewModel.state.value.header?.playersCount)
+    }
+
+    @Test
     fun `guestChargeShowsTheGuestAndWhoPays`() = runTest {
         val finance = SettlementFinanceGateway(
             charges = listOf(
@@ -840,6 +847,7 @@ class GameSettlementViewModelTest {
             status = br.com.saqz.groups.domain.game.GameStatus.Completed,
             venue = br.com.saqz.groups.domain.game.GameVenue("venue", "CERET", "Rua", "Quadra 2"),
         ),
+        pedroNoShow: Boolean = false,
     ) = GameSettlementViewModel(
         groupId = "group-1",
         gameId = "game-1",
@@ -855,7 +863,7 @@ class GameSettlementViewModelTest {
                     confirmed = listOf(
                         AttendanceRosterMember("member-monthly", "Bia"),
                         AttendanceRosterMember("member-avulso-paid", "Camila"),
-                        AttendanceRosterMember("member-avulso-pending", "Pedro"),
+                        AttendanceRosterMember("member-avulso-pending", "Pedro", noShow = pedroNoShow),
                     ),
                     waitlisted = emptyList(),
                 ),
@@ -873,9 +881,10 @@ class GameSettlementViewModelTest {
         organizerFinanceGateway = finance,
     )
 
-    /** Pedro confirmou, desistiu e a diária dele segue pendente. */
+    /** Pedro confirmou, não apareceu e a diária dele segue pendente (PRES-016). */
     private fun noShowCharges() = charges().map { if (it.id == "game-pending") it.copy(noShow = true) else it }
 
+    /** Pedro confirmou, desistiu e a diária dele segue pendente. */
     private fun withdrewCharges() = charges().map { if (it.id == "game-pending") it.copy(withdrew = true) else it }
 
     private fun charges() = listOf(

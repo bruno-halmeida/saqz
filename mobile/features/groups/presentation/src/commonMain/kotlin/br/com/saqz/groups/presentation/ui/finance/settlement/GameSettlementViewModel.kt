@@ -594,7 +594,8 @@ class GameSettlementViewModel(
             header = GameSettlementHeaderUi(
                 dateTime = dateTime,
                 venue = listOfNotNull(game.venue.name, game.venue.court).joinToString(" — "),
-                playersCount = roster.confirmed.size,
+                // PRES-016: quem faltou não jogou.
+                playersCount = roster.confirmed.count { !it.noShow },
             ),
             monthlyMemberCount = monthlyMemberCount,
             paidDiaristCount = paid.size,
