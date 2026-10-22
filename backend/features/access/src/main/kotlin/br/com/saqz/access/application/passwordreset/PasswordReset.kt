@@ -70,10 +70,31 @@ class PasswordReset(
             )
         }
 
+        // Teto de códigos por e-mail, contado só quando um código novo foi emitido (o reenvio
+        // cedo demais não gasta a cota de ninguém). Sem ele, cinco palpites por código e um
+        // código novo a cada 60 s esgotariam os dez mil números de um alvo fixo em um dia; com
+        // ele, são no máximo 30 palpites por hora e 60 por dia. O código estourado é
+        // descartado antes de qualquer entrega, e a conta vale exista o e-mail ou não.
+        emailQuotaExceeded(email, now)?.let { retryAfter ->
+            repository.retireCode(email)
+            return RequestCodeResult.RateLimited(retryAfter)
+        }
+
         // A linha é gravada exista a conta ou não: é ela que segura a janela de reenvio,
         // e uma janela que só existisse para quem tem conta seria o oráculo de volta.
         if (accounts.exists(email)) deliver(email, code)
         return RequestCodeResult.Accepted
+    }
+
+    /** Segundos até a cota por e-mail liberar, ou null se ainda há cota na hora e no dia. */
+    private fun emailQuotaExceeded(email: String, now: Instant): Int? {
+        val hour = repository.recordRateLimit("request-email-hour:$email", now, now.minus(EMAIL_HOUR_WINDOW))
+        val day = repository.recordRateLimit("request-email-day:$email", now, now.minus(EMAIL_DAY_WINDOW))
+        return when {
+            day.count > MAX_CODES_PER_EMAIL_DAY -> secondsUntil(now, day.startedAt.plus(EMAIL_DAY_WINDOW))
+            hour.count > MAX_CODES_PER_EMAIL_HOUR -> secondsUntil(now, hour.startedAt.plus(EMAIL_HOUR_WINDOW))
+            else -> null
+        }
     }
 
     fun verify(rawEmail: String, rawCode: String, ip: String): VerifyCodeResult {
@@ -162,6 +183,10 @@ class PasswordReset(
         val RATE_LIMIT_WINDOW: Duration = Duration.ofMinutes(10)
         const val MAX_ATTEMPTS = 5
         const val MAX_REQUESTS_PER_IP = 10
+        val EMAIL_HOUR_WINDOW: Duration = Duration.ofHours(1)
+        val EMAIL_DAY_WINDOW: Duration = Duration.ofHours(24)
+        const val MAX_CODES_PER_EMAIL_HOUR = 6
+        const val MAX_CODES_PER_EMAIL_DAY = 12
         const val MAX_VERIFICATIONS_PER_IP = 30
         const val MIN_PASSWORD_LENGTH = 8
         const val MAX_PASSWORD_LENGTH = 128

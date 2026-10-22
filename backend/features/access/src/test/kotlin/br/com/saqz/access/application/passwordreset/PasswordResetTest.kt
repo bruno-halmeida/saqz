@@ -158,6 +158,57 @@ class PasswordResetTest {
     }
 
     @Test
+    fun `o setimo codigo na mesma hora e recusado e descartado sem entrega`() {
+        repeat(PasswordReset.MAX_CODES_PER_EMAIL_HOUR) { index ->
+            assertEquals(RequestCodeResult.Accepted, useCase.request("atleta@saqz.test", "10.0.0.$index"))
+            clock.advance(Duration.ofSeconds(61))
+        }
+        val sentBefore = notifier.sent.size
+
+        val result = useCase.request("atleta@saqz.test", "10.0.0.99")
+
+        assertTrue(result is RequestCodeResult.RateLimited)
+        assertEquals(sentBefore, notifier.sent.size)
+        assertEquals(VerifyCodeResult.Expired, useCase.verify("atleta@saqz.test", "1234", "10.0.0.99"))
+    }
+
+    @Test
+    fun `o teto por e-mail conta igual para e-mail sem conta`() {
+        repeat(PasswordReset.MAX_CODES_PER_EMAIL_HOUR) { index ->
+            assertEquals(RequestCodeResult.Accepted, useCase.request("ninguem@saqz.test", "10.0.0.$index"))
+            clock.advance(Duration.ofSeconds(61))
+        }
+
+        assertTrue(useCase.request("ninguem@saqz.test", "10.0.0.99") is RequestCodeResult.RateLimited)
+    }
+
+    @Test
+    fun `reenvio cedo demais nao gasta a cota por e-mail`() {
+        useCase.request("atleta@saqz.test", "10.0.0.1")
+        repeat(20) { index ->
+            clock.advance(Duration.ofSeconds(1))
+            assertTrue(useCase.request("atleta@saqz.test", "10.0.0.$index") is RequestCodeResult.TooSoon)
+        }
+        clock.advance(Duration.ofSeconds(61))
+
+        assertEquals(RequestCodeResult.Accepted, useCase.request("atleta@saqz.test", "10.0.0.50"))
+    }
+
+    @Test
+    fun `o teto diario segura mesmo com a hora liberada`() {
+        repeat(PasswordReset.MAX_CODES_PER_EMAIL_DAY) {
+            assertEquals(RequestCodeResult.Accepted, useCase.request("atleta@saqz.test", "10.0.0.1"))
+            clock.advance(Duration.ofMinutes(11))
+        }
+        clock.advance(Duration.ofHours(2))
+
+        val result = useCase.request("atleta@saqz.test", "10.0.0.1")
+
+        assertTrue(result is RequestCodeResult.RateLimited)
+        assertTrue(result.retryAfterSeconds > Duration.ofHours(1).seconds)
+    }
+
+    @Test
     fun `limita verificacoes por IP`() {
         useCase.request("atleta@saqz.test", "10.0.0.1")
 
