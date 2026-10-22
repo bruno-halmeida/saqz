@@ -8,6 +8,8 @@ import br.com.saqz.groups.application.communication.GroupCommunicationService
 import br.com.saqz.groups.application.communication.MessageChannel
 import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
+import br.com.saqz.groups.application.communication.rosterDigest
+import br.com.saqz.groups.domain.attendance.GameSystem
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupInfo
 import br.com.saqz.groups.testing.allGroupFeatureMigrationLocations
@@ -20,6 +22,7 @@ import java.sql.Types
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -54,7 +57,7 @@ class AttendanceUpdatesModeIntegrationTest {
         jdbc.sql("TRUNCATE games CASCADE").update()
         jdbc.sql("TRUNCATE group_messages CASCADE").update()
         jdbc.sql("DELETE FROM group_position_slots").update()
-        jdbc.sql("UPDATE access_groups SET attendance_updates_mode = 'SCHEDULED', game_system = NULL, promotion_mode = 'FIFO', mensalista_priority = true")
+        jdbc.sql("UPDATE access_groups SET attendance_updates_mode = 'SCHEDULED', game_system = NULL, play_style = NULL, promotion_mode = 'FIFO', mensalista_priority = true")
             .update()
         sequence = 0
     }
@@ -159,6 +162,32 @@ class AttendanceUpdatesModeIntegrationTest {
             body,
         )
         println("CORPO 5-1:\n$body")
+    }
+
+    @Test fun `a six zero play style without position slots prints the numbered body and changes the digest`() {
+        jdbc.sql("UPDATE access_groups SET mensalista_priority = false").update()
+        val game = game(capacity = 3)
+        attend(game, member("Ana"), "CONFIRMED")
+        attend(game, member("Caio"), "WAITLISTED")
+        val legacyDigest = rosterDigest(repository.reminderRoster(group, game))
+        jdbc.sql("UPDATE access_groups SET play_style = 'SIX_ZERO'").update()
+        val roster = repository.reminderRoster(group, game)
+        assertEquals(GameSystem.SIX_ZERO, roster.layout?.system)
+        assertNotEquals(legacyDigest, rosterDigest(roster))
+        val body = service.remind(owner, group, game, UUID.randomUUID()).success().body
+        assertTrue(body.endsWith("Vagas: 1/3\n\n✅ Confirmados:\n1. Ana\n2.\n3.\n\n🕒 Lista de espera:\n1. Caio"), body)
+    }
+
+    @Test fun `five one and four two play styles without position slots keep the body without numbers`() {
+        for (style in listOf("FIVE_ONE", "FOUR_TWO")) {
+            jdbc.sql("TRUNCATE games CASCADE").update()
+            jdbc.sql("UPDATE access_groups SET play_style = '$style'").update()
+            val game = game(capacity = 3)
+            attend(game, member("Ana$style"), "CONFIRMED")
+            val body = service.remind(owner, group, game, UUID.randomUUID()).success().body
+            assertTrue(body.endsWith("Vagas: 1/3\n\n✅ Confirmados:\nAna$style"), "$style: $body")
+            assertNull(repository.reminderRoster(group, game).layout, style)
+        }
     }
 
     @Test fun `a legacy game keeps the body without numbers`() {

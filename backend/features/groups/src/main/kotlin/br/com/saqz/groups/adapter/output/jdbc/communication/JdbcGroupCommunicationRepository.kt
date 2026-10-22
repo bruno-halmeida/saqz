@@ -230,11 +230,13 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
 
     /**
      * Sistema de jogo do grupo e vagas por posição do jogo. Grupo sem sistema é legado (null); grupo 5-1 com jogo que
-     * nasceu sem as vagas por posição também, porque a lista não tem como sair por posição.
+     * nasceu sem as vagas por posição também, porque a lista não tem como sair por posição. O 6-0 não depende de vagas:
+     * grupo com estilo 6-0 no editor e sem vagas por posição configuradas também sai numerado (DEB-134).
      */
     private fun rosterLayout(groupId: UUID, gameId: UUID): Triple<GameSystem, Map<AthletePosition, Int>, Boolean>? {
         val config = jdbc.sql(
-            "SELECT game_system, promotion_mode = 'FIFO' AND NOT mensalista_priority AS numbered FROM access_groups WHERE id = :group",
+            "SELECT COALESCE(game_system, CASE WHEN play_style = 'SIX_ZERO' THEN 'SIX_ZERO' END) AS game_system, " +
+                "promotion_mode = 'FIFO' AND NOT mensalista_priority AS numbered FROM access_groups WHERE id = :group",
         ).param("group", groupId).query { rs, _ ->
             rs.getString("game_system")?.let { GameSystem.valueOf(it) to rs.getBoolean("numbered") }
         }.optional().orElse(null) ?: return null
