@@ -39,7 +39,7 @@ class AttendanceHistoryScreenTest {
         rows = listOf(
             row("1", "HOJE", "Felipe Nunes subiu da espera", "19h32 · automático, a vaga de Carla abriu", "Vai", AttendanceHistoryTone.Going),
             row("2", "HOJE", "Bruno tirou Pedro Lima do jogo", "18h05 · organizador", "Não vai", AttendanceHistoryTone.NotGoing, reason = "Motivo: \"pediu para sair\""),
-            row("3", "HOJE", "Felipe Nunes entrou na espera", "17h40 · jogo estava cheio", "Espera", AttendanceHistoryTone.Waiting),
+            row("3", "HOJE", "Felipe Nunes entrou na espera", "17h40", "Espera", AttendanceHistoryTone.Waiting),
             row("4", "ONTEM", "Ana Souza levou um convidado", "21h10 · convidado(a) de Ana", "Vai", AttendanceHistoryTone.Going, guest = true),
         ),
     )

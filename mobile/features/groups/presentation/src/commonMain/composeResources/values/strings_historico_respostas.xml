@@ -34,7 +34,6 @@
     <string name="history_freed_by">automático, a vaga de %1$s abriu</string>
     <string name="history_freed_by_guest">automático, a vaga do convidado de %1$s abriu</string>
     <string name="history_was_confirmed">estava confirmado(a)</string>
-    <string name="history_game_full">jogo estava cheio</string>
     <string name="history_after_deadline">depois do prazo</string>
     <string name="history_reason">Motivo: "%1$s"</string>
 

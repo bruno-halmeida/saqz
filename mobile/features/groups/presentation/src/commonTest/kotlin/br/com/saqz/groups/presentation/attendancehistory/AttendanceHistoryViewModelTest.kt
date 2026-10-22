@@ -73,7 +73,7 @@ class AttendanceHistoryViewModelTest {
         assertEquals(
             listOf(
                 "19h32 · automático, a vaga de Carla abriu", "19h31 · estava confirmado(a)", "18h05 · organizador",
-                "17h40 · jogo estava cheio", "21h10 · convidado(a) de Ana", "20h15", "20h01", "09h00 · depois do prazo",
+                "17h40", "21h10 · convidado(a) de Ana", "20h15", "20h01", "09h00 · depois do prazo",
             ),
             rows.map { it.meta },
         )

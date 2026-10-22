@@ -30,7 +30,6 @@ import br.com.saqz.groups.resources.history_day
 import br.com.saqz.groups.resources.history_declined
 import br.com.saqz.groups.resources.history_freed_by
 import br.com.saqz.groups.resources.history_freed_by_guest
-import br.com.saqz.groups.resources.history_game_full
 import br.com.saqz.groups.resources.history_gave_up
 import br.com.saqz.groups.resources.history_guest_joined
 import br.com.saqz.groups.resources.history_guest_left
@@ -259,8 +258,8 @@ internal class AttendanceHistoryViewModel(
         source == AttendanceHistorySource.Organizer -> getString(Res.string.history_by_organizer)
         guestSeq > 0 -> getString(Res.string.history_guest_of, firstName(memberName))
         kind == AttendanceHistoryKind.GaveUp -> getString(Res.string.history_was_confirmed)
-        kind == AttendanceHistoryKind.Waitlisted ->
-            getString(if (afterDeadline) Res.string.history_after_deadline else Res.string.history_game_full)
+        // A espera antes do prazo pode ser jogo cheio ou a prioridade de mensalista: sem saber, fica só a hora.
+        kind == AttendanceHistoryKind.Waitlisted && afterDeadline -> getString(Res.string.history_after_deadline)
         else -> null
     }
 
