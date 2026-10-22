@@ -556,6 +556,16 @@ class AccessSessionConfiguration {
         br.com.saqz.groups.adapter.input.http.PastGamesController(actor, pastGames)
 
     @Bean
+    fun attendanceHistoryController(actor: VerifiedGroupActorResolver, dataSource: DataSource, photos: MemberPhotoDirectory) =
+        br.com.saqz.groups.adapter.input.http.AttendanceHistoryController(
+            actor,
+            br.com.saqz.groups.application.game.AttendanceHistory(
+                br.com.saqz.groups.adapter.output.jdbc.game.JdbcAttendanceHistoryRepository(dataSource),
+            ),
+            photos,
+        )
+
+    @Bean
     fun groupSummariesReadRepository(dataSource: DataSource) = JdbcGroupSummariesReadRepository(dataSource)
 
     @Bean
