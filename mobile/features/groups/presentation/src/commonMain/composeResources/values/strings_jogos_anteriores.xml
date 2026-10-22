@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- JOGO-011 · Jogos anteriores (só dono e admin). O par é Próximos / Anteriores; nunca "publicados". -->
+    <string name="past_games_title">Jogos anteriores</string>
+    <string name="past_games_month_header">%1$s de %2$d</string>
+    <string name="past_games_meta">%1$d de %2$d foram</string>
+    <string name="past_games_meta_venue">%1$d de %2$d foram · %3$s</string>
+    <plurals name="past_games_meta_cancelled">
+        <item quantity="one">Cancelado com %1$d confirmado</item>
+        <item quantity="other">Cancelado com %1$d confirmados</item>
+    </plurals>
+    <string name="past_games_status_completed">Encerrado</string>
+    <string name="past_games_status_cancelled">Cancelado</string>
+    <plurals name="past_games_pending">
+        <item quantity="one">Acerto pendente · %1$d pessoa, %2$s</item>
+        <item quantity="other">Acerto pendente · %1$d pessoas, %2$s</item>
+    </plurals>
+    <string name="past_games_loading_more">Carregando mais jogos</string>
+    <string name="past_games_load_more_failed">Não foi possível carregar mais jogos.</string>
+    <string name="past_games_load_more_retry">Tentar de novo</string>
+    <string name="past_games_empty">Nenhum jogo anterior ainda.</string>
+</resources>

@@ -28,9 +28,9 @@ import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzLargeFontScale
 import br.com.saqz.designsystem.theme.SaqzTheme
 
-/** Tile de data ice 44dp: dia em `dateDay`, mês em `dateMonth` azul. */
+/** Tile de data ice 44dp: dia em `dateDay`, mês em `dateMonth` azul; [muted] apaga os dois (jogo cancelado). */
 @Composable
-internal fun DateTile(day: String, month: String, modifier: Modifier = Modifier) {
+internal fun DateTile(day: String, month: String, modifier: Modifier = Modifier, muted: Boolean = false) {
     val colors = SaqzTheme.colors
     Column(
         modifier = modifier
@@ -41,8 +41,8 @@ internal fun DateTile(day: String, month: String, modifier: Modifier = Modifier)
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = day, style = SaqzTheme.typography.dateDay, color = colors.textPrimary)
-        Text(text = month, style = SaqzTheme.typography.dateMonth, color = colors.primary)
+        Text(text = day, style = SaqzTheme.typography.dateDay, color = if (muted) colors.textSecondary else colors.textPrimary)
+        Text(text = month, style = SaqzTheme.typography.dateMonth, color = if (muted) colors.textSecondary else colors.primary)
     }
 }
 
@@ -63,6 +63,8 @@ internal fun UpcomingGameRow(
     modifier: Modifier = Modifier,
     /** Terceira linha em âmbar ("Faltam: Central, Oposto(a)", DEB-109); nula, nada. */
     alert: String? = null,
+    /** Linha apagada: título e tile em cinza (jogo cancelado em "Jogos anteriores", JOGO-011). */
+    muted: Boolean = false,
     trailing: @Composable () -> Unit,
 ) {
     val colors = SaqzTheme.colors
@@ -78,7 +80,7 @@ internal fun UpcomingGameRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
     ) {
-        DateTile(day = day, month = month)
+        DateTile(day = day, month = month, muted = muted)
         // Fonte grande: o chip à direita tomava a largura e o texto quebrava letra a letra ("confirmad/os").
         // Ele desce para baixo do texto e a coluna ganha a linha inteira.
         val stackTrailing = LocalDensity.current.fontScale >= SaqzLargeFontScale
@@ -87,7 +89,7 @@ internal fun UpcomingGameRow(
         val trailingSlot = remember { movableContentOf { currentTrailing() } }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
             Column {
-                Text(text = title, style = SaqzTheme.typography.compactTitle, color = colors.textPrimary)
+                Text(text = title, style = SaqzTheme.typography.compactTitle, color = if (muted) colors.textSecondary else colors.textPrimary)
                 Text(text = meta, style = SaqzTheme.typography.compactMeta, color = colors.textSecondary)
                 if (alert != null) {
                     Text(

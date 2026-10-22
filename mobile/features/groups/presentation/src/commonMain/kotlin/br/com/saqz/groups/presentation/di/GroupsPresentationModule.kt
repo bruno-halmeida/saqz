@@ -111,6 +111,7 @@ fun groupsPresentationModule(): Module = module {
     }
     viewModel { params -> br.com.saqz.groups.presentation.communication.NotificationCenterViewModel(params.get(), get(), get()) }
     viewModel { params -> GroupScheduleViewModel(params.get(), get(), get()) }
+    viewModel { params -> br.com.saqz.groups.presentation.pastgames.PastGamesViewModel(params.get(), get(), get()) }
     viewModel { params ->
         val (groupId, gameId) = gameEditorRouteArguments(params)
         GameEditorViewModel(groupId, gameId, params.get(), get(), get(), get(), getOrNull(), getOrNull(), getOrNull())

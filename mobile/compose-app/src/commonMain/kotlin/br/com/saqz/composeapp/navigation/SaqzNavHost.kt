@@ -1193,6 +1193,13 @@ internal fun SaqzNavHost(
                         },
                     )
                 }
+                entry<GroupsRoute.PastGames> { route ->
+                    br.com.saqz.groups.presentation.ui.pastgames.PastGamesRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        onOpenGame = { gameId -> backStack.add(GroupsRoute.GameDetail(route.groupId, gameId)) },
+                    )
+                }
                 entry<GroupsRoute.GameEditor> { route ->
                     GameEditorRoot(
                         groupId = route.groupId,
