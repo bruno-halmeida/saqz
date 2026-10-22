@@ -10,6 +10,8 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.domain.group.GroupRole
+import br.com.saqz.groups.model.AttendanceUpdatesMode
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.group.GroupProfileError
@@ -1131,6 +1133,41 @@ class GroupSetupViewModelTest {
         )
         val restored = editViewModel(groupWithMonthly(), profileGateway, handle)
         assertEquals(MonthlyLateJoinPolicy.NEXT_MONTH, restored.state.value.form.monthlyLateJoinPolicy)
+    }
+
+    @Test
+    fun `lista no WhatsApp abre por horario e o dono troca para a cada confirmacao`() = runTest(mainDispatcher) {
+        val handle = SavedStateHandle()
+        val group = groupWithMonthly().copy(role = GroupRole.OWNER)
+        val profileGateway = FakeGroupProfileGateway(
+            readResult = SaqzResult.Success(br.com.saqz.groups.presentation.sampleVersionedGroup(group)),
+        )
+        val viewModel = editViewModel(group, profileGateway, handle)
+        assertEquals(AttendanceUpdatesMode.SCHEDULED, viewModel.state.value.form.attendanceUpdatesMode)
+        assertTrue(viewModel.state.value.canChangeAttendanceUpdates)
+
+        viewModel.onIntent(GroupSetupIntent.SelectAttendanceUpdatesMode(AttendanceUpdatesMode.ON_CHANGE))
+        viewModel.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
+
+        assertEquals(
+            br.com.saqz.groups.domain.group.AttendanceUpdatesMode.ON_CHANGE,
+            profileGateway.lastUpdateCommand?.form?.attendanceUpdatesMode,
+        )
+        val restored = editViewModel(group, profileGateway, handle)
+        assertEquals(AttendanceUpdatesMode.ON_CHANGE, restored.state.value.form.attendanceUpdatesMode)
+    }
+
+    @Test
+    fun `lista no WhatsApp le o modo do grupo e so o dono troca`() = runTest(mainDispatcher) {
+        val onChange = groupWithMonthly().copy(
+            gameConfig = br.com.saqz.groups.domain.group.GroupGameConfig(
+                attendanceUpdatesMode = br.com.saqz.groups.domain.group.AttendanceUpdatesMode.ON_CHANGE,
+            ),
+        )
+        assertEquals(AttendanceUpdatesMode.ON_CHANGE, editViewModel(onChange).state.value.form.attendanceUpdatesMode)
+        val admin = editViewModel(onChange.copy(role = GroupRole.ADMIN))
+        assertEquals(false, admin.state.value.canChangeAttendanceUpdates)
     }
 
     @Test

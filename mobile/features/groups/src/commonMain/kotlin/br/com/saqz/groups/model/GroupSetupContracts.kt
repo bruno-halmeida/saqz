@@ -16,6 +16,9 @@ enum class PromotionMode { FIFO, MANUAL }
 
 enum class MonthlyLateJoinPolicy { GROUP_DUE_DATE, JOIN_DATE, NEXT_MONTH }
 
+/** Lista no grupo do WhatsApp: nos horários fixos (9h, 12h30, 18h) ou a cada confirmação. */
+enum class AttendanceUpdatesMode { SCHEDULED, ON_CHANGE }
+
 data class GroupVenueForm(
     val id: String? = null,
     val name: String,
@@ -51,6 +54,8 @@ data class GroupSetupForm(
     val promotionMode: PromotionMode = PromotionMode.FIFO,
     /** Nulo quando o backend não manda o campo: a tela esconde o seletor e o PUT não o envia. */
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
+    /** Nulo = não enviar (o backend mantém). Só o dono troca. */
+    val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

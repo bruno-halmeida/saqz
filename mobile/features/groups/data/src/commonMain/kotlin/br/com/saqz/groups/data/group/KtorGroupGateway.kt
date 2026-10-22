@@ -90,6 +90,8 @@ internal data class GroupFinanceDefaultsDto(
 internal data class GroupGameConfigDto(
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionModeDto = PromotionModeDto.FIFO,
+    // String e não enum: um valor novo do backend não pode derrubar a leitura do grupo.
+    val attendanceUpdatesMode: String? = null,
 )
 
 @Serializable
@@ -157,6 +159,7 @@ private data class CompleteGroupRequestDto(
     val timeZone: String? = null,
     val mensalistaPriority: Boolean? = null,
     val promotionMode: String? = null,
+    val attendanceUpdatesMode: String? = null,
     val pixKey: String? = null,
     val pixLabel: String? = null,
 )
@@ -282,6 +285,8 @@ private fun GroupDto.toDomain(): Group? {
         gameConfig = GroupGameConfig(
             mensalistaPriority = gameConfig.mensalistaPriority,
             promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
+            attendanceUpdatesMode = AttendanceUpdatesMode.entries.firstOrNull { it.name == gameConfig.attendanceUpdatesMode }
+                ?: AttendanceUpdatesMode.SCHEDULED,
         ),
         entryRequiresApproval = entryRequiresApproval,
     )
@@ -343,6 +348,7 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
         timeZone = timeZone,
         mensalistaPriority = form.mensalistaPriority,
         promotionMode = form.promotionMode.name,
+        attendanceUpdatesMode = form.attendanceUpdatesMode?.name,
         pixKey = form.pixKey,
         pixLabel = form.pixLabel,
     )

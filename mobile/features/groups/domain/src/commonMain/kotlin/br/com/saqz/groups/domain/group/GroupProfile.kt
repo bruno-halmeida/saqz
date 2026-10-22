@@ -21,6 +21,9 @@ enum class PromotionMode { FIFO, MANUAL }
 /** O que cobrar de quem vira mensalista depois do dia de vencimento do mês em que entrou. */
 enum class MonthlyLateJoinPolicy { GROUP_DUE_DATE, JOIN_DATE, NEXT_MONTH }
 
+/** Lista no grupo do WhatsApp: nos horários fixos (9h, 12h30, 18h) ou a cada confirmação. */
+enum class AttendanceUpdatesMode { SCHEDULED, ON_CHANGE }
+
 @JvmInline value class GroupVersionToken(val value: String)
 @JvmInline value class GroupTimeZone(val id: String)
 
@@ -59,6 +62,8 @@ data class GroupProfile(
 data class GroupGameConfig(
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
+    /** Backend antigo não manda o campo: vale o de sempre, por horário. */
+    val attendanceUpdatesMode: AttendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED,
 )
 
 data class GroupFinanceDefaults(
@@ -117,6 +122,8 @@ data class GroupSetupForm(
     val pixLabel: String? = null,
     /** Nulo = não enviar (o backend mantém o que já tem). */
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
+    /** Nulo = não enviar (o backend mantém o que já tem). Só o dono troca. */
+    val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

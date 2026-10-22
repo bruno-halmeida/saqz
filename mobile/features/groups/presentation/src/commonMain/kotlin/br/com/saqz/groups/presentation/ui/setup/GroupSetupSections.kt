@@ -63,6 +63,7 @@ import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.model.GroupPlayStyle
 import br.com.saqz.groups.model.GroupRegularSlotForm
+import br.com.saqz.groups.model.AttendanceUpdatesMode
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.presentation.photo.GroupRemotePhotoRoot
@@ -85,6 +86,11 @@ import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_f
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_manual_off
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_hint_manual_on
 import br.com.saqz.groups.resources.group_game_config_mensalista_priority_label
+import br.com.saqz.groups.resources.group_attendance_updates_hint_on_change
+import br.com.saqz.groups.resources.group_attendance_updates_hint_scheduled
+import br.com.saqz.groups.resources.group_attendance_updates_on_change
+import br.com.saqz.groups.resources.group_attendance_updates_scheduled
+import br.com.saqz.groups.resources.group_attendance_updates_title
 import br.com.saqz.groups.resources.group_game_config_promotion_fifo
 import br.com.saqz.groups.resources.group_game_config_promotion_hint_fifo
 import br.com.saqz.groups.resources.group_game_config_promotion_hint_manual
@@ -567,3 +573,39 @@ private fun PromotionMode.label(): String = stringResource(
         PromotionMode.MANUAL -> Res.string.group_game_config_promotion_manual
     },
 )
+
+private val AttendanceUpdatesModeOptions = listOf(AttendanceUpdatesMode.SCHEDULED, AttendanceUpdatesMode.ON_CHANGE)
+
+/** Como a lista de presença chega ao grupo do WhatsApp; push e central não mudam. Só o dono vê. */
+@Composable
+internal fun GroupAttendanceUpdatesSection(
+    mode: AttendanceUpdatesMode,
+    onSelect: (AttendanceUpdatesMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    GroupFormCard(
+        title = stringResource(Res.string.group_attendance_updates_title),
+        hint = stringResource(
+            if (mode == AttendanceUpdatesMode.SCHEDULED) {
+                Res.string.group_attendance_updates_hint_scheduled
+            } else {
+                Res.string.group_attendance_updates_hint_on_change
+            },
+        ),
+        modifier = modifier,
+    ) {
+        SaqzSegmented(
+            options = AttendanceUpdatesModeOptions.map {
+                stringResource(
+                    when (it) {
+                        AttendanceUpdatesMode.SCHEDULED -> Res.string.group_attendance_updates_scheduled
+                        AttendanceUpdatesMode.ON_CHANGE -> Res.string.group_attendance_updates_on_change
+                    },
+                )
+            },
+            selected = AttendanceUpdatesModeOptions.indexOf(mode),
+            onSelect = { onSelect(AttendanceUpdatesModeOptions[it]) },
+            modifier = Modifier.testTag(GroupSetupTags.AttendanceUpdatesMode),
+        )
+    }
+}

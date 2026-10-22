@@ -30,6 +30,7 @@ import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupTimeZone
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.AttendanceUpdatesMode
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.port.GroupSystemTimeZonePort
@@ -156,6 +157,10 @@ class GroupSetupViewModel(
                 onGameConfigChange { copy(mensalistaPriority = intent.value) }
             is GroupSetupIntent.SelectPromotionMode ->
                 onGameConfigChange { copy(promotionMode = intent.value) }
+            is GroupSetupIntent.SelectAttendanceUpdatesMode -> {
+                onFormChange { copy(attendanceUpdatesMode = intent.value) }
+                savedState[KeyAttendanceUpdatesMode] = intent.value.name
+            }
             is GroupSetupIntent.SelectMonthlyLateJoinPolicy -> {
                 onFormChange { copy(monthlyLateJoinPolicy = intent.value) }
                 savedState[KeyMonthlyLateJoinPolicy] = intent.value.name
@@ -209,6 +214,7 @@ class GroupSetupViewModel(
                             saveFailed = false,
                             canDelete = group.role == GroupRole.OWNER,
                             canManageGameConfig = group.role != GroupRole.ATHLETE,
+                            canChangeAttendanceUpdates = group.role == GroupRole.OWNER,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
                             form = group.toForm(),
@@ -540,6 +546,11 @@ private fun GroupSetupForm.withSavedText(handle: SavedStateHandle): GroupSetupFo
         mensalistaPriority = handle.get<Boolean>(KeyMensalistaPriority) ?: this.mensalistaPriority,
         promotionMode = promotionMode ?: this.promotionMode,
         monthlyLateJoinPolicy = lateJoinPolicy,
+        attendanceUpdatesMode = attendanceUpdatesMode?.let {
+            handle.get<String>(KeyAttendanceUpdatesMode)
+                ?.let { saved -> AttendanceUpdatesMode.entries.firstOrNull { it.name == saved } }
+                ?: it
+        },
     )
 }
 
@@ -613,6 +624,9 @@ private fun GroupSetupForm.toDomain(
     },
     mensalistaPriority = mensalistaPriority,
     promotionMode = br.com.saqz.groups.domain.group.PromotionMode.valueOf(promotionMode.name),
+    attendanceUpdatesMode = attendanceUpdatesMode?.let {
+        br.com.saqz.groups.domain.group.AttendanceUpdatesMode.valueOf(it.name)
+    },
     pixKey = pixKey?.trim(),
     pixLabel = pixLabel?.trim(),
 ).cleaned()
@@ -640,6 +654,7 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     monthlyLateJoinPolicy = financeDefaults?.monthlyLateJoinPolicy?.let { MonthlyLateJoinPolicy.valueOf(it.name) },
     mensalistaPriority = gameConfig.mensalistaPriority,
     promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
+    attendanceUpdatesMode = AttendanceUpdatesMode.valueOf(gameConfig.attendanceUpdatesMode.name),
 )
 
 /**
@@ -669,4 +684,5 @@ private const val KeyVenueAddress = "group-setup-venue-address"
 private const val KeyMensalistaPriority = "group-setup-mensalista-priority"
 private const val KeyPromotionMode = "group-setup-promotion-mode"
 private const val KeyMonthlyLateJoinPolicy = "group-setup-monthly-late-join-policy"
+private const val KeyAttendanceUpdatesMode = "group-setup-attendance-updates-mode"
 private const val KeyCreationCommand = "group-setup-create-command-key"

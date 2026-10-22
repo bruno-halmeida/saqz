@@ -11,6 +11,7 @@ import br.com.saqz.groups.model.GroupRegularSlotForm
 import br.com.saqz.groups.model.GroupSetupForm
 import br.com.saqz.groups.model.GroupVenueForm
 import br.com.saqz.groups.model.GroupWeekday
+import br.com.saqz.groups.model.AttendanceUpdatesMode
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.place.PlaceSuggestion
@@ -105,6 +106,8 @@ data class GroupSetupState(
     val canDelete: Boolean = false,
     /** Configurações de jogo são visíveis apenas ao OWNER/ADMIN. */
     val canManageGameConfig: Boolean = false,
+    /** Modo da lista no grupo do WhatsApp: só o OWNER troca. */
+    val canChangeAttendanceUpdates: Boolean = false,
     // NÃO se deriva de `form.regularSlots.isEmpty()`: ligado e sem horário é o `2g`.
     // Na criação começa desligado: o primeiro cadastro são só os três campos à vista, e
     // quadra e horários (obrigatórios com a recorrência) ficam para as opções avançadas.
@@ -255,6 +258,7 @@ sealed interface GroupSetupIntent {
 
 
     data class SelectMonthlyLateJoinPolicy(val value: MonthlyLateJoinPolicy) : GroupSetupIntent
+    data class SelectAttendanceUpdatesMode(val value: AttendanceUpdatesMode) : GroupSetupIntent
 
     data class ToggleRecurring(val value: Boolean) : GroupSetupIntent
 

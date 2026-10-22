@@ -100,6 +100,7 @@ internal object GroupSetupTags {
     const val MensalistaPriority = "group-game-config-mensalista-priority"
     const val PromotionMode = "group-game-config-promotion-mode"
     const val MonthlyLateJoinPolicy = "group-monthly-late-join-policy"
+    const val AttendanceUpdatesMode = "group-attendance-updates-mode"
     const val MonthlyFee = "group-monthly-fee"
     const val MonthlyFeeAmount = "group-monthly-fee-amount"
     const val MonthlyDueDay = "group-monthly-due-day"
@@ -281,6 +282,13 @@ private fun GroupSetupDetails(
             onPixKeyChange = { onIntent(GroupSetupIntent.UpdatePixKey(it)) },
             pixKeyError = state.errorText(GroupSetupError.PixKeyInvalid, state.pixType.errorRes()),
             pixTypeError = state.errorText(GroupSetupError.PixTypeRequired, Res.string.group_pix_error_type),
+        )
+    }
+    val attendanceUpdatesMode = form.attendanceUpdatesMode
+    if (state.isEditing && state.canChangeAttendanceUpdates && attendanceUpdatesMode != null) {
+        GroupAttendanceUpdatesSection(
+            mode = attendanceUpdatesMode,
+            onSelect = { onIntent(GroupSetupIntent.SelectAttendanceUpdatesMode(it)) },
         )
     }
     if (state.isEditing && onOpenWhatsApp != null) {

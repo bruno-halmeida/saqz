@@ -208,6 +208,30 @@ class KtorGroupGatewayTest {
             assertEquals(null, fixture { group(future) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.financeDefaults?.monthlyLateJoinPolicy)
         }
 
+    @Test fun `profile update sends the WhatsApp list mode only when set`() =
+        runTest {
+            fixture { req ->
+                assertEquals("ON_CHANGE", req.bodyJson()["attendanceUpdatesMode"]?.jsonPrimitive?.content)
+                group()
+            }.gateway.updateProfile(
+                profileUpdate().copy(form = form().copy(attendanceUpdatesMode = AttendanceUpdatesMode.ON_CHANGE)),
+            )
+            fixture { req ->
+                assertTrue("attendanceUpdatesMode" !in req.bodyJson())
+                group()
+            }.gateway.updateProfile(profileUpdate())
+        }
+
+    @Test fun `read maps the WhatsApp list mode and falls back to scheduled`() =
+        runTest {
+            fun read(config: String) = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","gameConfig":$config}"""
+            suspend fun mode(config: String) =
+                fixture { group(read(config)) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.gameConfig.attendanceUpdatesMode
+            assertEquals(AttendanceUpdatesMode.ON_CHANGE, mode("""{"attendanceUpdatesMode":"ON_CHANGE"}"""))
+            assertEquals(AttendanceUpdatesMode.SCHEDULED, mode("{}"))
+            assertEquals(AttendanceUpdatesMode.SCHEDULED, mode("""{"attendanceUpdatesMode":"HOURLY"}"""))
+        }
+
     @Test fun `profile update sends pix fields`() =
         runTest {
             fixture { req ->

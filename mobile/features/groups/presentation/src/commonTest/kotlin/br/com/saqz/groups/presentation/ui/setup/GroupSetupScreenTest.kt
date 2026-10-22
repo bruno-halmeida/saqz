@@ -20,6 +20,10 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.model.GroupVenueForm
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import br.com.saqz.groups.model.AttendanceUpdatesMode
 import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupIntent
@@ -330,6 +334,28 @@ class GroupSetupScreenTest {
         canManageGameConfig = true,
         rosterHasMensalista = rosterHasMensalista,
     )
+
+    @Test
+    fun whatsAppListModeShowsScheduledByDefaultOnlyToTheOwnerAndReportsTheChoice() = runComposeUiTest {
+        val intents = mutableListOf<GroupSetupIntent>()
+        val owner = monthlyState().copy(
+            canChangeAttendanceUpdates = true,
+            form = monthlyState().form.copy(attendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED),
+        )
+        var state by mutableStateOf(owner)
+        setContent { SaqzTheme { GroupSetupScreen(state, { intents += it }, {}) } }
+
+        onNodeWithTag(GroupSetupTags.AttendanceUpdatesMode).performScrollTo().assertExists()
+        onNodeWithText("Por horário").assertIsSelected()
+        onNodeWithText("Envia a lista às 9h, 12h30 e 18h.").assertExists()
+        onNodeWithText("A cada confirmação").performClick()
+        waitForIdle()
+        assertTrue(GroupSetupIntent.SelectAttendanceUpdatesMode(AttendanceUpdatesMode.ON_CHANGE) in intents)
+
+        state = owner.copy(canChangeAttendanceUpdates = false)
+        waitForIdle()
+        onNodeWithTag(GroupSetupTags.AttendanceUpdatesMode).assertDoesNotExist()
+    }
 
     @Test
     fun gameConfigHasNoAutoConfirmationOption() = runComposeUiTest {

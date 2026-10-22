@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Lista de presença no grupo do WhatsApp: por horário ou a cada confirmação -->
+    <string name="group_attendance_updates_title">Lista no grupo do WhatsApp</string>
+    <string name="group_attendance_updates_scheduled">Por horário</string>
+    <string name="group_attendance_updates_on_change">A cada confirmação</string>
+    <string name="group_attendance_updates_hint_scheduled">Envia a lista às 9h, 12h30 e 18h.</string>
+    <string name="group_attendance_updates_hint_on_change">Envia a lista quando ela muda (no máx. 1 a cada 15 min, até 12/dia).</string>
+</resources>
