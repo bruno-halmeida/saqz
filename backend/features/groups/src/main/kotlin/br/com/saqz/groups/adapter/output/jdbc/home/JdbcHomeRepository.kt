@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.home
 
+import br.com.saqz.groups.adapter.output.jdbc.attendance.PersonNameSql
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.home.HomeAdminGroup
 import br.com.saqz.groups.application.home.HomeAdminReadModel
@@ -396,7 +397,7 @@ class JdbcHomeRepository(
                    status,
                    CASE WHEN status = 'WAITLISTED' THEN position END AS waitlist_position
             FROM (
-                SELECT attendance.member_display_name,
+                SELECT ${PersonNameSql.attendance("attendance")} AS member_display_name,
                        attendance.member_user_id,
                        attendance.guest_seq,
                        attendance.status,
@@ -405,8 +406,8 @@ class JdbcHomeRepository(
                            ORDER BY CASE WHEN attendance.status = 'WAITLISTED'
                                          THEN (${WaitlistPositionSql.tier("attendance", "m", "g", "ag")}) ELSE 0 END,
                                     attendance.waitlist_sequence NULLS FIRST,
-                                    lower(attendance.member_display_name),
-                                    attendance.member_display_name,
+                                    lower(${PersonNameSql.attendance("attendance")}),
+                                    ${PersonNameSql.attendance("attendance")},
                                     attendance.member_user_id
                        ) AS position
                 FROM game_attendance attendance

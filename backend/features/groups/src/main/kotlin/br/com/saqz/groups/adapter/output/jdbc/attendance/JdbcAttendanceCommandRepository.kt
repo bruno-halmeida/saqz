@@ -559,7 +559,7 @@ class JdbcAttendanceCommandRepository(
                 (game_id,group_id,member_user_id,status,waitlist_sequence,responded_at,updated_at,version,member_display_name,guest_seq,position,forced)
             SELECT :game,:group,:member,:status,:sequence,:responded,:updated,:version,
                    CASE WHEN :guest > 0 THEN coalesce(:guestName, (SELECT member_display_name FROM game_attendance WHERE game_id=:game AND member_user_id=:member AND guest_seq=:guest))
-                        ELSE (SELECT coalesce(nickname, display_name) FROM access_users WHERE id=:member) END,
+                        ELSE ${PersonNameSql.member(":group", ":member")} END,
                    :guest,:position,:forced
             WHERE EXISTS (
                 SELECT 1 FROM access_groups
@@ -731,22 +731,22 @@ class JdbcAttendanceCommandRepository(
             LEFT JOIN group_memberships am ON am.group_id=g.group_id AND am.user_id=:actor
             WHERE g.group_id=:group
         """
-        const val DECLINED_ROSTER = """
-            SELECT a.member_user_id,a.member_display_name,a.position
+        val DECLINED_ROSTER = """
+            SELECT a.member_user_id,${PersonNameSql.attendance("a")} AS member_display_name,a.position
             FROM game_attendance a
             JOIN access_groups ag ON ag.id=a.group_id
             LEFT JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
             WHERE a.group_id=:group AND a.game_id=:game AND a.status='DECLINED' AND a.guest_seq=0
               AND (m.user_id IS NOT NULL OR ag.owner_user_id=a.member_user_id)
-            ORDER BY lower(a.member_display_name),a.member_display_name,a.member_user_id
+            ORDER BY lower(${PersonNameSql.attendance("a")}),${PersonNameSql.attendance("a")},a.member_user_id
         """
-        const val ROSTER = """
-            SELECT a.member_user_id,a.member_display_name,a.status AS attendance_status,a.waitlist_sequence,
+        val ROSTER = """
+            SELECT a.member_user_id,${PersonNameSql.attendance("a")} AS member_display_name,a.status AS attendance_status,a.waitlist_sequence,
                    m.membership_type,a.guest_seq,a.position,coalesce(a.forced,false) AS forced,
                    -- PRES-016: a falta só vai para dono e admin; para os outros a pessoa segue em "Jogaram".
                    (a.no_show_marked_at IS NOT NULL
                        AND (ag.owner_user_id=:actor OR member.role::text IN ('OWNER','ADMIN'))) AS no_show,
-                   (SELECT coalesce(u.nickname, u.display_name) FROM access_users u WHERE u.id=a.member_user_id AND a.guest_seq>0) AS host_display_name
+                   CASE WHEN a.guest_seq>0 THEN ${PersonNameSql.member("a.group_id", "a.member_user_id")} END AS host_display_name
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
@@ -764,7 +764,7 @@ class JdbcAttendanceCommandRepository(
                        ELSE 1
                      END,
                      a.waitlist_sequence NULLS FIRST,
-                     lower(a.member_display_name),a.member_display_name,a.member_user_id,a.guest_seq
+                     lower(${PersonNameSql.attendance("a")}),${PersonNameSql.attendance("a")},a.member_user_id,a.guest_seq
         """
     }
 }

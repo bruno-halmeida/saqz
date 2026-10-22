@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.game
 
+import br.com.saqz.groups.adapter.output.jdbc.attendance.PersonNameSql
 import br.com.saqz.groups.application.game.AttendanceHistoryCursor
 import br.com.saqz.groups.application.game.AttendanceHistoryRepository
 import br.com.saqz.groups.application.game.AttendanceHistoryRow
@@ -28,24 +29,21 @@ class JdbcAttendanceHistoryRepository(dataSource: DataSource) : AttendanceHistor
         SELECT * FROM (
             SELECT e.id, e.occurred_at, e.member_user_id, e.guest_seq, e.actor_user_id, e.source, e.old_status, e.new_status,
                    e.reason, $RANK AS rank,
-                   coalesce(member.display_name, host.member_display_name) AS member_name,
+                   coalesce(${PersonNameSql.member("e.group_id", "e.member_user_id")}, host.member_display_name) AS member_name,
                    guest.member_display_name AS guest_name,
-                   actor.display_name AS actor_name,
+                   ${PersonNameSql.member("e.group_id", "e.actor_user_id")} AS actor_name,
                    e.occurred_at > g.confirmation_deadline AS after_deadline,
                    freed.count AS freed_count, freed.name AS freed_name, freed.guest AS freed_guest
             FROM attendance_events e
             JOIN games g ON g.group_id = e.group_id AND g.id = e.game_id
-            LEFT JOIN access_users member ON member.id = e.member_user_id
-            LEFT JOIN access_users actor ON actor.id = e.actor_user_id
             LEFT JOIN game_attendance host ON host.game_id = e.game_id AND host.member_user_id = e.member_user_id AND host.guest_seq = 0
             LEFT JOIN game_attendance guest ON e.guest_seq > 0 AND guest.game_id = e.game_id
                 AND guest.member_user_id = e.member_user_id AND guest.guest_seq = e.guest_seq
             -- Subida automática: a vaga é de quem saiu de confirmado no MESMO instante (mesma transação). Com mais de
             -- uma saída nesse instante não dá para saber de quem era; fica sem nome.
             LEFT JOIN LATERAL (
-                SELECT count(*) AS count, max(au.display_name) AS name, bool_or(l.guest_seq > 0) AS guest
+                SELECT count(*) AS count, max(${PersonNameSql.member("l.group_id", "l.member_user_id")}) AS name, bool_or(l.guest_seq > 0) AS guest
                 FROM attendance_events l
-                LEFT JOIN access_users au ON au.id = l.member_user_id
                 WHERE e.source = 'SYSTEM' AND e.old_status = 'WAITLISTED' AND e.new_status = 'CONFIRMED'
                   AND l.group_id = e.group_id AND l.game_id = e.game_id AND l.occurred_at = e.occurred_at
                   AND l.old_status = 'CONFIRMED' AND l.new_status <> 'CONFIRMED'
