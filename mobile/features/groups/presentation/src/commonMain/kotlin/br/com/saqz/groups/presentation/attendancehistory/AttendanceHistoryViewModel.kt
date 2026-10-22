@@ -10,6 +10,7 @@ import br.com.saqz.groups.domain.game.AttendanceHistoryKind
 import br.com.saqz.groups.domain.game.AttendanceHistorySource
 import br.com.saqz.groups.domain.game.AttendanceHistoryStatus
 import br.com.saqz.groups.presentation.game.gameLongDateLabel
+import br.com.saqz.groups.presentation.game.gameMenuTitle
 import br.com.saqz.groups.presentation.game.gameTimeLabel
 import br.com.saqz.groups.presentation.photo.memberPhoto
 import br.com.saqz.groups.presentation.toUiError
@@ -44,6 +45,7 @@ import br.com.saqz.groups.resources.history_reason
 import br.com.saqz.groups.resources.history_status_confirmed
 import br.com.saqz.groups.resources.history_status_declined
 import br.com.saqz.groups.resources.history_status_waitlisted
+import br.com.saqz.groups.resources.history_subtitle
 import br.com.saqz.groups.resources.history_system_removed
 import br.com.saqz.groups.resources.history_system_waitlisted
 import br.com.saqz.groups.resources.history_today
@@ -54,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
@@ -207,37 +210,7 @@ internal class AttendanceHistoryViewModel(
 
     private suspend fun AttendanceHistoryEntry.toRow(dayHeader: String, time: String, currentlyGoing: Boolean): AttendanceHistoryRowUi {
         val guest = guestSeq > 0
-        // Convidado é "convidado(a) de Ana"; o nome dele não vai na frase.
-        val subject = if (guest) getString(Res.string.history_guest_of, firstName(memberName)).replaceFirstChar { it.titlecase() } else memberName
-        val title = when (kind) {
-            AttendanceHistoryKind.Confirmed -> getString(Res.string.history_confirmed, subject)
-            AttendanceHistoryKind.Waitlisted -> getString(Res.string.history_waitlisted, subject)
-            AttendanceHistoryKind.Declined -> getString(Res.string.history_declined, subject)
-            AttendanceHistoryKind.GaveUp -> getString(Res.string.history_gave_up, subject)
-            AttendanceHistoryKind.LeftWaitlist -> getString(Res.string.history_left_waitlist, subject)
-            AttendanceHistoryKind.Promoted -> getString(Res.string.history_promoted, subject)
-            AttendanceHistoryKind.OrganizerAdded -> getString(Res.string.history_organizer_added, firstName(actorName), subject)
-            AttendanceHistoryKind.OrganizerWaitlisted -> getString(Res.string.history_organizer_waitlisted, firstName(actorName), subject)
-            AttendanceHistoryKind.OrganizerRemoved -> getString(Res.string.history_organizer_removed, firstName(actorName), subject)
-            AttendanceHistoryKind.SystemRemoved -> getString(Res.string.history_system_removed, subject)
-            AttendanceHistoryKind.SystemWaitlisted -> getString(Res.string.history_system_waitlisted, subject)
-            AttendanceHistoryKind.GuestJoined -> getString(Res.string.history_guest_joined, memberName)
-            AttendanceHistoryKind.GuestLeft -> getString(Res.string.history_guest_left, memberName)
-        }
-        val detail = when {
-            kind == AttendanceHistoryKind.Promoted && freedByName != null -> getString(
-                if (freedByGuest) Res.string.history_freed_by_guest else Res.string.history_freed_by,
-                firstName(freedByName.orEmpty()),
-            )
-            source == AttendanceHistorySource.System -> getString(Res.string.history_by_system)
-            source == AttendanceHistorySource.Organizer -> getString(Res.string.history_by_organizer)
-            guest -> getString(Res.string.history_guest_of, firstName(memberName))
-            kind == AttendanceHistoryKind.GaveUp -> getString(Res.string.history_was_confirmed)
-            kind == AttendanceHistoryKind.Waitlisted ->
-                getString(if (afterDeadline) Res.string.history_after_deadline else Res.string.history_game_full)
-            // A própria pessoa: só a hora.
-            else -> null
-        }
+        val detail = detail()
         return AttendanceHistoryRowUi(
             id = id,
             dayHeader = dayHeader,
@@ -245,22 +218,50 @@ internal class AttendanceHistoryViewModel(
             photo = if (guest) null else memberPhoto(groupId, memberId, photoTag),
             guest = guest,
             currentlyGoing = currentlyGoing,
-            title = title,
+            title = title(),
             meta = detail?.let { getString(Res.string.history_meta, time, it) } ?: time,
             reason = reason?.let { getString(Res.string.history_reason, it) },
-            statusLabel = getString(
-                when (newStatus) {
-                    AttendanceHistoryStatus.Confirmed -> Res.string.history_status_confirmed
-                    AttendanceHistoryStatus.Waitlisted -> Res.string.history_status_waitlisted
-                    AttendanceHistoryStatus.Declined -> Res.string.history_status_declined
-                },
-            ),
+            statusLabel = getString(newStatus.labelResource()),
             tone = when (newStatus) {
                 AttendanceHistoryStatus.Confirmed -> AttendanceHistoryTone.Going
                 AttendanceHistoryStatus.Waitlisted -> AttendanceHistoryTone.Waiting
                 AttendanceHistoryStatus.Declined -> AttendanceHistoryTone.NotGoing
             },
         )
+    }
+
+    /** "Carla Dias desistiu", "Bruno tirou Pedro Lima do jogo". */
+    private suspend fun AttendanceHistoryEntry.title(): String {
+        // Convidado é "Convidado(a) de Ana"; o nome dele não vai na frase.
+        val subject = if (guestSeq > 0) {
+            getString(Res.string.history_guest_of, firstName(memberName)).replaceFirstChar { it.titlecase() }
+        } else {
+            memberName
+        }
+        val organizer = firstName(actorName)
+        return when (kind) {
+            AttendanceHistoryKind.OrganizerAdded -> getString(Res.string.history_organizer_added, organizer, subject)
+            AttendanceHistoryKind.OrganizerWaitlisted -> getString(Res.string.history_organizer_waitlisted, organizer, subject)
+            AttendanceHistoryKind.OrganizerRemoved -> getString(Res.string.history_organizer_removed, organizer, subject)
+            AttendanceHistoryKind.GuestJoined -> getString(Res.string.history_guest_joined, memberName)
+            AttendanceHistoryKind.GuestLeft -> getString(Res.string.history_guest_left, memberName)
+            else -> getString(kind.subjectResource(), subject)
+        }
+    }
+
+    /** O que vem depois da hora: quem fez (nada quando foi a própria pessoa) ou o porquê. */
+    private suspend fun AttendanceHistoryEntry.detail(): String? = when {
+        kind == AttendanceHistoryKind.Promoted && freedByName != null -> getString(
+            if (freedByGuest) Res.string.history_freed_by_guest else Res.string.history_freed_by,
+            firstName(freedByName.orEmpty()),
+        )
+        source == AttendanceHistorySource.System -> getString(Res.string.history_by_system)
+        source == AttendanceHistorySource.Organizer -> getString(Res.string.history_by_organizer)
+        guestSeq > 0 -> getString(Res.string.history_guest_of, firstName(memberName))
+        kind == AttendanceHistoryKind.GaveUp -> getString(Res.string.history_was_confirmed)
+        kind == AttendanceHistoryKind.Waitlisted ->
+            getString(if (afterDeadline) Res.string.history_after_deadline else Res.string.history_game_full)
+        else -> null
     }
 
     /** "HOJE", "ONTEM", "TER, 20 DE OUTUBRO" (o cabeçalho é caixa-alta, como os da agenda). */
@@ -270,6 +271,28 @@ internal class AttendanceHistoryViewModel(
         else -> getString(Res.string.history_day, getString(date.dayOfWeek.shortResource()), date.gameLongDateLabel())
     }.uppercase()
 }
+
+/** Frase de quem mudou sozinho (ou pelo sistema): "%1$s confirmou". */
+private fun AttendanceHistoryKind.subjectResource(): StringResource = when (this) {
+    AttendanceHistoryKind.Waitlisted -> Res.string.history_waitlisted
+    AttendanceHistoryKind.Declined -> Res.string.history_declined
+    AttendanceHistoryKind.GaveUp -> Res.string.history_gave_up
+    AttendanceHistoryKind.LeftWaitlist -> Res.string.history_left_waitlist
+    AttendanceHistoryKind.Promoted -> Res.string.history_promoted
+    AttendanceHistoryKind.SystemRemoved -> Res.string.history_system_removed
+    AttendanceHistoryKind.SystemWaitlisted -> Res.string.history_system_waitlisted
+    else -> Res.string.history_confirmed
+}
+
+private fun AttendanceHistoryStatus.labelResource(): StringResource = when (this) {
+    AttendanceHistoryStatus.Confirmed -> Res.string.history_status_confirmed
+    AttendanceHistoryStatus.Waitlisted -> Res.string.history_status_waitlisted
+    AttendanceHistoryStatus.Declined -> Res.string.history_status_declined
+}
+
+/** "Jogo de terça, 28/07 · 19h30" (barra do histórico de respostas, JOGO-012). */
+internal suspend fun LocalDateTime.gameHistorySubtitle(): String =
+    getString(Res.string.history_subtitle, date.gameMenuTitle(), gameTimeLabel())
 
 private fun firstName(name: String): String = name.trim().substringBefore(' ').ifBlank { name }
 

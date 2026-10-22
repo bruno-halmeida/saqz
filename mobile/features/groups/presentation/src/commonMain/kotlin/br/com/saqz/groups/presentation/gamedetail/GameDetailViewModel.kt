@@ -21,6 +21,7 @@ import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.athlete.AthletePosition
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.PositionSummary
+import br.com.saqz.groups.presentation.attendancehistory.gameHistorySubtitle
 import br.com.saqz.groups.presentation.attendance.PositionSuggestion
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
@@ -56,7 +57,6 @@ import br.com.saqz.domain.DataError
 import br.com.saqz.groups.domain.communication.CommunicationGateway
 import br.com.saqz.groups.presentation.game.gameHeroDisplay
 import br.com.saqz.groups.presentation.game.gameLongDateLabel
-import br.com.saqz.groups.presentation.game.gameHistorySubtitle
 import br.com.saqz.groups.presentation.game.gameMenuTitle
 import br.com.saqz.groups.presentation.game.gamePrioritySentence
 import br.com.saqz.groups.presentation.game.gameTimeLabel
