@@ -2,7 +2,6 @@ package br.com.saqz.groups.presentation.ui.details
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsState
@@ -47,7 +47,11 @@ internal fun GroupDetailsScreen(
         when {
             state.isLoading -> GroupDetailsLoading()
             state.loadFailed -> GroupLoadFailure(error = state.error, onRetry = { onIntent(GroupDetailsIntent.Retry) })
-            else -> Box(modifier = Modifier.fillMaxSize()) {
+            else -> SaqzPullToRefresh(
+                refreshing = state.isRefreshing,
+                onRefresh = { onIntent(GroupDetailsIntent.PullRefresh) },
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

@@ -164,6 +164,9 @@ class GroupDetailsViewModel(
      */
     private var loadInFlight = false
 
+    /** Geração da carga que veio de um puxão — só ela avisa quando falha. */
+    private var pulledGeneration = -1
+
     /** O grupo da carga corrente: a seção de cobranças sozinha precisa do fuso e do Pix. */
     private var loadedGroup: Group? = null
     private var reminderRequest: Pair<String, String>? = null
@@ -197,6 +200,7 @@ class GroupDetailsViewModel(
                 autoRetry.reset()
                 refresh()
             }
+            GroupDetailsIntent.PullRefresh -> pullRefresh()
             GroupDetailsIntent.CreateNextGame -> emit(
                 GroupDetailsEffect.OpenCreateGame(groupId, firstGame = state.value.onboarding == GroupOnboarding.CreateGame),
             )
@@ -364,6 +368,22 @@ class GroupDetailsViewModel(
         load(softRefresh = true)
     }
 
+    /**
+     * Puxar para atualizar (GER-002): a recarga por baixo com a bola na tela e aviso se falhar.
+     * As mesmas guardas do [refresh] — com carga ou escrita no ar, o puxão não dispara nada.
+     */
+    private fun pullRefresh() {
+        val current = state.value
+        if (current.isLoading || current.loadFailed || current.isRefreshing) return
+        val busy = loadInFlight || current.responding || current.rosterRefreshing || current.leaving || current.notifying
+        if (busy) return
+        autoRetry.reset()
+        update { it.copy(isRefreshing = true) }
+        // Antes do `load`: a falha pode chegar antes de ele voltar.
+        pulledGeneration = loadGeneration + 1
+        load(softRefresh = true)
+    }
+
     private fun load(softRefresh: Boolean = false) {
         val generation = ++loadGeneration
         loadInFlight = true
@@ -396,7 +416,12 @@ class GroupDetailsViewModel(
         // Libera pelo fim do job, e não no corpo dele: os `return` da guarda de geração e um
         // cancelamento do escopo também têm que devolver a chave. A checagem impede que uma carga
         // velha destrave enquanto a nova ainda está no ar.
-        job.invokeOnCompletion { if (generation == loadGeneration) loadInFlight = false }
+        job.invokeOnCompletion {
+            if (generation == loadGeneration) {
+                loadInFlight = false
+                update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     /** Carga completa (`init` e `Retry`): invalida as escritas em voo e volta a tela ao esqueleto. */
@@ -915,6 +940,7 @@ class GroupDetailsViewModel(
     private fun showFailure(generation: Int, error: GroupUiError, softRefresh: Boolean = false) {
         if (generation != loadGeneration) return
         if (softRefresh) {
+            if (generation == pulledGeneration) update { it.copy(toast = GroupDetailsToast.RefreshFailed) }
             if (state.value.responseOffline) responseRetry.schedule()
             return
         }

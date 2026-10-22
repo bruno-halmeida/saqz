@@ -20,6 +20,8 @@ import br.com.saqz.groups.presentation.ui.finance.groupcash.PixUi
 @Immutable
 data class GroupDetailsState(
     val isLoading: Boolean = true,
+    /** Puxar para atualizar em andamento (GER-002); o grupo continua na tela. */
+    val isRefreshing: Boolean = false,
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val isAdmin: Boolean = false,
@@ -183,7 +185,7 @@ data class GroupWaitlistUi(
     val rows: List<HomeWaitlistRowUi> = emptyList(),
 )
 
-enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, WaitlistedManual, WaitlistedAfterDeadline, PixCopied, GameCreated }
+enum class GroupDetailsToast { Confirmed, Declined, Waitlisted, WaitlistedManual, WaitlistedAfterDeadline, PixCopied, GameCreated, RefreshFailed }
 
 /** A linha de caixa do gestor — só o saldo ("Saldo R$ 380,00"). As mensalidades a receber moram em [GroupWaitingUi]. */
 @Immutable
@@ -323,6 +325,9 @@ sealed interface GroupDetailsIntent {
      * "chave copiada". Com carga ou escrita em voo é ignorado.
      */
     data object Refresh : GroupDetailsIntent
+
+    /** Puxar para atualizar (GER-002): como [Refresh], com a bola na tela e aviso se falhar. */
+    data object PullRefresh : GroupDetailsIntent
 
     // 2f — cabeçalho e gerenciamento
     data object CreateNextGame : GroupDetailsIntent

@@ -18,6 +18,7 @@ import br.com.saqz.groups.resources.home_toast_pix_copied
 import br.com.saqz.groups.resources.home_toast_waitlisted
 import br.com.saqz.groups.resources.home_toast_waitlisted_late
 import br.com.saqz.groups.resources.home_toast_waitlisted_manual
+import br.com.saqz.groups.resources.refresh_failed
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -48,6 +49,7 @@ internal fun GroupToastBlock(
                     GroupDetailsToast.WaitlistedAfterDeadline -> Res.string.home_toast_waitlisted_late
                     GroupDetailsToast.PixCopied -> Res.string.home_toast_pix_copied
                     GroupDetailsToast.GameCreated -> Res.string.group_details_toast_game_created
+                    GroupDetailsToast.RefreshFailed -> Res.string.refresh_failed
                 },
             ),
         )

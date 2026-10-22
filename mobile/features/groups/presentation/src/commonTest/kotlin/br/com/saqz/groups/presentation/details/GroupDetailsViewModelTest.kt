@@ -430,6 +430,54 @@ class GroupDetailsViewModelTest {
     }
 
     @Test
+    fun `pull refresh keeps the content and ends not refreshing`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        games.listDeferred = CompletableDeferred()
+
+        vm.onIntent(GroupDetailsIntent.PullRefresh)
+        assertTrue(vm.state.value.isRefreshing)
+        assertFalse(vm.state.value.isLoading)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+
+        games.listDeferred!!.complete(SaqzResult.Success(listOf(sampleGame())))
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isRefreshing)
+        assertEquals(GroupOnboarding.InviteAthletes(sampleGame().id), vm.state.value.onboarding)
+    }
+
+    @Test
+    fun `pull refresh failure keeps the content and warns`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val vm = viewModel(gameGateway = games)
+        games.listResult = SaqzResult.Failure(br.com.saqz.groups.domain.game.GameError.HiddenResource)
+
+        vm.onIntent(GroupDetailsIntent.PullRefresh)
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.isRefreshing)
+        assertFalse(vm.state.value.loadFailed)
+        assertEquals(GroupOnboarding.CreateGame, vm.state.value.onboarding)
+        assertEquals(GroupDetailsToast.RefreshFailed, vm.state.value.toast)
+    }
+
+    @Test
+    fun `two pulls in a row fetch once`() = runTest {
+        val games = FakeGameGateway(listResult = SaqzResult.Success(emptyList()))
+        val groups = FakeGroupGateway()
+        val vm = viewModel(groupGateway = groups, gameGateway = games)
+        games.listDeferred = CompletableDeferred()
+
+        vm.onIntent(GroupDetailsIntent.PullRefresh)
+        vm.onIntent(GroupDetailsIntent.PullRefresh)
+        games.listDeferred!!.complete(SaqzResult.Success(emptyList()))
+        advanceUntilIdle()
+
+        assertEquals(2, groups.readCalls)
+        assertFalse(vm.state.value.isRefreshing)
+    }
+
+    @Test
     fun `refresh does not reset the athlete introduction nor the once per screen guard`() = runTest {
         val vm = viewModel(groupGateway = athleteGroupGateway(),
             gameGateway = FakeGameGateway(listResult = SaqzResult.Success(listOf(sampleGame()))))
