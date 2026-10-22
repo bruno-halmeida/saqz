@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -33,7 +34,8 @@ import kotlin.test.assertTrue
 class JogosAnterioresIntegrationTest {
     private lateinit var dataSource: DriverManagerDataSource
     private lateinit var pastGames: PastGames
-    private var now: Instant = Instant.now()
+    // Microssegundos, como o Postgres guarda: com nanos (Linux do CI) o fim lido do banco fica antes e o limite de 7 dias falha.
+    private var now: Instant = Instant.now().truncatedTo(ChronoUnit.MICROS)
 
     private lateinit var owner: UUID
     private lateinit var admin: UUID
@@ -49,7 +51,7 @@ class JogosAnterioresIntegrationTest {
     @BeforeEach
     fun seed() {
         execute("TRUNCATE group_charge_events, group_charges, game_attendance, games, group_memberships, access_groups, access_users CASCADE")
-        now = Instant.now()
+        now = Instant.now().truncatedTo(ChronoUnit.MICROS)
         owner = user("Dono")
         admin = user("Admin")
         athlete = user("Atleta")
