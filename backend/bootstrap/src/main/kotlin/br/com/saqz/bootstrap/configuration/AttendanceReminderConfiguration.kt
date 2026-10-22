@@ -34,4 +34,16 @@ class AutomaticAttendanceReminder(private val reminders: GroupCommunicationServi
         zone = "America/Sao_Paulo",
     )
     fun runMidday() = run()
+
+    /**
+     * Grupos no modo "a cada confirmação": a cada 5 min a lista do próximo jogo é comparada com a última publicada e,
+     * se mudou, vai ao grupo do WhatsApp (freio de 15 min e 12 por dia no [GroupCommunicationService.remindOnChanges]).
+     */
+    @Scheduled(
+        cron = "\${saqz.notifications.reminder.on-change-cron:0 */5 * * * *}",
+        zone = "America/Sao_Paulo",
+    )
+    fun runOnChanges() {
+        JobLog.cron("attendance_updates", { reminders.remindOnChanges() }) { mapOf("published" to it) }
+    }
 }

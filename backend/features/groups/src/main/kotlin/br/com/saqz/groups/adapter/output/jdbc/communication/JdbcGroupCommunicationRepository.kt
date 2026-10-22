@@ -1,6 +1,8 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
+import br.com.saqz.groups.application.communication.AttendanceDigest
+import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.communication.AttendanceWindowCandidate
 import br.com.saqz.groups.application.communication.GroupCommunicationRepository
 import br.com.saqz.groups.application.communication.GroupMessage
@@ -11,9 +13,14 @@ import br.com.saqz.groups.application.communication.PushPreferences
 import br.com.saqz.groups.application.communication.ReminderCandidate
 import br.com.saqz.groups.application.communication.ReminderGame
 import br.com.saqz.groups.application.communication.ReminderRoster
+import br.com.saqz.groups.application.communication.RosterEntry
+import br.com.saqz.groups.application.communication.RosterLayout
+import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.attendance.GameSystem
 import br.com.saqz.groups.application.communication.WhatsAppPreferences
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
+import java.sql.Timestamp
 import java.sql.Types
 import java.time.LocalDate
 import java.time.LocalTime
@@ -39,19 +46,24 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
     ).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
         .param("request", requestId).query { rs, _ -> message(rs) }.optional().orElse(null)
 
-    override fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage {
+    override fun publish(
+        groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?,
+        reminderOrigin: AttendanceUpdatesMode?,
+    ): GroupMessage {
         val id = UUID.randomUUID()
         jdbc.sql(
             """
-            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id)
-            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game FROM access_users WHERE id = :actor
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id, reminder_origin)
+            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game, :origin FROM access_users WHERE id = :actor
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
-            .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER).update()
+            .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER)
+            .param("origin", reminderOrigin?.name, Types.VARCHAR).update()
         if (channel == MessageChannel.REMINDER) {
             jdbc.sql("INSERT INTO notification_attendance_links(message_id) VALUES (:id)").param("id", id).update()
         }
-        deliver(id, groupId, actor, channel, gameId)
+        // A lista a cada mudança é só do grupo do WhatsApp: central e push seguem com o lembrete dos horários fixos.
+        if (reminderOrigin != AttendanceUpdatesMode.ON_CHANGE) deliver(id, groupId, actor, channel, gameId)
         return checkNotNull(findRequest(groupId, actor, channel, requestId))
     }
 
@@ -184,7 +196,8 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
                        WHEN 'CONFIRMED' THEN 'CONFIRMED'
                        WHEN 'WAITLISTED' THEN 'WAITLISTED'
                        ELSE 'DECLINED' END AS bucket,
-                   attendance.member_display_name AS name
+                   attendance.member_display_name AS name,
+                   attendance.position
             FROM game_attendance attendance
             JOIN group_memberships membership
                 ON membership.group_id = attendance.group_id
@@ -199,20 +212,66 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
                      lower(attendance.member_display_name), attendance.member_display_name
             """.trimIndent(),
         ).param("group", groupId).param("game", gameId)
-            .query { rs, _ -> rs.getString("bucket") to rs.getString("name") }.list()
+            .query { rs, _ ->
+                rs.getString("bucket") to RosterEntry(rs.getString("name"), rs.getString("position")?.let(AthletePosition::valueOf))
+            }.list()
+        fun bucket(name: String) = rows.filter { it.first == name }.map { it.second }
+        val (confirmed, waitlisted, declined) = listOf("CONFIRMED", "WAITLISTED", "DECLINED").map(::bucket)
         return ReminderRoster(
-            confirmed = rows.filter { it.first == "CONFIRMED" }.map { it.second },
-            waitlisted = rows.filter { it.first == "WAITLISTED" }.map { it.second },
-            declined = rows.filter { it.first == "DECLINED" }.map { it.second },
+            confirmed = confirmed.map { it.name },
+            waitlisted = waitlisted.map { it.name },
+            declined = declined.map { it.name },
+            layout = rosterLayout(groupId, gameId)?.let { (system, slots, numberedWaitlist) ->
+                RosterLayout(system, slots, confirmed, waitlisted, declined, numberedWaitlist)
+            },
         )
     }
 
+    /**
+     * Sistema de jogo do grupo e vagas por posição do jogo. Grupo sem sistema é legado (null); grupo 5-1 com jogo que
+     * nasceu sem as vagas por posição também, porque a lista não tem como sair por posição.
+     */
+    private fun rosterLayout(groupId: UUID, gameId: UUID): Triple<GameSystem, Map<AthletePosition, Int>, Boolean>? {
+        val config = jdbc.sql(
+            "SELECT game_system, promotion_mode = 'FIFO' AND NOT mensalista_priority AS numbered FROM access_groups WHERE id = :group",
+        ).param("group", groupId).query { rs, _ ->
+            rs.getString("game_system")?.let { GameSystem.valueOf(it) to rs.getBoolean("numbered") }
+        }.optional().orElse(null) ?: return null
+        val slots = jdbc.sql("SELECT position, slots FROM game_position_slots WHERE game_id = :game")
+            .param("game", gameId)
+            .query { rs, _ -> AthletePosition.valueOf(rs.getString("position")) to rs.getInt("slots") }.list().toMap()
+        if (config.first == GameSystem.FIVE_ONE && slots.isEmpty()) return null
+        return Triple(config.first, slots, config.second)
+    }
+
     /** `DISTINCT ON`: um grupo com agenda recorrente tem vários jogos abertos, mas só o mais próximo é lembrado. */
-    override fun reminderCandidates(): List<ReminderCandidate> = candidates(deadlineOpen = false)
+    override fun reminderCandidates(mode: AttendanceUpdatesMode?): List<ReminderCandidate> =
+        candidates(deadlineOpen = false, mode = mode)
 
-    override fun openGameCandidates(): List<ReminderCandidate> = candidates(deadlineOpen = true)
+    override fun openGameCandidates(): List<ReminderCandidate> = candidates(deadlineOpen = true, mode = null)
 
-    private fun candidates(deadlineOpen: Boolean): List<ReminderCandidate> = jdbc.sql(
+    override fun attendanceDigest(gameId: UUID): AttendanceDigest? = jdbc.sql(
+        "SELECT roster_digest, last_message_at, day, day_count FROM group_attendance_digest WHERE game_id = :game FOR UPDATE",
+    ).param("game", gameId).query { rs, _ -> AttendanceDigest(
+        digest = rs.getString("roster_digest"),
+        lastMessageAt = rs.getTimestamp("last_message_at").toInstant(),
+        day = rs.getObject("day", LocalDate::class.java),
+        dayCount = rs.getInt("day_count"),
+    ) }.optional().orElse(null)
+
+    override fun saveAttendanceDigest(gameId: UUID, digest: AttendanceDigest) {
+        jdbc.sql(
+            """
+            INSERT INTO group_attendance_digest (game_id, roster_digest, last_message_at, day, day_count)
+            VALUES (:game, :digest, :at, :day, :count)
+            ON CONFLICT (game_id) DO UPDATE SET roster_digest = EXCLUDED.roster_digest,
+                last_message_at = EXCLUDED.last_message_at, day = EXCLUDED.day, day_count = EXCLUDED.day_count
+            """.trimIndent(),
+        ).param("game", gameId).param("digest", digest.digest).param("at", Timestamp.from(digest.lastMessageAt))
+            .param("day", digest.day).param("count", digest.dayCount).update()
+    }
+
+    private fun candidates(deadlineOpen: Boolean, mode: AttendanceUpdatesMode?): List<ReminderCandidate> = jdbc.sql(
         """
         SELECT DISTINCT ON (games.group_id)
                games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
@@ -221,9 +280,10 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
         WHERE games.status = 'PUBLISHED' AND games.starts_at > now()
           AND (NOT :deadlineOpen OR games.confirmation_deadline > now())
+          AND (CAST(:mode AS varchar) IS NULL OR groups.attendance_updates_mode = :mode)
         ORDER BY games.group_id, games.starts_at, games.id
         """.trimIndent(),
-    ).param("deadlineOpen", deadlineOpen).query { rs, _ -> candidate(rs) }.list()
+    ).param("deadlineOpen", deadlineOpen).param("mode", mode?.name, Types.VARCHAR).query { rs, _ -> candidate(rs) }.list()
 
     override fun reminderCandidate(groupId: UUID): ReminderCandidate? = jdbc.sql(
         """

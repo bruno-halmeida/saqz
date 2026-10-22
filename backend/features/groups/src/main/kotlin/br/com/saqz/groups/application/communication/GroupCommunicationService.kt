@@ -10,7 +10,22 @@ import br.com.saqz.sharedkernel.subscription.GroupWriteAccess
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.util.UUID
+
+private val SAO_PAULO = ZoneId.of("America/Sao_Paulo")
+
+/** Freio do modo ON_CHANGE: no mínimo 15 min entre mensagens e no máximo 12 por dia (São Paulo) por jogo. */
+const val ON_CHANGE_DEBOUNCE_MINUTES = 15L
+const val ON_CHANGE_DAILY_LIMIT = 12
+
+/** Publica quando a lista mudou (sem assinatura gravada também é mudança) e o freio deixa. */
+fun shouldPublishChange(stored: AttendanceDigest?, digest: String, now: Instant): Boolean {
+    if (stored == null) return true
+    if (stored.digest == digest) return false
+    if (now.isBefore(stored.lastMessageAt.plusSeconds(ON_CHANGE_DEBOUNCE_MINUTES * 60))) return false
+    return stored.day != now.atZone(SAO_PAULO).toLocalDate() || stored.dayCount < ON_CHANGE_DAILY_LIMIT
+}
 
 class GroupCommunicationService(
     private val transaction: TransactionRunner,
@@ -62,14 +77,39 @@ class GroupCommunicationService(
      * Agenda recorrente deixa vários jogos abertos ao mesmo tempo e o grupo não quer um lembrete por
      * jogo. O autor é o dono do grupo, então ele fica fora dos destinatários da notificação;
      * cada execução cria mensagem nova. Grupo congelado não recebe (DEB-074): o atleta não consegue confirmar, e o
-     * lembrete, que também vai ao grupo do WhatsApp com o botão "Vou", manda confirmar.
+     * lembrete, que também vai ao grupo do WhatsApp com o botão "Vou", manda confirmar. Roda também nos grupos em
+     * ON_CHANGE, pelo push e pela central; a origem SCHEDULED faz o gatilho da fila deixá-lo fora do grupo do WhatsApp.
      */
     fun remindAutomatically(): Int = logPublished("attendance_reminder", "reminder_published", transaction.inTransaction {
         repository.reminderCandidates().filter { writeAccess.canWrite(it.groupId) }.map { candidate ->
             repository.publish(
                 candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
                 reminderBody(candidate.game, repository.reminderRoster(candidate.groupId, candidate.gameId), Instant.now()),
+                candidate.gameId, AttendanceUpdatesMode.SCHEDULED,
+            )
+        }
+    })
+
+    /**
+     * Lista no grupo do WhatsApp a cada mudança (modo ON_CHANGE, a cada 5 min): mesmos candidatos e mesmo corpo do
+     * [remindAutomatically], só dos grupos nesse modo e sem central nem push, e só quando a lista mudou desde a última publicada (a primeira
+     * passada de um jogo publica). Freio anti-spam: 15 min entre mensagens e 12 por dia (São Paulo) por jogo; a mudança
+     * segurada pelo freio sai na próxima passada livre, porque a assinatura só é gravada quando publica.
+     */
+    fun remindOnChanges(now: Instant = Instant.now()): Int = logPublished("attendance_updates", "reminder_published", transaction.inTransaction {
+        repository.reminderCandidates(AttendanceUpdatesMode.ON_CHANGE).filter { writeAccess.canWrite(it.groupId) }.mapNotNull { candidate ->
+            val roster = repository.reminderRoster(candidate.groupId, candidate.gameId)
+            val digest = rosterDigest(roster)
+            val stored = repository.attendanceDigest(candidate.gameId)
+            if (!shouldPublishChange(stored, digest, now)) return@mapNotNull null
+            val today = now.atZone(SAO_PAULO).toLocalDate()
+            repository.saveAttendanceDigest(
                 candidate.gameId,
+                AttendanceDigest(digest, now, today, if (stored?.day == today) stored.dayCount + 1 else 1),
+            )
+            repository.publish(
+                candidate.groupId, candidate.ownerId, MessageChannel.REMINDER, UUID.randomUUID(),
+                reminderBody(candidate.game, roster, now), candidate.gameId, AttendanceUpdatesMode.ON_CHANGE,
             )
         }
     })

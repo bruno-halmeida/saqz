@@ -1,5 +1,7 @@
 package br.com.saqz.groups.application.communication
 
+import br.com.saqz.groups.domain.AthletePosition
+import br.com.saqz.groups.domain.attendance.GameSystem
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -38,8 +40,32 @@ data class GroupMessage(
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class GroupNotification(val sequence: Long, val message: GroupMessage, val read: Boolean)
 
-/** Ordem das seções no corpo: confirmados, lista de espera e fora. A espera vem na ordem de promoção. */
-data class ReminderRoster(val confirmed: List<String>, val waitlisted: List<String>, val declined: List<String>)
+/**
+ * Ordem das seções no corpo: confirmados, lista de espera e fora. A espera vem na ordem de promoção. [layout] nulo é
+ * o jogo legado (sem sistema de jogo): o corpo sai como sempre, sem numeração nem vagas vazias.
+ */
+data class ReminderRoster(
+    val confirmed: List<String>,
+    val waitlisted: List<String>,
+    val declined: List<String>,
+    val layout: RosterLayout? = null,
+)
+
+data class RosterEntry(val name: String, val position: AthletePosition? = null)
+
+/**
+ * Lista de jogo com sistema (6-0 ou 5-1): as mesmas entradas de [ReminderRoster], com a posição de cada uma. [slots]
+ * são as vagas por posição do jogo (`game_position_slots`), vazias no 6-0. [numberedWaitlist] só quando a ordem impressa
+ * é a de promoção: promoção automática (FIFO) sem prioridade de mensalista.
+ */
+data class RosterLayout(
+    val system: GameSystem,
+    val slots: Map<AthletePosition, Int>,
+    val confirmed: List<RosterEntry>,
+    val waitlisted: List<RosterEntry>,
+    val declined: List<RosterEntry>,
+    val numberedWaitlist: Boolean,
+)
 
 /**
  * [confirmationDeadline] e [capacity] vêm preenchidos no lembrete automático e no "Avisar" manual; sem eles o
@@ -52,6 +78,15 @@ data class ReminderGame(
     val confirmationDeadline: Instant? = null,
     val capacity: Int? = null,
 )
+
+/**
+ * Como a lista de presença chega ao grupo do WhatsApp: nos horários fixos (9h, 12h30, 18h) ou a cada mudança dela. Só o
+ * grupo do WhatsApp: push, central e DM seguem as regras de sempre. Também é a origem gravada no lembrete automático.
+ */
+enum class AttendanceUpdatesMode { SCHEDULED, ON_CHANGE }
+
+/** Última lista publicada no modo [AttendanceUpdatesMode.ON_CHANGE] de um jogo, com o freio do dia (São Paulo). */
+data class AttendanceDigest(val digest: String, val lastMessageAt: Instant, val day: LocalDate, val dayCount: Int)
 
 data class ReminderCandidate(
     val gameId: UUID,
@@ -93,7 +128,11 @@ interface GroupCommunicationRepository {
     fun lockGroup(groupId: UUID): Boolean
     fun messages(viewer: UUID, groupId: UUID, channel: MessageChannel, before: Long?): List<GroupMessage>
     fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID): GroupMessage?
-    fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage
+    /** [reminderOrigin] só no lembrete automático; nulo é o "Avisar" manual e tudo que não é lembrete. */
+    fun publish(
+        groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?,
+        reminderOrigin: AttendanceUpdatesMode? = null,
+    ): GroupMessage
     /**
      * Aviso de jogo cancelado (canal NOTICE, com o jogo vinculado): vai para a central e o push de quem estava
      * confirmado ou na espera, menos quem cancelou, e o trigger da fila leva o texto ao grupo do WhatsApp vinculado.
@@ -101,8 +140,15 @@ interface GroupCommunicationRepository {
     fun publishGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, body: String): GroupMessage
     fun reminderGame(groupId: UUID, gameId: UUID): ReminderGame?
     fun reminderRoster(groupId: UUID, gameId: UUID): ReminderRoster
-    /** Próximo jogo publicado de cada grupo com início no futuro, mesmo com o prazo vencido: o lembrete automático. */
-    fun reminderCandidates(): List<ReminderCandidate>
+    /**
+     * Próximo jogo publicado de cada grupo com início no futuro, mesmo com o prazo vencido: o lembrete automático. Com
+     * [mode], só dos grupos nesse modo.
+     */
+    fun reminderCandidates(mode: AttendanceUpdatesMode? = null): List<ReminderCandidate>
+
+    /** Trava e lê a assinatura da última lista publicada do jogo no modo ON_CHANGE. */
+    fun attendanceDigest(gameId: UUID): AttendanceDigest?
+    fun saveAttendanceDigest(gameId: UUID, digest: AttendanceDigest)
 
     /** Próximo jogo publicado de cada grupo com prazo E início no futuro: o aviso de jogo liberado (GAME_OPEN). */
     fun openGameCandidates(): List<ReminderCandidate>

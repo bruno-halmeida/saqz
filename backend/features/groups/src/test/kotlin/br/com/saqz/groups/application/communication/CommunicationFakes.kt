@@ -28,6 +28,7 @@ class FixedRoleGroups(private val groupId: UUID, var role: GroupRole?) : GroupRe
 
 data class PublishedMessage(
     val groupId: UUID, val actor: UUID, val channel: MessageChannel, val requestId: UUID, val body: String, val gameId: UUID?,
+    val reminderOrigin: AttendanceUpdatesMode? = null,
 )
 
 class MemoryCommunicationRepository : GroupCommunicationRepository {
@@ -40,6 +41,8 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     var gameForReminder: ReminderGame? = null
     var roster = ReminderRoster(emptyList(), emptyList(), emptyList())
     var reminders = emptyList<ReminderCandidate>()
+    var onChangeReminders = emptyList<ReminderCandidate>()
+    val digests = mutableMapOf<UUID, AttendanceDigest>()
     var openGames = emptyList<ReminderCandidate>()
     var single: ReminderCandidate? = null
     var windows = emptyList<AttendanceWindowCandidate>()
@@ -55,8 +58,11 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     }
     override fun findRequest(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID) =
         stored[Triple(actor, channel, requestId)]
-    override fun publish(groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?): GroupMessage {
-        published += PublishedMessage(groupId, actor, channel, requestId, body, gameId)
+    override fun publish(
+        groupId: UUID, actor: UUID, channel: MessageChannel, requestId: UUID, body: String, gameId: UUID?,
+        reminderOrigin: AttendanceUpdatesMode?,
+    ): GroupMessage {
+        published += PublishedMessage(groupId, actor, channel, requestId, body, gameId, reminderOrigin)
         return message(groupId, actor, channel, body, gameId, sequence = published.size.toLong())
     }
     override fun publishGameCancelled(groupId: UUID, actor: UUID, gameId: UUID, body: String): GroupMessage {
@@ -65,7 +71,10 @@ class MemoryCommunicationRepository : GroupCommunicationRepository {
     }
     override fun reminderGame(groupId: UUID, gameId: UUID) = gameForReminder
     override fun reminderRoster(groupId: UUID, gameId: UUID) = roster
-    override fun reminderCandidates() = reminders
+    override fun reminderCandidates(mode: AttendanceUpdatesMode?) =
+        if (mode == AttendanceUpdatesMode.ON_CHANGE) onChangeReminders else reminders
+    override fun attendanceDigest(gameId: UUID) = digests[gameId]
+    override fun saveAttendanceDigest(gameId: UUID, digest: AttendanceDigest) { digests[gameId] = digest }
     override fun openGameCandidates() = openGames
     override fun reminderCandidate(groupId: UUID) = single
     override fun attendanceWindowCandidates() = windows
