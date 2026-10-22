@@ -84,3 +84,85 @@ ATL2 = iPhone 17e, ATL3 = Saqz_QA_B. Início 15:07, fim 16:06 (São Paulo).
 | N8-12 | PASSOU | INSERT com `author_name` (coluna obrigatória além das do roteiro) | mensagem gravada (`1`); na fila: `0` |
 | N8-13 | PASSOU | Editor: `5-1` + `A cada confirmação` → salvar. J6 marcado pela API (+4 dias 20:00). ATL `Vou` como `LEVANTADOR`, ATL2 como `PONTA` (API). J5 cancelado pela API às 15:47 para o J6 ser o próximo jogo (o lembrete só pega o próximo). Publicou na passada das 16:05 | `FIVE_ONE\|FIVE_ONE\|ON_CHANGE`; `game_position_slots` do J6 = `4`; corpo: `Vagas: 2/12` / `Levantadores(as): 1. QA Atl 22/10 2.` / `Ponteiros(as): 1. QA Atl2 22/10 2. 3. 4.` / `Centrais: 1. 2. 3. 4.` / `Opostos(as): 1. 2.`. Obs.: o J6 foi marcado pedindo 6 vagas e ficou com `games.capacity` = `12` (as vagas por posição do 5-1) |
 | N8-14 | BLOQUEADO | Rodada 1 terminou às 16:06, antes das 22h | — |
+
+## Rodada 2 · ORG no Android (Saqz_QA_A), ATL no iPhone 17
+
+ATL2 = Saqz_QA_B, ATL3 = iPhone 17e. Stack zerado (`stack.sh reset` + `up`, mesmo bootJar), apps limpos. Início 16:07, fim 17:05.
+
+| Passo | Resultado | O que apareceu na tela | Banco |
+| --- | --- | --- | --- |
+| P1 | PASSOU | — | MENSALISTA; 2500\|FIFO |
+| P2 | BLOQUEADO | Não refeito: os jogos foram marcados pela API antes de abrir o grupo no ORG | — |
+| P3 | PASSOU (API) | — | 4 PUBLISHED |
+| P4 | PASSOU (API) | — | pendentes = `4` (antes do J3) |
+| P5–P8 | PASSOU (API/SQL) | Mural: `O jogo de sábado 24/10 às 20h00 foi cancelado.` | J2 2026-09-12 COMPLETED, J3 2026-10-17 CANCELLED (publicado), Rascunho 2026-10-18 CANCELLED (não publicado), J1 2026-10-20 COMPLETED, J4 2026-10-25 PUBLISHED |
+| J11-1 | PASSOU | ORG (Android): `Próximos jogos` com só `Jogos anteriores` (J4 no destaque); `Acertar o jogo de 20/10 · 2 avulsos · R$ 50,00 a receber` | — |
+| J11-2 | PASSOU | ATL (iPhone 17) no grupo: destaque `Domingo, 20h00 · 25 de outubro · Quadra J4`, `Minhas cobranças`, sem seção de agenda e sem `Jogos anteriores` | — |
+| J11-3 | PASSOU | — | `403 ACCESS_FORBIDDEN` |
+| J11-4 | PASSOU | `OUTUBRO DE 2026`: Terça 20/10, Sábado 17/10; `SETEMBRO DE 2026`: Sábado 12/09; sem `Quadra Rascunho` (captura `r2-j11-04-lista-anteriores-android.png`) | — |
+| J11-5 | FALHOU | Linha do J1: `Terça · 20h00` · `3 de 6 foram` (sem ` · Quadra J1`) · `Acerto pendente · 2 pessoas, R$ 50,00` · `Encerrado` | — |
+| J11-6 | PASSOU | `Sábado · 20h00` · `Cancelado com 1 confirmado` · `Cancelado` (vermelho), linha em cinza | — |
+| J11-7 | PASSOU | `JOGO CANCELADO`; abas `Confirmados` (1/6, QA Atl) e `Não iam` (1) | — |
+| J11-8 | PASSOU | Voltar mantém a lista (mesmas posições; o toque seguinte no mesmo ponto abriu o J1) | — |
+| J11-9 | PASSOU | `JOGO REALIZADO`, `Encerrar jogo e acertar`, `Jogaram` 3/6 · `Não foram` 0, ⋮ em cada linha | — |
+| J11-10 | PASSOU | Acerto do J2: `3 pessoas jogaram`, `0 de 2 avulsos acertaram · faltam R$ 50,00` → `Recebi` ×2 (folha `Confirmar recebimento`, `Diarista · jogo de 23/10`) → jogo com `Ver acerto` | `PAID`, `PAID` |
+| J11-11 | PASSOU | Lista: J2 `3 de 6 foram`, sem acerto pendente; J1 mantém `Acerto pendente · 2 pessoas, R$ 50,00` | — |
+| J11-12 | PASSOU | Início: `Sem jogo marcado`; grupo: `Próximos jogos` só com `Jogos anteriores` | — |
+| J11-13 | PASSOU | Início volta a `PRÓXIMO JOGO Domingo, 20h00 · 25 de outubro · Quadra J4` | PUBLISHED |
+| J11-14 | BLOQUEADO | Opcional; não repetido nesta rodada (feito na Rodada 1) | — |
+| P16-1 | PASSOU | ATL (iPhone 17, Galera → si mesmo → Ver perfil): `Jogos: 2` · `Presença: 100%` · `Faltas: 0`. ORG (Android, Membros → ATL → Ver perfil): o mesmo. **Incidente de operação:** na primeira tentativa o toque na folha do Android caiu em `Tornar administrador` e promoveu o ATL; revertido por SQL na hora (`role='ATHLETE'`); a central do ATL ficou com `Você agora é administrador de QA Vôlei 22/10.` | `2` |
+| P16-2 | PASSOU | Folha `QA Atl 22/10` · `Avulso · confirmou para terça, 20 de outubro` · `Marcar falta` / `Confirmou e não apareceu` · `Só você e os admins veem a falta, e a pessoa não recebe aviso. A diária de R$ 25,00 continua; no acerto você decide se cobra.` | — |
+| P16-3 | PASSOU | `Jogaram` 2/6 · `Faltaram` 1 · `Não foram` 0 | `t\|t\|CONFIRMED` |
+| P16-4 | PASSOU | Aba Faltaram: QA Atl `Faltou`; `Só você e os admins veem quem faltou. Dá para marcar até 27 de outubro.` | — |
+| P16-5 | PASSOU | Central do ATL: `Você agora é administrador…` (16:11, do incidente), aviso de cancelamento (16:08), jogo liberado do J1 (16:08); nada sobre falta | `0` |
+| P16-6 | PASSOU | ATL abriu o J1 por `Abrir`: `Jogaram` 3/6, ele na linha 1 com `Você`; sem `Faltaram`, `Faltou` ou ⋮ | — |
+| P16-7 | PASSOU | ATL2 (Android) pelo aviso do J1: `Jogaram` 3/6 com QA Atl na linha 1, ele com `Você`; sem `Faltaram` | — |
+| P16-8 | PASSOU | — | `403`; marca do Atl3 vazia |
+| P16-9 | PASSOU | `2 pessoas jogaram`; `0 de 2 avulsos acertaram · faltam R$ 50,00`; QA Atl com `Faltou`, `Recebi`, `Dispensar`, `Cancelar cobrança`; QA Atl2 com `Recebi`, `Cancelar cobrança` | — |
+| P16-10 | PASSOU | Folha `Dispensar cobrança` · `Quem faltou não paga esta diária. A pessoa não recebe aviso. Dá para desfazer depois.` → QA Atl `Dispensado` + `Desfazer`; `0 de 2 avulsos acertaram · faltam R$ 25,00` | `WAIVED` |
+| P16-11 | PASSOU | Grupo do ATL: `Minhas cobranças · Tudo em dia · Nada em aberto · Ver histórico (3)` | — |
+| P16-12 | PASSOU | ORG: `Jogos: 1` · `Presença: 50%` · `Faltas: 0 avisadas · 1 sem avisar` | — |
+| P16-13 | FALHOU | ATL (iPhone 17): `Jogos: 1` · `Presença: 50%` · `Faltas: 0` (captura `r2-pres016-13-atl-perfil-faltas-0-ios.png`) | — |
+| P16-14 | PASSOU | ⋮ → `Desfazer` · `Volta para Jogaram` → `Jogaram` 3/6, sem aba Faltaram | marca vazia; `WAIVED` |
+| P16-15 | BLOQUEADO | O acerto foi aberto, mas a leitura da tela falhou (dump vazio) antes do passo seguinte; depois da marca no ATL3 o acerto mostrou `2 pessoas jogaram`, ATL `Dispensado` | — |
+| P16-16 | PASSOU | Folha do ATL3: `Mensalista · confirmou para terça, 20 de outubro`, `Só você e os admins veem a falta, e a pessoa não recebe aviso.` | marca `t`; cobranças do ATL3 no J1 = `0` |
+| P16-17 | PASSOU | J2: `Jogaram` 3/6 sem ⋮ (tela do passo J11-10) | — |
+| P16-18 | PASSOU | — | `409 ATTENDANCE_FROZEN`; marca vazia |
+| P16-19 | PASSOU | J1 em 14/10: aba Faltaram com ATL3 `Faltou`, sem ⋮; `Só você e os admins veem quem faltou.` | — |
+| G2-1 | PASSOU | Início do ORG (Android): J4 com `0` em Vão (16:10) | — |
+| G2-2 | PASSOU (resposta pela API) | Depois de puxar: `1` Vão · `3` Sem resposta | — |
+| G2-3 | PASSOU (API) | Grupos: `25/10 · 20h00 · 1 de 6` → `2 de 6` após puxar | — |
+| G2-4 | PASSOU (API) | Detalhe do grupo: `1` Vão · `1` Não vão · `2` Sem resposta | — |
+| G2-5 | PASSOU (API) | Tela do J4: `Vão` 2/6 com QA Atl3 (`Mensalista`) na linha 2; `1 pessoa sem resposta` | — |
+| G2-6 | PASSOU (API) | Caixa antes: diária do ATL2 no J4 com `Desistiu` e `Dispensar`; depois de puxar, a mesma linha sem `Desistiu` | — |
+| G2-7 | PASSOU | Puxar a lista: topo `Quarta · 20h00` 21/10 · `3 de 6 foram` · `Acerto pendente · 2 pessoas, R$ 50,00` | — |
+| G2-8 | PASSOU | ATL (iPhone 17) no Perfil `3 Jogos`; ORG marcou falta no J4; ATL puxou: `2 Jogos` | `member_played_games` = `2` |
+| G2-9 | PASSOU | ORG (Android) com Wi-Fi e dados desligados (`svc wifi/data disable`), puxar a Início: dados ficam e aparece embaixo `Não foi possível atualizar. Verifique sua conexão e tente de novo.` (captura `r2-ger002-09-sem-rede-android.png`) | — |
+| G2-10 | PASSOU | Rede religada; dois puxões seguidos na mesma chamada de `adb` | log: uma só leitura `/api/me/home` às 16:15:53.319 |
+| N8-1 | PASSOU | INSERT do vínculo (colunas como na Rodada 1) | `t\|t`; `game_system` vazio, `SCHEDULED` |
+| N8-2 | PASSOU | ORG (Android) → Editar → fim da tela: `Lista no grupo do WhatsApp` · `Envia a lista às 9h, 12h30 e 18h.` · `Por horário` (marcado) · `A cada confirmação` | `SCHEDULED` |
+| N8-3 | PASSOU (promoção por SQL, desvio) | ATL2 virou ADMIN por SQL (depois do incidente do toque errado no ORG). ATL2 (Saqz_QA_B) → Editar: a tela termina em `Pix do grupo`, sem `Lista no grupo do WhatsApp` | `ADMIN` |
+| N8-4 | PASSOU | `A cada confirmação` → apoio `Envia quando a lista muda, das 8h às 22h.` → `Salvar alterações` | `ON_CHANGE`; `play_style` e `game_system` vazios (o editor não mexeu); `SIX_ZERO` nas duas por SQL às 16:18 |
+| N8-5 | PASSOU | J5 marcado pela API às 16:18:58 | `16:20:01 REMINDER ON_CHANGE PENDING` |
+| N8-6 | PASSOU | ATL `Vou` no J5 às 16:20:42 (API); passadas de 16:25 e 16:30 sem linha nova | — |
+| N8-7 | PASSOU | Passada das 16:35:00 não publicou (anterior gravada às 16:20:01,001); publicou às 16:40 | `16:40:01 REMINDER ON_CHANGE PENDING` |
+| N8-8 | PASSOU | Passada das 16:45 sem nenhuma mudança: nada | log `published=0` às 16:45:00 (o freio de 15 min também estava ativo) |
+| N8-9 | PASSOU | — | `Vagas: 1/6` / `1. QA Atl 22/10` / `2.` … `6.` |
+| N8-10 | PASSOU | J5 → `Avisar` (modo `ON_CHANGE`) | `16:21:10 REMINDER MANUAL PENDING` |
+| N8-11 | PASSOU | Editar → `Por horário` → salvar; J5 → `Avisar` | `SCHEDULED`; `16:45:40 REMINDER MANUAL PENDING` |
+| N8-12 | PASSOU | — | mensagem gravada; na fila `0` |
+| N8-13 | PASSOU | Editor (Android): `5-1` + `A cada confirmação` → salvar. J6 pela API (+4 dias 20:00); ATL `LEVANTADOR`, ATL2 `PONTA` (API); J5 cancelado pela API às 16:46. Passadas de 16:55 e 17:00 sem publicar: a mensagem de teste do N8-12 (origem `ON_CHANGE`, 16:45:4x) também conta no freio. Publicou às 17:05 | `FIVE_ONE\|FIVE_ONE\|ON_CHANGE`; `game_position_slots` = `4`; `games.capacity` = `12`; corpo: `Vagas: 2/12` / `Levantadores(as): 1. QA Atl 22/10 2.` / `Ponteiros(as): 1. QA Atl2 22/10 2. 3. 4.` / `Centrais: 1. 2. 3. 4.` / `Opostos(as): 1. 2.` |
+| N8-14 | BLOQUEADO | Rodada 2 terminou às 17:05, antes das 22h | — |
+
+## Resumo
+
+| Regra | Rodada 1 | Rodada 2 |
+| --- | --- | --- |
+| JOGO-011 (14) | 13 PASSOU · 1 FALHOU (#5) | 12 PASSOU · 1 FALHOU (#5) · 1 BLOQUEADO (#14, opcional) |
+| PRES-016 (19) | 18 PASSOU · 1 FALHOU (#13) | 17 PASSOU · 1 FALHOU (#13) · 1 BLOQUEADO (#15) |
+| GER-002 (10) | 8 PASSOU · 1 FALHOU (#10) · 1 BLOQUEADO (#9) | 10 PASSOU |
+| NOT-008 (14) | 12 PASSOU · 2 BLOQUEADO (#8, #14) | 13 PASSOU · 1 BLOQUEADO (#14) |
+
+FALHOU nas duas rodadas: JOGO-011 #5 (linha sem ` · Quadra`) e PRES-016 #13 (atleta vê `Faltas: 0` no próprio perfil). Outras
+observações registradas nos passos: o editor grava `game_system` só no 5-1 (no 6-0 fica vazio, N8-4); a mensagem de teste do
+N8-12 entra no freio de 15 min; GER-002 #10 com duas leituras na Rodada 1 e uma na Rodada 2.
