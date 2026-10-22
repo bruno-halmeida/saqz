@@ -52,7 +52,10 @@ class JdbcNotificationWhatsAppGroup(
                 finish(job.messageId, "CANCELLED")
                 return@inTransaction QueueStep()
             }
-            if (message.channel == "REMINDER" && !reminderOpen(message.gameId, message.groupId)) {
+            // O modo do grupo pode ter mudado com a mensagem na fila: lembrete automático só sai na origem do modo atual.
+            if (message.channel == "REMINDER" &&
+                (!reminderOpen(message.gameId, message.groupId) || message.reminderOrigin?.let { it != message.updatesMode } == true)
+            ) {
                 finish(job.messageId, "CANCELLED")
                 return@inTransaction QueueStep()
             }
@@ -92,7 +95,7 @@ class JdbcNotificationWhatsAppGroup(
         }
 
     private fun load(messageId: UUID): PendingMessage? = jdbc.sql("""
-        SELECT m.group_id, m.channel, m.game_id, m.body, b.whatsapp_jid, b.group_name, b.enabled,
+        SELECT m.group_id, m.channel, m.game_id, m.body, m.reminder_origin, g.attendance_updates_mode, b.whatsapp_jid, b.group_name, b.enabled,
                b.broken_at, link.code
         FROM group_messages m
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
@@ -116,6 +119,8 @@ class JdbcNotificationWhatsAppGroup(
             body = rs.getString("body"),
             code = rs.getString("code"),
             binding = binding,
+            reminderOrigin = rs.getString("reminder_origin"),
+            updatesMode = rs.getString("attendance_updates_mode"),
         )
     }.optional().orElse(null)
 
@@ -174,6 +179,7 @@ class JdbcNotificationWhatsAppGroup(
     )
     private data class PendingMessage(
         val groupId: UUID, val channel: String, val gameId: UUID?, val body: String, val code: String?, val binding: Binding?,
+        val reminderOrigin: String?, val updatesMode: String,
     )
     /** [buttons] vazio é mensagem de texto; não-vazio vira botões, nunca embutidos no texto. */
     private data class GroupContent(val text: String, val buttons: List<WhatsAppGroupButton>)
