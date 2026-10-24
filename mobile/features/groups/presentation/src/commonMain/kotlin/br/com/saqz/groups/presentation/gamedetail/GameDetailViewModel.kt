@@ -30,7 +30,10 @@ import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.AttendanceVersionToken
 import br.com.saqz.groups.domain.attendance.OverrideAttendanceCommand
 import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
+import br.com.saqz.groups.domain.communication.GroupWhatsAppGateway
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.domain.communication.NativeNotificationPort
+import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import br.com.saqz.groups.presentation.communication.NotificationPromptAudience
 import br.com.saqz.groups.presentation.communication.NotificationPromptOffer
 import br.com.saqz.groups.domain.game.Game
@@ -92,6 +95,9 @@ class GameDetailViewModel(
     private val organizerFinance: br.com.saqz.groups.domain.finance.OrganizerFinanceGateway? = null,
     /** PRES-016: "Marcar falta" e "Desfazer"; sem a porta (teste antigo) a ação não aparece. */
     private val pastGames: br.com.saqz.groups.domain.game.PastGamesGateway? = null,
+    /** Vínculo com o grupo do WhatsApp: ativo, o "Avisar" não some; sem as portas, vale só o pendente. */
+    private val whatsApp: GroupWhatsAppGateway? = null,
+    private val whatsAppAvailability: WhatsAppAvailability? = null,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
     private var promotionGeneration = 0
@@ -390,6 +396,7 @@ class GameDetailViewModel(
                         is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError(), softRefresh)
                         is SaqzResult.Success -> {
                             groupName = groupResult.value.group.name
+                            if (groupResult.value.group.role != GroupRole.ATHLETE) loadWhatsApp(generation)
                             loadAttendance(
                                 generation,
                                 gameResult.value.game,
@@ -410,6 +417,21 @@ class GameDetailViewModel(
                 loadInFlight = false
                 update { it.copy(isRefreshing = false) }
             }
+        }
+    }
+
+    /** Status do vínculo em paralelo com a lista, perguntado ao servidor a cada carga. Falha mantém o último valor. */
+    private fun loadWhatsApp(generation: Int) {
+        val availability = whatsAppAvailability ?: return
+        val gateway = whatsApp ?: return
+        viewModelScope.launch {
+            val active = if (availability.refresh()) {
+                val result = gateway.binding(GroupId(groupId)) as? SaqzResult.Success ?: return@launch
+                result.value.status == GroupWhatsAppStatus.ACTIVE
+            } else {
+                false
+            }
+            if (generation == loadGeneration) update { it.copy(whatsAppGroupActive = active) }
         }
     }
 

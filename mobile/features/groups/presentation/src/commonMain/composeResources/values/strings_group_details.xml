@@ -19,7 +19,10 @@
     <string name="group_details_waiting_quorum_one">1 pessoa sem resposta</string>
     <string name="group_details_waiting_quorum_you">%1$d pessoas sem resposta · e você</string>
     <string name="group_details_waiting_quorum_one_you">1 pessoa sem resposta · e você</string>
+    <string name="group_details_waiting_quorum_none">Todo mundo respondeu</string>
+    <string name="group_details_waiting_quorum_none_you">Só falta você responder</string>
     <string name="group_details_waiting_notify">Avisar</string>
+    <string name="group_details_waiting_notify_again">Avisar de novo</string>
     <string name="group_details_names_two">%1$s e %2$s</string>
     <string name="group_details_names_more">%1$s, %2$s e mais %3$d</string>
     <!-- Detalhe do grupo novo · próximos jogos -->

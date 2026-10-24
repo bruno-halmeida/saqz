@@ -23,6 +23,7 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import br.com.saqz.groups.presentation.details.GroupDetailsState
 import br.com.saqz.groups.presentation.ui.components.WaitingRow
@@ -30,8 +31,12 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.communication_failure
 import br.com.saqz.groups.resources.communication_remind_refused
 import br.com.saqz.groups.resources.communication_reminded
+import br.com.saqz.groups.resources.communication_reminded_whatsapp_group
 import br.com.saqz.groups.resources.group_details_waiting_notify
+import br.com.saqz.groups.resources.group_details_waiting_notify_again
 import br.com.saqz.groups.resources.group_details_waiting_quorum
+import br.com.saqz.groups.resources.group_details_waiting_quorum_none
+import br.com.saqz.groups.resources.group_details_waiting_quorum_none_you
 import br.com.saqz.groups.resources.group_details_waiting_quorum_one
 import br.com.saqz.groups.resources.group_details_waiting_quorum_one_you
 import br.com.saqz.groups.resources.group_details_waiting_quorum_you
@@ -126,11 +131,13 @@ internal fun GroupWaitingBlock(
 
 /**
  * A linha existe enquanto dá para avisar: jogo publicado que ainda não começou (o prazo vencido não
- * tira o "Avisar", PROM-009) e alguém sem resposta que não seja quem olha (a resposta dele já é
- * pedida no card do jogo). Continua depois de um aviso enviado, mesmo que o pendente zere: o retorno é contrato do e2e.
+ * tira o "Avisar", PROM-009) e alguém para receber. Com o grupo do WhatsApp ativo é sempre: a lista vai para lá
+ * mesmo com todo mundo respondido. Sem ele, precisa de alguém sem resposta que não seja quem olha (a resposta dele
+ * já é pedida no card do jogo). Continua depois de um aviso enviado, mesmo que o pendente zere: o retorno é contrato do e2e.
  */
 private fun GroupDetailsState.showsQuorum(): Boolean =
-    notifiedCount != null || (nextGame?.responseOpen == true && reminderRecipients > 0)
+    notifiedCount != null ||
+        (nextGame?.responseOpen == true && (reminderRecipients > 0 || whatsApp == GroupWhatsAppStatus.ACTIVE))
 
 @Composable
 private fun QuorumRow(
@@ -140,6 +147,8 @@ private fun QuorumRow(
 ) {
     val recipients = state.reminderRecipients
     val title = when {
+        recipients == 0 && state.viewerPending -> stringResource(Res.string.group_details_waiting_quorum_none_you)
+        recipients == 0 -> stringResource(Res.string.group_details_waiting_quorum_none)
         recipients == 1 && state.viewerPending -> stringResource(Res.string.group_details_waiting_quorum_one_you)
         recipients == 1 -> stringResource(Res.string.group_details_waiting_quorum_one)
         state.viewerPending -> stringResource(Res.string.group_details_waiting_quorum_you, recipients)
@@ -147,6 +156,9 @@ private fun QuorumRow(
     }
     val notified = state.notifiedCount
     val meta = when {
+        // Ninguém no Saqz para avisar: a lista foi só para o grupo do WhatsApp.
+        notified == "0" && state.whatsApp == GroupWhatsAppStatus.ACTIVE ->
+            stringResource(Res.string.communication_reminded_whatsapp_group)
         notified != null -> notified.toIntOrNull()?.let { pluralStringResource(Res.plurals.communication_reminded, it, it) }
             ?: stringResource(Res.string.communication_failure)
         state.notificationRefused -> stringResource(Res.string.communication_remind_refused)
@@ -167,9 +179,12 @@ private fun QuorumRow(
         metaMaxLines = 2,
         leading = sentBadge,
         trailing = {
-            if (notified == null) {
+            // Fica depois do envio, para mandar de novo; só o início do jogo tira.
+            if (state.nextGame?.responseOpen == true) {
                 SaqzButton(
-                    label = stringResource(Res.string.group_details_waiting_notify),
+                    label = stringResource(
+                        if (notified != null) Res.string.group_details_waiting_notify_again else Res.string.group_details_waiting_notify,
+                    ),
                     onClick = { onIntent(GroupDetailsIntent.NotifyPending) },
                     modifier = Modifier.testTag(GroupDetailsTags.NotifyPending),
                     variant = SaqzButtonVariant.Secondary,

@@ -60,6 +60,8 @@ data class GameDetailState(
     val mapFailed: Boolean = false,
     /** "Avisar" de quem não respondeu, o mesmo envio do grupo. */
     val reminder: GameReminderUi = GameReminderUi(),
+    /** Grupo do WhatsApp vinculado e ativo (só gestor): o "Avisar" manda a lista para lá mesmo com todo mundo respondido. */
+    val whatsAppGroupActive: Boolean = false,
     /** Avulso em jogo com taxa e respostas abertas: a nota da cobrança, como no grupo. */
     val showsFeeNote: Boolean = false,
     /** Menu ⋯ da barra (dono/admin). */
@@ -119,10 +121,13 @@ data class GameDetailState(
     val canAdjustCapacity: Boolean
         get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published && header.gameStarted.not() && !hasPositions
 
-    /** Painel "N pessoas sem resposta" com o Avisar: some sem pendente, mas fica depois do envio para dizer o retorno. */
+    /**
+     * Painel "N pessoas sem resposta" com o Avisar, do jogo publicado até o início: com grupo do WhatsApp ativo fica
+     * sempre (a lista vai para o grupo); sem ele, some sem pendente. Fica depois do envio, para mandar de novo.
+     */
     val canNotify: Boolean
         get() = isAdmin && header?.statusTone == GameDetailStatusTone.Published && header.canRespond &&
-            ((attendance?.pending ?: 0) > 0 || reminder.notifiedCount != null)
+            ((attendance?.pending ?: 0) > 0 || whatsAppGroupActive || reminder.notifiedCount != null)
 
     /** A linha verde-limão do que falta (DEB-116). */
     val limeLine: GameLimeLine? get() = resolveLimeLine()

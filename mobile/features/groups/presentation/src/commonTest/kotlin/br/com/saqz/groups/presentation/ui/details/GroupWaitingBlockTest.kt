@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.presentation.details.GroupDetailsIntent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -97,11 +98,60 @@ class GroupWaitingBlockTest {
 
     // O texto é contrato do e2e (`ReminderE2eTest`): um nó só, na árvore fundida, para sempre.
     @Test
-    fun reminderFeedbackStaysOnScreenWithoutTheButton() = runComposeUiTest {
+    fun reminderFeedbackStaysOnScreenAndTheButtonSendsAgain() = runComposeUiTest {
+        val intents = mutableListOf<GroupDetailsIntent>()
         val nobodyPending = GroupDetailsPreviewData.attendance.copy(pending = 0)
-        setDetailsScreen(GroupWaitingPreviewData.notified.copy(attendance = nobodyPending))
+        setDetailsScreen(GroupWaitingPreviewData.notified.copy(attendance = nobodyPending)) { intents += it }
 
         onNodeWithText("Lembrete enviado no Saqz para 2 pessoas.").assertExists()
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Lembrete enviado no Saqz para 2 pessoas.")
+        onNodeWithTag(GroupDetailsTags.NotifyPending).performScrollTo().assertTextContains("Avisar de novo").performClick()
+
+        assertEquals(GroupDetailsIntent.NotifyPending, intents.single())
+    }
+
+    // O grupo do WhatsApp recebe a lista mesmo com todo mundo respondido: o "Avisar" não some.
+    @Test
+    fun activeWhatsAppGroupKeepsTheButtonWhenEveryoneAnswered() = runComposeUiTest {
+        val nobodyPending = GroupDetailsPreviewData.attendance.copy(pending = 0)
+        setDetailsScreen(GroupWaitingPreviewData.idle.copy(attendance = nobodyPending, whatsApp = GroupWhatsAppStatus.ACTIVE))
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Todo mundo respondeu")
+        onNodeWithTag(GroupDetailsTags.NotifyPending).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun activeWhatsAppGroupWithOnlyTheViewerPendingSaysSo() = runComposeUiTest {
+        val onlyViewer = GroupDetailsPreviewData.attendance.copy(pending = 1)
+        setDetailsScreen(GroupWaitingPreviewData.viewerPending.copy(attendance = onlyViewer, whatsApp = GroupWhatsAppStatus.ACTIVE))
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Só falta você responder")
+        onNodeWithTag(GroupDetailsTags.NotifyPending).performScrollTo().assertIsEnabled()
+    }
+
+    @Test
+    fun brokenWhatsAppGroupWithEveryoneAnsweredHidesTheRow() = runComposeUiTest {
+        val nobodyPending = GroupDetailsPreviewData.attendance.copy(pending = 0)
+        setDetailsScreen(GroupWaitingPreviewData.quorumOnly.copy(attendance = nobodyPending, whatsApp = GroupWhatsAppStatus.BROKEN))
+
+        onAllNodesWithTag(GroupDetailsTags.WaitingQuorum).assertCountEquals(0)
+    }
+
+    @Test
+    fun reminderOnlyToTheWhatsAppGroupSaysWhereItWent() = runComposeUiTest {
+        val nobodyPending = GroupDetailsPreviewData.attendance.copy(pending = 0)
+        setDetailsScreen(
+            GroupWaitingPreviewData.idle.copy(attendance = nobodyPending, whatsApp = GroupWhatsAppStatus.ACTIVE, notifiedCount = "0"),
+        )
+
+        onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Lista enviada no grupo do WhatsApp.")
+        onNodeWithTag(GroupDetailsTags.NotifyPending).performScrollTo().assertTextContains("Avisar de novo")
+    }
+
+    @Test
+    fun startedGameKeepsTheFeedbackButDropsTheButton() = runComposeUiTest {
+        setDetailsScreen(GroupWaitingPreviewData.started.copy(notifiedCount = "2"))
+
         onNodeWithTag(GroupDetailsTags.WaitingQuorum).assertTextContains("Lembrete enviado no Saqz para 2 pessoas.")
         onAllNodesWithTag(GroupDetailsTags.NotifyPending).assertCountEquals(0)
     }

@@ -57,6 +57,7 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.communication_failure
 import br.com.saqz.groups.resources.communication_remind_refused
 import br.com.saqz.groups.resources.communication_reminded
+import br.com.saqz.groups.resources.communication_reminded_whatsapp_group
 import br.com.saqz.groups.resources.game_detail_duration
 import br.com.saqz.groups.resources.game_detail_duration_hours
 import br.com.saqz.groups.resources.game_detail_duration_minutes
@@ -92,6 +93,8 @@ import br.com.saqz.groups.resources.game_tab_played
 import br.com.saqz.groups.resources.group_details_map_failure
 import br.com.saqz.groups.resources.group_details_venue_map
 import br.com.saqz.groups.resources.group_details_waiting_notify
+import br.com.saqz.groups.resources.group_details_waiting_notify_again
+import br.com.saqz.groups.resources.group_details_waiting_quorum_none
 import br.com.saqz.groups.resources.home_admin_score_going
 import br.com.saqz.groups.resources.home_admin_score_out
 import br.com.saqz.groups.resources.home_admin_score_waiting
@@ -376,7 +379,10 @@ private fun GamePublishBlock(state: GameDetailState, onIntent: (GameDetailIntent
     )
 }
 
-/** "4 pessoas sem resposta" + "Avisar" branco; depois do envio, o check e quantos receberam. */
+/**
+ * "4 pessoas sem resposta" + "Avisar" branco; depois do envio, o check, quantos receberam e o "Avisar de novo".
+ * Sem ninguém no Saqz para avisar, o envio foi só para o grupo do WhatsApp e o retorno diz isso.
+ */
 @Composable
 private fun GameNotifyPanel(state: GameDetailState, onIntent: (GameDetailIntent) -> Unit) {
     val colors = SaqzTheme.colors
@@ -401,10 +407,11 @@ private fun GameNotifyPanel(state: GameDetailState, onIntent: (GameDetailIntent)
         SaqzIcon(if (notified != null) SaqzIcons.Check else SaqzIcons.Megaphone, tint = colors.onPrimary, size = PanelIconSize)
         Column(Modifier.weight(1f)) {
             Text(
-                text = if (notified != null) {
-                    pluralStringResource(Res.plurals.communication_reminded, notified, notified)
-                } else {
-                    pluralStringResource(Res.plurals.game_pending_people, pending, pending)
+                text = when {
+                    notified == 0 && state.whatsAppGroupActive -> stringResource(Res.string.communication_reminded_whatsapp_group)
+                    notified != null -> pluralStringResource(Res.plurals.communication_reminded, notified, notified)
+                    pending == 0 -> stringResource(Res.string.group_details_waiting_quorum_none)
+                    else -> pluralStringResource(Res.plurals.game_pending_people, pending, pending)
                 },
                 style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
                 color = colors.onPrimary,
@@ -413,17 +420,17 @@ private fun GameNotifyPanel(state: GameDetailState, onIntent: (GameDetailIntent)
                 Text(text = meta, style = SaqzTheme.typography.support, color = colors.onPrimary.copy(alpha = HeroFeeAlpha))
             }
         }
-        if (notified == null) {
-            SaqzButton(
-                label = stringResource(Res.string.group_details_waiting_notify),
-                onClick = { onIntent(GameDetailIntent.NotifyPending) },
-                modifier = Modifier.testTag(GameDetailTags.NotifyPending),
-                variant = SaqzButtonVariant.Inverse,
-                size = SaqzButtonSize.Sm,
-                enabled = !reminder.sending,
-                loading = reminder.sending,
-            )
-        }
+        SaqzButton(
+            label = stringResource(
+                if (notified != null) Res.string.group_details_waiting_notify_again else Res.string.group_details_waiting_notify,
+            ),
+            onClick = { onIntent(GameDetailIntent.NotifyPending) },
+            modifier = Modifier.testTag(GameDetailTags.NotifyPending),
+            variant = SaqzButtonVariant.Inverse,
+            size = SaqzButtonSize.Sm,
+            enabled = !reminder.sending,
+            loading = reminder.sending,
+        )
     }
 }
 

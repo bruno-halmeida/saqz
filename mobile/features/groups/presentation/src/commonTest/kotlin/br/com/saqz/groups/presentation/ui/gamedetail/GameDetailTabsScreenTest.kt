@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.presentation.gamedetail.GameDetailIntent
+import br.com.saqz.groups.presentation.gamedetail.GameReminderUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameDetailState
 import br.com.saqz.groups.presentation.gamedetail.GameDetailStatusTone
@@ -98,6 +100,34 @@ class GameDetailTabsScreenTest {
             onNodeWithTag(GameDetailTags.NotifyPending).performClick()
             onNodeWithTag(GameDetailTags.Menu).performClick()
             assertEquals<List<GameDetailIntent>>(listOf(GameDetailIntent.NotifyPending, GameDetailIntent.OpenGameMenu), intents)
+        }
+    }
+
+    @Test
+    fun avisarFicaDepoisDoEnvioParaMandarDeNovo() = runComposeUiTest {
+        val intents = mutableListOf<GameDetailIntent>()
+        setScreen(admin.copy(reminder = GameReminderUi(notifiedCount = 3)), intents::add)
+
+        onNodeWithText("Lembrete enviado no Saqz para 3 pessoas.").assertExists()
+        onNodeWithTag(GameDetailTags.NotifyPending).assertTextContains("Avisar de novo").performClick()
+        assertEquals<List<GameDetailIntent>>(listOf(GameDetailIntent.NotifyPending), intents)
+    }
+
+    @Test
+    fun comGrupoDoWhatsAppOAvisarFicaComTodoMundoRespondido() {
+        val everyoneAnswered = admin.copy(attendance = admin.attendance?.copy(pending = 0), whatsAppGroupActive = true)
+        runComposeUiTest {
+            setScreen(everyoneAnswered)
+            onNodeWithText("Todo mundo respondeu").assertExists()
+            onNodeWithTag(GameDetailTags.NotifyPending).assertTextContains("Avisar")
+        }
+        runComposeUiTest {
+            setScreen(everyoneAnswered.copy(reminder = GameReminderUi(notifiedCount = 0)))
+            onNodeWithText("Lista enviada no grupo do WhatsApp.").assertExists()
+        }
+        runComposeUiTest {
+            setScreen(everyoneAnswered.copy(whatsAppGroupActive = false))
+            onAllNodesWithTag(GameDetailTags.NotifyPanel).assertCountEquals(0)
         }
     }
 

@@ -99,8 +99,11 @@ JG11 é criado logo no começo da rodada.
 
 **Conferir**
 - Ao lado do "Avisar" a linha diz, por exemplo, "2 pessoas sem resposta · e você" ("· e você" quando ORG
-  também não respondeu); o número é o de quem recebe o lembrete, sem contar ORG, e a linha some se só ORG falta.
-- Aparece "Lembrete enviado no Saqz para N pessoa(s).", com o mesmo N.
+  também não respondeu); o número é o de quem recebe o lembrete, sem contar ORG. Sem grupo do WhatsApp vinculado,
+  a linha some se só ORG falta; com o grupo ativo ela fica até o início do jogo ("Só falta você responder",
+  "Todo mundo respondeu"), e o "Avisar" manda a lista para o grupo.
+- Aparece "Lembrete enviado no Saqz para N pessoa(s).", com o mesmo N, e o botão vira "Avisar de novo"; tocar de
+  novo manda outro aviso. Com todo mundo respondido e o grupo ativo, aparece "Lista enviada no grupo do WhatsApp.".
 - ATL e ATL2 recebem o push "Confirme sua presença no próximo jogo. Abra o app para conferir." e o
   aviso na central; ORG não recebe cópia.
 

@@ -10,6 +10,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
 import br.com.saqz.groups.domain.attendance.PositionSummary
 import br.com.saqz.groups.domain.communication.CommunicationError
+import br.com.saqz.groups.domain.communication.GroupWhatsAppBinding
+import br.com.saqz.groups.domain.communication.GroupWhatsAppStatus
 import br.com.saqz.groups.domain.game.Game
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupGameConfig
@@ -18,11 +20,13 @@ import br.com.saqz.groups.presentation.FakeAthleteGateway
 import br.com.saqz.groups.presentation.FakeCommunicationGateway
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.presentation.FakeGroupWhatsAppGateway
 import br.com.saqz.groups.presentation.sampleCommunicationMessage
 import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
+import br.com.saqz.groups.presentation.whatsappbinding.WhatsAppAvailability
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,6 +66,7 @@ class GameDetailRedesignTest {
         game: Game = openGame(),
         communications: FakeCommunicationGateway? = FakeCommunicationGateway(),
         mensalistaPriority: Boolean = false,
+        whatsApp: FakeGroupWhatsAppGateway? = null,
     ) = GameDetailViewModel(
         "group-1",
         "game-1",
@@ -76,6 +81,8 @@ class GameDetailRedesignTest {
         FakeAttendanceGateway(readResult = SaqzResult.Success(detail), rosterResult = SaqzResult.Success(roster)),
         FakeAthleteGateway(),
         communications = communications,
+        whatsApp = whatsApp,
+        whatsAppAvailability = whatsApp?.let(::WhatsAppAvailability),
     )
 
     // ---- quem não vai
@@ -263,6 +270,53 @@ class GameDetailRedesignTest {
         assertTrue(communications.reminders.isEmpty())
         assertFalse(viewModel.state.value.gameMenuOpen)
     }
+
+    @Test
+    fun `with the WhatsApp group active the notify stays when everyone answered and sends again`() = runTest {
+        val communications = FakeCommunicationGateway().apply {
+            reminderResult = SaqzResult.Success(sampleCommunicationMessage().copy(recipientCount = 0))
+        }
+        val whatsApp = FakeGroupWhatsAppGateway(binding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei", GroupWhatsAppStatus.ACTIVE))
+        val viewModel = viewModel(detail = everyoneAnswered, communications = communications, whatsApp = whatsApp)
+        assertTrue(viewModel.state.value.whatsAppGroupActive)
+        assertTrue(viewModel.state.value.canNotify)
+
+        viewModel.onIntent(GameDetailIntent.NotifyPending)
+        assertEquals(0, viewModel.state.value.reminder.notifiedCount)
+        assertTrue(viewModel.state.value.canNotify)
+        viewModel.onIntent(GameDetailIntent.NotifyPending)
+
+        // Cada envio que deu certo é um aviso novo: o segundo toque não é deduplicado pelo servidor.
+        val ids = communications.reminders.map { it.third }
+        assertEquals(2, ids.distinct().size)
+    }
+
+    @Test
+    fun `without an active WhatsApp group the notify goes away when everyone answered`() = runTest {
+        val unbound = viewModel(detail = everyoneAnswered, whatsApp = FakeGroupWhatsAppGateway())
+        assertFalse(unbound.state.value.canNotify)
+
+        val disabled = FakeGroupWhatsAppGateway(binding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei", GroupWhatsAppStatus.DISABLED))
+        assertFalse(viewModel(detail = everyoneAnswered, whatsApp = disabled).state.value.canNotify)
+
+        // WhatsApp desligado no servidor: o vínculo ativo não leva a lista a lugar nenhum.
+        val offOnServer = FakeGroupWhatsAppGateway(
+            binding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei", GroupWhatsAppStatus.ACTIVE),
+            available = false,
+        )
+        assertFalse(viewModel(detail = everyoneAnswered, whatsApp = offOnServer).state.value.canNotify)
+    }
+
+    @Test
+    fun `athletes do not ask for the WhatsApp group`() = runTest {
+        val whatsApp = FakeGroupWhatsAppGateway(binding = GroupWhatsAppBinding(true, "123@g.us", "Vôlei", GroupWhatsAppStatus.ACTIVE))
+        val viewModel = viewModel(role = GroupRole.ATHLETE, detail = everyoneAnswered, whatsApp = whatsApp)
+
+        assertFalse(viewModel.state.value.canNotify)
+        assertTrue(whatsApp.bindingCalls.isEmpty())
+    }
+
+    private val everyoneAnswered = AttendanceDetail(null, 8, 4, 0, 12, declinedCount = 2, pendingCount = 0)
 
     // ---- mapa e menus
 
