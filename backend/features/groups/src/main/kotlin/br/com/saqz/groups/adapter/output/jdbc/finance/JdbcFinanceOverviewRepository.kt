@@ -142,6 +142,9 @@ class JdbcFinanceOverviewRepository(
               )
         """
 
+        /** FIN-014: cobrança paga pelo app entra no caixa pelo valor pago. */
+        const val PAID_AMOUNT = "CASE WHEN charges.settled_by = 'APP' THEN coalesce(charges.payable_cents, charges.amount_cents) ELSE charges.amount_cents END"
+
         const val GROUPS = """
             WITH administered_groups AS ($ADMINISTERED_GROUPS)
             SELECT
@@ -149,7 +152,7 @@ class JdbcFinanceOverviewRepository(
                 groups.name AS group_name,
                 (
                     COALESCE((
-                        SELECT SUM(charges.amount_cents)
+                        SELECT SUM($PAID_AMOUNT)
                         FROM group_charges charges
                         WHERE charges.group_id = groups.id
                           AND charges.status = 'PAID'
@@ -171,7 +174,7 @@ class JdbcFinanceOverviewRepository(
                 ) AS balance_cents,
                 (
                     COALESCE((
-                        SELECT SUM(charges.amount_cents)
+                        SELECT SUM($PAID_AMOUNT)
                         FROM group_charges charges
                         JOIN group_charge_events events
                           ON events.charge_id = charges.id
@@ -239,7 +242,7 @@ class JdbcFinanceOverviewRepository(
                 groups.id AS group_id,
                 groups.name AS group_name,
                 charges.member_display_name AS member_name,
-                charges.amount_cents,
+                $PAID_AMOUNT AS amount_cents,
                 events.occurred_at
             FROM group_charge_events events
             JOIN group_charges charges ON charges.id = events.charge_id

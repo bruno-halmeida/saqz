@@ -195,6 +195,75 @@ class ReceivablesV1IntegrationTest {
             "payableCents", "settledBy", "appMethod")))
     }
 
+    @Test fun `repasse no Pix e no cartao entra pelo valor pago e o saldo do caixa e o que caiu na carteira`() = fixture { f ->
+        f.sql("UPDATE receivable_group_links SET fee_policy='PASS'")
+        val september = f.monthly("2026-09", f.athlete)
+        val october = f.monthly("2026-10", f.athlete)
+        val paid = f.long("SELECT payable_cents FROM group_charges WHERE id='$september'")!!
+        assertTrue(paid > 10000)
+        val pix = f.code(PaymentMethod.PIX, september)
+        f.athletes.saveDocument("52998224725", f.request(f.athlete))
+        val card = f.code(PaymentMethod.CARD, october)
+        val commission = Math.round(paid * 0.02)
+        val pixNet = paid - 99
+        val cardNet = paid - (Math.round(paid * 0.0299) + 49)
+        f.remote.payment("pay_pix", "PIX", paid, pixNet, "RECEIVED", qr = "qr_1")
+        f.event("evt_pix", "PAYMENT_RECEIVED", "pay_pix", qr = "qr_1")
+        f.remote.payment("pay_card", "CREDIT_CARD", paid, cardNet, "CONFIRMED", reference = card.codeId.toString())
+        f.event("evt_card", "PAYMENT_CONFIRMED", "pay_card", reference = card.codeId.toString(), billing = "CREDIT_CARD")
+        assertEquals(paid, pix.amountCents)
+        val wallet = (pixNet - commission) + (cardNet - commission)
+        val fees = f.jdbc.sql("SELECT amount_cents FROM group_expenses WHERE origin='RECEIVABLES_FEES' ORDER BY amount_cents").query(Long::class.java).list()
+        assertEquals(listOf(paid - (pixNet - commission), paid - (cardNet - commission)).sorted(), fees)
+        assertEquals(0, f.count("group_expenses", "direction='IN'"), "sem entrada automática de repasse")
+        val summary = br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository(f.ds).page(
+            br.com.saqz.groups.application.finance.statement.FinanceStatementQuery(f.group, YearMonth.of(2026, 10), null, 50, 0)).summary
+        assertEquals(2 * paid, summary.totalInCents)
+        assertEquals(fees.sum().toLong(), summary.totalOutCents)
+        assertEquals(wallet, summary.accumulatedBalanceCents)
+    }
+
+    @Test fun `total do atleta na Inicio soma o valor que ele paga`() = fixture { f ->
+        f.sql("UPDATE receivable_group_links SET fee_policy='PASS'")
+        val charge = f.monthly("2026-09", f.athlete)
+        val payable = f.long("SELECT payable_cents FROM group_charges WHERE id='$charge'")!!
+        val home = br.com.saqz.groups.adapter.output.jdbc.home.JdbcHomeRepository(f.ds).find(f.athlete, now, LocalDate.of(2026, 10, 20))
+        assertEquals(payable, home.ownCharges!!.totalCents)
+        assertEquals(payable, home.ownCharges!!.groups.single().totalCents)
+    }
+
+    @Test fun `PUT fee-policy vale so para cobranca nova e admin sem delegacao nao ve`() = fixture { f ->
+        val old = f.monthly("2026-08", f.athlete)
+        val admin = UUID.randomUUID()
+        f.sql("INSERT INTO access_users(id,firebase_subject,email_verified,display_name,created_at,updated_at) VALUES ('$admin','$admin',true,'Admin',now(),now())")
+        f.sql("INSERT INTO group_memberships(group_id,user_id,role,created_at,updated_at) VALUES ('${f.group}','$admin','ADMIN',now(),now())")
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(
+            f.groupReceivables.feePolicy(f.account, f.group, f.request(admin), FeePolicy.PASS)).error)
+        val request = f.request(f.owner)
+        val state = assertIs<FinancialResult.Success<GroupReceivablesState>>(f.groupReceivables.feePolicy(f.account, f.group, request, FeePolicy.PASS)).value
+        assertEquals("PASS", state.feePolicy)
+        assertIs<FinancialResult.Success<GroupReceivablesState>>(f.groupReceivables.feePolicy(f.account, f.group, request, FeePolicy.PASS))
+        assertEquals(FinancialError.CONFLICT, assertIs<FinancialResult.Failure>(f.groupReceivables.feePolicy(f.account, f.group, request, FeePolicy.ABSORB)).error)
+        val fresh = f.monthly("2026-09", f.athlete)
+        assertNull(f.long("SELECT payable_cents FROM group_charges WHERE id='$old'"))
+        val expected = br.com.saqz.receivables.domain.FeeCalculator.passThrough(10000, f.live.current(setOf(PaymentMethod.CARD), now, f.account).single())
+        assertEquals(expected, f.long("SELECT payable_cents FROM group_charges WHERE id='$fresh'"))
+    }
+
+    @Test fun `quote bate com o FeeCalculator nas duas politicas`() = fixture { f ->
+        val quote = assertIs<FinancialResult.Success<GroupFeeQuote>>(f.groupReceivables.quote(f.account, f.group, 2000, f.request(f.owner))).value
+        val schedules = f.live.current(PaymentMethod.entries.toSet(), now, f.account).associateBy { it.method }
+        val pix = schedules.getValue(PaymentMethod.PIX); val card = schedules.getValue(PaymentMethod.CARD)
+        val calc = br.com.saqz.receivables.domain.FeeCalculator
+        assertEquals(PolicyQuote(2000, calc.net(2000, pix), calc.net(2000, card)), quote.absorb)
+        val pass = maxOf(calc.passThrough(2000, pix), calc.passThrough(2000, card))
+        assertEquals(PolicyQuote(pass, calc.net(pass, pix), calc.net(pass, card)), quote.pass)
+        assertTrue(quote.pass.receivesCardCents >= 2000 && quote.pass.receivesPixCents > quote.pass.receivesCardCents)
+        assertEquals("2% + R$ 0,99", quote.pixFeeLabel)
+        assertEquals("4,99% + R$ 0,49", quote.cardFeeLabel)
+        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.groupReceivables.quote(f.account, f.group, 2000, f.request(f.athlete))).error)
+    }
+
     private fun fixture(block: (Fixture) -> Unit) { Remote().use { block(Fixture(it)) } }
 
     private inner class Fixture(val remote: Remote) {
@@ -207,6 +276,10 @@ class ReceivablesV1IntegrationTest {
         val clock: Clock = Clock.fixed(now, ZoneOffset.UTC)
         val conditions = JdbcFinancialConditions(ds)
         val pricing = JdbcGroupReceivablesPricing(ds, conditions, clock)
+        /** Tarifas do Asaas da conta simuladas como na produção: Pix R$ 0,99; cartão 2,99% + R$ 0,49 (iguais ao retrato do vínculo). */
+        val live = ProviderFinancialConditions(conditions, FinancialFeeProvider { methods, _, _ ->
+            methods.associateWith { if (it == PaymentMethod.PIX) ProviderPaymentFee(BigDecimal.ZERO, 99) else ProviderPaymentFee(BigDecimal("0.0299"), 49) }
+        })
         val ledger = JdbcGroupChargeLedger(ds)
         val provider = HttpAsaasPaymentCodes(URI("http://127.0.0.1:${remote.server.address.port}/v3"), "wallet-platform",
             JdbcPaymentProviderCredentials(ds, secrets))
@@ -220,7 +293,7 @@ class ReceivablesV1IntegrationTest {
         val groupReceivables = ManageGroupReceivables(JdbcFinancialAccountRepository(ds),
             br.com.saqz.groups.adapter.output.jdbc.membership.JdbcGroupAdministrationDirectory(ds),
             br.com.saqz.groups.adapter.output.jdbc.group.JdbcGroupFinancialSetupLookup(ds), JdbcGroupReceivablesStore(ds),
-            conditions, ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) }, clock, rollout)
+            live, ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) }, clock, rollout)
         val events = JdbcPaymentEvents(ds, secrets, object : PaymentExecution {
             override fun create(instrumentId: UUID) = Unit
             override fun cancel(instrumentId: UUID, request: FinancialRequest) = Unit

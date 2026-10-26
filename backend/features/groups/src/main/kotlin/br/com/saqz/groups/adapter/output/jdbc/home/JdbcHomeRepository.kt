@@ -568,7 +568,8 @@ class JdbcHomeRepository(
                        charges.billing_month,
                        charges.game_id,
                        charges.due_date,
-                       charges.amount_cents,
+                       -- O atleta vê o que vai pagar (FIN-010): com repasse, o valor com a taxa.
+                       coalesce(charges.payable_cents, charges.amount_cents) AS amount_cents,
                        games.starts_at AS game_starts_at,
                        games.zone_id AS game_zone_id,
                        charges.guest_display_name,

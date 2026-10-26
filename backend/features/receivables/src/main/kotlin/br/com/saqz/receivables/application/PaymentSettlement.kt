@@ -116,19 +116,17 @@ class PaymentSettlement(private val store: SettlementStore, private val codes: P
     }
 
     /**
-     * Caixa (FIN-014): a entrada é a cobrança paga; a diferença até o que caiu na carteira (taxa do Asaas + comissão) vira
-     * a saída automática "Taxas de serviço e pagamento", para o saldo bater com a carteira. No repasse pelo Pix o gestor
-     * recebe mais que a cobrança: a diferença entra como entrada automática.
+     * Caixa (FIN-014): a entrada é o que o atleta pagou (a cobrança paga pelo app entra pelo payable, e a sobra entra quando a
+     * revisão for resolvida); as taxas daquele pagamento saem como "Taxas de serviço e pagamento" = pago − (líquido −
+     * comissão), para o saldo bater com a carteira. Nunca negativa.
      */
     private fun cashFees(groupId: UUID, payment: ObservedPayment, settled: List<LedgerCharge>, leftover: Long, commission: Long,
                          actor: UUID, now: Instant) {
         val net = payment.netCents ?: return
-        val difference = settled.sumOf { it.amountCents } + leftover - (net - commission)
-        if (difference == 0L) return
-        val id = UUID.nameUUIDFromBytes("fees:${payment.id}".toByteArray())
-        val date = LocalDate.ofInstant(now, zone)
-        if (difference > 0) ledger.record(id, groupId, "OUT", "RECEIVABLES_FEES", FEES_LABEL, difference, date, actor, now)
-        else ledger.record(id, groupId, "IN", "RECEIVABLES_FEES", "$FEES_LABEL · repasse no Pix", -difference, date, actor, now)
+        val fees = settled.sumOf { it.payableCents } + leftover - (net - commission)
+        if (fees <= 0) return
+        ledger.record(UUID.nameUUIDFromBytes("fees:${payment.id}".toByteArray()), groupId, "OUT", "RECEIVABLES_FEES", FEES_LABEL,
+            fees, LocalDate.ofInstant(now, zone), actor, now)
     }
 
     private fun review(accountId: UUID, payment: ObservedPayment, payerName: String, amount: Long, fees: Long, now: Instant) {

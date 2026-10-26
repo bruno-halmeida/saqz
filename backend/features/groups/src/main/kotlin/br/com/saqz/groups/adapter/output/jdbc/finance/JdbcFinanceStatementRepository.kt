@@ -116,10 +116,14 @@ class JdbcFinanceStatementRepository(
               AND (groups.owner_user_id = :actor OR memberships.user_id IS NOT NULL)
             """
 
+        /** Valor recebido de uma cobrança paga: o pago pelo app (payable) ou o valor da cobrança. */
+        const val PAID_AMOUNT = "CASE WHEN charges.settled_by = 'APP' THEN coalesce(charges.payable_cents, charges.amount_cents) ELSE charges.amount_cents END"
+
         const val PAID_CHARGE_EVENTS = """
             SELECT charges.id AS charge_id,
                    charges.group_id,
-                   charges.amount_cents,
+                   -- FIN-014: pago pelo app entra pelo que o atleta pagou; as taxas saem na saída automática.
+                   $PAID_AMOUNT AS amount_cents,
                    events.occurred_at,
                    groups.time_zone,
                    row_number() OVER (
@@ -158,7 +162,7 @@ class JdbcFinanceStatementRepository(
                        charges.kind::text AS category,
                        charges.paid_method::text AS paid_method,
                        paid.occurred_at,
-                       charges.amount_cents AS amount_cents
+                       $PAID_AMOUNT AS amount_cents
                 FROM paid_charge_events paid
                 JOIN group_charges charges ON charges.id = paid.charge_id
                 JOIN access_groups groups
@@ -221,7 +225,7 @@ class JdbcFinanceStatementRepository(
                       AND expenses.expense_date < :monthEnd
                 ), 0) AS total_out_cents,
                 COALESCE((
-                    SELECT SUM(charges.amount_cents)
+                    SELECT SUM($PAID_AMOUNT)
                     FROM group_charges charges
                     WHERE charges.group_id = :group AND charges.status = 'PAID'
                 ), 0)

@@ -38,7 +38,7 @@ class JdbcNotificationWhatsApp(
         var messageId: UUID? = null
         val message = jdbc.sql("""
             SELECT c.phone, c.group_name, c.group_id, c.recipient_id, n.message_id, c.body, c.channel, link.code,
-                   charge.amount_cents, charge.due_date, owner.pix_key, owner.pix_label
+                   coalesce(charge.payable_cents, charge.amount_cents) AS amount_cents, charge.due_date, owner.pix_key, owner.pix_label
             FROM notification_delivery_context c
             JOIN group_notifications n ON n.sequence = c.sequence
             JOIN group_messages m ON m.id = n.message_id

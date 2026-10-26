@@ -183,7 +183,7 @@ class JdbcGroupReportRepository(dataSource: DataSource) : GroupReportRepository 
                        END AS title,
                        CASE charges.kind::text WHEN 'MONTHLY' THEN 'Mensalidade' ELSE 'Jogo' END AS category,
                        charges.paid_method::text AS paid_method,
-                       charges.amount_cents
+                       CASE WHEN charges.settled_by = 'APP' THEN coalesce(charges.payable_cents, charges.amount_cents) ELSE charges.amount_cents END AS amount_cents
                 FROM paid_events paid
                 JOIN group_charges charges ON charges.id = paid.charge_id
                 WHERE paid.event_rank = 1 AND paid.occurred_at >= :fromAt AND paid.occurred_at < :toAt

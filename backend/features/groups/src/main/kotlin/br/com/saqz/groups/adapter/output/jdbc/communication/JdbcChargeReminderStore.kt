@@ -19,7 +19,7 @@ class JdbcChargeReminderStore(dataSource: DataSource) : ChargeReminderStore {
     }.optional().orElse(null)
 
     override fun pending(group: UUID, ids: Set<UUID>): List<PendingReminderCharge> = jdbc.sql("""
-        SELECT c.id, c.member_user_id, c.amount_cents FROM group_charges c
+        SELECT c.id, c.member_user_id, coalesce(c.payable_cents, c.amount_cents) AS amount_cents FROM group_charges c
         JOIN group_memberships m ON m.group_id = c.group_id AND m.user_id = c.member_user_id AND m.active
         WHERE c.group_id = :g AND c.id IN (:ids) AND c.status = 'PENDING'
         ORDER BY c.id FOR UPDATE OF c, m
