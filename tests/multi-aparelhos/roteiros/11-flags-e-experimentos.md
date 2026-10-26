@@ -25,8 +25,8 @@ uid() { PSQL "select id from access_users where email='qa-$1+$TAG@saqz.local'"; 
 ```
 
 - **R-FLAGS** `<papel> <plataforma> <versão>`: `api <papel> <plataforma> <versão> GET /api/features` devolve só as flags e os valores daquela pessoa.
-- **R-REGRA** `<chave> '<json>'`: `api adm ANDROID 0.0.0 ⟨PUT /admin/features/<chave>⟩ -d '<json>'`. O corpo leva o motivo e a versão esperada; a entrega descreve o formato aqui.
-- **R-VERSOES** `'<json>'`: `api adm ANDROID 0.0.0 ⟨PUT /admin/app-versions⟩ -d '<json>'` (mínima e recomendada por plataforma).
+- **R-REGRA** `<chave> '<regra>'`: `api adm ANDROID 0.0.0 PUT /admin/features/<chave> -d '{"expectedVersion":<v>,"reason":"<motivo>","rule":<regra>}'`, com `<v>` = `version` de `api adm ANDROID 0.0.0 GET /admin/features/<chave>`. A regra **substitui a anterior inteira** (campo ausente volta ao padrão): `android`/`ios` (interruptores, padrão `true`), `state` (`OFF`, `AUDIENCE`, `ALL`), `alwaysOn`/`alwaysOff` (`{"users":[<uid>],"groups":["testadores"]}`), `audience` (`platforms` `ANDROID`/`IOS`, `minVersion`, `maxVersion`, `plans` `TITULAR`/`ORGANIZADOR`/`ILIMITADO`/`TRIAL`/`NONE`, `subscriptionStatuses` `ACTIVE`/`PAST_DUE`/`CANCELED`, `roles` `OWNER`/`ADMIN`/`ATHLETE`/`NONE`), `percentage` (0–100), `alertDisabled`. Ex. de F2.1: `{"state":"OFF","alwaysOn":{"groups":["testadores"]}}`. Chaves: `chat`, `purchases_asaas`, `purchases_app_store`, `purchases_google_play`, `whatsapp`. Sem motivo = 400; versão velha = 409.
+- **R-VERSOES** `'<json>'`: `api adm ANDROID 0.0.0 PUT /admin/app-versions -d '{"expectedVersion":<v>,"reason":"<motivo>","android":{"minimum":"1.0.15","recommended":null},"ios":{"minimum":null,"recommended":null}}'`, com `<v>` = `version` de `GET /admin/app-versions`. Vazio ou `null` = sem versão. A versão chega em `appVersion` do `GET /api/features` da plataforma.
 - **R-TELA-DEV**: no app de dev, ⟨caminho da tela escondida⟩ → forçar ou limpar o valor de uma flag ou variante.
 
 ## Preparação
@@ -36,7 +36,7 @@ uid() { PSQL "select id from access_users where email='qa-$1+$TAG@saqz.local'"; 
 | P1 | terminal | `stack.sh reset`, `stack.sh up` (bootJar refeito), `builds.sh`, `aparelhos.sh instalar`; dados dos apps apagados | Backend em 18080 | — | ☐ | ☐ |
 | P2 | ORG, ATL, TST | Criar as contas e o grupo `QA Vôlei <data>` como no roteiro 05 (P2–P4); ATL e TST entram pelo convite público | ORG dono, ATL e TST atletas | `select count(*) from group_memberships where group_id=(select id from access_groups where name='QA Vôlei <data>')` = 2 | ☐ | ☐ |
 | P3 | terminal | Criar `qa-adm+<tag>` pelo emulador de Auth e `PSQL "update access_users set platform_admin=true where email='qa-adm+$TAG@saqz.local'"` | — | `select platform_admin from access_users where email='qa-adm+$TAG@saqz.local'` = `t` | ☐ | ☐ |
-| P4 | ADMIN | No adm, criar o grupo de usuários `testadores` com o celular de TST; conferir que o grupo `revisores` já existe | `testadores` com 1 pessoa | ⟨tabela de grupos⟩ | ☐ | ☐ |
+| P4 | ADMIN | No adm, aba **Flags** → "Grupos com nome": criar `testadores`; no editor de uma flag, buscar o celular de TST e tocar "No grupo aberto"; salvar com motivo. Conferir que `revisores` já existe (pela API: `PUT /admin/feature-groups/testadores` com `{"expectedVersion":0,"reason":"QA","members":["<uid tst>"]}`) | `testadores` com 1 pessoa | `select g.name, count(m.user_id) from feature_user_groups g left join feature_user_group_members m on m.group_name=g.name group by g.name` | ☐ | ☐ |
 
 ## F1 · O dia da troca: nada muda (FLG-008, FLG-001)
 
@@ -73,7 +73,7 @@ Use a flag do chat como cobaia. Volte ao estado de F1 no fim do bloco.
 | F3.1 [CRÍTICO] | ORG | Com a flag do WhatsApp ligada, abrir o grupo → aba do WhatsApp nas preferências | Vínculo do WhatsApp visível | — | ☐ | ☐ |
 | F3.2 [CRÍTICO] [ao vivo: fora do stack] | ORG, terminal | Com o app aberto **fora** da tela do WhatsApp: desligar a flag (R-REGRA); mandar o app para o fundo e voltar | Na volta, a entrada do WhatsApp sumiu | — | ☐ | ☐ |
 | F3.3 | ORG, terminal | Religar; entrar na tela do vínculo; desligar com a pessoa **dentro** da tela | Continua na tela; ao sair e voltar ao app, a entrada sumiu | — | ☐ | ☐ |
-| F3.4 [CRÍTICO] | terminal | Flag do WhatsApp desligada: tentar o vínculo pela API como ORG | Recusa com ⟨código `FEATURE_DISABLED`⟩; o app mostraria `Essa função não está disponível no momento` | Nada gravado em `group_whatsapp_bindings` | ☐ | ☐ |
+| F3.4 [CRÍTICO] | terminal | Flag do WhatsApp desligada: tentar o vínculo pela API como ORG | `PUT /api/groups/<id>/whatsapp-binding` responde 403 problem+json com `code: FEATURE_DISABLED`; o app mostraria `Essa função não está disponível no momento` | Nada gravado em `group_whatsapp_bindings` | ☐ | ☐ |
 | F3.5 | ORG | Com o grupo já vinculado (religar, vincular, desligar): abrir o que existe | Consultar e desfazer o que existe continua possível; vincular de novo não | — | ☐ | ☐ |
 | F3.6 | ORG (iOS) | Flag da compra na App Store desligada; Perfil → "Meu plano" | Sem botão de assinar pela App Store | — | ☐ | — |
 | F3.7 [loja: só produção] | — | Compra da loja chega para validar com a flag desligada | Validada normalmente (conferir em `tests/producao`) | — | ☐ | ☐ |
@@ -86,9 +86,9 @@ Use a flag do chat como cobaia. Volte ao estado de F1 no fim do bloco.
 | F4.1 [CRÍTICO] | terminal | R-REGRA sem motivo | Recusado | — | ☐ | ☐ |
 | F4.2 [CRÍTICO] | terminal | R-REGRA com o token de ORG (não é admin) | 403 | — | ☐ | ☐ |
 | F4.3 | terminal | Duas R-REGRA seguidas com a **mesma** versão esperada | A segunda volta conflito; a regra é a da primeira | — | ☐ | ☐ |
-| F4.4 | ADMIN | Abrir o histórico do chat | Uma linha por mudança dos blocos anteriores, com quem, quando, motivo, antes e depois | ⟨tabela de histórico⟩: UPDATE e DELETE recusados | ☐ | ☐ |
+| F4.4 | ADMIN | Abrir o histórico do chat | Uma linha por mudança dos blocos anteriores, com quem, quando, motivo, antes e depois | `select version, reason, actor_user_id, created_at from feature_history where entity_type='FLAG' and entity_key='chat' order by created_at`; `update feature_history set reason='x'` e `delete from feature_history` recusados (`feature_history is immutable`). No adm: aba Flags → editar `chat` → "Histórico da flag" | ☐ | ☐ |
 | F4.5 | ADMIN | "Voltar para esta versão" numa linha antiga, com motivo | A regra antiga vale de novo; o histórico ganha uma linha nova | — | ☐ | ☐ |
-| F4.6 | terminal | Pôr uma flag ligada para todos nas duas plataformas e recuar no banco a data em que ela ficou 100% para 31, 61 e 91 dias | Alerta amarelo, depois laranja, depois vermelho, no topo da lista do adm | ⟨coluna da data⟩ | ☐ | ☐ |
+| F4.6 | terminal | Pôr uma flag ligada para todos nas duas plataformas e recuar no banco a data em que ela ficou 100% para 31, 61 e 91 dias | Alerta amarelo, depois laranja, depois vermelho, no topo da lista do adm (`GET /admin/features` traz `alert` = `YELLOW`/`ORANGE`/`RED`) | `update feature_flags set full_rollout_since = now() - interval '31 days' where flag_key='<chave>'` (depois 61 e 91) | ☐ | ☐ |
 | F4.7 | ADMIN | Desligar o alerta dessa flag com motivo | Sem alerta; o motivo no histórico | — | ☐ | ☐ |
 | F4.8 | terminal | Desligar o interruptor do iPhone dessa flag | Sem alerta (não está 100% nas duas plataformas) | — | ☐ | ☐ |
 
