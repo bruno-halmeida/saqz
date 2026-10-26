@@ -3,10 +3,12 @@ package br.com.saqz.bootstrap.configuration
 import br.com.saqz.bootstrap.configuration.http.ApiProblemWriter
 import br.com.saqz.bootstrap.configuration.http.AsaasWebhookBodySizeFilter
 import br.com.saqz.bootstrap.configuration.http.ClientAppFilter
+import br.com.saqz.bootstrap.configuration.http.FeatureGateFilter
 import br.com.saqz.bootstrap.configuration.http.RequestCorrelationFilter
 import br.com.saqz.access.adapter.input.http.PlatformAdminGuardFilter
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.access.application.clientapp.RecordClientApp
+import br.com.saqz.access.application.flags.FeatureFlags
 import br.com.saqz.identity.adapter.input.http.BearerAuthenticationFilter
 import br.com.saqz.identity.application.VerifyRequestIdentity
 import br.com.saqz.sharedkernel.ErrorCode
@@ -100,6 +102,18 @@ class IdentitySecurityConfiguration {
     fun clientAppFilterRegistration(filter: ClientAppFilter) =
         FilterRegistrationBean(filter).apply { isEnabled = false }
 
+    /** Recusa `FEATURE_DISABLED` nas flags que o backend barra; sem banco não há flags e nada é barrado. */
+    @Bean
+    fun featureGateFilter(features: ObjectProvider<FeatureFlags>, problemWriter: ApiProblemWriter) =
+        FeatureGateFilter({ features.getIfAvailable() }) { request, response ->
+            problemWriter.write(request, response, 403, ErrorCode.FEATURE_DISABLED)
+        }
+
+    /** Só na cadeia de segurança: precisa da pessoa que o Bearer autenticou. */
+    @Bean
+    fun featureGateFilterRegistration(filter: FeatureGateFilter) =
+        FilterRegistrationBean(filter).apply { isEnabled = false }
+
     /** Origens do adm-web (lista separada por vírgula); vazio = nenhum CORS liberado. */
     @Bean
     fun corsConfigurationSource(
@@ -125,6 +139,12 @@ class IdentitySecurityConfiguration {
             }
             listOf("/admin/receivables/rollout", "/admin/receivables/rollout/users/*").forEach { path ->
                 source.registerCorsConfiguration(path, rolloutConfiguration)
+            }
+            val featuresConfiguration = CorsConfiguration(configuration).apply {
+                allowedMethods = listOf("GET", "POST", "PUT", "OPTIONS")
+            }
+            listOf("/admin/features/**", "/admin/feature-groups/**", "/admin/app-versions").forEach { path ->
+                source.registerCorsConfiguration(path, featuresConfiguration)
             }
             WEB_PATHS.forEach { path -> source.registerCorsConfiguration(path, configuration) }
             source.registerCorsConfiguration("/api/session", CorsConfiguration(configuration).apply {
@@ -154,6 +174,7 @@ class IdentitySecurityConfiguration {
         requestCorrelationFilter: RequestCorrelationFilter,
         clientAppFilter: ClientAppFilter,
         asaasWebhookBodySizeFilter: AsaasWebhookBodySizeFilter,
+        featureGateFilter: FeatureGateFilter,
         problemWriter: ApiProblemWriter,
     ): SecurityFilterChain = http
         .cors { }
@@ -168,6 +189,7 @@ class IdentitySecurityConfiguration {
                 .requestMatchers("/actuator/prometheus").permitAll()
                 .requestMatchers("/api/password-reset/**").permitAll()
                 .requestMatchers("/api/invites/preview").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/features").permitAll()
                 .requestMatchers("/subscriptions/checkout-login").permitAll()
                 .requestMatchers("/api/session/app-link/redeem").permitAll()
                 .requestMatchers("/public/account-confirmation/*").permitAll()
@@ -188,6 +210,7 @@ class IdentitySecurityConfiguration {
         }
         .addFilterBefore(bearerAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         .addFilterAfter(platformAdminGuardFilter, BearerAuthenticationFilter::class.java)
+        .addFilterAfter(featureGateFilter, PlatformAdminGuardFilter::class.java)
         .addFilterBefore(requestCorrelationFilter, BearerAuthenticationFilter::class.java)
         // Mesma posição do RequestCorrelationFilter, logo depois dele (o Spring Security mantém a ordem de
         // inserção entre filtros de mesma posição): dentro do MDC dele e antes do Bearer, para o 401 também
@@ -234,7 +257,7 @@ class IdentitySecurityConfiguration {
             "/public/account-confirmation",
         )
         val EXACT_ANONYMOUS_PATHS = setOf("/api/session/app-link/redeem")
-        val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview")
+        val OPTIONAL_AUTHENTICATION_PATHS = setOf("/api/invites/preview", "/api/features")
 
         /**
          * As duas superfícies web servidas na origem do painel: o admin e a página de

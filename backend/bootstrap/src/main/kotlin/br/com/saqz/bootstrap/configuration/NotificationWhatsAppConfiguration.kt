@@ -1,5 +1,7 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.access.application.flags.FeatureFlags
+import br.com.saqz.access.application.flags.FeatureKeys
 import br.com.saqz.groups.adapter.input.http.GroupWhatsAppBindingController
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsApp
@@ -14,12 +16,15 @@ import br.com.saqz.groups.application.communication.WhatsAppNumberCheck
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiNotificationSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
+import br.com.saqz.groups.application.communication.WhatsAppDelivery
 import br.com.saqz.groups.application.whatsapp.GroupWhatsAppBindingRepository
 import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
 import br.com.saqz.groups.application.whatsapp.ManageGroupWhatsAppBinding
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
 import br.com.saqz.sharedkernel.job.JobLog
 import com.uazapi.sdk.UazapiClient
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -43,7 +48,13 @@ class NotificationWhatsAppConfiguration {
         return UazapiClient.builder().baseUrl(baseUrl).token(token)
             .connectTimeout(Duration.ofSeconds(10)).readTimeout(Duration.ofSeconds(30)).build()
     }
-    @Bean fun notificationWhatsAppSender(client: UazapiClient): NotificationWhatsAppSender = UazapiNotificationSender(client)
+    /** Toda mensagem individual (avisos, convites, confirmação de conta) passa pela flag `whatsapp`. */
+    @Bean fun notificationWhatsAppSender(client: UazapiClient, features: ObjectProvider<FeatureFlags>): NotificationWhatsAppSender {
+        val sender = UazapiNotificationSender(client)
+        return NotificationWhatsAppSender { message ->
+            if (whatsAppFlagOn(features)) sender.send(message) else WhatsAppDelivery.Failed.also { flagOffLog.info("whatsapp_skipped cause=flag_off") }
+        }
+    }
     @Bean fun whatsAppNumberCheck(client: UazapiClient): WhatsAppNumberCheck = UazapiNumberCheck(client)
     @Bean fun notificationWhatsAppQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
         links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
@@ -58,8 +69,14 @@ class NotificationWhatsAppConfiguration {
         client: UazapiClient,
         @Value("\${saqz.links.domain}") linksDomain: String,
         @Value("\${saqz.notifications.whatsapp.group-reminder-image-url:#{null}}") reminderImageUrl: String?,
-    ): NotificationWhatsAppGroupSender =
-        UazapiGroupNotificationSender(client, groupReminderImageUrl(linksDomain, reminderImageUrl))
+        features: ObjectProvider<FeatureFlags>,
+    ): NotificationWhatsAppGroupSender {
+        val sender = UazapiGroupNotificationSender(client, groupReminderImageUrl(linksDomain, reminderImageUrl))
+        return NotificationWhatsAppGroupSender { jid, messageId, text, buttons ->
+            if (whatsAppFlagOn(features)) sender.send(jid, messageId, text, buttons)
+            else WhatsAppDelivery.Failed.also { flagOffLog.info("whatsapp_group_skipped cause=flag_off") }
+        }
+    }
     @Bean fun notificationWhatsAppGroupWorker(
         queue: JdbcNotificationWhatsAppGroup,
         sender: NotificationWhatsAppGroupSender,
@@ -90,6 +107,15 @@ class NotificationWhatsAppConfiguration {
         manage: ManageGroupWhatsAppBinding,
     ) = GroupWhatsAppBindingController(actors, link, manage)
 }
+
+private val flagOffLog = LoggerFactory.getLogger(NotificationWhatsAppConfiguration::class.java)
+
+/**
+ * A flag `whatsapp` decide o envio em tempo de execução (DEB-119): desligada, a mensagem é descartada
+ * como falha, sem nova tentativa. Sem banco não há flags e vale só a propriedade que criou esta configuração.
+ */
+internal fun whatsAppFlagOn(features: ObjectProvider<FeatureFlags>): Boolean =
+    features.getIfAvailable()?.enabledOnServer(FeatureKeys.WHATSAPP) ?: true
 
 /**
  * Imagem de marca no topo do lembrete de presença no grupo. Propriedade ausente = imagem hospedada

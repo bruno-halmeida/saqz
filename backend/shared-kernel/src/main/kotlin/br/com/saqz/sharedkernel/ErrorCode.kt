@@ -65,4 +65,6 @@ enum class ErrorCode {
     PLAN_LIMIT,
     WHATSAPP_UNAVAILABLE,
     MONTHLY_INVITEE_NOT_FOUND,
+    /** Flag que o backend barra está desligada para a pessoa (FLG-003): o app mostra a mensagem fixa e busca as flags. */
+    FEATURE_DISABLED,
 }

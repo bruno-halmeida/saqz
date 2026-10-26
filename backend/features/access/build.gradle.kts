@@ -10,6 +10,9 @@ dependencies {
     implementation(project(":shared-kernel"))
     implementation(libs.flyway.core)
     implementation(libs.spring.jdbc)
+    // Regras das flags guardadas em JSON (DEB-119).
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.twelvemonkeys.imageio.webp)
     implementation("org.springframework.security:spring-security-core")
