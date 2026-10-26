@@ -118,6 +118,7 @@ import br.com.saqz.receivables.presentation.ReceiptWalletRoute
 import br.com.saqz.receivables.presentation.ReceiptWalletRoot
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoot
+import br.com.saqz.groups.port.GroupLinkEvent
 import br.com.saqz.receivables.domain.MemberAutopayStatus
 import br.com.saqz.receivables.presentation.AthleteChargesRoot
 import br.com.saqz.receivables.presentation.CashboxReceivablesCard
@@ -229,18 +230,17 @@ internal fun SaqzNavHost(
     val inviteRedeeming by inviteCoordinator.redeeming.collectAsStateWithLifecycle()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
-    // Recebimento pelo app (FIN-011): o "Pagar" só existe com a disponibilidade do servidor; sem ela, tudo como hoje.
-    val payCharges: ((String, String) -> Unit)? = if (receipts.paymentEntryAvailable) {
-        { groupId, groupName -> backStack.add(AthleteChargesRoute(groupId, groupName)) }
-    } else null
-    // Botão da hora do acerto (FIN-013): espera a sessão e a disponibilidade; desligada, o link não abre nada.
+    // Recebimento pelo app (FIN-011): o lado do atleta não depende da disponibilidade (que é por pessoa e, no piloto,
+    // só libera gestores). Quem decide é o grupo: `receivablesActive` no grupo e na Início, e o `active` do `/me`.
+    val payCharges: (String, String) -> Unit = { groupId, groupName -> backStack.add(AthleteChargesRoute(groupId, groupName)) }
+    // Botão da hora do acerto (FIN-013): espera a sessão; o servidor resolve o código e o `/me` diz se dá para pagar.
     val settleLinks = koinInject<br.com.saqz.composeapp.receivables.SettleLinkInbox>()
     val settleCode by settleLinks.pending.collectAsStateWithLifecycle()
     LaunchedEffect(settleLinks) { settleLinks.start() }
-    LaunchedEffect(settleCode, state.session, receipts.loading, receipts.paymentEntryAvailable) {
+    LaunchedEffect(settleCode, state.session) {
         val code = settleCode ?: return@LaunchedEffect
-        if (state.session !is SessionAccessState.Ready || receipts.loading) return@LaunchedEffect
-        if (receipts.paymentEntryAvailable) backStack.add(SettleLinkRoute(code))
+        if (state.session !is SessionAccessState.Ready) return@LaunchedEffect
+        backStack.add(SettleLinkRoute(code))
         settleLinks.consume()
     }
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
@@ -467,9 +467,9 @@ internal fun SaqzNavHost(
             // Push de jogo abre o jogo (onde se confirma); o do teste e do atraso abre os planos (ou Meu plano, para
             // quem já assina); os outros, a central.
             // "Vou" do push de jogo com posições: a tela de posição, que abre o jogo depois de confirmar (DEB-107).
-            // Hora do acerto e "Cobrar" com recebimento pelo app (F4): abrem o pagamento daquele jogo (ou tudo).
-            if (opened.channel == SETTLE_CHANNEL && groupId != null && receipts.paymentEntryAvailable) {
-                backStack.add(ReceivablePaymentRoute(groupId, "", gameId = gameId))
+            // Avisos do recebimento (canal PAYMENT): ver `paymentPushDestination`.
+            if (opened.channel == PAYMENT_CHANNEL && groupId != null) {
+                backStack.add(paymentPushDestination(opened, groupId, state.session.administers(groupId)))
             } else if (groupId != null && gameId != null && opened.pickPosition) {
                 backStack.add(GroupsRoute.PositionPicker(groupId, gameId, PositionPickerOrigin.Push.routeValue))
             } else if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
@@ -808,7 +808,7 @@ internal fun SaqzNavHost(
                     // O link some da pilha ao abrir o pagamento: voltar não reabre a consulta.
                     SettleLinkRoot(route.code, onBack = pop, onOpen = { target ->
                         backStack.removeLastOrNull()
-                        backStack.add(ReceivablePaymentRoute(target.groupId, "", gameId = target.gameId,
+                        backStack.add(ReceivablePaymentRoute(target.groupId, target.groupName.orEmpty(), gameId = target.gameId,
                             billingMonth = target.billingMonth))
                     })
                 }
@@ -1055,7 +1055,7 @@ internal fun SaqzNavHost(
                         onBack = pop,
                         gameCreatedToast = gameCreatedToastGroupId == route.groupId,
                         onConsumeGameCreatedToast = { gameCreatedToastGroupId = null },
-                        paymentsEnabled = receipts.paymentEntryAvailable,
+                        paymentsEnabled = true,
                         onEffect = { effect ->
                             if (effect is GroupDetailsEffect.OpenPayment) {
                                 backStack.add(AthleteChargesRoute(effect.groupId, effect.groupName))
@@ -1643,5 +1643,23 @@ private fun br.com.saqz.access.domain.session.AccessSession.isOnlyOwnedGroup(gro
 
 private const val OwnerRole = "OWNER"
 
-/** Canal do push "Hora do acerto" e do "Cobrar" com recebimento pelo app (contrato com a F4). */
-internal const val SETTLE_CHANNEL = "SETTLE"
+/** Canal dos pushes do recebimento pelo app (`MessageChannel.PAYMENT` no backend). */
+internal const val PAYMENT_CHANNEL = "PAYMENT"
+
+/**
+ * Para onde vai o toque num push do recebimento (FIN-013/FIN-014). O backend não manda o tipo do aviso:
+ * - com `settleGameId`/`settleBillingMonth` (hora do acerto, cartão recusado, reajuste): o pagamento daquele jogo ou mês;
+ * - sem eles, quem administra o grupo ("Fulano pagou", "Pix para revisar") vai ao caixa, onde ficam a entrada e o cartão
+ *   de revisão; o atleta ("Pagamento confirmado"), a Minhas cobranças do grupo.
+ */
+internal fun paymentPushDestination(opened: GroupLinkEvent.NotificationOpen, groupId: String, administers: Boolean): NavKey =
+    when {
+        opened.settleGameId != null || opened.settleBillingMonth != null ->
+            ReceivablePaymentRoute(groupId, "", gameId = opened.settleGameId, billingMonth = opened.settleBillingMonth)
+        administers -> FinanceRoute.GroupCashbox(groupId)
+        else -> AthleteChargesRoute(groupId, "")
+    }
+
+internal fun SessionAccessState.administers(groupId: String): Boolean =
+    this is SessionAccessState.Ready &&
+        session.memberships.any { it.groupId.value == groupId && it.role.value.uppercase() in AdministratorRoles }

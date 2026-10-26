@@ -213,6 +213,21 @@ class NetworkClientTest {
         assertEquals("DOCUMENT_REQUIRED", problem.error)
     }
 
+    /** O envelope dos recebimentos exige `requestId`: só `error` não basta para virar problema da API. */
+    @Test
+    fun `error body without requestId stays an HTTP status and the spring body keeps its old mapping`() = runTest {
+        val bare = client(responding("""{"timestamp":"2026-10-26T12:00:00Z","error":"Conflict","path":"/api/x"}""",
+            HttpStatusCode.Conflict)).execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+        assertEquals(NetworkError.HttpStatus(409), assertFailure(bare))
+
+        // Com `status`, o corpo padrão do Spring já decodificava como `ApiProblem` antes do envelope: nada muda.
+        val spring = client(responding("""{"timestamp":"2026-10-26T12:00:00Z","status":409,"error":"Conflict","path":"/api/x"}""",
+            HttpStatusCode.Conflict)).execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+        val problem = assertIs<NetworkError.ApiProblemError>(assertFailure(spring)).problem
+        assertEquals(409, problem.status)
+        assertEquals(null, problem.code)
+    }
+
     @Test
     fun `oversized error body is not parsed or retained`() = runTest {
         val secret = "sensitive-body-" + "x".repeat(100)

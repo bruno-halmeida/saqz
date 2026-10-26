@@ -94,4 +94,14 @@ class AttendanceNotificationsTest {
         assertNull(result.actions)
         assertEquals(0L, result.timeoutAfter)
     }
+
+    /** Push do recebimento (canal PAYMENT): o jogo ou o mês do acerto viajam até o toque, sem `gameId` (sem botões). */
+    @Test
+    fun paymentPushCarriesTheSettleTargetWithoutAttendanceButtons() {
+        val push = AttendancePush.from(mapOf("channel" to "PAYMENT", "groupId" to "g", "settleBillingMonth" to "2026-10"),
+            "Hora do acerto", "R$ 100,00", "m")
+        assertEquals(PaymentSettle(null, "2026-10"), push.settle())
+        assertEquals(null, push.gameId)
+        assertEquals(null, AttendancePush.from(mapOf("channel" to "PAYMENT", "groupId" to "g"), "Saqz", "Corpo", "m").settle())
+    }
 }

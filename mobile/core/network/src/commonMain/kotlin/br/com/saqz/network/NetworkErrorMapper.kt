@@ -15,9 +15,12 @@ fun interface NetworkErrorMapper {
 @Serializable
 private data class DeclinedProblemTransport(val error: String, val reason: String, val message: String)
 
-/** Recebimentos: `{"error":"DOCUMENT_REQUIRED","requestId":"..."}` (409/503 do envelope de setembro). */
+/**
+ * Recebimentos: `{"error":"DOCUMENT_REQUIRED","requestId":"..."}` (409/503 do envelope de setembro). O `requestId` é
+ * obrigatório: o corpo padrão de erro do Spring também tem `error`, e esse continua `HttpStatus`.
+ */
 @Serializable
-private data class EnvelopeProblemTransport(val error: String, val requestId: String? = null)
+private data class EnvelopeProblemTransport(val error: String, val requestId: String)
 
 class ApiProblemErrorMapper(
     private val json: Json,

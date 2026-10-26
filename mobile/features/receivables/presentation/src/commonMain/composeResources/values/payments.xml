@@ -23,6 +23,7 @@
     <string name="autopay_active_title">Ativo no cartão</string>
     <string name="autopay_active_next">Próxima cobrança em %1$s</string>
     <string name="autopay_manage">Gerenciar</string>
+    <string name="autopay_authorizing">Confirmando o cartão…</string>
     <string name="refused_title">Seu cartão não passou</string>
     <string name="refused_body">A mensalidade de %1$s (%2$s) continua em aberto. Pague por Pix agora ou atualize o cartão. O automático tenta de novo no mês que vem.</string>
     <string name="refused_pay_pix">Pagar por Pix</string>

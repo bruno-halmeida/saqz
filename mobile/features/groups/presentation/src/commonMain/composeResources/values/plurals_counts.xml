@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Contagens: um plural por frase, para "1 vaga" / "2 vagas" não depender de quem escreve a tela. -->
-    <plurals name="members_autopay_count">
-        <item quantity="one">%1$d mensalista no automático</item>
-        <item quantity="other">%1$d mensalistas no automático</item>
-    </plurals>
     <plurals name="communication_reminded">
         <item quantity="one">Lembrete enviado no Saqz para %1$d pessoa.</item>
         <item quantity="other">Lembrete enviado no Saqz para %1$d pessoas.</item>

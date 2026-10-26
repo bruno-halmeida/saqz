@@ -52,7 +52,8 @@ class AthleteChargesViewModel(
                 is SaqzResult.Success -> {
                     openIds = me.value.openCharges.map { it.chargeId }
                     update {
-                        athleteChargesState(args.groupName, me.value, (paidResult as? SaqzResult.Success)?.value)
+                        athleteChargesState(args.groupName.ifBlank { me.value.groupName.orEmpty() }, me.value,
+                            (paidResult as? SaqzResult.Success)?.value)
                     }
                 }
             }
@@ -92,6 +93,7 @@ internal fun athleteChargesState(groupName: String, me: AthleteReceivables, paid
             recurrence.status == RecurrenceStatus.REFUSED && refused != null -> AutopayCardUi.Refused(refused.chargeId,
                 PaymentLabels.monthName(refused.billingMonth) ?: PaymentLabels.dayMonth(refused.dueDate),
                 formatBrl(refused.payableCents), next)
+            recurrence.status == RecurrenceStatus.AUTHORIZING -> AutopayCardUi.Authorizing
             recurrence.status == RecurrenceStatus.NONE -> AutopayCardUi.Offer(
                 open.firstOrNull { it.kind == OpenChargeKind.MONTHLY }?.dueDate?.split('-')?.getOrNull(2)?.trimStart('0'))
             else -> AutopayCardUi.Active(next)

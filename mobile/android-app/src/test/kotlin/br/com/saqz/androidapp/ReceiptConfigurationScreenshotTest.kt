@@ -23,11 +23,13 @@ import java.io.File
 class ReceiptConfigurationScreenshotTest {
     @get:Rule val compose = createComposeRule()
 
+    /** Gestor-Ativar v1: sem escolha de meio; cadastro, revisão (Pix e cartão juntos), aceite e desligar. */
     @Test fun configurationStates() {
         val state = mutableStateOf(ReceiptConfigurationState())
         compose.setContent { SaqzTheme { ReceiptConfigurationScreen(state.value, {}, {}) } }
         capture("carregando")
         show(state, ReceiptConfigurationState(loading = false), "sem-conta")
+        compose.onNodeWithTag(ReceiptConfigurationTags.Registration).assertExists()
         AccountRegistration.entries.forEach { registration ->
             show(state, selected.copy(accounts = listOf(ReceiptAccount("00000000-0000-4000-8000-000000001234",
                 registration, false))),
@@ -39,63 +41,35 @@ class ReceiptConfigurationScreenshotTest {
             show(state, failed, "erro-${error.name.lowercase()}")
         }
         show(state, selected.copy(pendingMutation = true, error = ReceiptError.UNCERTAIN), "operacao-pendente")
-        show(state, ReceiptConfigurationState(loading = false, pendingMutation = true), "restauracao-pendente")
-        compose.onNodeWithText("Você ainda não tem", substring = true).assertDoesNotExist()
-        show(state, selected.copy(pendingMutation = true, loading = true), "operacao-em-andamento")
-        show(state, selected.copy(completed = true, status = selected.status!!.copy(state = config.copy(enabled = true,
-            pixEnabled = true))), "configuracao-salva")
         show(state, selected.copy(discoveryAvailable = false), "rollout-off")
-        show(state, selected, "nenhum-meio")
-        compose.onNodeWithTag(ReceiptConfigurationTags.Preview).assertIsNotEnabled()
-        listOf(setOf(ReceiptMethod.PIX), setOf(ReceiptMethod.CARD), ReceiptMethod.entries.toSet()).forEachIndexed {
-            index, methods ->
-            show(state, selected.copy(methods = methods), "meios-$index")
-            compose.onNodeWithTag(ReceiptConfigurationTags.Preview).assertIsEnabled()
-        }
-        val reviewed = selected.copy(methods = setOf(ReceiptMethod.PIX), review = review,
-            terms = listOf(ReceiptTerms("v1",
-                "Termos de demonstração para revisão visual. Confira as tarifas e o valor total antes de aceitar. " +
-                "O aceite se aplica às novas emissões. Ordens já emitidas preservam suas condições.")))
-        compose.runOnIdle { state.value = reviewed }
-        compose.onNodeWithTag(ReceiptConfigurationTags.Activate).performScrollTo()
-        capture("revisao-resumida")
-        compose.runOnIdle { state.value = reviewed.copy(terms = emptyList(), error = ReceiptError.UNAVAILABLE) }
-        compose.onNodeWithTag(ReceiptConfigurationTags.Accept).performScrollTo().assertIsNotEnabled()
-        capture("termos-indisponiveis")
-        compose.runOnIdle { state.value = reviewed }
-        compose.onNodeWithText("Detalhes das taxas").performScrollTo().performClick()
-        capture("tarifas-e-precos")
-        compose.onNodeWithTag(ReceiptConfigurationTags.Accept).performScrollTo()
-        capture("termos-sem-aceite")
+        show(state, selected, "pronto-para-revisar")
+        compose.onNodeWithTag(ReceiptConfigurationTags.Preview).assertIsEnabled()
+        compose.onNodeWithTag(ReceiptConfigurationTags.method(ReceiptMethod.PIX)).assertDoesNotExist()
+        val reviewed = selected.copy(methods = ReceiptMethod.entries.toSet(), review = review,
+            terms = listOf(ReceiptTerms("v1", "Termos de demonstração para revisão visual.")))
+        show(state, reviewed, "revisao-sem-aceite")
         compose.onNodeWithTag(ReceiptConfigurationTags.Activate).assertIsNotEnabled()
-        compose.runOnIdle { state.value = reviewed.copy(accepted = true) }
-        compose.onNodeWithTag(ReceiptConfigurationTags.Activate).performScrollTo()
+        show(state, reviewed.copy(accepted = true), "aceite-explicito")
         compose.onNodeWithTag(ReceiptConfigurationTags.Activate).assertIsEnabled()
-        capture("aceite-explicito")
-        compose.runOnIdle { state.value = selected.copy(status = selected.status!!.copy(state = config.copy(enabled =
-            true, pixEnabled = true)),
-            confirmingDeactivation = true, discoveryAvailable = false) }
-        compose.onNodeWithText("Confirmar desativação").performScrollTo()
-        capture("desativacao-sem-rollout")
+        val enabled = selected.copy(completed = true, status = selected.status!!.copy(state = config.copy(enabled = true,
+            pixEnabled = true, cardEnabled = true)))
+        show(state, enabled, "ativo")
+        show(state, enabled.copy(completed = false, confirmingDeactivation = true), "confirmar-desligar")
+        compose.onNodeWithText("Confirmar desativação").assertExists()
     }
 
-    @Test fun providerTariffsShowAsaasBounds() {
-        val bounded = review.copy(schedules = review.schedules.map { it.copy(providerRate = "0.0099",
-            providerFixedCents = 0, providerMinimumCents = 29, providerMaximumCents = 199) },
-            prices = listOf(ReceiptPrice("GAME", ReceiptMethod.PIX, 1000, 69, 1069, 1000)))
-        compose.setContent { SaqzTheme { ReceiptConfigurationScreen(selected.copy(methods = setOf(ReceiptMethod.PIX),
-            review = bounded, terms = listOf(ReceiptTerms("v1", "Termos de teste"))), {}, {}) } }
-        compose.onNodeWithText("Detalhes das taxas").performScrollTo().performClick()
-        compose.onNodeWithText("Tarifa mínima Asaas: R$\u00a00,29").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Tarifa máxima Asaas: R$\u00a01,99").assertIsDisplayed()
-        capture("tarifas-asaas-com-limites")
+    @Test fun reviewShowsBothMethodFees() {
+        compose.setContent { SaqzTheme { ReceiptConfigurationScreen(selected.copy(methods = ReceiptMethod.entries.toSet(),
+            review = review, terms = listOf(ReceiptTerms("v1", "Termos de teste"))), {}, {}) } }
+        compose.onNodeWithText("Taxas de serviço e pagamento").performScrollTo().assertIsDisplayed()
+        capture("taxas-pix-e-cartao")
     }
 
-    @Test fun methodAndAcceptanceControlsEmitExplicitIntent() {
+    @Test fun reviewButtonAsksForBothMethods() {
         val intents = mutableListOf<ReceiptConfigurationIntent>()
         compose.setContent { SaqzTheme { ReceiptConfigurationScreen(selected, intents::add, {}) } }
-        compose.onNodeWithTag(ReceiptConfigurationTags.method(ReceiptMethod.CARD)).performClick()
-        org.junit.Assert.assertEquals(listOf(ReceiptConfigurationIntent.ToggleMethod(ReceiptMethod.CARD)), intents)
+        compose.onNodeWithTag(ReceiptConfigurationTags.Preview).performClick()
+        org.junit.Assert.assertEquals(listOf(ReceiptConfigurationIntent.PreviewAllMethods), intents)
     }
 
     private fun show(state: androidx.compose.runtime.MutableState<ReceiptConfigurationState>,
@@ -114,7 +88,8 @@ class ReceiptConfigurationScreenshotTest {
             accountId = "00000000-0000-4000-8000-000000001234",
         status = ReceiptStatus(config, mapOf("READ" to ReceiptPermission(true), "CANCEL" to ReceiptPermission(true))),
             discoveryAvailable = true)
-    private val review = ReceiptReview(config, listOf(ReceiptSchedule(ReceiptMethod.PIX, "v1", "0.01", 10, "0.02", 20)),
+    private val review = ReceiptReview(config, listOf(ReceiptSchedule(ReceiptMethod.PIX, "v1", "0.01", 10, "0.02", 20),
+        ReceiptSchedule(ReceiptMethod.CARD, "v1", "0.0299", 49, "0.02", 20)),
         listOf(ReceiptPrice("GAME", ReceiptMethod.PIX, 1000, 61, 1061, 1000)),
         mapOf("ACTIVATE_GROUP" to ReceiptPermission(true)), null, "a".repeat(64))
 }

@@ -83,6 +83,27 @@ class GroupMembersViewModelTest {
     }
 
     @Test
+    fun `type filter splits mensalistas and avulsos and counts both`() = runTest {
+        val athlete = FakeAthleteGateway(
+            rosterResult = SaqzResult.Success(listOf(
+                sampleRosterEntry("bia"),
+                sampleRosterEntry("diego").copy(membershipType = br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO),
+                sampleRosterEntry("renata").copy(monthlyFeeExempt = true),
+            )),
+        )
+        val memberships = FakeGroupMembershipGateway(listResult = SaqzResult.Success(emptyList()))
+        val viewModel = membersViewModel("group-1", athlete, memberships, FakeGroupGateway())
+
+        assertEquals(2, viewModel.state.value.monthlyCount)
+        assertEquals(1, viewModel.state.value.perGameCount)
+        viewModel.onIntent(GroupMembersIntent.SelectTypeFilter(MemberTypeFilter.Monthly))
+        assertEquals(setOf("bia", "renata"), viewModel.state.value.members.map { it.id }.toSet())
+        assertTrue(viewModel.state.value.members.first { it.id == "renata" }.exempt)
+        viewModel.onIntent(GroupMembersIntent.SelectTypeFilter(MemberTypeFilter.PerGame))
+        assertEquals(listOf("diego"), viewModel.state.value.members.map { it.id })
+    }
+
+    @Test
     fun `signed in member is marked self and its sheet only edits the profile`() = runTest {
         val athlete = FakeAthleteGateway(
             ownProfileResult = SaqzResult.Success(

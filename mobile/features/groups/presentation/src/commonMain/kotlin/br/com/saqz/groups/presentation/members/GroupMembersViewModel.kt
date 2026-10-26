@@ -71,8 +71,14 @@ class GroupMembersViewModel(
                 update { it.copy(query = intent.value) }
                 project()
             }
-            is GroupMembersIntent.SelectFilter -> {
-                update { it.copy(filter = intent.filter) }
+            is GroupMembersIntent.SelectFilter, is GroupMembersIntent.SelectTypeFilter -> {
+                update {
+                    when (intent) {
+                        is GroupMembersIntent.SelectFilter -> it.copy(filter = intent.filter)
+                        is GroupMembersIntent.SelectTypeFilter -> it.copy(typeFilter = intent.filter)
+                        else -> it
+                    }
+                }
                 project()
             }
             is GroupMembersIntent.OpenMember -> openMember(intent.memberId)
@@ -423,7 +429,7 @@ class GroupMembersViewModel(
 
     private fun project() = update { state ->
         val query = state.query.trim()
-        val people = roster.filter { it.name.containsQuery(query) }
+        val people = roster.filter { it.name.containsQuery(query) && it.matches(state.typeFilter) }
         val pending = requests.filter { it.name.containsQuery(query) }
         val admins = people.filter { it.isAdmin }
         val members = people.filterNot { it.isAdmin }
@@ -437,6 +443,8 @@ class GroupMembersViewModel(
             admins = if (showsPeople) admins else emptyList(),
             members = if (state.filter == GroupMembersFilter.All) members else emptyList(),
             shownCount = if (state.filter == GroupMembersFilter.All) members.size else 0,
+            monthlyCount = roster.count { it.monthly },
+            perGameCount = roster.count { !it.monthly },
         )
     }
 }
@@ -499,6 +507,8 @@ private fun AthleteRosterEntry.toUi(
     // deliberadamente não é convertido em status visual.
     stats = "",
     photo = memberPhoto(groupId, userId, photoTag),
+    monthly = membershipType == AthleteMembershipType.MENSALISTA,
+    exempt = monthlyFeeExempt && membershipType == AthleteMembershipType.MENSALISTA,
 )
 
 private fun br.com.saqz.groups.domain.athlete.AthletePosition.label(): String = when (this) {
@@ -507,6 +517,12 @@ private fun br.com.saqz.groups.domain.athlete.AthletePosition.label(): String = 
     br.com.saqz.groups.domain.athlete.AthletePosition.CENTRAL -> "Central"
     br.com.saqz.groups.domain.athlete.AthletePosition.OPOSTO -> "Oposto"
     br.com.saqz.groups.domain.athlete.AthletePosition.LEVANTADOR -> "Levantador"
+}
+
+private fun MemberUi.matches(filter: MemberTypeFilter) = when (filter) {
+    MemberTypeFilter.All -> true
+    MemberTypeFilter.Monthly -> monthly
+    MemberTypeFilter.PerGame -> !monthly
 }
 
 private fun String.containsQuery(query: String): Boolean =

@@ -31,13 +31,13 @@ class KtorAthletePaymentsGatewayTest {
 
     @Test fun meReadsTheRecurrenceOfF3() = runTest {
         val body = me.replace("\"recurrence\":null", """"recurrence":{"status":"REFUSED","amountCents":10000,
-            "nextChargeDate":"2026-10-10","refusedChargeId":"c1","history":[{"billingMonth":"2026-08","amountCents":10000,
-            "chargedOn":"2026-08-10"}]}""")
+            "nextChargeDate":"2026-10-10","refusedChargeId":"c1","history":[{"month":"2026-08-01","amountCents":10000,
+            "paidAt":"2026-08-10T12:00:00Z","atAdhesion":true}]}""")
         val gateway = KtorAthletePaymentsGateway(client(MockEngine { respond(envelope(body), HttpStatusCode.OK, headers) }))
         val recurrence = assertIs<SaqzResult.Success<AthleteReceivables>>(gateway.me("ceret")).value.recurrence
         assertEquals(RecurrenceStatus.REFUSED, recurrence?.status)
         assertEquals("c1", recurrence?.refusedChargeId)
-        assertEquals(1, recurrence?.history?.size)
+        assertEquals(RecurrenceCharge("2026-08", 10000, "2026-08-10", true), recurrence?.history?.single())
     }
 
     @Test fun totalThatDoesNotMatchTheChargesFailsClosed() = runTest {
@@ -144,9 +144,10 @@ class KtorAthletePaymentsGatewayTest {
     @Test fun settleLinkResolvesTheGameOrTheMonth() = runTest {
         val gateway = KtorSettleLinkGateway(client(MockEngine { request ->
             assertEquals("/api/receivables/settle-links/AbC123", request.url.encodedPath)
-            respond(envelope("""{"groupId":"ceret","gameId":"g1","billingMonth":null}"""), HttpStatusCode.OK, headers)
+            respond(envelope("""{"groupId":"ceret","gameId":null,"billingMonth":"2026-10-01","groupName":"Vôlei do CERET"}"""),
+                HttpStatusCode.OK, headers)
         }))
-        assertEquals(SaqzResult.Success(SettleTarget("ceret", "g1", null)), gateway.resolve("AbC123"))
+        assertEquals(SaqzResult.Success(SettleTarget("ceret", null, "2026-10", "Vôlei do CERET")), gateway.resolve("AbC123"))
     }
 
     @Test fun cpfCheckDigits() {

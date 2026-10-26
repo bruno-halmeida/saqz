@@ -105,7 +105,7 @@ internal data class ExpenseTransport(
     val version: Long,
     val events: List<ExpenseAuditTransport>,
     val direction: String = "OUT",
-    /** `RECEIVABLES_FEES`: as taxas que o recebimento lança sozinho (E). */
+    /** `RECEIVABLES_FEES` (taxas) ou `RECEIVABLES_REVIEW` ("Não é cobrança"): lançamento do recebimento, sem edição. */
     val origin: String? = null,
 )
 
@@ -468,7 +468,6 @@ private fun String?.toAppMethod(): AppPaymentMethod? = when (this) {
     else -> null
 }
 
-private const val RECEIVABLES_FEES = "RECEIVABLES_FEES"
 
 private fun ChargeAuditTransport.toDomain() =
     ChargeAudit(actorId, oldStatus.toDomain(), newStatus.toDomain(), note, occurredAt)
@@ -480,7 +479,7 @@ private fun ExpenseTransport.toDomain() = Expense(
     id, GroupId(groupId), description, amountCents, expenseDate, category.toExpenseCategory(),
     customCategory, notes, status.toDomain(), version, events.map(ExpenseAuditTransport::toDomain),
     direction.toFinanceDirection(),
-    automatic = origin == RECEIVABLES_FEES,
+    automatic = origin != null,
 )
 
 private fun FinanceStatementPageTransport.toDomain() = FinanceStatementPage(
@@ -502,7 +501,7 @@ private fun FinanceStatementItemTransport.toDomain() = FinanceStatementItem(
     occurredAt = occurredAt,
     amountCents = amountCents,
     appMethod = appMethod.toAppMethod().takeIf { settledBy == "APP" },
-    automatic = origin == RECEIVABLES_FEES,
+    automatic = origin != null,
 )
 
 private fun FinanceStatementSummaryTransport.toDomain() = FinanceStatementSummary(

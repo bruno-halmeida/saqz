@@ -67,7 +67,8 @@ class KtorSettleLinkGateway(private val network: AuthenticatedNetworkClient) : S
         envelope(network, HttpMethod.Get, "api/receivables/settle-links/${code.encodeURLPathPart()}",
             SettleTargetTransport.serializer()) {
             require(it.groupId.isNotBlank())
-            SettleTarget(it.groupId, it.gameId?.takeIf(String::isNotBlank), it.billingMonth?.takeIf(String::isNotBlank))
+            SettleTarget(it.groupId, it.gameId?.takeIf(String::isNotBlank), it.billingMonth?.takeIf(String::isNotBlank)?.take(7),
+                it.groupName?.takeIf(String::isNotBlank))
         }
 }
 
@@ -135,6 +136,7 @@ private fun String?.requireHosted(): String {
 
 @Serializable internal data class AthleteMeTransport(
     val active: Boolean,
+    val groupName: String? = null,
     val payeeName: String? = null,
     val methods: List<String> = emptyList(),
     val pixReady: Boolean = false,
@@ -149,8 +151,9 @@ private fun String?.requireHosted(): String {
 @Serializable internal data class RecurrenceTransport(val status: String, val amountCents: Long = 0,
     val nextChargeDate: String? = null, val refusedChargeId: String? = null,
     val history: List<RecurrenceChargeTransport> = emptyList())
-@Serializable internal data class RecurrenceChargeTransport(val billingMonth: String? = null, val amountCents: Long,
-    val chargedOn: String? = null, val atAdhesion: Boolean = false)
+/** `{month:"2026-10-01", amountCents, paidAt:"<instante>", atAdhesion}` como o backend devolve. */
+@Serializable internal data class RecurrenceChargeTransport(val month: String? = null, val amountCents: Long,
+    val paidAt: String? = null, val atAdhesion: Boolean = false)
 
 private fun AthleteMeTransport.domain(): AthleteReceivables {
     val charges = openCharges.map {
@@ -161,6 +164,7 @@ private fun AthleteMeTransport.domain(): AthleteReceivables {
     require(charges.map { it.chargeId }.distinct().size == charges.size && totalCents == charges.sumOf { it.payableCents })
     return AthleteReceivables(
         active = active,
+        groupName = groupName?.takeIf(String::isNotBlank),
         payeeName = payeeName?.takeIf(String::isNotBlank),
         methods = methods.mapNotNull { name -> ReceiptMethod.entries.firstOrNull { it.name == name } }.toSet(),
         pixReady = pixReady,
@@ -170,7 +174,7 @@ private fun AthleteMeTransport.domain(): AthleteReceivables {
         recurrence = recurrence?.let { r ->
             AthleteRecurrence(RecurrenceStatus.entries.firstOrNull { it.name == r.status } ?: RecurrenceStatus.NONE,
                 r.amountCents, r.nextChargeDate, r.refusedChargeId,
-                r.history.map { RecurrenceCharge(it.billingMonth, it.amountCents, it.chargedOn, it.atAdhesion) })
+                r.history.map { RecurrenceCharge(it.month?.take(7), it.amountCents, it.paidAt?.take(10), it.atAdhesion) })
         },
     )
 }
@@ -199,7 +203,7 @@ private fun PaymentCodeTransport.domain(): PaymentCode {
 @Serializable internal data class CheckoutTransport(val checkoutUrl: String)
 @Serializable internal data class MemberRecurrenceTransport(val memberUserId: String, val status: String)
 @Serializable internal data class SettleTargetTransport(val groupId: String, val gameId: String? = null,
-    val billingMonth: String? = null)
+    val billingMonth: String? = null, val groupName: String? = null)
 
 /** Histórico do atleta: as pagas de `charges/me`, com `settledBy`/`appMethod` do v1 (aditivos, A). */
 class KtorOwnChargeHistoryGateway(private val network: AuthenticatedNetworkClient) : OwnChargeHistoryGateway {

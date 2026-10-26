@@ -25,6 +25,8 @@ sealed interface AutopayCardUi {
     /** Mensalista fora do automático: a oferta "Deixe no automático". */
     data class Offer(val dueDay: String?) : AutopayCardUi
     data class Active(val nextChargeLabel: String?) : AutopayCardUi
+    /** O cartão está sendo confirmado no Asaas: sem oferta de aderir de novo. */
+    data object Authorizing : AutopayCardUi
     /** Cartão recusado: a mensalidade do mês segue em aberto (Netflix-Recusado). */
     data class Refused(val chargeId: String, val monthLabel: String, val amountLabel: String, val nextChargeLabel: String?) :
         AutopayCardUi

@@ -23,8 +23,11 @@ data class OpenCharge(
     val overdue: Boolean,
 )
 
-/** `NONE`: mensalista que pode aderir (ou cancelou e pode retomar). */
-enum class RecurrenceStatus { NONE, ACTIVE, REFUSED }
+/**
+ * `NONE`: mensalista que pode aderir (ou cancelou e pode retomar). `AUTHORIZING`: o cartão está sendo confirmado no
+ * Asaas; não se oferece aderir de novo.
+ */
+enum class RecurrenceStatus { NONE, AUTHORIZING, ACTIVE, REFUSED }
 
 data class RecurrenceCharge(val billingMonth: String?, val amountCents: Long, val chargedOn: String?, val atAdhesion: Boolean)
 
@@ -42,6 +45,8 @@ data class AthleteRecurrence(
 
 data class AthleteReceivables(
     val active: Boolean,
+    /** Nome do grupo (acréscimo da rodada 2): o link do acerto e o push não sabem o nome. */
+    val groupName: String? = null,
     val payeeName: String?,
     val methods: Set<ReceiptMethod>,
     val pixReady: Boolean,
@@ -104,7 +109,7 @@ interface AutopayGateway {
 }
 
 /** O que o botão da hora do acerto (`/acerto/{codigo}`) abre (FIN-013, F4). */
-data class SettleTarget(val groupId: String, val gameId: String?, val billingMonth: String?)
+data class SettleTarget(val groupId: String, val gameId: String?, val billingMonth: String?, val groupName: String? = null)
 
 fun interface SettleLinkGateway {
     suspend fun resolve(code: String): SaqzResult<SettleTarget, PaymentError>
@@ -116,7 +121,8 @@ fun AthleteReceivables.chargesFor(gameId: String?, billingMonth: String?, charge
         when {
             !chargeIds.isNullOrEmpty() -> charge.chargeId in chargeIds
             gameId != null -> charge.gameId == gameId
-            billingMonth != null -> charge.kind == OpenChargeKind.MONTHLY && charge.billingMonth == billingMonth
+            // O servidor manda o mês como `AAAA-MM-01` no `/me` e no link, e `AAAA-MM` no push: compara o `AAAA-MM`.
+            billingMonth != null -> charge.kind == OpenChargeKind.MONTHLY && charge.billingMonth?.take(7) == billingMonth.take(7)
             else -> true
         }
     }

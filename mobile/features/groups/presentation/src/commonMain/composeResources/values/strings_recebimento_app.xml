@@ -8,6 +8,12 @@
     <string name="pix_personal_title">Sua chave Pix pessoal</string>
     <string name="pix_hidden_from_athletes">Escondida dos atletas</string>
     <string name="pix_hidden_note">Ela volta a aparecer se você desligar o recebimento pelo app.</string>
+    <string name="members_autopay_summary">%1$d de %2$d mensalistas no automático</string>
+    <string name="members_autopay_rest">Os outros %1$d recebem o convite na hora do acerto.</string>
+    <string name="members_type_all">Todos · %1$d</string>
+    <string name="members_type_monthly">Mensalistas · %1$d</string>
+    <string name="members_type_per_game">Avulsos · %1$d</string>
+    <string name="members_autopay_pix">paga no Pix</string>
     <string name="members_autopay_on">No automático</string>
     <string name="members_autopay_refused">Cartão recusado</string>
 </resources>

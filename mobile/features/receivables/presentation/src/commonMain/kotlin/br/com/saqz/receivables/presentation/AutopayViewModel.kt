@@ -76,7 +76,9 @@ class AutopayViewModel(
             if (expected != generation || sessionKey != session.currentKey()) return@launch
             when (result) {
                 is SaqzResult.Failure -> update { it.copy(loading = false, error = result.error) }
-                is SaqzResult.Success -> update { autopayState(it, result.value) }
+                is SaqzResult.Success -> update {
+                    autopayState(it, result.value).let { s -> s.copy(groupName = s.groupName.ifBlank { result.value.groupName.orEmpty() }) }
+                }
             }
         }
     }

@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
         model.onStart(
             intent?.dataString, intent?.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent?.getStringExtra(EXTRA_GAME_ID),
             intent?.getStringExtra(EXTRA_NOTIFICATION_CHANNEL), intent?.getBooleanExtra(EXTRA_PICK_POSITION, false) == true,
+            intent?.settle(),
         )
     }
 
@@ -51,6 +52,7 @@ class MainActivity : ComponentActivity() {
         model.onWarmIntent(
             intent.dataString, intent.getStringExtra(EXTRA_NOTIFICATION_GROUP_ID), intent.getStringExtra(EXTRA_GAME_ID),
             intent.getStringExtra(EXTRA_NOTIFICATION_CHANNEL), intent.getBooleanExtra(EXTRA_PICK_POSITION, false),
+            intent.settle(),
         )
     }
 }
@@ -78,13 +80,16 @@ internal class MainActivityModel(
         notificationGameId: String?,
         notificationChannel: String? = null,
         pickPosition: Boolean = false,
+        settle: PaymentSettle? = null,
     ) {
         if (coldStarted) return
         coldStarted = true
         composition.links.onColdStart(url)
         // Convite de quem instalou pela página de links: chega depois, como um link tocado.
         composition.installReferrer?.readOnce(composition.links::onWarmIntent)
-        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel, pickPosition) }
+        notificationGroupId?.let { composition.links.onNotificationOpen(
+            it, notificationGameId, notificationChannel, pickPosition, settle?.gameId, settle?.billingMonth,
+        ) }
     }
 
     fun onWarmIntent(
@@ -93,9 +98,12 @@ internal class MainActivityModel(
         notificationGameId: String?,
         notificationChannel: String? = null,
         pickPosition: Boolean = false,
+        settle: PaymentSettle? = null,
     ) {
         composition.links.onWarmIntent(url)
-        notificationGroupId?.let { composition.links.onNotificationOpen(it, notificationGameId, notificationChannel, pickPosition) }
+        notificationGroupId?.let { composition.links.onNotificationOpen(
+            it, notificationGameId, notificationChannel, pickPosition, settle?.gameId, settle?.billingMonth,
+        ) }
     }
 
 }
@@ -108,4 +116,10 @@ private class CurrentActivity {
     }
 
     fun require(): Activity = checkNotNull(reference.get()) { "activity is not attached" }
+}
+
+private fun Intent.settle(): PaymentSettle? {
+    val game = getStringExtra(EXTRA_SETTLE_GAME_ID)
+    val month = getStringExtra(EXTRA_SETTLE_MONTH)
+    return if (game == null && month == null) null else PaymentSettle(game, month)
 }

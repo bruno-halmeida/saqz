@@ -9,6 +9,9 @@ import br.com.saqz.groups.presentation.photo.MemberPhoto
 /** Pílulas do 2k, na ordem do export: "Todos · 26", "Admins · 2", "Pendentes · 2"; "Convidados · N" do CONV-010. */
 enum class GroupMembersFilter { All, Admins, Pending, Invited }
 
+/** Gestor-Membros com recebimento pelo app: Todos · Mensalistas · Avulsos, ao lado do automático (FIN-012). */
+enum class MemberTypeFilter { All, Monthly, PerGame }
+
 /**
  * Linhas possíveis do sheet. Quais aparecem sai de [sheetActions], não de dois sheets:
  * o 2k abre o sheet de membro comum e o 2l o de admin, mas é o mesmo painel.
@@ -40,6 +43,9 @@ data class MemberUi(
     val isBlocked: Boolean = false,
     /** Foto de perfil (MEM-006); some na hora em que quem olha bloqueia a pessoa. */
     val photo: MemberPhoto? = null,
+    /** Mensalista e isento: o filtro de tipo e o "N de M no automático" do recebimento pelo app. */
+    val monthly: Boolean = false,
+    val exempt: Boolean = false,
 ) {
     val visiblePhoto: MemberPhoto? get() = photo.takeUnless { isBlocked }
 }
@@ -66,6 +72,10 @@ data class GroupMembersState(
     val error: GroupUiError? = null,
     val query: String = "",
     val filter: GroupMembersFilter = GroupMembersFilter.All,
+    val typeFilter: MemberTypeFilter = MemberTypeFilter.All,
+    /** Mensalistas e avulsos do grupo inteiro (com admins), para as pílulas do filtro de tipo. */
+    val monthlyCount: Int = 0,
+    val perGameCount: Int = 0,
     /** Todo mundo do grupo, admins inclusive — é o número da pílula "Todos". */
     val totalCount: Int = 0,
     val adminCount: Int = 0,
@@ -154,6 +164,7 @@ sealed interface GroupMembersIntent {
     data class UpdateQuery(val value: String) : GroupMembersIntent
 
     data class SelectFilter(val filter: GroupMembersFilter) : GroupMembersIntent
+    data class SelectTypeFilter(val filter: MemberTypeFilter) : GroupMembersIntent
 
     data class OpenMember(val memberId: String) : GroupMembersIntent
 

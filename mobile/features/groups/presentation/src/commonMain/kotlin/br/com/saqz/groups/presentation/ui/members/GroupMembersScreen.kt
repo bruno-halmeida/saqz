@@ -1,5 +1,8 @@
 package br.com.saqz.groups.presentation.ui.members
 
+import br.com.saqz.designsystem.SaqzSegmented
+import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,7 +40,12 @@ import br.com.saqz.groups.presentation.members.GroupMembersState
 import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.MemberAutopayUi
 import br.com.saqz.groups.presentation.members.MemberUi
-import br.com.saqz.groups.resources.members_autopay_count
+import br.com.saqz.groups.resources.members_autopay_rest
+import br.com.saqz.groups.resources.members_autopay_summary
+import br.com.saqz.groups.resources.members_type_all
+import br.com.saqz.groups.resources.members_type_monthly
+import br.com.saqz.groups.resources.members_type_per_game
+import br.com.saqz.groups.presentation.members.MemberTypeFilter
 import br.com.saqz.groups.presentation.members.memberCount
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
@@ -76,6 +84,7 @@ internal object GroupMembersTags {
 
     fun member(id: String) = "group-members-member-$id"
     const val AutopaySummary = "group-members-autopay-summary"
+    fun typeFilter(name: String) = "group-members-type-$name"
     fun autopay(id: String) = "group-members-autopay-$id"
 
     fun request(id: String) = "group-members-request-$id"
@@ -233,16 +242,9 @@ private fun LazyListScope.membersContent(
     onIntent: (GroupMembersIntent) -> Unit,
     autopay: Map<String, MemberAutopayUi>? = null,
 ) {
-    val onAutopay = autopay.orEmpty().count { it.value == MemberAutopayUi.Active }
-    if (onAutopay > 0) {
-        item(key = "autopay-summary") {
-            Text(
-                text = pluralStringResource(Res.plurals.members_autopay_count, onAutopay, onAutopay),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-                modifier = Modifier.testTag(GroupMembersTags.AutopaySummary),
-            )
-        }
+    // Gestor-Membros (FIN-012): com recebimento pelo app, o filtro de tipo e quantos mensalistas estão no automático.
+    if (autopay != null) {
+        item(key = "autopay-summary") { MembersAutopayHeader(state, autopay, onIntent) }
     }
     if (state.rosterFailed) {
         item(key = "roster-failed") {
@@ -393,4 +395,40 @@ private fun GroupMembersAdminSheetPreview() = SaqzTheme {
 @Composable
 private fun GroupMembersLoadingPreview() = SaqzTheme {
     GroupMembersScreen(state = GroupMembersState(), onIntent = {}, onBack = {})
+}
+
+@Composable
+private fun MembersAutopayHeader(
+    state: GroupMembersState,
+    autopay: Map<String, MemberAutopayUi>,
+    onIntent: (GroupMembersIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) = Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+    val filters = MemberTypeFilter.entries
+    SaqzSegmented(
+        options = listOf(
+            stringResource(Res.string.members_type_all, state.monthlyCount + state.perGameCount),
+            stringResource(Res.string.members_type_monthly, state.monthlyCount),
+            stringResource(Res.string.members_type_per_game, state.perGameCount),
+        ),
+        selected = filters.indexOf(state.typeFilter),
+        onSelect = { onIntent(GroupMembersIntent.SelectTypeFilter(filters[it])) },
+        optionTags = filters.map { GroupMembersTags.typeFilter(it.name) },
+    )
+    val onCard = autopay.count { it.value == MemberAutopayUi.Active }
+    if (state.monthlyCount > 0) {
+        Text(
+            text = stringResource(Res.string.members_autopay_summary, onCard, state.monthlyCount),
+            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
+            color = SaqzTheme.colors.textPrimary,
+            modifier = Modifier.testTag(GroupMembersTags.AutopaySummary),
+        )
+        if (state.monthlyCount > onCard) {
+            Text(
+                text = stringResource(Res.string.members_autopay_rest, state.monthlyCount - onCard),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+            )
+        }
+    }
 }

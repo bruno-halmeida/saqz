@@ -85,6 +85,10 @@ fun AthleteChargesScreen(state: AthleteChargesState, onIntent: (AthleteChargesIn
                 is AutopayCardUi.Offer -> AutopayOffer(autopay, onIntent)
                 is AutopayCardUi.Active -> AutopayActive(autopay.nextChargeLabel, onIntent)
                 is AutopayCardUi.Refused -> AutopayActive(autopay.nextChargeLabel, onIntent)
+                AutopayCardUi.Authorizing -> {
+                    ReceivablesBand(stringResource(Res.string.autopay_kicker))
+                    ReceivablesRow(stringResource(Res.string.autopay_authorizing), null)
+                }
                 null -> Unit
             }
             if (state.history.isNotEmpty() || state.historyFailed) {

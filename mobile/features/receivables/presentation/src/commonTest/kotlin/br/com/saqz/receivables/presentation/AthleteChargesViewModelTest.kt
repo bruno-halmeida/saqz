@@ -47,6 +47,13 @@ class AthleteChargesViewModelTest {
         assertEquals(AutopayCardUi.Offer("10"), state.autopay)
     }
 
+    @Test fun cardBeingConfirmedDoesNotOfferToJoinAgain() = runTest {
+        val vm = model(PaymentsFake().apply {
+            me = monthlyMe.copy(recurrence = AthleteRecurrence(RecurrenceStatus.AUTHORIZING, 10000, null, null, emptyList()))
+        })
+        assertEquals(AutopayCardUi.Authorizing, vm.state.value.autopay)
+    }
+
     @Test fun withoutRecurrenceInTheMeTheOfferDoesNotAppear() = runTest {
         val vm = model(PaymentsFake().apply { me = monthlyMe.copy(recurrence = null) })
         assertNull(vm.state.value.autopay)

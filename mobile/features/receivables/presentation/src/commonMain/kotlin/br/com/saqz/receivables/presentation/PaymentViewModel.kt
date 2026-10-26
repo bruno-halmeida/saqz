@@ -27,6 +27,8 @@ class PaymentViewModel(
     private val session: ReceivablesSessionContext,
 ) : MviViewModel<PaymentState, PaymentIntent, PaymentEffect>(PaymentState(args.groupName)) {
     private val sessionKey = session.currentKey()
+    /** Do link do acerto e do push o nome não vem: o `/me` traz. */
+    private var groupName = args.groupName
     private var me: AthleteReceivables? = null
     private var charges: List<OpenCharge> = emptyList()
     private var codes = mutableMapOf<ReceiptMethod, PaymentCode>()
@@ -74,6 +76,7 @@ class PaymentViewModel(
                 is SaqzResult.Success -> {
                     val value = result.value
                     me = value
+                    if (groupName.isBlank()) groupName = value.groupName.orEmpty()
                     charges = value.chargesFor(args.gameId, args.billingMonth, args.chargeIds.ifEmpty { null })
                     if (!value.active || charges.isEmpty()) {
                         update { it.copy(loading = false, nothingOpen = true,
@@ -83,7 +86,7 @@ class PaymentViewModel(
                     val pix = value.pixReady && ReceiptMethod.PIX in value.methods
                     val card = ReceiptMethod.CARD in value.methods
                     update {
-                        it.copy(loading = false, subject = subjectOf(charges), kicker = kickerOf(charges),
+                        it.copy(groupName = groupName, loading = false, subject = subjectOf(charges), kicker = kickerOf(charges),
                             amountLabel = formatBrl(charges.sumOf { c -> c.payableCents }),
                             lines = charges.map { c -> PaymentLineUi(PaymentLabels.breakdown(c, charges.size == 1 ||
                                 charges.count { o -> o.guestName == null } == 1), formatBrl(c.payableCents)) },
@@ -247,7 +250,7 @@ class PaymentViewModel(
             }
             PaymentSubject.MONTHLY, PaymentSubject.MANY -> PaymentLabels.subject(charges)
         }
-        return listOfNotNull(args.groupName.takeIf(String::isNotBlank), what).joinToString(" · ")
+        return listOfNotNull(groupName.takeIf(String::isNotBlank), what).joinToString(" · ")
     }
 
     private fun validSession(): Boolean {

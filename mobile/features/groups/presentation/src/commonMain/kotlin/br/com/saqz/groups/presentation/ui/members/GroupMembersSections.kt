@@ -43,6 +43,7 @@ import br.com.saqz.groups.presentation.members.JoinRequestUi
 import br.com.saqz.groups.presentation.members.MemberAutopayUi
 import br.com.saqz.groups.presentation.members.MemberUi
 import br.com.saqz.groups.resources.members_autopay_on
+import br.com.saqz.groups.resources.members_autopay_pix
 import br.com.saqz.groups.resources.members_autopay_refused
 import br.com.saqz.groups.presentation.members.sheetActions
 import br.com.saqz.groups.resources.Res
@@ -236,7 +237,7 @@ internal fun GroupMemberListSection(
         SaqzCard(padded = false) {
             members.forEachIndexed { index, member ->
                 if (index > 0) SaqzDivider()
-                GroupMemberRow(member = member, onOpen = onOpen, autopay = autopay?.get(member.id))
+                GroupMemberRow(member = member, onOpen = onOpen, autopay = autopay?.get(member.id), autopayKnown = autopay != null)
             }
         }
         if (footer != null) {
@@ -251,7 +252,13 @@ internal fun GroupMemberListSection(
 }
 
 @Composable
-private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit, autopay: MemberAutopayUi? = null) {
+private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit, autopay: MemberAutopayUi? = null, autopayKnown: Boolean = false) {
+    // Mensalista fora do automático (e sem isenção) "paga no Pix" (Gestor-Membros).
+    val meta = if (autopayKnown && autopay == null && member.monthly && !member.exempt) {
+        "${member.meta} · ${stringResource(Res.string.members_autopay_pix)}"
+    } else {
+        member.meta
+    }
     val dismissKeyboard = rememberSaqzDismissKeyboard()
     SaqzMemberRow(
         // TODO(VUL-96): o export escreve o "· você" em peso 400 e `textSecondary`, e o
@@ -262,7 +269,7 @@ private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit, autopay: 
         } else {
             member.name
         },
-        meta = member.meta,
+        meta = meta,
         // O sufixo entra no nome e as iniciais saem dele: sem isto, "Lucas Prado · você"
         // vira "LV". O `photo` recebe o mesmo avatar, desenhado a partir do nome limpo.
         photo = member.visiblePhoto.avatarSlot(member.name, initialsColor = SaqzTheme.colors.primary)

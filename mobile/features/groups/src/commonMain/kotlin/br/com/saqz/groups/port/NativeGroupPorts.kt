@@ -42,6 +42,13 @@ sealed interface GroupLinkEvent {
         val gameId: String? = null,
         val channel: String? = null,
         val pickPosition: Boolean = false,
+        /**
+         * Push do recebimento (canal PAYMENT, FIN-013): o jogo (`settleGameId`) ou o mês `AAAA-MM`
+         * (`settleBillingMonth`) que o toque paga. O servidor não manda `gameId` aqui de propósito: nos apps antigos ele
+         * põe os botões de presença.
+         */
+        val settleGameId: String? = null,
+        val settleBillingMonth: String? = null,
     ) : GroupLinkEvent
 }
 

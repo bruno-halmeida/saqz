@@ -129,6 +129,26 @@ class PaymentViewModelTest {
         assertEquals(false, second.state.value.confirmed?.offer)
     }
 
+    /** O push manda `AAAA-MM`; o `/me`, `AAAA-MM-01`. E o nome do grupo vem do `/me` quando o link não sabe. */
+    @Test fun monthFromThePushMatchesTheMonthOfTheMeAndTheNameComesFromTheMe() = runTest {
+        val fake = PaymentsFake().apply {
+            me = monthlyMe.copy(groupName = "Vôlei do CERET", openCharges = monthlyMe.openCharges.map { it.copy(billingMonth = "2026-08-01") })
+        }
+        val vm = model(fake, PaymentArgs("ceret", "", billingMonth = "2026-08"))
+        assertEquals(listOf("m8"), fake.created.single().second)
+        assertEquals("Vôlei do CERET · mensalidade de agosto", vm.state.value.kicker)
+    }
+
+    /**
+     * Rodada 2, A1: o atleta não depende da própria liberação (`availability` é por pessoa e, no piloto, só libera
+     * gestores). O pagamento só lê o `/me`; com `active` do grupo, paga.
+     */
+    @Test fun athletePaysWithTheGroupActiveWhateverHisOwnAvailability() = runTest {
+        val fake = PaymentsFake().apply { status = PaymentCodeStatus.PAID }
+        val vm = model(fake, PaymentArgs("ceret", "Vôlei do CERET", gameId = "g2"))
+        assertNotNull(vm.state.value.confirmed)
+    }
+
     @Test fun athleteWithoutRecurrenceNeverSeesTheOffer() = runTest {
         val fake = PaymentsFake().apply { me = monthlyMe.copy(recurrence = null); status = PaymentCodeStatus.PAID }
         val vm = model(fake, PaymentArgs("ceret", "Vôlei do CERET"), OfferMemory())

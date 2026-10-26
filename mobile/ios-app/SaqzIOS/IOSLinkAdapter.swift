@@ -26,8 +26,11 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
             let gameId = note.userInfo?["gameId"] as? String
             let channel = note.userInfo?["channel"] as? String
             let pickPosition = note.userInfo?["pickPosition"] as? String == "true"
+            let settleGameId = note.userInfo?["settleGameId"] as? String
+            let settleBillingMonth = note.userInfo?["settleBillingMonth"] as? String
             MainActor.assumeIsolated {
-                self?.onNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition)
+                self?.onNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition,
+                                         settleGameId: settleGameId, settleBillingMonth: settleBillingMonth)
             }
         }
     }
@@ -37,8 +40,10 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     }
 
     /** Push tap: game pushes open the game, the rest the notification center; no dedup across taps. */
-    func onNotificationOpen(groupId: String?, gameId: String?, channel: String? = nil, pickPosition: Bool = false) {
-        let event = GroupLinkEventNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition)
+    func onNotificationOpen(groupId: String?, gameId: String?, channel: String? = nil, pickPosition: Bool = false,
+                            settleGameId: String? = nil, settleBillingMonth: String? = nil) {
+        let event = GroupLinkEventNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition,
+                                                   settleGameId: settleGameId, settleBillingMonth: settleBillingMonth)
         if listeners.isEmpty {
             pendingEvent = event
         } else {
@@ -106,7 +111,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
               let group = items.first(where: { $0.name == "group" })?.value,
               let game = items.first(where: { $0.name == "game" })?.value else { return nil }
         let pickPosition = items.first(where: { $0.name == "pickPosition" })?.value == "1"
-        return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil, pickPosition: pickPosition)
+        return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil, pickPosition: pickPosition,
+                                              settleGameId: nil, settleBillingMonth: nil)
     }
 
     @discardableResult

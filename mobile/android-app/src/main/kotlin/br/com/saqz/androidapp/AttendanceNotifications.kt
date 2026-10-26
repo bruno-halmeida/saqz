@@ -17,6 +17,9 @@ internal data class AttendancePush(
     val channel: String? = null,
     /** Jogo com vagas por posição (DEB-107): o "Vou" abre o app na tela de escolher posição. */
     val positions: Boolean = false,
+    /** Push do recebimento: o jogo ou o mês que o toque paga (FIN-013). */
+    val settleGameId: String? = null,
+    val settleBillingMonth: String? = null,
 ) {
     /** Janela de presença das 24 h: expira sozinha e, no Android 16+, vira Live Update. */
     val isWindow get() = windowEndsAt != null && gameId != null
@@ -32,6 +35,7 @@ internal data class AttendancePush(
             return AttendancePush(
                 id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt, data["channel"],
                 positions = data["positions"] == "true",
+                settleGameId = data["settleGameId"], settleBillingMonth = data["settleBillingMonth"],
             )
         }
     }
@@ -46,7 +50,7 @@ internal fun Context.attendanceNotification(
     body: String = push.body,
     buttons: Boolean = true,
 ): NotificationCompat.Builder {
-    val builder = reminderNotification(this, push.id, push.title, body, push.groupId, push.gameId, push.channel)
+    val builder = reminderNotification(this, push.id, push.title, body, push.groupId, push.gameId, push.channel, push.settle())
     if (push.isWindow) {
         // Live Update no Android 16+; abaixo disso o pedido é ignorado e a notificação sai comum.
         builder.setOngoing(true).setRequestPromotedOngoing(true)
@@ -68,8 +72,8 @@ internal fun Context.attendanceNotification(
  */
 internal fun Context.attendanceOutcome(push: AttendancePush, failed: Boolean, text: String): NotificationCompat.Builder = when {
     push.isWindow && failed -> attendanceNotification(push, body = text)
-    push.isWindow -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId, push.channel).setTimeoutAfter(FINAL_STATE_MS)
-    else -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId, push.channel)
+    push.isWindow -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId, push.channel, push.settle()).setTimeoutAfter(FINAL_STATE_MS)
+    else -> reminderNotification(this, push.id, push.title, text, push.groupId, push.gameId, push.channel, push.settle())
 }
 
 internal fun Intent.attendancePush() = AttendancePush(
@@ -118,3 +122,6 @@ internal const val FINAL_STATE_MS = 120_000L
 
 /** A janela é uma por jogo: id fixo por jogo, para a notificação ser trocada no lugar e cancelada de fora. */
 internal fun attendanceWindowId(gameId: String) = "window:$gameId".hashCode()
+
+internal fun AttendancePush.settle(): PaymentSettle? =
+    if (settleGameId == null && settleBillingMonth == null) null else PaymentSettle(settleGameId, settleBillingMonth)

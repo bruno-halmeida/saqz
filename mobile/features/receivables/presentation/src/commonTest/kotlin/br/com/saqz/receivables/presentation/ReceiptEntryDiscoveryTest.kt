@@ -20,16 +20,13 @@ class ReceiptEntryDiscoveryTest {
             ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Failure(ReceiptError.NETWORK) })
         coordinator.onSessionChanged("session")
         assertFalse(coordinator.state.value.configurationEntryAvailable)
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
         runCurrent()
         assertTrue(coordinator.state.value.accountLookupFailed)
         assertFalse(coordinator.state.value.configurationEntryAvailable)
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
         availability.fail = true
         coordinator.refresh()
         runCurrent()
         assertFalse(coordinator.state.value.configurationEntryAvailable)
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
     }
 
     /** DEB-142: a disponibilidade do servidor substitui a constante do app; desligada, nenhuma entrada aparece. */
@@ -40,26 +37,10 @@ class ReceiptEntryDiscoveryTest {
         coordinator.onSessionChanged("session")
         runCurrent()
         assertTrue(coordinator.state.value.configurationEntryAvailable)
-        assertTrue(coordinator.state.value.paymentEntryAvailable)
         availability.enabled = false
         coordinator.refresh()
         runCurrent()
         assertFalse(coordinator.state.value.configurationEntryAvailable)
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
-    }
-
-    /** O rollout é do gestor: com o servidor ligado, o atleta fora do rollout ainda paga em grupo ativo. */
-    @Test fun athletePaymentFollowsTheServerSwitchNotTheOrganizerRollout() = runTest {
-        val coordinator = ReceivablesCoordinator(Rollout(backend = true, mobile = false), backgroundScope,
-            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
-        coordinator.onSessionChanged("session")
-        runCurrent()
-        assertTrue(coordinator.state.value.paymentEntryAvailable)
-        assertFalse(coordinator.state.value.configurationEntryAvailable)
-        coordinator.onBackground()
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
-        coordinator.onSessionChanged(null)
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
     }
 
     @Test fun offWithoutAccountHidesEntryAndOffWithAccountPreservesIt() = runTest {
@@ -111,11 +92,6 @@ class ReceiptEntryDiscoveryTest {
         runCurrent()
         assertFalse(coordinator.state.value.configurationEntryAvailable)
         assertFalse(coordinator.state.value.hasAccount)
-    }
-
-    private class Rollout(val backend: Boolean, val mobile: Boolean) : ReceivablesAvailabilityGateway {
-        override suspend fun get(): SaqzResult<ReceivablesAvailability, ReceivablesError> =
-            SaqzResult.Success(ReceivablesAvailability(backend, mobile))
     }
 
     private class Availability(var enabled: Boolean) : ReceivablesAvailabilityGateway {

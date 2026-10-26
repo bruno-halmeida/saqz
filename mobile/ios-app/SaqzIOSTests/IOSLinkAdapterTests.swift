@@ -133,6 +133,14 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.received, [])
     }
 
+    func testPaymentPushCarriesTheSettleTarget() {
+        let opened = SaqzPushDelegate.openedInfo(actionIdentifier: "open",
+            userInfo: ["groupId": "g", "channel": "PAYMENT", "settleGameId": "game-1", "settleBillingMonth": "2026-10"])
+        XCTAssertEqual(opened["settleGameId"], "game-1")
+        XCTAssertEqual(opened["settleBillingMonth"], "2026-10")
+        XCTAssertNil(opened["gameId"])
+    }
+
     func testSettleLinkDispatchesItsOwnEventAndRejectsMixedLinks() {
         XCTAssertEqual((IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/acerto/Ab12_cd-9")) as? GroupLinkEventSettle)?.code,
                        "Ab12_cd-9")

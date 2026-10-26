@@ -70,7 +70,7 @@ fun AutopayScreen(state: AutopayState, onIntent: (AutopayIntent) -> Unit, onBack
                 SaqzButton(stringResource(Res.string.netflix_cancel), { onIntent(AutopayIntent.RequestCancel) }, fullWidth = true,
                     variant = SaqzButtonVariant.Ghost, contentColor = SaqzTheme.colors.errorForeground,
                     modifier = Modifier.testTag(AutopayTags.Cancel))
-            null -> Unit
+            RecurrenceStatus.AUTHORIZING, null -> Unit
         }
     }) {
         when {
@@ -84,7 +84,7 @@ fun AutopayScreen(state: AutopayState, onIntent: (AutopayIntent) -> Unit, onBack
                     amount = stringResource(Res.string.netflix_headline),
                     support = if (state.status == RecurrenceStatus.NONE) stringResource(Res.string.netflix_tagline) else null,
                 ) {
-                    if (state.status != RecurrenceStatus.NONE) SaqzStatusChip(
+                    if (state.enrolled) SaqzStatusChip(
                         stringResource(
                             if (state.status == RecurrenceStatus.ACTIVE) Res.string.netflix_active else Res.string.netflix_refused,
                         ),
@@ -93,7 +93,11 @@ fun AutopayScreen(state: AutopayState, onIntent: (AutopayIntent) -> Unit, onBack
                 state.error?.let { Text(paymentErrorText(it), padded.padding(top = metrics.blockGap),
                     style = SaqzTheme.typography.support, color = SaqzTheme.colors.errorForeground) }
                 if (state.cancelled) ReceivablesNote(stringResource(Res.string.netflix_cancelled))
-                if (state.status == RecurrenceStatus.NONE) Adhesion(state) else Manage(state, onIntent)
+                when (state.status) {
+                    RecurrenceStatus.NONE -> Adhesion(state)
+                    RecurrenceStatus.AUTHORIZING -> ReceivablesNote(stringResource(Res.string.autopay_authorizing))
+                    else -> Manage(state, onIntent)
+                }
             }
         }
     }

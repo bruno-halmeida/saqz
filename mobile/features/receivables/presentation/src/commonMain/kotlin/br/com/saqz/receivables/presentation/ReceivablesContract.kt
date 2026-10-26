@@ -10,14 +10,13 @@ data class ReceivablesState(
     val error: ReceivablesError? = null,
     val hasAccount: Boolean = false,
     val accountLookupFailed: Boolean = false,
-    /**
-     * A trava do servidor (`backendEnabled`). O atleta paga em grupo com recebimentos ativos mesmo fora do rollout,
-     * que é do gestor; quem decide se o grupo está ativo é o próprio grupo (`receivablesActive`) e o `/me`.
-     */
     val launchEnabled: Boolean = false,
 ) {
+    /**
+     * Só as entradas do gestor (cadastro, ativação). O atleta não passa por aqui: a disponibilidade é por pessoa e, no
+     * piloto, só libera os gestores; quem decide se ele paga é o grupo (`receivablesActive`) e o `active` do `/me`.
+     */
     val configurationEntryAvailable get() = signedIn && (discoveryAvailable || hasAccount)
-    val paymentEntryAvailable get() = signedIn && launchEnabled
 
     // Maintenance is independent of rollout and network failures; resource authorization is server-side.
     val maintenanceAvailable: Boolean get() = signedIn
