@@ -219,7 +219,7 @@ class ReceivablesV1IntegrationTest {
         val summary = br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository(f.ds).page(
             br.com.saqz.groups.application.finance.statement.FinanceStatementQuery(f.group, YearMonth.of(2026, 10), null, 50, 0)).summary
         assertEquals(2 * paid, summary.totalInCents)
-        assertEquals(fees.sum().toLong(), summary.totalOutCents)
+        assertEquals(fees.sumOf { it!! }, summary.totalOutCents)
         assertEquals(wallet, summary.accumulatedBalanceCents)
     }
 
@@ -245,7 +245,9 @@ class ReceivablesV1IntegrationTest {
         assertIs<FinancialResult.Success<GroupReceivablesState>>(f.groupReceivables.feePolicy(f.account, f.group, request, FeePolicy.PASS))
         assertEquals(FinancialError.CONFLICT, assertIs<FinancialResult.Failure>(f.groupReceivables.feePolicy(f.account, f.group, request, FeePolicy.ABSORB)).error)
         val fresh = f.monthly("2026-09", f.athlete)
-        assertNull(f.long("SELECT payable_cents FROM group_charges WHERE id='$old'"))
+        // A anterior nasceu em ABSORB e não é recalculada.
+        assertEquals(10000, f.long("SELECT payable_cents FROM group_charges WHERE id='$old'"))
+        assertEquals("ABSORB", f.string("SELECT fee_policy FROM group_charges WHERE id='$old'"))
         val expected = br.com.saqz.receivables.domain.FeeCalculator.passThrough(10000, f.live.current(setOf(PaymentMethod.CARD), now, f.account).single())
         assertEquals(expected, f.long("SELECT payable_cents FROM group_charges WHERE id='$fresh'"))
     }
