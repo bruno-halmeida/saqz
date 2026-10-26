@@ -262,8 +262,8 @@ class ReceivablesV1IntegrationTest {
         fun sql(s: String) { jdbc.sql(s).update() }
         fun count(table: String, where: String = "true") = jdbc.sql("SELECT count(*) FROM $table WHERE $where").query(Int::class.java).single()
         fun string(s: String) = jdbc.sql(s).query(String::class.java).single()
-        fun stringOrNull(s: String): String? = jdbc.sql(s).query { rs, _ -> rs.getString(1) }.single()
-        fun long(s: String): Long? = jdbc.sql(s).query { rs, _ -> rs.getObject(1)?.let { (it as Number).toLong() } }.single()
+        fun stringOrNull(s: String): String? = jdbc.sql(s).query { rs, _ -> rs.getString(1) }.list().single()
+        fun long(s: String): Long? = jdbc.sql(s).query { rs, _ -> rs.getObject(1)?.let { (it as Number).toLong() } }.list().single()
     }
 
     private inner class Remote : AutoCloseable {

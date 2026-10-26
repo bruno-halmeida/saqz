@@ -8,6 +8,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
+/** Nome e CPF do pagador; na v1 só a recorrência no cartão de setembro ainda recebe (a F3 revê). */
+class PaymentPayerRequest {
+    var name: String = ""
+    var cpfCnpj: String = ""
+}
 
 class PaymentCommand {
     var requestId: UUID? = null
@@ -17,9 +22,6 @@ class PaymentCommand {
     var method: PaymentMethod? = null
     var payer: PaymentPayerRequest? = null
 }
-
-@RestController
-@RequestMapping("/api/receivables")
 
 @RestController
 class PaymentWebhookController(private val events: PaymentEventInbox) {
