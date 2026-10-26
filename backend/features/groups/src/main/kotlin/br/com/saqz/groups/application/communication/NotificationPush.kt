@@ -20,5 +20,7 @@ data class NotificationPush(
     val liveActivity: LiveActivityGame? = null,
     /** Token de push-to-start do iPhone que vai receber; com [liveActivity], o push abre a Live Activity. */
     val liveActivityStartToken: String? = null,
+    /** Agrupa no celular os avisos de pagamento do mesmo grupo (FIN-014: "um por pagamento, que o celular agrupa"). */
+    val thread: String? = null,
 )
 fun interface NotificationPushSender { fun send(token: String, message: NotificationPush): PushDelivery }

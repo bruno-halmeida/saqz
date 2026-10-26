@@ -54,6 +54,7 @@ class FirebaseNotificationPushSender(private val app: FirebaseApp) : Notificatio
         val aps = Aps.builder().setSound("default")
             .setAlert(ApsAlert.builder().setTitle(message.title).setBody(message.body).build())
         if (message.offersAttendanceActions()) aps.setCategory(message.attendanceCategory())
+        message.thread?.let(aps::setThreadId)
         val android = AndroidConfig.builder().setPriority(AndroidConfig.Priority.HIGH)
         val apns = ApnsConfig.builder()
         message.windowEndsAt?.let { end ->
@@ -121,6 +122,8 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     // Campo novo e opcional: os apps antigos ignoram; o Android 1.0.10+ troca o "Vou" por abrir a tela de posição.
     if (positions && offersAttendanceActions()) put("positions", "true")
     windowEndsAt?.let { put("windowEndsAt", it.toEpochMilli().toString()) }
+    // Aditivo: o Android agrupa os avisos de pagamento pelo mesmo `thread`; app antigo ignora.
+    thread?.let { put("thread", it) }
 }
 
 /** Nome do `ActivityAttributes` no app iOS (VUL-268): o sistema só abre a Live Activity se bater. */

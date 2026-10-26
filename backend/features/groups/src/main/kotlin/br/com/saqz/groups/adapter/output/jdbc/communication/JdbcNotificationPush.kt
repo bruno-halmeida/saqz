@@ -44,7 +44,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
         """).query(Long::class.java).optional().orElse(null) ?: return@inTransaction null
         var recipientId: UUID? = null
         val message = jdbc.sql("""
-            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.push_body, c.game_id, c.window_ends_at, u.firebase_subject,
+            SELECT c.group_id, c.recipient_id, c.channel, c.body, c.push_body, c.push_title, c.game_id, c.window_ends_at, u.firebase_subject,
                    (SELECT g.local_date FROM games g WHERE g.id = c.game_id) AS game_local_date,
                    coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed,
                    EXISTS (SELECT 1 FROM game_position_slots s WHERE s.game_id = c.game_id AND s.slots > 0) AS positions,
@@ -68,15 +68,16 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                     else reminderPushBody(rs.getObject("game_local_date", java.time.LocalDate::class.java))
                 "GAME_OPEN" -> "O jogo está liberado. Abra o app para confirmar sua presença."
                 "ATTENDANCE_WINDOW" -> rs.getString("body")
-                "TRIAL_ENDING" -> rs.getString("push_body") ?: rs.getString("body")
+                "TRIAL_ENDING", "PAYMENT" -> rs.getString("push_body") ?: rs.getString("body")
                 "WAITLIST_DEADLINE", "FIRST_MEMBER", "FIRST_CONFIRMATION", "ENTRY_REQUEST", "AUTO_CONFIRMATION" -> rs.getString("body")
                 else -> "Você recebeu um lembrete de cobrança. Abra o app para conferir."
             }
             NotificationPush(
-                id, rs.getObject("group_id", UUID::class.java), "Saqz", body, channel,
+                id, rs.getObject("group_id", UUID::class.java), rs.getString("push_title") ?: "Saqz", body, channel,
                 recipient = rs.getString("firebase_subject"), gameId = rs.getObject("game_id", UUID::class.java),
                 positions = rs.getBoolean("positions"),
                 windowEndsAt = rs.getTimestamp("window_ends_at")?.toInstant(),
+                thread = if (channel == "PAYMENT") "payments-" + rs.getObject("group_id", UUID::class.java) else null,
                 // Só a janela junta o jogo: nos outros canais `venue_name` vem nulo e não há card.
                 liveActivity = rs.getString("venue_name")?.let { venue ->
                     LiveActivityGame(

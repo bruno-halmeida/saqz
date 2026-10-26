@@ -20,6 +20,8 @@ enum class MessageChannel {
     ENTRY_REQUEST,
     TRIAL_ENDING,
     AUTO_CONFIRMATION,
+    /** Recebimento pelo app (FIN-013/FIN-014): pagamento, revisão e "Pagamento confirmado". */
+    PAYMENT,
 }
 
 data class GroupMessage(
