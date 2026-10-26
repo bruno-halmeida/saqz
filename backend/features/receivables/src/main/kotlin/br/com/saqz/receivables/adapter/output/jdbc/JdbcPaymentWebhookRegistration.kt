@@ -2,6 +2,7 @@ package br.com.saqz.receivables.adapter.output.jdbc
 
 import br.com.saqz.receivables.application.*
 import br.com.saqz.receivables.adapter.output.crypto.FinancialSecrets
+import br.com.saqz.sharedkernel.job.JobLog
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.security.SecureRandom
 import java.time.Clock
@@ -9,11 +10,36 @@ import java.util.Base64
 import java.util.UUID
 import javax.sql.DataSource
 
+/**
+ * Webhook da subconta: o token é cifrado e gravado antes do POST; com o estado incerto só se consulta, nunca um segundo
+ * POST às cegas. Pedido pelo dono na rota, garantido na ativação do grupo ([ensure], em nome do dono, mesmo quando quem
+ * ativa é um admin delegado) e tentado de novo pelo job ([recoverPending]).
+ */
 class JdbcPaymentWebhookRegistration(dataSource: DataSource, private val store: JdbcPaymentStore,
     private val secrets: FinancialSecrets, private val provider: PaymentWebhookRegistrationProvider,
     private val clock: Clock) : PaymentWebhookRegistration {
     private val jdbc = JdbcClient.create(dataSource)
-    override fun configure(accountId: UUID, request: FinancialRequest): FinancialResult<String> = try {
+    override fun configure(accountId: UUID, request: FinancialRequest): FinancialResult<String> = register(accountId, request)
+
+    /** Caminho interno: o pedido sai em nome do dono da conta, com um requestId fixo por conta (repetir não abre outro). */
+    fun ensure(accountId: UUID): Boolean {
+        val owner = jdbc.sql("SELECT owner_user_id FROM receivable_accounts WHERE id=:id")
+            .param("id", accountId).query(UUID::class.java).optional().orElse(null) ?: return false
+        val request = FinancialRequest(UUID.nameUUIDFromBytes("configure-webhook:$accountId".toByteArray()), owner)
+        return (register(accountId, request) as? FinancialResult.Success)?.value == "CONFIGURED"
+    }
+
+    /** Contas com grupo ativo e webhook ainda não configurado. Recusado em definitivo fica para a próxima ativação. */
+    fun recoverPending() {
+        JobLog.frequent("payment_webhooks", {
+            jdbc.sql("""SELECT DISTINCT a.id FROM receivable_accounts a JOIN receivable_group_links l ON l.account_id=a.id AND l.enabled
+                WHERE a.registration='APPROVED' AND NOT EXISTS (SELECT 1 FROM receivable_webhook_credentials w
+                WHERE w.account_id=a.id AND w.state IN ('SUCCEEDED','REJECTED')) LIMIT 20""").query(UUID::class.java).list().filterNotNull()
+                .count { runCatching { ensure(it) }.getOrDefault(false) }
+        }) { mapOf("ready" to it) }
+    }
+
+    private fun register(accountId: UUID, request: FinancialRequest): FinancialResult<String> = try {
         val state = store.transaction {
             val owner = jdbc.sql("SELECT owner_user_id FROM receivable_accounts WHERE id=:id FOR UPDATE")
                 .param("id", accountId).query(UUID::class.java).optional().orElse(null)
@@ -41,11 +67,10 @@ class JdbcPaymentWebhookRegistration(dataSource: DataSource, private val store: 
             var rejected = false
             val remoteId = try { provider.configureWebhook(accountId, state.first, state.second) }
                 catch (_: DefinitivePaymentRejection) {
-                    if (state.second) {
-                        jdbc.sql("UPDATE receivable_webhook_credentials SET state='REJECTED' WHERE account_id=:id")
-                            .param("id", accountId).update()
-                        rejected = true
-                    }
+                    // Só o POST é recusado assim (também o que sai depois de a consulta não achar o webhook).
+                    jdbc.sql("UPDATE receivable_webhook_credentials SET state='REJECTED' WHERE account_id=:id")
+                        .param("id", accountId).update()
+                    rejected = true
                     null
                 } catch (_: Exception) { null }
             if (rejected) FinancialResult.Failure(FinancialError.CONFIGURATION_UNAVAILABLE, request.requestId)

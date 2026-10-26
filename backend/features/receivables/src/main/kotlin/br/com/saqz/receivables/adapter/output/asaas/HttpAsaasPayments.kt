@@ -41,11 +41,16 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
                     require(found.path("name").asText() == name && found.path("hasAuthToken").asBoolean() && found.path("enabled").asBoolean())
                     return identifier(found, "id")
                 }
-                if (!page.path("hasMore").asBoolean(true)) return null
+                // Lista completa sem o webhook: o POST anterior não chegou ao Asaas, então criar agora não duplica.
+                if (!page.path("hasMore").asBoolean(true)) return create(key, name, url, token)
                 offset += 100
             }
             return null
         }
+        return create(key, name, url, token)
+    }
+
+    private fun create(key: String, name: String, url: String, token: String): String {
         return identifier(send(key, "POST", "/webhooks", mapOf("name" to name, "url" to url,
             "email" to requireNotNull(webhookEmail), "enabled" to true, "interrupted" to false,
             "apiVersion" to 3, "authToken" to token, "sendType" to "SEQUENTIALLY",

@@ -31,9 +31,14 @@ class GroupReceivablesConfiguration {
     @Bean fun manageGroupReceivables(accounts: FinancialAccountRepository, admins: GroupAdministrationDirectory,
         groups: GroupFinancialSetupLookup, store: GroupReceivablesStore, conditions: FinancialConditions,
         eligibility: ReceivablesEligibility, clock: Clock, rollout: ReceivablesRollout,
-        pixKeys: org.springframework.beans.factory.ObjectProvider<br.com.saqz.receivables.adapter.output.jdbc.JdbcPixKeys>) =
+        pixKeys: org.springframework.beans.factory.ObjectProvider<br.com.saqz.receivables.adapter.output.jdbc.JdbcPixKeys>,
+        webhooks: org.springframework.beans.factory.ObjectProvider<br.com.saqz.receivables.adapter.output.jdbc.JdbcPaymentWebhookRegistration>) =
         ManageGroupReceivables(accounts, admins, groups, store, conditions, eligibility, clock, rollout,
-            GroupActivationEffects { account, _ -> pixKeys.ifAvailable { it.ensure(account) } })
+            // Depois do commit; uma falha em um não impede o outro nem desfaz a ativação (o job tenta de novo).
+            GroupActivationEffects { account, _ ->
+                runCatching { pixKeys.ifAvailable { it.ensure(account) } }
+                runCatching { webhooks.ifAvailable { it.ensure(account) } }
+            })
     @Bean fun groupReceivablesController(actors: SubscriptionActorResolver, service: ManageGroupReceivables) =
         GroupReceivablesController(FinancialActorResolver { actors.resolve(it) }, service)
 }

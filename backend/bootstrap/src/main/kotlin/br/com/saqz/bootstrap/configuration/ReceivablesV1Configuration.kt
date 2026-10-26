@@ -63,8 +63,8 @@ class ReceivablesV1Configuration {
         PaymentReviewsController(FinancialActorResolver { actors.resolve(it) }, service)
     @Bean fun paymentCodeCancellations(dataSource: DataSource, operations: JdbcFinancialOperationStore, provider: HttpAsaasPaymentCodes,
         clock: Clock) = JdbcPaymentCodeCancellations(dataSource, operations, provider, clock)
-    @Bean fun receivablesV1Jobs(pixKeys: JdbcPixKeys, commissions: JdbcCommissionTransfers, cancellations: JdbcPaymentCodeCancellations) =
-        ReceivablesV1Jobs(pixKeys, commissions, cancellations)
+    @Bean fun receivablesV1Jobs(pixKeys: JdbcPixKeys, webhooks: JdbcPaymentWebhookRegistration, commissions: JdbcCommissionTransfers,
+        cancellations: JdbcPaymentCodeCancellations) = ReceivablesV1Jobs(pixKeys, webhooks, commissions, cancellations)
     @Bean fun cardSubscriptionJobs(cards: CardSubscriptions) = CardSubscriptionJobs(cards)
     @Bean fun settleTime(ledger: GroupChargeLedger, codes: JdbcPaymentCodeStore, athletes: AthletePayments,
         subscriptions: JdbcSubscriptionStore, links: JdbcSettleLinks, notices: ReceivablesNotices, clock: Clock) =
@@ -90,8 +90,8 @@ class CardSubscriptionJobs(private val cards: CardSubscriptions) {
     }
 }
 
-class ReceivablesV1Jobs(private val pixKeys: JdbcPixKeys, private val commissions: JdbcCommissionTransfers,
+class ReceivablesV1Jobs(private val pixKeys: JdbcPixKeys, private val webhooks: JdbcPaymentWebhookRegistration, private val commissions: JdbcCommissionTransfers,
     private val cancellations: JdbcPaymentCodeCancellations) {
     @Scheduled(fixedDelayString = "\${saqz.receivables.v1-recovery-delay-ms:60000}")
-    fun recover() { pixKeys.recoverPending(); commissions.recoverPending(); cancellations.recoverPending() }
+    fun recover() { pixKeys.recoverPending(); webhooks.recoverPending(); commissions.recoverPending(); cancellations.recoverPending() }
 }
