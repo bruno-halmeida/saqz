@@ -517,7 +517,8 @@ class AccessSessionConfiguration {
     )
 
     @Bean
-    fun groupDeletionRepository(dataSource: DataSource) = JdbcGroupDeletionRepository(dataSource)
+    fun groupDeletionRepository(dataSource: DataSource, receivables: br.com.saqz.sharedkernel.group.GroupReceivables) =
+        JdbcGroupDeletionRepository(dataSource, receivables)
 
     @Bean
     fun deleteGroup(

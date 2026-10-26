@@ -9,6 +9,7 @@ import javax.sql.DataSource
 
 class JdbcGroupDeletionRepository(
     dataSource: DataSource,
+    private val receivables: br.com.saqz.sharedkernel.group.GroupReceivables = br.com.saqz.sharedkernel.group.GroupReceivables.NONE,
 ) : GroupDeletionRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
@@ -29,6 +30,8 @@ class JdbcGroupDeletionRepository(
             // CONV-010 / SAI-008 (LGPD): nome e telefone dos convidados de mensalista somem na mesma transação. O link de
             // mensalistas morre com o grupo: quem o abre vê "Grupo excluído", como no convite público.
             jdbc.sql("DELETE FROM group_monthly_invitees WHERE group_id = :groupId").param("groupId", groupId).update()
+            // DEB-029: códigos de pagamento e cobranças de cartão pendentes são cancelados com o grupo.
+            receivables.groupDeleted(groupId, actorUserId)
             noticeMembers(actorUserId, groupId)
             return DeleteGroupResult.Success
         }

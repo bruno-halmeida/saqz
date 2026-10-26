@@ -15,13 +15,15 @@ import javax.sql.DataSource
  * Lado de recebimentos da porta [GroupReceivables]. Roda dentro da transação dos grupos: só lê o vínculo ativo, a tabela
  * publicada (comissão) e o retrato das tarifas do Asaas gravado na ativação. Nunca consulta o Asaas aqui.
  */
-class JdbcGroupReceivablesPricing(dataSource: DataSource, private val published: FinancialConditions,
+class JdbcGroupReceivablesPricing(private val dataSource: DataSource, private val published: FinancialConditions,
     private val clock: Clock) : GroupReceivables {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun active(groupId: UUID): Boolean = jdbc.sql(
         "SELECT count(*) FROM receivable_group_links WHERE group_id=:group AND enabled",
     ).param("group", groupId).query(Int::class.java).single() > 0
+
+    override fun groupDeleted(groupId: UUID, actorId: UUID) = JdbcGroupReceivablesStore(dataSource).groupDeleted(groupId, actorId, clock.instant())
 
     override fun price(groupId: UUID, amountCents: Long): ChargePricing? {
         val link = jdbc.sql("""

@@ -135,3 +135,32 @@ class JdbcPaymentCodeStore(dataSource: DataSource, private val secrets: Financia
             payload?.get("payload")?.let { PixCode(it, payload["image"].orEmpty()) }, payload?.get("checkoutUrl"))
     }
 }
+
+/** Cancelamento remoto dos códigos cancelados ao desligar ou excluir o grupo (G, DEB-029): QR estático e cobrança de cartão. */
+class JdbcPaymentCodeCancellations(dataSource: DataSource, private val operations: FinancialOperationStore,
+    private val provider: PaymentCodeProvider, private val clock: java.time.Clock) {
+    private val jdbc = JdbcClient.create(dataSource)
+
+    fun recoverPending() {
+        br.com.saqz.sharedkernel.job.JobLog.frequent("payment_code_cancellations", {
+            jdbc.sql("""SELECT o.account_id,o.id,c.provider_qr_id,c.provider_payment_id FROM receivable_operations o
+                JOIN payment_codes c ON c.id=o.resource_id WHERE o.kind='CANCEL_PAYMENT_CODE'
+                AND ((o.status IN ('READY','UNKNOWN') AND o.next_attempt_at<=:now) OR (o.status='RUNNING' AND o.lease_until<=:now)) LIMIT 50""")
+                .param("now", Timestamp.from(clock.instant())).query { rs, _ ->
+                    listOf(rs.getObject("account_id", UUID::class.java), rs.getObject("id", UUID::class.java),
+                        rs.getString("provider_qr_id"), rs.getString("provider_payment_id"))
+                }.list().count { (account, operation, qr, payment) -> run(account as UUID, operation as UUID, qr as String?, payment as String?) }
+        }) { mapOf("cancelled" to it) }
+    }
+
+    private fun run(account: UUID, operation: UUID, qr: String?, payment: String?): Boolean {
+        val now = clock.instant()
+        val claim = operations.claim(account, operation, now, now.plusSeconds(90)) ?: return false
+        val done = try {
+            (qr == null || provider.cancelPixQr(account, qr)) && (payment == null || provider.cancelPayment(account, payment))
+        } catch (_: Exception) { false }
+        operations.finish(claim, if (done) OperationStatus.SUCCEEDED else OperationStatus.UNKNOWN, if (done) (payment ?: qr ?: "none") else null,
+            now, now.plusSeconds(300))
+        return done
+    }
+}

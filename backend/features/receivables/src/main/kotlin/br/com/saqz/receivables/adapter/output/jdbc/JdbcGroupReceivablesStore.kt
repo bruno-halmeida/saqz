@@ -69,6 +69,8 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
         } else {
             jdbc.sql("UPDATE receivable_group_links SET enabled=false,disabled_at=:at WHERE account_id=:account AND group_id=:group")
                 .param("at", Timestamp.from(at)).param("account", accountId).param("group", groupId).update()
+            // G: códigos em aberto param; pagamento que chegar mesmo assim ainda dá baixa (FIN-009).
+            cancelLiveCodes(accountId, groupId, request.actorUserId, at)
             val recurrences = jdbc.sql("""
                 UPDATE receivable_recurrences SET status='STOP_PENDING',cutoff_at=:at
                 WHERE account_id=:account AND group_id=:group AND status IN ('AUTHORIZING','ACTIVE') RETURNING id
@@ -90,6 +92,41 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
             .param("conditions", mapper.writeValueAsString(mapOf("schedules" to review?.schedules.orEmpty(), "prices" to review?.prices.orEmpty())))
             .param("at", Timestamp.from(at)).update()
         return state(accountId, groupId)!!
+    }
+
+    /**
+     * Cancela os códigos CREATING/PENDING do grupo e agenda CANCEL_PAYMENT_CODE para os que existem no Asaas (QR e cobrança
+     * de cartão). O job de recebimentos executa o cancelamento remoto depois do commit.
+     */
+    fun cancelLiveCodes(accountId: UUID, groupId: UUID, actor: UUID, at: Instant) {
+        val cancelled = jdbc.sql("""
+            UPDATE payment_codes SET status='CANCELLED' WHERE account_id=:account AND group_id=:group AND status IN ('CREATING','PENDING')
+            RETURNING id,(provider_qr_id IS NOT NULL OR provider_payment_id IS NOT NULL) AS remote
+        """.trimIndent()).param("account", accountId).param("group", groupId).query { rs, _ ->
+            rs.getObject("id", UUID::class.java) to rs.getBoolean("remote")
+        }.list()
+        cancelled.filter { it.second }.forEach { (code, _) ->
+            jdbc.sql("""
+                INSERT INTO receivable_operations(id,account_id,request_id,actor_user_id,kind,resource_id,request_digest,status,next_attempt_at,created_at,updated_at)
+                VALUES (:id,:account,:id,:actor,'CANCEL_PAYMENT_CODE',:code,:digest,'READY',:at,:at,:at) ON CONFLICT (account_id,request_id) DO NOTHING
+            """.trimIndent()).param("id", UUID.nameUUIDFromBytes("cancel-code:$code".toByteArray())).param("account", accountId)
+                .param("actor", actor).param("code", code).param("digest", paymentDigest("CANCEL_PAYMENT_CODE:$code"))
+                .param("at", Timestamp.from(at)).update()
+        }
+    }
+
+    /** DEB-029: exclusão do grupo desliga o recebimento no mesmo passo da desativação (recorrências incluídas). */
+    fun groupDeleted(groupId: UUID, actor: UUID, at: Instant) {
+        val account = jdbc.sql("SELECT account_id FROM receivable_group_links WHERE group_id=:group AND enabled")
+            .param("group", groupId).query(UUID::class.java).optional().orElse(null)
+        if (account == null) {
+            // Desligado antes: ainda pode haver código CANCELLED sem cancelamento remoto? Não: a desativação já agendou.
+            return
+        }
+        jdbc.sql("SELECT id FROM receivable_accounts WHERE id=:id FOR UPDATE").param("id", account).query(UUID::class.java).single()
+        val request = FinancialRequest(UUID.nameUUIDFromBytes("group-deleted:$groupId".toByteArray()), actor)
+        // F3: as recorrências no cartão são cortadas aqui, pelo STOP_RECURRENCE que configure(null) agenda.
+        configure(account, groupId, request, paymentDigest("DEACTIVATE_GROUP:$groupId"), null, at)
     }
 
     override fun feePolicy(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, policy: FeePolicy,

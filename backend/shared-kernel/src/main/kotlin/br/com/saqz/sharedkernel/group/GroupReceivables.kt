@@ -14,6 +14,11 @@ interface GroupReceivables {
     fun active(groupId: UUID): Boolean
     /** Nulo sem recebimentos ativos: a cobrança nasce como sempre, sem valor do atleta. */
     fun price(groupId: UUID, amountCents: Long): ChargePricing?
+    /**
+     * Exclusão do grupo (DEB-029, SAI-008), na transação dela: desliga o recebimento, cancela os códigos em aberto e agenda
+     * o cancelamento remoto das cobranças de cartão e dos QR. Sem rede aqui.
+     */
+    fun groupDeleted(groupId: UUID, actorId: UUID) {}
 
     companion object {
         val NONE: GroupReceivables = object : GroupReceivables {
