@@ -1,0 +1,94 @@
+<resources>
+    <!-- Gestor-Ativar -->
+    <string name="activate_title">Receber pelo app</string>
+    <string name="activate_headline">Chega de conferir extrato</string>
+    <string name="activate_body">O atleta paga pelo Saqz e a baixa sai sozinha. Você só cuida de quem pagou por fora.</string>
+    <string name="activate_step1_title">Hora do acerto no grupo</string>
+    <string name="activate_step1_body">Depois do jogo e no vencimento, o Saqz chama no WhatsApp com o botão de pagar.</string>
+    <string name="activate_step2_title">Pix ou cartão, com o valor certo</string>
+    <string name="activate_step2_body">Ninguém digita valor nem manda comprovante.</string>
+    <string name="activate_step3_title">Mensalista no automático</string>
+    <string name="activate_step3_body">Deixe seu grupo igual uma Netflix: o mensalista cadastra o cartão e segue a vida.</string>
+    <string name="fees_label">Taxas de serviço e pagamento</string>
+    <string name="fees_pix">Pix</string>
+    <string name="fees_card">Cartão</string>
+    <string name="activate_fees_choice">Você escolhe: absorver ou repassar ao atleta. Dá para mudar depois.</string>
+    <string name="activate_terms">Ver os termos</string>
+    <string name="activate_wallet_note">O dinheiro cai na sua carteira no Saqz, no seu nome. Você saca quando quiser.</string>
+    <string name="activate_registration_note">Para o cadastro: documento com foto, CPF ou CNPJ e uma selfie.</string>
+    <string name="activate_start_registration">Começar cadastro</string>
+    <string name="activate_review">Revisar e ativar</string>
+    <string name="activate_accept">Li e aceito os termos</string>
+    <string name="activate_confirm">Ativar recebimentos</string>
+    <string name="activate_under_review">Seu cadastro está em análise. Avisamos quando puder ativar.</string>
+    <string name="activate_correction">Seu cadastro precisa de um ajuste antes de ativar.</string>
+    <string name="activate_open_registration">Ver cadastro</string>
+    <string name="activate_done">Recebimentos ativos. Os atletas já podem pagar pelo app.</string>
+    <string name="activate_unavailable">A ativação ainda não está liberada para você.</string>
+
+    <!-- Gestor-Taxas -->
+    <string name="fee_policy_title">Taxas do grupo</string>
+    <string name="fee_policy_question">Quem paga a taxa?</string>
+    <string name="fee_policy_intro">O atleta sempre vê um valor só. Você decide se a taxa sai do que você recebe ou entra no valor dele.</string>
+    <string name="fee_policy_absorb">Absorver a taxa</string>
+    <string name="fee_policy_absorb_body">O atleta paga o valor da cobrança. A taxa sai do que você recebe.</string>
+    <string name="fee_policy_absorb_example">Cobrado R$ 20,00 · Recebido R$ 20,00 − taxas</string>
+    <string name="fee_policy_pass">Repassar ao atleta</string>
+    <string name="fee_policy_pass_body">A cobrança já nasce com a taxa, calculada pela do cartão. Você recebe o valor cheio; no Pix, um pouco mais.</string>
+    <string name="fee_policy_pass_example">Atleta paga R$ 20,00 + taxa · Você recebe R$ 20,00</string>
+    <string name="fee_policy_terms_note">Inclui a taxa do Asaas e a do Saqz.</string>
+    <string name="fee_policy_new_only">Vale para as cobranças novas. As que já existem mantêm o valor.</string>
+    <string name="fee_policy_save">Salvar</string>
+    <string name="fee_policy_saved">Taxas salvas.</string>
+
+    <!-- Gestor-Valores / Gestor-Pix -->
+    <string name="fees_you_absorb">Você absorve</string>
+    <string name="fees_you_pass">Você repassa</string>
+    <string name="fees_change">Mudar</string>
+    <string name="values_price_change_note">Mudou a mensalidade? Quem paga no automático é avisado 7 dias antes, e o valor novo vale a partir do próximo mês.</string>
+    <string name="receiving_title">Como o grupo recebe</string>
+    <string name="receiving_app">Pelo app do Saqz</string>
+    <string name="receiving_active">Ativo</string>
+    <string name="receiving_body">Os atletas pagam pelo app, com o valor certo, e a baixa sai sozinha.</string>
+    <string name="receiving_wallet">Carteira</string>
+    <string name="receiving_wallet_value">%1$s para sacar</string>
+    <string name="receiving_withdraw">Sacar</string>
+    <string name="receiving_turn_off">Desligar recebimento pelo app</string>
+    <string name="receiving_offer_body">O atleta paga pelo Saqz e a baixa sai sozinha.</string>
+    <string name="receiving_offer_action">Receber pelo app</string>
+
+    <!-- Gestor-Caixa -->
+    <string name="cashbox_wallet">Na sua carteira do Saqz</string>
+    <string name="cashbox_review_count">%1$d Pix para revisar</string>
+    <string name="cashbox_review_detail">%1$s de %2$s</string>
+    <string name="cashbox_review_action">Revisar</string>
+
+    <!-- Gestor-Revisao / Gestor-Atribuir -->
+    <string name="review_title">Pix para revisar</string>
+    <string name="review_kicker">Caiu na sua carteira</string>
+    <string name="review_from">de %1$s</string>
+    <string name="review_when">Quando</string>
+    <string name="review_body">Alguém pagou direto na chave da sua conta, sem passar por uma cobrança do Saqz. Diga de quem é.</string>
+    <string name="review_member">É de alguém do grupo</string>
+    <string name="review_not_charge">Não é cobrança</string>
+    <string name="review_not_charge_note">“Não é cobrança” vira entrada no caixa com o nome de %1$s. Devolução, se precisar, é fora do Saqz.</string>
+    <string name="assign_title">Pix de %1$s · de quem é?</string>
+    <string name="assign_search">Buscar no grupo</string>
+    <string name="assign_open">%1$d em aberto · %2$s</string>
+    <string name="assign_nothing_open">Nada em aberto</string>
+    <string name="assign_covers">O que esse Pix paga</string>
+    <string name="assign_covers_hint">mais antigas primeiro</string>
+    <string name="assign_overdue">Vencida</string>
+    <string name="assign_due">Vence em %1$s</string>
+    <string name="assign_marked">Marcado %1$s de %2$s</string>
+    <string name="assign_confirm">Dar baixa para %1$s</string>
+    <string name="assign_leftover">%1$s sobram e entram no caixa.</string>
+    <string name="review_done">Pix resolvido.</string>
+    <string name="review_empty">Nenhum Pix para revisar.</string>
+
+    <!-- Gestor-Membros -->
+    <string name="members_autopay_summary">%1$d de %2$d mensalistas no automático</string>
+    <string name="members_autopay_rest">Os outros %1$d recebem o convite na hora do acerto.</string>
+    <string name="members_autopay_on">No automático</string>
+    <string name="members_autopay_refused">Cartão recusado</string>
+</resources>

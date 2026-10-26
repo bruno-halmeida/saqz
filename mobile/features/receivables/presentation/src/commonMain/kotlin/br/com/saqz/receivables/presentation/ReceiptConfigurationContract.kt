@@ -37,6 +37,8 @@ sealed interface ReceiptConfigurationIntent {
     data class SelectAccount(val id: String) : ReceiptConfigurationIntent
     data class ToggleMethod(val method: ReceiptMethod) : ReceiptConfigurationIntent
     data object Preview : ReceiptConfigurationIntent
+    /** v1 (FIN-009): o grupo ativa sempre com Pix e cartão; a tela não escolhe meio. */
+    data object PreviewAllMethods : ReceiptConfigurationIntent
     data class Accept(val accepted: Boolean) : ReceiptConfigurationIntent
     data object Activate : ReceiptConfigurationIntent
     data object RequestDeactivation : ReceiptConfigurationIntent

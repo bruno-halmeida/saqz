@@ -49,6 +49,13 @@ class ReceiptConfigurationViewModel(
                     review = null, terms = emptyList(), accepted = false, error = null, completed = false) }
             }
             ReceiptConfigurationIntent.Preview -> if (current.canPreview) preview()
+            ReceiptConfigurationIntent.PreviewAllMethods -> {
+                if (current.methods != ReceiptMethod.entries.toSet()) {
+                    activation = null
+                    update { it.copy(methods = ReceiptMethod.entries.toSet(), review = null, terms = emptyList(), accepted = false) }
+                }
+                if (state.value.canPreview) preview()
+            }
             is ReceiptConfigurationIntent.Accept -> if (current.canAccept) update { it.copy(accepted = intent.accepted) }
             ReceiptConfigurationIntent.Activate -> if (current.canActivate) mutate(activate = true)
             ReceiptConfigurationIntent.RequestDeactivation -> if (current.canDeactivate) update { it.copy(confirmingDeactivation = true) }
