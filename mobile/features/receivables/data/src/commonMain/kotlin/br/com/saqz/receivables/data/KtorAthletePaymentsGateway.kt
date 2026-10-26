@@ -200,3 +200,37 @@ private fun PaymentCodeTransport.domain(): PaymentCode {
 @Serializable internal data class MemberRecurrenceTransport(val memberUserId: String, val status: String)
 @Serializable internal data class SettleTargetTransport(val groupId: String, val gameId: String? = null,
     val billingMonth: String? = null)
+
+/** Histórico do atleta: as pagas de `charges/me`, com `settledBy`/`appMethod` do v1 (aditivos, A). */
+class KtorOwnChargeHistoryGateway(private val network: AuthenticatedNetworkClient) : OwnChargeHistoryGateway {
+    override suspend fun paid(groupId: String): SaqzResult<List<PaidCharge>, PaymentError> =
+        when (val result = retryTransport(RetrySafety.Read) {
+            network.execute(HttpMethod.Get, "api/groups/${groupId.encodeURLPathPart()}/charges/me",
+                OwnChargesTransport.serializer())
+        }) {
+            is NetworkResult.Failure -> SaqzResult.Failure(result.error.athleteError())
+            is NetworkResult.Success -> SaqzResult.Success(result.value.charges.filter { it.status == "PAID" }.map { charge ->
+                PaidCharge(
+                    chargeId = charge.id,
+                    kind = if (charge.kind == "MONTHLY") OpenChargeKind.MONTHLY else OpenChargeKind.GAME,
+                    billingMonth = charge.month,
+                    guestName = charge.guestDisplayName?.takeIf(String::isNotBlank),
+                    dueDate = charge.dueDate,
+                    amountCents = charge.payableCents ?: charge.amountCents,
+                    via = when {
+                        charge.settledBy == "APP" && charge.appMethod == "CARD" -> PaidVia.APP_CARD
+                        charge.settledBy == "APP" -> PaidVia.APP_PIX
+                        charge.paidMethod == "PIX" -> PaidVia.PIX
+                        charge.paidMethod == "CASH" -> PaidVia.CASH
+                        else -> PaidVia.OTHER
+                    },
+                )
+            }.sortedByDescending { it.dueDate })
+        }
+}
+
+@Serializable internal data class OwnChargeTransport(val id: String, val kind: String, val month: String? = null,
+    val amountCents: Long, val dueDate: String, val status: String, val paidMethod: String? = null,
+    val guestDisplayName: String? = null, val payableCents: Long? = null, val settledBy: String? = null,
+    val appMethod: String? = null)
+@Serializable internal data class OwnChargesTransport(val charges: List<OwnChargeTransport>)

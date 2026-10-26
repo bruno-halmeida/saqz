@@ -22,8 +22,8 @@ internal fun PaymentQrImage(encoded: String) {
         loaded = true
     }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-    bitmap?.let { Image(it, stringResource(Res.string.payment_qr), Modifier.fillMaxWidth(0.72f).aspectRatio(1f)) }
-    if (loaded && bitmap == null) Text(stringResource(Res.string.payment_qr_failed))
+    bitmap?.let { Image(it, stringResource(Res.string.pay_qr), Modifier.fillMaxWidth(0.72f).aspectRatio(1f)) }
+    if (loaded && bitmap == null) Text(stringResource(Res.string.pay_qr_failed))
     }
 }
 internal expect suspend fun decodePaymentQr(bytes: ByteArray): ImageBitmap?

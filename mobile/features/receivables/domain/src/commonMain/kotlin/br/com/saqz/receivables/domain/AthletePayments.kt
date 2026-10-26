@@ -132,3 +132,27 @@ fun String.isValidCpf(): Boolean {
     }
     return check(9) == digits[9] && check(10) == digits[10]
 }
+
+/** Como a cobrança paga foi quitada, para o histórico de Minhas cobranças. */
+enum class PaidVia { APP_PIX, APP_CARD, PIX, CASH, OTHER }
+
+data class PaidCharge(
+    val chargeId: String,
+    val kind: OpenChargeKind,
+    val billingMonth: String?,
+    val guestName: String?,
+    val dueDate: String,
+    val amountCents: Long,
+    val via: PaidVia,
+)
+
+/** As cobranças já pagas do atleta no grupo (`GET /api/groups/{id}/charges/me`, a mesma rota de Minhas cobranças). */
+fun interface OwnChargeHistoryGateway {
+    suspend fun paid(groupId: String): SaqzResult<List<PaidCharge>, PaymentError>
+}
+
+/** "Quer deixar no automático?" aparece no máximo uma vez por mês (FIN-012). Fica no aparelho. */
+interface AutopayOfferMemory {
+    fun wasOffered(key: String, done: (Boolean) -> Unit)
+    fun markOffered(key: String)
+}

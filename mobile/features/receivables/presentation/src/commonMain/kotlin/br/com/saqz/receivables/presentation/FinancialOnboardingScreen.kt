@@ -58,7 +58,7 @@ fun FinancialOnboardingScreen(state: FinancialOnboardingState, onIntent: (Financ
         enabled = !state.pending && state.error != ReceiptError.SIGNED_OUT, variant = SaqzButtonVariant.Secondary,
         modifier = Modifier.testTag("financial-onboarding-wallet"))
     if (state.loading || state.picking) SaqzSpinner()
-    state.error?.let { PaymentError(it) }
+    state.error?.let { ReceiptErrorText(it) }
     if (state.pending) {
         Text(stringResource(Res.string.onboarding_pending)); Text(stringResource(Res.string.onboarding_pending_help))
         SaqzButton(stringResource(Res.string.onboarding_recover), { onIntent(FinancialOnboardingIntent.Recover) },

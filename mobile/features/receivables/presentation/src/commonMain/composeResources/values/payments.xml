@@ -1,0 +1,115 @@
+<resources>
+    <!-- Minhas cobranças (Main, Atleta-Mensalista, Netflix-Recusado) -->
+    <string name="charges_title">Minhas cobranças</string>
+    <string name="charges_kicker_open">%1$s · em aberto</string>
+    <string name="charges_kicker_monthly">%1$s · %2$s</string>
+    <string name="charges_pay_all">Pagar tudo</string>
+    <string name="charges_pay_monthly">Pagar mensalidade</string>
+    <string name="charges_pay_note">Pix ou cartão. A baixa sai na hora.</string>
+    <string name="charges_open">Em aberto</string>
+    <string name="charges_pay">Pagar</string>
+    <string name="charges_history">Histórico</string>
+    <string name="charges_paid">Paga</string>
+    <string name="charges_outside_note">Pagou por fora, no Pix do organizador ou em dinheiro? Ele dá a baixa.</string>
+    <string name="charges_nothing_open">Você não tem nada em aberto aqui</string>
+    <string name="charges_inactive">Este grupo não recebe mais pelo app. Pague no Pix do organizador.</string>
+    <string name="charges_history_failed">Não deu para carregar o histórico.</string>
+    <string name="autopay_kicker">Pagamento automático</string>
+    <string name="autopay_offer_title">Deixe no automático</string>
+    <string name="autopay_offer_body">Cadastra o cartão e segue a vida: a mensalidade se paga sozinha todo dia %1$s.</string>
+    <string name="autopay_offer_body_no_day">Cadastra o cartão e segue a vida: a mensalidade se paga sozinha todo mês.</string>
+    <string name="autopay_offer_action">Ativar no cartão</string>
+    <string name="autopay_offer_note">Cancele quando quiser, pelo app.</string>
+    <string name="autopay_active_title">Ativo no cartão</string>
+    <string name="autopay_active_next">Próxima cobrança em %1$s</string>
+    <string name="autopay_manage">Gerenciar</string>
+    <string name="refused_title">Seu cartão não passou</string>
+    <string name="refused_body">A mensalidade de %1$s (%2$s) continua em aberto. Pague por Pix agora ou atualize o cartão. O automático tenta de novo no mês que vem.</string>
+    <string name="refused_pay_pix">Pagar por Pix</string>
+    <string name="refused_update_card">Atualizar cartão</string>
+
+    <!-- Pagar (Atleta-Pagar-Pix, Atleta-Pagar-Cartao) -->
+    <string name="pay_title_game">Pagar meu jogo</string>
+    <string name="pay_title_monthly">Pagar mensalidade</string>
+    <string name="pay_title_many">Pagar</string>
+    <string name="pay_tab_pix">Pix</string>
+    <string name="pay_tab_card">Cartão</string>
+    <string name="pay_tabs">Como pagar</string>
+    <string name="pay_qr">QR Code com o valor</string>
+    <string name="pay_qr_failed">Não deu para mostrar o QR. Use o copia e cola.</string>
+    <string name="pay_copy_paste">Pix copia e cola</string>
+    <string name="pay_copy">Copiar código</string>
+    <string name="pay_copied">Código copiado</string>
+    <string name="pay_payee">Quem recebe: %1$s, organizador</string>
+    <string name="pay_value_fixed">O valor já vem no código e não muda.</string>
+    <string name="pay_waiting">Esperando o pagamento. Pague no app do seu banco; a baixa sai sozinha.</string>
+    <string name="pay_creating">Gerando o código…</string>
+    <string name="pay_expired">A cobrança mudou e este código não vale mais.</string>
+    <string name="pay_new_code">Gerar outro código</string>
+    <string name="pay_cpf_intro">Para pagar no cartão, precisamos do seu CPF uma vez.</string>
+    <string name="pay_cpf_label">CPF</string>
+    <string name="pay_cpf_support">Fica guardado com segurança. Da próxima vez, não pedimos de novo.</string>
+    <string name="pay_cpf_invalid">Confira o CPF.</string>
+    <string name="pay_card_note">Você vai para a página segura do Asaas para digitar o cartão. O Saqz não vê os dados do cartão.</string>
+    <string name="pay_card_continue">Continuar para o cartão</string>
+    <string name="pay_card_waiting">Esperando a confirmação do cartão. Se fechou a página, toque de novo para continuar.</string>
+
+    <!-- Confirmado (Atleta-Confirmado) -->
+    <string name="confirmed_title">Pagamento confirmado</string>
+    <string name="confirmed_body">O organizador já vê no caixa do grupo.</string>
+    <string name="confirmed_offer_title">Quer deixar no automático?</string>
+    <string name="confirmed_offer_body">No mês que vem, a mensalidade se paga sozinha no cartão, todo dia %1$s. Cancele quando quiser.</string>
+    <string name="confirmed_offer_body_no_day">No mês que vem, a mensalidade se paga sozinha no cartão. Cancele quando quiser.</string>
+    <string name="confirmed_offer_accept">Deixar no automático</string>
+    <string name="confirmed_offer_decline">Agora não</string>
+    <string name="confirmed_back">Voltar ao grupo</string>
+
+    <!-- Modo Netflix (Netflix-Adesao, Netflix-Gerenciar, Netflix-Cancelar) -->
+    <string name="netflix_title">Pagamento automático</string>
+    <string name="netflix_headline">Mensalidade no automático</string>
+    <string name="netflix_tagline">Cadastra o cartão e segue a vida.</string>
+    <string name="netflix_amount">%1$s por mês</string>
+    <string name="netflix_amount_support">O valor da mensalidade do grupo</string>
+    <string name="netflix_day">Cobrado todo dia %1$s</string>
+    <string name="netflix_day_unknown">Cobrado no vencimento</string>
+    <string name="netflix_open_month">%1$s está em aberto: cobramos agora</string>
+    <string name="netflix_day_support">No dia do vencimento da mensalidade</string>
+    <string name="netflix_change">Valor mudou? Avisamos antes</string>
+    <string name="netflix_change_support">7 dias antes de cobrar o novo valor</string>
+    <string name="netflix_cancel_anytime">Cancele quando quiser</string>
+    <string name="netflix_cancel_anytime_support">Pelo app, sem falar com ninguém</string>
+    <string name="netflix_card_note">O cartão é cadastrado na página segura do Asaas. O Saqz não vê os dados do cartão.</string>
+    <string name="netflix_register">Cadastrar cartão</string>
+    <string name="netflix_active">Ativo</string>
+    <string name="netflix_refused">Cartão recusado</string>
+    <string name="netflix_next">Próxima cobrança</string>
+    <string name="netflix_card">Cartão</string>
+    <string name="netflix_card_support">Cadastrado no Asaas</string>
+    <string name="netflix_change_card">Trocar</string>
+    <string name="netflix_history">Cobranças no cartão</string>
+    <string name="netflix_cancel">Cancelar pagamento automático</string>
+    <string name="netflix_cancelled">Pagamento automático cancelado. As próximas mensalidades chegam para pagar por Pix.</string>
+    <string name="netflix_unavailable">O pagamento automático não está disponível para você neste grupo.</string>
+    <string name="cancel_title">Por que você quer cancelar?</string>
+    <string name="cancel_support">Ajuda a gente a melhorar. Escolha uma opção.</string>
+    <string name="cancel_STOP_PLAYING">Vou parar de jogar</string>
+    <string name="cancel_PREFER_PIX">Prefiro pagar por Pix</string>
+    <string name="cancel_CARD_PROBLEM">Problema com o cartão</string>
+    <string name="cancel_TOO_EXPENSIVE">O valor ficou alto</string>
+    <string name="cancel_OTHER">Outro motivo</string>
+    <string name="cancel_PREFER_NOT_SAY">Prefiro não dizer</string>
+    <string name="cancel_note">Você continua mensalista. As próximas mensalidades chegam para pagar por Pix. O que já venceu continua em aberto.</string>
+    <string name="cancel_keep">Manter no automático</string>
+
+    <!-- Erros curtos -->
+    <string name="payment_error_SIGNED_OUT">Sua sessão terminou. Entre de novo.</string>
+    <string name="payment_error_NETWORK">Sem conexão. Tente de novo.</string>
+    <string name="payment_error_UNAVAILABLE">Isso ainda não está disponível. Tente mais tarde.</string>
+    <string name="payment_error_INVALID">Não deu para ler a resposta. Tente de novo.</string>
+    <string name="payment_error_PIX_NOT_READY">O Pix deste grupo ainda está sendo preparado.</string>
+    <string name="payment_error_CHARGE_NOT_PAYABLE">A cobrança mudou. Gere outro código.</string>
+    <string name="payment_error_DOCUMENT_REQUIRED">Precisamos do seu CPF para o cartão.</string>
+    <string name="payment_error_INVALID_DOCUMENT">Confira o CPF.</string>
+    <string name="payment_retry">Tentar de novo</string>
+    <string name="settle_opening">Abrindo o pagamento…</string>
+</resources>

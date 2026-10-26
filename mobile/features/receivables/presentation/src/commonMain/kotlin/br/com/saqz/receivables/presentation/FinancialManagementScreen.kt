@@ -42,7 +42,7 @@ fun FinancialManagementScreen(state: FinancialManagementState, onIntent: (Financ
     onBack: () -> Unit, modifier: Modifier = Modifier) = PaymentPage(stringResource(Res.string.management_title),
     FinancialManagementTags.Screen, { if (!state.pending) onBack() }, modifier) {
     if (state.loading) SaqzSpinner()
-    state.error?.let { PaymentError(it) }
+    state.error?.let { ReceiptErrorText(it) }
     if (state.accounts.isEmpty() && !state.loading) Text(stringResource(Res.string.management_empty))
     state.accounts.forEachIndexed { index, account ->
         SaqzButton(stringResource(Res.string.management_account, (index + 1).toString()),
