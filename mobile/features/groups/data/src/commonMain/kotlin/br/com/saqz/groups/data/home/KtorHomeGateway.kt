@@ -184,6 +184,8 @@ internal data class HomeOwnChargeGroupTransport(
     val pixKey: String?,
     val pixLabel: String?,
     val oldest: HomeOwnChargeOldestTransport,
+    /** FIN-009: aditivo; ausente no servidor antigo. */
+    val receivablesActive: Boolean = false,
 )
 
 @Serializable
@@ -278,6 +280,7 @@ private fun HomeOwnChargeGroupTransport.toDomain(): HomeOwnChargeGroup? {
         pixKey = pixKey,
         pixLabel = pixLabel,
         oldest = oldestDomain,
+        receivablesActive = receivablesActive,
     )
 }
 

@@ -454,7 +454,12 @@ internal fun GroupAboutSection(state: GroupSetupState, onIntent: (GroupSetupInte
  * mesmo valor vive em "Como preencher as vagas"). Sem dia fixo, a quadra padrão fica aqui.
  */
 @Composable
-internal fun GroupRulesSection(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun GroupRulesSection(
+    state: GroupSetupState,
+    onIntent: (GroupSetupIntent) -> Unit,
+    modifier: Modifier = Modifier,
+    feePreview: (@Composable (Long?) -> Unit)? = null,
+) {
     val form = state.form
     val capacity = form.defaultCapacity ?: GroupSetupDefaults.Capacity
     val capacityError = GroupSetupError.CapacityOutOfRange in state.errors
@@ -489,6 +494,7 @@ internal fun GroupRulesSection(state: GroupSetupState, onIntent: (GroupSetupInte
                 hasError = GroupSetupError.GameFeeInvalid in state.errors,
                 onChange = { onIntent(GroupSetupIntent.UpdateDefaultGameFee(it)) },
             )
+            feePreview?.invoke(form.defaultGameFeeCents)
             DurationStepper(
                 minutes = state.durationMinutes,
                 onChange = { onIntent(GroupSetupIntent.SelectDuration(it)) },

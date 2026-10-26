@@ -24,6 +24,12 @@ enum class PaidMethod {
     Other,
 }
 
+/** Meio do pagamento feito pelo app (FIN-014): a cobrança paga pelo app diz "pelo app · Pix" ou "pelo app · cartão". */
+enum class AppPaymentMethod {
+    Pix,
+    Card,
+}
+
 enum class ExpenseCategory {
     Venue,
     Equipment,
@@ -81,7 +87,15 @@ data class Charge(
     val electronicOrder: Boolean = false,
     /** PRES-016: confirmou, não apareceu e a diária segue pendente; o gestor cobra ou dispensa. */
     val noShow: Boolean = false,
-)
+    /** FIN-010: o que o atleta paga pelo app, fixado quando a cobrança nasce; `null` = [amountCents]. */
+    val payableCents: Long? = null,
+    /** FIN-014: quitada pelo app (`settledBy=APP`), com o meio em [appMethod]. Não se desfaz à mão. */
+    val settledByApp: Boolean = false,
+    val appMethod: AppPaymentMethod? = null,
+) {
+    /** Cobrança cuja baixa veio de pagamento eletrônico: o "Desfazer" não aparece. */
+    val settledElectronically: Boolean get() = electronicOrder || settledByApp
+}
 
 data class ChargeTotals(
     val pendingCents: Long,
@@ -133,6 +147,8 @@ data class Expense(
     val version: Long,
     val audit: List<ExpenseAudit>,
     val direction: FinanceDirection = FinanceDirection.Out,
+    /** FIN-014: a saída "Taxas de serviço e pagamento" que o recebimento lança sozinho; não se edita. */
+    val automatic: Boolean = false,
 )
 
 data class ExpenseList(
@@ -172,6 +188,10 @@ data class FinanceStatementItem(
     val paidMethod: PaidMethod?,
     val occurredAt: String,
     val amountCents: Long,
+    /** Entrada paga pelo app, com o meio (FIN-014). */
+    val appMethod: AppPaymentMethod? = null,
+    /** Saída automática das taxas do recebimento. */
+    val automatic: Boolean = false,
 )
 
 data class FinanceStatementSummary(

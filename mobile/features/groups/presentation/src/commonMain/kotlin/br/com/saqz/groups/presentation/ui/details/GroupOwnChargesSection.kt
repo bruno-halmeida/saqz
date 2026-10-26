@@ -31,6 +31,7 @@ import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.own_charges_failure
 import br.com.saqz.groups.resources.own_charges_history_title
 import br.com.saqz.groups.resources.own_charges_note
+import br.com.saqz.groups.resources.own_charges_pay_in_app
 import br.com.saqz.groups.resources.own_charges_pending_title
 import br.com.saqz.groups.resources.own_charges_retry
 import br.com.saqz.groups.resources.own_charges_status_cancelled
@@ -75,6 +76,14 @@ internal fun GroupOwnChargesSection(
                     charges = ownCharges.history,
                     tag = GroupDetailsTags.OwnChargesHistory,
                     tone = SaqzCardTone.Default,
+                )
+            }
+            if (ownCharges.payInApp) {
+                SaqzButton(
+                    label = stringResource(Res.string.own_charges_pay_in_app),
+                    onClick = { onIntent(GroupDetailsIntent.PayCharges) },
+                    fullWidth = true,
+                    modifier = Modifier.testTag(GroupDetailsTags.OwnChargesPay),
                 )
             }
             ownCharges.pix?.let {

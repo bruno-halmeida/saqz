@@ -45,6 +45,8 @@ fun GroupMembersRoot(
     onOpenInvite: (String) -> Unit,
     modifier: Modifier = Modifier,
     onOpenMonthlyInvite: (String) -> Unit = {},
+    /** Quem está no automático (FIN-012); `null` sem recebimento pelo app ou antes da rota existir. */
+    autopay: Map<String, MemberAutopayUi>? = null,
     viewModel: GroupMembersViewModel = koinViewModel(
         key = "members/$groupId",
         parameters = { parametersOf(groupId) },
@@ -90,6 +92,7 @@ fun GroupMembersRoot(
             onBack = onBack,
             invitees = inviteesState,
             onInviteesIntent = invitees::onIntent,
+            autopay = autopay,
         )
         ModerationOverlay(state = moderationState, onIntent = moderation::onIntent)
     }

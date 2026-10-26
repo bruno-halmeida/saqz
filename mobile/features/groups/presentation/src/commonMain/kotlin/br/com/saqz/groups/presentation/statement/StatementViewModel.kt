@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.statement
 
+import br.com.saqz.groups.domain.finance.AppPaymentMethod
+
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
@@ -216,11 +218,17 @@ private fun FinanceStatementItem.toUi() = StatementItemUi(
     title = title,
     meta = listOfNotNull(
         category.toStatementCategoryLabel(),
-        paidMethod?.toStatementMethodLabel(),
+        // FIN-014: o que veio pelo app diz o meio; a taxa automática se identifica e não se edita.
+        when {
+            appMethod == AppPaymentMethod.Card -> "pelo app · cartão"
+            appMethod == AppPaymentMethod.Pix -> "pelo app · Pix"
+            else -> paidMethod?.toStatementMethodLabel()
+        },
+        "automático".takeIf { automatic },
         occurredAt.toStatementDateLabel(),
     ).joinToString(" · "),
     amountLabel = formatStatementAmount(amountCents, direction),
-    manual = type.equals("EXPENSE", ignoreCase = true),
+    manual = type.equals("EXPENSE", ignoreCase = true) && !automatic,
 )
 
 private fun FinanceStatementSummary.toUi() = StatementSummaryUi(

@@ -48,7 +48,9 @@ import br.com.saqz.groups.resources.group_details_own_charges_history_show
 import br.com.saqz.groups.resources.group_details_own_charges_no_pix
 import br.com.saqz.groups.resources.group_details_own_charges_settled_meta
 import br.com.saqz.groups.resources.group_details_own_charges_settled_title
+import br.com.saqz.groups.resources.home_own_charge_app_hint
 import br.com.saqz.groups.resources.home_own_charge_copied
+import br.com.saqz.groups.resources.own_charges_pay_in_app
 import br.com.saqz.groups.resources.own_charges_failure
 import br.com.saqz.groups.resources.own_charges_note
 import br.com.saqz.groups.resources.own_charges_retry
@@ -171,19 +173,25 @@ private fun OwnDebtContent(
         headerChip = null,
         countLabel = debt.countLabel,
         receiverLabel = null,
-        copied = pixCopied,
-        copyLabel = stringResource(Res.string.group_cashbox_pix_copy),
+        copied = pixCopied && !ownCharges.payInApp,
+        // FIN-009: com recebimento pelo app o verbo é "Pagar" (Pix ou cartão no app), e a chave pessoal some.
+        copyLabel = stringResource(if (ownCharges.payInApp) Res.string.own_charges_pay_in_app else Res.string.group_cashbox_pix_copy),
         copiedLabel = stringResource(Res.string.home_own_charge_copied),
-        onCopy = if (pix != null) {
-            { onIntent(GroupDetailsIntent.CopyPix) }
-        } else {
-            null
+        onCopy = when {
+            ownCharges.payInApp -> { { onIntent(GroupDetailsIntent.PayCharges) } }
+            pix != null -> { { onIntent(GroupDetailsIntent.CopyPix) } }
+            else -> null
         },
         onClick = null,
         contentDescription = null,
-        tags = OwnChargeTicketTags(card = GroupDetailsTags.OwnDebt, copy = GroupDetailsTags.OwnChargesPixCopy),
+        tags = OwnChargeTicketTags(card = GroupDetailsTags.OwnDebt,
+            copy = if (ownCharges.payInApp) GroupDetailsTags.OwnChargesPay else GroupDetailsTags.OwnChargesPixCopy),
         footnote = stringResource(
-            if (pix != null) Res.string.own_charges_note else Res.string.group_details_own_charges_no_pix,
+            when {
+                ownCharges.payInApp -> Res.string.home_own_charge_app_hint
+                pix != null -> Res.string.own_charges_note
+                else -> Res.string.group_details_own_charges_no_pix
+            },
         ),
     ) {
         OwnDebtPendingLines(pending = ownCharges.pending)

@@ -110,6 +110,8 @@ internal data class GroupDto(
     val entryRequiresApproval: Boolean = false,
     /** JOGO-011: só vem para dono e admin; ausente no servidor antigo. */
     val hasPastGames: Boolean? = null,
+    /** FIN-009 (G): aditivo; ausente no servidor antigo. */
+    val receivablesActive: Boolean = false,
 )
 
 @Serializable
@@ -292,6 +294,7 @@ private fun GroupDto.toDomain(): Group? {
         ),
         entryRequiresApproval = entryRequiresApproval,
         hasPastGames = hasPastGames == true,
+        receivablesActive = receivablesActive,
     )
 }
 

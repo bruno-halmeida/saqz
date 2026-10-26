@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithTag
 import br.com.saqz.designsystem.theme.SaqzTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -32,24 +32,22 @@ class GroupCashboxScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun receiptConfigurationEntryHiddenWhenCallbackAbsent() {
+    fun personalPixStaysWhenTheGroupDoesNotReceiveInApp() {
         compose.setContent { SaqzTheme { GroupCashboxScreen(loadedState, {}, {}) } }
-        compose.onNodeWithText("Configurar recebimentos").assertDoesNotExist()
-        compose.onNodeWithText("Pagamento pelo app").assertDoesNotExist()
-        compose.onNodeWithText("Para pagamento pelo app, libere a cobrança abaixo. Use 'Recebi' apenas para valores recebidos fora do app.")
+        compose.onNodeWithText("Quem paga pelo app sai do “falta” sozinho. Use “Recebi” só para o que chegou por fora.")
             .assertDoesNotExist()
-        compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/entrada-oculta-sem-conta-off.png")
+        compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/caixa-sem-recebimento.png")
     }
 
     @Test
-    fun receiptConfigurationEntryCallsCompositionCallback() {
-        var opened = false
+    fun receivingInAppHidesThePersonalPixAndShowsTheHeader() {
         compose.setContent { SaqzTheme {
-            GroupCashboxScreen(loadedState, {}, {}, onOpenReceivables = { opened = true })
+            GroupCashboxScreen(loadedState, {}, {}, receivingInApp = true,
+                receivablesHeader = { androidx.compose.material.Text("Na sua carteira do Saqz") })
         } }
-        compose.onNodeWithText("Configurar recebimentos").performClick()
-        org.junit.Assert.assertTrue(opened)
-        compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/entrada-caixa.png")
+        compose.onNodeWithText("Na sua carteira do Saqz").assertExists()
+        compose.onNodeWithTag(GroupCashboxTags.Pix).assertDoesNotExist()
+        compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/caixa-pelo-app.png")
     }
 
     @Test

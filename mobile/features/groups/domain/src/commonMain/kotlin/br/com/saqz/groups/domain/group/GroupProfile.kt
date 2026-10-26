@@ -89,6 +89,8 @@ data class Group(
     val entryRequiresApproval: Boolean = false,
     /** JOGO-011: o grupo já teve jogo anterior; só o gestor recebe verdadeiro. */
     val hasPastGames: Boolean = false,
+    /** FIN-009: o grupo recebe pelo app; a chave Pix pessoal some para os atletas e entra o "Pagar". */
+    val receivablesActive: Boolean = false,
 ) {
     constructor(
         id: String,

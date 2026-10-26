@@ -75,6 +75,8 @@ data class HomeOwnChargeGroupUi(
     /** Só quando há mais de uma cobrança no grupo; `null` cala a linha. */
     val countLabel: String?,
     val pix: PixUi?,
+    /** FIN-009: o grupo recebe pelo app; o verbo vira "Pagar" e a chave pessoal some. */
+    val payInApp: Boolean = false,
 )
 
 @Immutable
@@ -285,6 +287,9 @@ sealed interface HomeIntent {
     data class OpenInvite(val groupId: String) : HomeIntent
     data class CopyPix(val groupId: String) : HomeIntent
 
+    /** "Pagar" no aviso de cobrança de um grupo que recebe pelo app (FIN-011). */
+    data class PayCharges(val groupId: String) : HomeIntent
+
     /** "Cancelar pedido" abre a confirmação; só [ConfirmCancelEntryRequest] chama a API. */
     data class RequestCancelEntryRequest(val groupId: String) : HomeCancelEntryIntent
     data object DismissCancelEntryRequest : HomeCancelEntryIntent
@@ -318,6 +323,8 @@ sealed interface HomeEffect {
     data class OpenGameEditor(val groupId: String) : HomeEffect
     data class OpenInvite(val groupId: String) : HomeEffect
     data class CopyPix(val key: String) : HomeEffect
+
+    data class OpenPayment(val groupId: String, val groupName: String) : HomeEffect
     data object OpenCreateGroup : HomeEffect
 
     /** Código lido de um link colado; o fecho entrega ao `GroupInviteCoordinator`, como um deep link. */

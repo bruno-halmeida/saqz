@@ -628,7 +628,8 @@ class GameSettlementViewModel(
             withdrew = withdrew && status == ChargeStatus.Pending,
             noShow = noShow && status == ChargeStatus.Pending,
             reviewRequired = reviewRequired,
-            canUndo = (status == ChargeStatus.Paid || status == ChargeStatus.Waived) && !electronicOrder,
+            canUndo = (status == ChargeStatus.Paid || status == ChargeStatus.Waived) && !settledElectronically,
+            appMethod = appMethod.takeIf { settledByApp && status == ChargeStatus.Paid },
             referenceLabel = if (guest != null) {
                 "Convidado $guest · jogo de ${formatDate(dueDate)}"
             } else {

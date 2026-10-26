@@ -46,6 +46,7 @@ internal fun GroupMonthlyFeeSection(
     onFeeChange: (Long?) -> Unit,
     onDueDayChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    receivables: GroupSetupReceivables? = null,
 ) {
     var text by remember { mutableStateOf(cents?.let(::formatBrlPlain).orEmpty()) }
     LaunchedEffect(cents) {
@@ -86,6 +87,7 @@ internal fun GroupMonthlyFeeSection(
             },
             modifier = Modifier.testTag(GroupSetupTags.MonthlyFeeAmount),
         )
+        receivables?.feePreview?.invoke(cents)
         SaqzStepper(
             value = dueDay ?: GroupSetupDefaults.DefaultMonthlyDueDay,
             onValueChange = onDueDayChange,
@@ -97,5 +99,6 @@ internal fun GroupMonthlyFeeSection(
             increaseDescription = stringResource(Res.string.group_monthly_fee_due_day_after),
             modifier = Modifier.testTag(GroupSetupTags.MonthlyDueDay),
         )
+        receivables?.values?.invoke()
     }
 }

@@ -40,7 +40,10 @@ import br.com.saqz.groups.presentation.members.GroupMemberAction
 import br.com.saqz.groups.presentation.members.GroupMembersFilter
 import br.com.saqz.groups.presentation.members.GroupMembersIntent
 import br.com.saqz.groups.presentation.members.JoinRequestUi
+import br.com.saqz.groups.presentation.members.MemberAutopayUi
 import br.com.saqz.groups.presentation.members.MemberUi
+import br.com.saqz.groups.resources.members_autopay_on
+import br.com.saqz.groups.resources.members_autopay_refused
 import br.com.saqz.groups.presentation.members.sheetActions
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_invitees_filter
@@ -226,13 +229,14 @@ internal fun GroupMemberListSection(
     modifier: Modifier = Modifier,
     action: String? = null,
     footer: String? = null,
+    autopay: Map<String, MemberAutopayUi>? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         GroupMembersSectionHeader(title = title, action = action)
         SaqzCard(padded = false) {
             members.forEachIndexed { index, member ->
                 if (index > 0) SaqzDivider()
-                GroupMemberRow(member = member, onOpen = onOpen)
+                GroupMemberRow(member = member, onOpen = onOpen, autopay = autopay?.get(member.id))
             }
         }
         if (footer != null) {
@@ -247,7 +251,7 @@ internal fun GroupMemberListSection(
 }
 
 @Composable
-private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
+private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit, autopay: MemberAutopayUi? = null) {
     val dismissKeyboard = rememberSaqzDismissKeyboard()
     SaqzMemberRow(
         // TODO(VUL-96): o export escreve o "· você" em peso 400 e `textSecondary`, e o
@@ -273,9 +277,17 @@ private fun GroupMemberRow(member: MemberUi, onOpen: (String) -> Unit) {
             onOpen(member.id)
         },
         modifier = Modifier.testTag(GroupMembersTags.member(member.id)),
-        stackTrailingOnLargeFont = member.isAdmin,
+        stackTrailingOnLargeFont = member.isAdmin || autopay != null,
         trailing = {
-            if (member.isAdmin) {
+            // FIN-012: quem está no automático, ou com o cartão recusado, aparece para o gestor.
+            if (autopay != null) {
+                SaqzStatusChip(
+                    text = stringResource(if (autopay == MemberAutopayUi.Active) Res.string.members_autopay_on
+                        else Res.string.members_autopay_refused),
+                    tone = if (autopay == MemberAutopayUi.Active) SaqzChipTone.Success else SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GroupMembersTags.autopay(member.id)),
+                )
+            } else if (member.isAdmin) {
                 SaqzStatusChip(text = stringResource(Res.string.group_members_admin), tone = SaqzChipTone.Brand)
             } else {
                 // TODO(VUL-96): o export usa três pontos verticais. A Lucide entra no

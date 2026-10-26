@@ -53,6 +53,10 @@ internal data class ChargeTransport(
     val electronicOrder: Boolean = false,
     /** PRES-016: só na lista do gestor; ausente no servidor antigo. */
     val noShow: Boolean = false,
+    /** Recebimento v1 (A): aditivos, ausentes no servidor antigo. */
+    val payableCents: Long? = null,
+    val settledBy: String? = null,
+    val appMethod: String? = null,
 )
 
 @Serializable
@@ -101,6 +105,8 @@ internal data class ExpenseTransport(
     val version: Long,
     val events: List<ExpenseAuditTransport>,
     val direction: String = "OUT",
+    /** `RECEIVABLES_FEES`: as taxas que o recebimento lança sozinho (E). */
+    val origin: String? = null,
 )
 
 @Serializable
@@ -140,6 +146,9 @@ private data class FinanceStatementItemTransport(
     val paidMethod: String? = null,
     val occurredAt: String,
     val amountCents: Long,
+    val settledBy: String? = null,
+    val appMethod: String? = null,
+    val origin: String? = null,
 )
 
 @Serializable
@@ -448,7 +457,18 @@ private fun ChargeTransport.toDomain() = Charge(
     withdrew = withdrew,
     electronicOrder = electronicOrder,
     noShow = noShow,
+    payableCents = payableCents,
+    settledByApp = settledBy == "APP",
+    appMethod = appMethod.toAppMethod().takeIf { settledBy == "APP" },
 )
+
+private fun String?.toAppMethod(): AppPaymentMethod? = when (this) {
+    "PIX" -> AppPaymentMethod.Pix
+    "CARD" -> AppPaymentMethod.Card
+    else -> null
+}
+
+private const val RECEIVABLES_FEES = "RECEIVABLES_FEES"
 
 private fun ChargeAuditTransport.toDomain() =
     ChargeAudit(actorId, oldStatus.toDomain(), newStatus.toDomain(), note, occurredAt)
@@ -460,6 +480,7 @@ private fun ExpenseTransport.toDomain() = Expense(
     id, GroupId(groupId), description, amountCents, expenseDate, category.toExpenseCategory(),
     customCategory, notes, status.toDomain(), version, events.map(ExpenseAuditTransport::toDomain),
     direction.toFinanceDirection(),
+    automatic = origin == RECEIVABLES_FEES,
 )
 
 private fun FinanceStatementPageTransport.toDomain() = FinanceStatementPage(
@@ -480,6 +501,8 @@ private fun FinanceStatementItemTransport.toDomain() = FinanceStatementItem(
     paidMethod = paidMethod.toPaidMethod(),
     occurredAt = occurredAt,
     amountCents = amountCents,
+    appMethod = appMethod.toAppMethod().takeIf { settledBy == "APP" },
+    automatic = origin == RECEIVABLES_FEES,
 )
 
 private fun FinanceStatementSummaryTransport.toDomain() = FinanceStatementSummary(

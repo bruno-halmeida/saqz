@@ -14,6 +14,9 @@ enum class GroupMembersFilter { All, Admins, Pending, Invited }
  * o 2k abre o sheet de membro comum e o 2l o de admin, mas é o mesmo painel.
  * [Report], [Block] e [Unblock] são de qualquer papel (App Store 1.2), nunca sobre si mesmo.
  */
+/** Mensalidade no cartão (FIN-012), vista pelo gestor na lista: vem da feature de recebimentos pelo `:compose-app`. */
+enum class MemberAutopayUi { Active, Refused }
+
 enum class GroupMemberAction { ViewProfile, EditMember, Promote, Demote, Remove, Report, Block, Unblock }
 
 @Immutable

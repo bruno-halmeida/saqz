@@ -17,6 +17,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import br.com.saqz.designsystem.SaqzButton
+import br.com.saqz.designsystem.SaqzButtonSize
+import br.com.saqz.designsystem.SaqzButtonVariant
 import br.com.saqz.designsystem.SaqzIcon
 import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzSectionHeader
@@ -29,7 +32,9 @@ import br.com.saqz.groups.presentation.ui.components.OwnChargeTicket
 import br.com.saqz.groups.presentation.ui.components.OwnChargeTicketTags
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.group_cashbox_pix_copy
+import br.com.saqz.groups.resources.home_own_charge_app_hint
 import br.com.saqz.groups.resources.home_own_charge_copied
+import br.com.saqz.groups.resources.own_charges_pay_in_app
 import br.com.saqz.groups.resources.home_own_charge_pix_receiver
 import br.com.saqz.groups.resources.pix_receiver_typed
 import br.com.saqz.groups.resources.own_charges_title
@@ -72,6 +77,28 @@ private fun HomeOwnChargeTicket(
     onIntent: (HomeIntent) -> Unit,
 ) {
     val copyPix = { onIntent(HomeIntent.CopyPix(group.groupId)) }
+    if (group.payInApp) {
+        OwnChargeTicket(
+            eyebrow = group.competence,
+            amountLabel = group.amountLabel,
+            dueChipLabel = group.dueLabel,
+            dueChipOverdue = group.overdue,
+            headerChip = group.groupName,
+            countLabel = group.countLabel,
+            receiverLabel = stringResource(Res.string.home_own_charge_app_hint),
+            copied = false,
+            copyLabel = stringResource(Res.string.own_charges_pay_in_app),
+            copiedLabel = stringResource(Res.string.own_charges_pay_in_app),
+            onCopy = { onIntent(HomeIntent.PayCharges(group.groupId)) },
+            onClick = { onIntent(HomeIntent.OpenGroup(group.groupId)) },
+            contentDescription = group.groupName,
+            tags = OwnChargeTicketTags(
+                card = HomeTags.ownCharge(group.groupId),
+                copy = HomeTags.ownChargePay(group.groupId),
+            ),
+        )
+        return
+    }
     OwnChargeTicket(
         eyebrow = group.competence,
         amountLabel = group.amountLabel,
@@ -112,6 +139,9 @@ internal fun HomeOwnChargesBanner(
     charges: HomeOwnChargesUi,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** "Pagar" (um grupo pelo app) ou "Ver" (vários): o verbo à direita do aviso (Atleta-Inicio). */
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -140,7 +170,17 @@ internal fun HomeOwnChargesBanner(
             color = content,
             modifier = Modifier.weight(1f),
         )
-        SaqzIcon(SaqzIcons.ChevronRight, tint = content, size = metrics.grid * 2)
+        if (actionLabel != null && onAction != null) {
+            SaqzButton(
+                label = actionLabel,
+                onClick = onAction,
+                size = SaqzButtonSize.Sm,
+                variant = if (charges.overdue) SaqzButtonVariant.Primary else SaqzButtonVariant.Inverse,
+                modifier = Modifier.testTag(HomeTags.OwnChargesBannerAction),
+            )
+        } else {
+            SaqzIcon(SaqzIcons.ChevronRight, tint = content, size = metrics.grid * 2)
+        }
     }
 }
 

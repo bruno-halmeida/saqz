@@ -556,7 +556,7 @@ class GroupCashboxViewModel(
             reviews = charges.filter { it.reviewRequired }
                 .map { it.toReview(memberNames[it.memberId] ?: "Membro").copy(photo = it.photo()) },
             settled = monthly
-                .filter { (it.status == ChargeStatus.Paid || it.status == ChargeStatus.Waived) && !it.electronicOrder }
+                .filter { (it.status == ChargeStatus.Paid || it.status == ChargeStatus.Waived) && !it.settledElectronically }
                 .map { it.toSettled(memberNames[it.memberId] ?: "Membro").copy(photo = it.photo()) },
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
         )

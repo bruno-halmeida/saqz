@@ -11,6 +11,11 @@ import br.com.saqz.designsystem.RefreshWhenVisible
 import br.com.saqz.groups.presentation.home.HomeEffect
 import br.com.saqz.groups.presentation.home.HomeIntent
 import br.com.saqz.groups.presentation.home.HomeOwnChargesUi
+import br.com.saqz.groups.presentation.home.HomeState
+import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.own_charges_pay_in_app
+import br.com.saqz.groups.resources.own_charges_view_groups
+import org.jetbrains.compose.resources.stringResource
 import br.com.saqz.groups.presentation.home.HomeViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -30,6 +35,8 @@ fun HomeRoot(
     onCreateGroup: () -> Unit = {},
     onAcceptInviteCode: (String) -> Unit = {},
     refreshVersion: Int = 0,
+    /** Recebimento pelo app (FIN-011): `null` com a disponibilidade desligada, e o aviso fica como hoje. */
+    onPayCharges: ((groupId: String, groupName: String) -> Unit)? = null,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -53,11 +60,18 @@ fun HomeRoot(
             // não navegação, e morre aqui.
             is HomeEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
             HomeEffect.OpenCreateGroup -> onCreateGroup()
+            is HomeEffect.OpenPayment -> onPayCharges?.invoke(effect.groupId, effect.groupName)
             is HomeEffect.AcceptInviteCode -> onAcceptInviteCode(effect.code)
         }
     }
-    HomeScreen(state = state, onIntent = viewModel::onIntent)
+    HomeScreen(state = state.withPayment(onPayCharges != null), onIntent = viewModel::onIntent)
 }
+
+/** Sem a disponibilidade do recebimento, o aviso volta a ser o de hoje (a chave some só com o grupo ativo). */
+internal fun HomeState.withPayment(enabled: Boolean): HomeState =
+    if (enabled) this else copy(ownCharges = ownCharges?.withoutPayment())
+
+internal fun HomeOwnChargesUi.withoutPayment(): HomeOwnChargesUi = copy(groups = groups.map { it.copy(payInApp = false) })
 
 /**
  * O aviso permanente de cobrança em aberto (VUL-202), montado pelo shell acima do conteúdo
@@ -90,6 +104,7 @@ fun HomeRoot(
 fun HomeOwnChargesBannerRoot(
     onOpenHome: () -> Unit,
     emailBanner: (@Composable () -> Unit)? = null,
+    onPayCharges: ((groupId: String, groupName: String) -> Unit)? = null,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -99,7 +114,22 @@ fun HomeOwnChargesBannerRoot(
     }
     val charges = state.ownCharges
     if (ownChargesBannerWins(charges, hasEmailBanner = emailBanner != null)) {
-        HomeOwnChargesBanner(charges = checkNotNull(charges), onClick = onOpenHome)
+        val banner = checkNotNull(charges).let { if (onPayCharges != null) it else it.withoutPayment() }
+        val single = banner.groups.singleOrNull()?.takeIf { it.payInApp }
+        HomeOwnChargesBanner(
+            charges = banner,
+            onClick = onOpenHome,
+            actionLabel = when {
+                single != null -> stringResource(Res.string.own_charges_pay_in_app)
+                banner.groups.size > 1 && banner.groups.any { it.payInApp } -> stringResource(Res.string.own_charges_view_groups)
+                else -> null
+            },
+            onAction = when {
+                single != null && onPayCharges != null -> ({ onPayCharges(single.groupId, single.groupName) })
+                banner.groups.size > 1 && banner.groups.any { it.payInApp } -> onOpenHome
+                else -> null
+            },
+        )
     } else {
         emailBanner?.invoke()
     }

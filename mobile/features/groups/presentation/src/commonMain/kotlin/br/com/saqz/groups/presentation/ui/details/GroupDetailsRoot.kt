@@ -59,6 +59,8 @@ fun GroupDetailsRoot(
     /** Voltou de um jogo recém-criado: mostra a confirmação e avisa o host para não repetir. */
     gameCreatedToast: Boolean = false,
     onConsumeGameCreatedToast: () -> Unit = {},
+    /** Disponibilidade do recebimento (FIN-009): desligada, o "Pagar" não aparece e tudo fica como hoje. */
+    paymentsEnabled: Boolean = false,
     mapPort: GroupMapPort = koinInject(),
     sharePort: NativeInviteSharePort = koinInject(),
     moderation: ModerationViewModel = koinViewModel(key = "moderation/details/$groupId"),
@@ -104,7 +106,7 @@ fun GroupDetailsRoot(
     }
     Box(modifier = modifier.fillMaxSize()) {
         GroupDetailsScreen(
-            state = state,
+            state = if (paymentsEnabled) state else state.copy(ownCharges = state.ownCharges?.copy(payInApp = false)),
             onBack = onBack,
             onIntent = viewModel::onIntent,
             photoFailed = photoFailed,

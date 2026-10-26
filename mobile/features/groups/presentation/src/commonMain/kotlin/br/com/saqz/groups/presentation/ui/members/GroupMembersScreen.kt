@@ -35,7 +35,9 @@ import br.com.saqz.groups.presentation.members.GroupMembersIntent
 import br.com.saqz.groups.presentation.members.GroupMembersNotice
 import br.com.saqz.groups.presentation.members.GroupMembersState
 import br.com.saqz.groups.presentation.members.JoinRequestUi
+import br.com.saqz.groups.presentation.members.MemberAutopayUi
 import br.com.saqz.groups.presentation.members.MemberUi
+import br.com.saqz.groups.resources.members_autopay_count
 import br.com.saqz.groups.presentation.members.memberCount
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.presentation.ui.SubscriptionRequiredDialog
@@ -73,6 +75,8 @@ internal object GroupMembersTags {
     fun filter(filter: GroupMembersFilter) = "group-members-filter-${filter.name}"
 
     fun member(id: String) = "group-members-member-$id"
+    const val AutopaySummary = "group-members-autopay-summary"
+    fun autopay(id: String) = "group-members-autopay-$id"
 
     fun request(id: String) = "group-members-request-$id"
 
@@ -95,6 +99,7 @@ fun GroupMembersScreen(
     modifier: Modifier = Modifier,
     invitees: GroupInviteesState = GroupInviteesState(),
     onInviteesIntent: (GroupInviteesIntent) -> Unit = {},
+    autopay: Map<String, MemberAutopayUi>? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -168,7 +173,7 @@ fun GroupMembersScreen(
                     if (state.filter == GroupMembersFilter.All || state.filter == GroupMembersFilter.Invited) {
                         inviteesContent(invitees, onInviteesIntent)
                     }
-                    membersContent(state, onIntent)
+                    membersContent(state, onIntent, autopay)
                 }
             }
             SaqzToast(
@@ -226,7 +231,19 @@ fun GroupMembersScreen(
 private fun LazyListScope.membersContent(
     state: GroupMembersState,
     onIntent: (GroupMembersIntent) -> Unit,
+    autopay: Map<String, MemberAutopayUi>? = null,
 ) {
+    val onAutopay = autopay.orEmpty().count { it.value == MemberAutopayUi.Active }
+    if (onAutopay > 0) {
+        item(key = "autopay-summary") {
+            Text(
+                text = pluralStringResource(Res.plurals.members_autopay_count, onAutopay, onAutopay),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary,
+                modifier = Modifier.testTag(GroupMembersTags.AutopaySummary),
+            )
+        }
+    }
     if (state.rosterFailed) {
         item(key = "roster-failed") {
             GroupLoadFailure(
@@ -262,6 +279,7 @@ private fun LazyListScope.membersContent(
                 title = stringResource(Res.string.group_members_admins),
                 members = state.admins,
                 onOpen = { onIntent(GroupMembersIntent.OpenMember(it)) },
+                autopay = autopay,
             )
         }
     }
@@ -271,6 +289,7 @@ private fun LazyListScope.membersContent(
                 title = stringResource(Res.string.group_members_members),
                 members = state.members,
                 onOpen = { onIntent(GroupMembersIntent.OpenMember(it)) },
+                autopay = autopay,
                 action = state.memberCount.toString(),
                 footer = pluralStringResource(Res.plurals.group_members_showing, state.memberCount, state.shownCount, state.memberCount),
             )

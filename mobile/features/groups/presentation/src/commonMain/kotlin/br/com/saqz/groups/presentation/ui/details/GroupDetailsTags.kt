@@ -42,6 +42,7 @@ internal object GroupDetailsTags {
     const val OwnChargesSettled = "group-details-own-charges-settled"
     const val OwnChargesPix = "group-details-own-charges-pix"
     const val OwnChargesPixCopy = "group-details-own-charges-pix-copy"
+    const val OwnChargesPay = "group-details-own-charges-pay"
     const val OwnChargesSkeleton = "group-details-own-charges-skeleton"
     const val OwnChargesFailure = "group-details-own-charges-failure"
     const val OwnChargesRetry = "group-details-own-charges-retry"

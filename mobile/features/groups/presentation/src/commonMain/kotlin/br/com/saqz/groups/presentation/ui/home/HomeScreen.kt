@@ -118,6 +118,7 @@ internal object HomeTags {
     const val Toast = "home-toast"
     const val OwnCharges = "home-own-charges"
     const val OwnChargesBanner = "home-own-charges-banner"
+    const val OwnChargesBannerAction = "home-own-charges-banner-action"
     const val FirstAccess = "home-first-access"
     const val FirstAccessCreate = "home-first-access-create"
     const val FirstAccessInvite = "home-first-access-invite"
@@ -133,6 +134,7 @@ internal object HomeTags {
     fun ownCharge(id: String) = "home-own-charge-$id"
 
     fun ownChargePixCopy(id: String) = "home-own-charge-pix-copy-$id"
+    fun ownChargePay(id: String) = "home-own-charge-pay-$id"
 }
 
 @Composable

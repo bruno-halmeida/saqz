@@ -1552,6 +1552,22 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `group receiving in app hides the personal key and pay opens the payment`() = runTest {
+        val app = sampleOwnCharges().let { it.copy(groups = listOf(it.groups.first().copy(receivablesActive = true)) + it.groups.drop(1)) }
+        val viewModel = viewModel(homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = app))))
+
+        val groups = viewModel.state.value.ownCharges!!.groups
+        assertTrue(groups.first().payInApp)
+        assertEquals(null, groups.first().pix)
+        assertFalse(groups.last().payInApp)
+        viewModel.onIntent(HomeIntent.PayCharges("group-2"))
+        viewModel.onIntent(HomeIntent.CopyPix("group-1"))
+        viewModel.onIntent(HomeIntent.PayCharges("group-1"))
+        // Sem recebimento no grupo 2 e sem chave no grupo 1: o único efeito é o pagamento do grupo 1.
+        assertEquals(HomeEffect.OpenPayment("group-1", "Vôlei do CERET"), viewModel.effects.first())
+    }
+
+    @Test
     fun `copy pix marks the group as copied and toasts then clears after the dwell`() = runTest {
         val viewModel = viewModel(
             homeGateway = SequenceHomeGateway(SaqzResult.Success(sampleHome(ownCharges = sampleOwnCharges()))),

@@ -5,6 +5,7 @@ import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
+import br.com.saqz.groups.domain.finance.AppPaymentMethod
 import br.com.saqz.groups.domain.finance.Charge
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeList
@@ -630,6 +631,20 @@ class GameSettlementViewModelTest {
         viewModel.onIntent(GameSettlementIntent.OpenUndo("game-paid"))
         assertEquals("game-paid", viewModel.state.value.undoSheetChargeId)
         viewModel.onIntent(GameSettlementIntent.DismissUndoSheet)
+        assertEquals(null, viewModel.state.value.undoSheetChargeId)
+    }
+
+    @Test
+    fun `charge paid by the app shows the method and never offers undo`() = runTest {
+        val all = charges() + charges().first { it.id == "game-paid" }
+            .copy(id = "game-app", settledByApp = true, appMethod = AppPaymentMethod.Pix)
+        val viewModel = viewModel(SettlementFinanceGateway(all, expenses()))
+
+        val row = viewModel.state.value.diarists.first { it.chargeId == "game-app" }
+        assertFalse(row.canUndo)
+        assertEquals(AppPaymentMethod.Pix, row.appMethod)
+        assertEquals(null, viewModel.state.value.diarists.first { it.chargeId == "game-paid" }.appMethod)
+        viewModel.onIntent(GameSettlementIntent.OpenUndo("game-app"))
         assertEquals(null, viewModel.state.value.undoSheetChargeId)
     }
 

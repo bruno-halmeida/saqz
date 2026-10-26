@@ -68,6 +68,9 @@ import br.com.saqz.groups.resources.game_settlement_review_action
 import br.com.saqz.groups.resources.game_settlement_review_failure
 import br.com.saqz.groups.resources.game_settlement_review_status
 import br.com.saqz.groups.resources.game_settlement_received_status
+import br.com.saqz.groups.resources.paid_via_app_card
+import br.com.saqz.groups.resources.paid_via_app_pix
+import br.com.saqz.groups.domain.finance.AppPaymentMethod
 import br.com.saqz.groups.resources.game_settlement_summary_pending
 import br.com.saqz.groups.resources.game_settlement_summary
 import br.com.saqz.groups.resources.game_settlement_summary_diarists_one
@@ -109,6 +112,7 @@ internal object GameSettlementTags {
     fun review(chargeId: String) = "game-settlement-review-$chargeId"
     fun reviewAction(chargeId: String) = "game-settlement-review-action-$chargeId"
     fun undo(chargeId: String) = "game-settlement-undo-$chargeId"
+    fun paid(chargeId: String) = "game-settlement-paid-$chargeId"
     fun charge(chargeId: String) = "game-settlement-charge-$chargeId"
 }
 
@@ -518,8 +522,13 @@ private fun DiaristRow(
             ) {
                 if (diarist.status == ChargeStatus.Paid) {
                     SaqzStatusChip(
-                        text = stringResource(Res.string.game_settlement_received_status),
+                        text = when (diarist.appMethod) {
+                            AppPaymentMethod.Pix -> stringResource(Res.string.paid_via_app_pix)
+                            AppPaymentMethod.Card -> stringResource(Res.string.paid_via_app_card)
+                            null -> stringResource(Res.string.game_settlement_received_status)
+                        },
                         tone = SaqzChipTone.Success,
+                        modifier = Modifier.testTag(GameSettlementTags.paid(diarist.chargeId)),
                     )
                 } else {
                     SaqzStatusChip(

@@ -230,6 +230,8 @@ class GroupDetailsViewModel(
             GroupDetailsIntent.RetryRoster -> retryRoster()
             GroupDetailsIntent.RetryOwnCharges -> retryOwnCharges()
             GroupDetailsIntent.CopyPix -> copyPix()
+            GroupDetailsIntent.PayCharges -> loadedGroup?.takeIf { state.value.ownCharges?.payInApp == true }
+                ?.let { emit(GroupDetailsEffect.OpenPayment(it.id.value, it.name)) }
             GroupDetailsIntent.DismissToast -> update { it.copy(toast = null) }
             GroupDetailsIntent.ShowGameCreated -> update { it.copy(toast = GroupDetailsToast.GameCreated) }
             GroupDetailsIntent.ViewGame -> viewGame()
@@ -631,12 +633,15 @@ class GroupDetailsViewModel(
             .sortedByDescending { it.dueDate }
             .take(OWN_CHARGES_HISTORY_LIMIT)
             .map { it.toOwnCharge(today) }
-        val pixKey = group.profile?.pixKey?.trim()?.takeIf { it.isNotEmpty() && pending.isNotEmpty() }
+        // Com recebimento pelo app a chave pessoal some dos atletas (FIN-009); paga-se pelo "Pagar".
+        val pixKey = group.profile?.pixKey?.trim()
+            ?.takeIf { it.isNotEmpty() && pending.isNotEmpty() && !group.receivablesActive }
         return OwnChargesUi(
             pending = pending,
             history = history,
             pix = pixKey?.let { PixUi(it, group.profile?.pixLabel) },
             debt = groupOwnDebt(pendingCharges, pending, today, group.profile?.pixLabel, pixKey != null),
+            payInApp = group.receivablesActive && pending.isNotEmpty(),
         )
     }
 

@@ -75,6 +75,8 @@ data class GameSettlementDiaristUi(
     val canUndo: Boolean = false,
     /** Foto de perfil (MEM-006); cobrança de convidado não tem. */
     val photo: MemberPhoto? = null,
+    /** FIN-014: recebida pelo app, separada do "você marcou". */
+    val appMethod: br.com.saqz.groups.domain.finance.AppPaymentMethod? = null,
 ) {
     /** Quem desistiu ou faltou: a diária pendente pode ser dispensada. */
     val waivable: Boolean get() = (withdrew || noShow) && status == ChargeStatus.Pending

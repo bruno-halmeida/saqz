@@ -58,6 +58,22 @@ class KtorFinanceGatewaysTest {
     }
 
     @Test
+    fun `charge paid by the app reads payable value settled by and method and stays off on the old server`() = runTest {
+        val app = CHARGES.replaceFirst("\"reviewRequired\":true",
+            "\"payableCents\":2128,\"settledBy\":\"APP\",\"appMethod\":\"CARD\",\"reviewRequired\":true")
+        val paid = success(organizer { json(app) }.charges(GROUP)).charges.first()
+        val old = success(organizer { json(CHARGES) }.charges(GROUP)).charges.first()
+
+        assertEquals(2128L, paid.payableCents)
+        assertTrue(paid.settledByApp)
+        assertEquals(AppPaymentMethod.Card, paid.appMethod)
+        assertTrue(paid.settledElectronically)
+        assertFalse(old.settledByApp)
+        assertEquals(null, old.payableCents)
+        assertEquals(null, old.appMethod)
+    }
+
+    @Test
     fun `charge status undo sends pending with the quoted version and the note`() = runTest {
         organizer { request ->
             assertEquals("/api/groups/${GROUP.value}/charges/$CHARGE/status", request.url.encodedPath)

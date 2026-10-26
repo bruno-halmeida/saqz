@@ -107,6 +107,7 @@ internal object GroupSetupTags {
     fun monthlyLateJoinPolicyOption(policy: br.com.saqz.groups.model.MonthlyLateJoinPolicy) =
         "group-monthly-late-join-policy-${policy.name}"
     const val PixKey = "group-setup-pix-key"
+    const val PixHidden = "group-setup-pix-hidden"
     const val PixType = "group-setup-pix-type"
     fun pixTypeOption(type: br.com.saqz.groups.presentation.pix.PixKeyType) = "group-setup-pix-type-${type.name}"
     const val VenueName = "group-setup-venue-name"
@@ -140,6 +141,7 @@ fun GroupSetupScreen(
     modifier: Modifier = Modifier,
     showTrialOffer: Boolean = false,
     onOpenWhatsApp: (() -> Unit)? = null,
+    receivables: GroupSetupReceivables? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Box(modifier = modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
@@ -176,7 +178,7 @@ fun GroupSetupScreen(
                 verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
                 GroupSetupNotices(state, onIntent)
-                GroupSetupCards(state, onIntent, onOpenWhatsApp)
+                GroupSetupCards(state, onIntent, onOpenWhatsApp, receivables)
             }
             GroupSetupFooter(state, onIntent, showTrialOffer)
         }
@@ -207,7 +209,12 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
 }
 
 @Composable
-private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, onOpenWhatsApp: (() -> Unit)?) {
+private fun GroupSetupCards(
+    state: GroupSetupState,
+    onIntent: (GroupSetupIntent) -> Unit,
+    onOpenWhatsApp: (() -> Unit)?,
+    receivables: GroupSetupReceivables? = null,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap)) {
         var userExpanded by rememberSaveable { mutableStateOf(false) }
         // Na edição tudo fica aberto, sem a linha. Na criação, "Mais detalhes" só abre sozinho se algum erro estiver lá dentro.
@@ -221,7 +228,7 @@ private fun GroupSetupCards(state: GroupSetupState, onIntent: (GroupSetupIntent)
                 modifier = Modifier.testTag(GroupSetupTags.Advanced),
             )
         }
-        if (expanded) GroupSetupDetails(state, onIntent, onOpenWhatsApp)
+        if (expanded) GroupSetupDetails(state, onIntent, onOpenWhatsApp, receivables)
     }
 }
 
@@ -247,10 +254,11 @@ private fun GroupSetupDetails(
     state: GroupSetupState,
     onIntent: (GroupSetupIntent) -> Unit,
     onOpenWhatsApp: (() -> Unit)?,
+    receivables: GroupSetupReceivables? = null,
 ) {
     val form = state.form
     GroupAboutSection(state, onIntent)
-    GroupRulesSection(state, onIntent)
+    GroupRulesSection(state, onIntent, feePreview = receivables?.feePreview)
     if (state.isEditing && state.canManageGameConfig) {
         GroupGameConfigSection(
             mensalistaPriority = form.mensalistaPriority,
@@ -267,6 +275,7 @@ private fun GroupSetupDetails(
                 hasError = GroupSetupError.MonthlyFeeInvalid in state.errors,
                 onFeeChange = { onIntent(GroupSetupIntent.UpdateMonthlyFee(it)) },
                 onDueDayChange = { onIntent(GroupSetupIntent.UpdateMonthlyDueDay(it)) },
+                receivables = receivables,
             )
         }
         if (state.showsMonthlyLateJoinPolicy) {
@@ -275,7 +284,9 @@ private fun GroupSetupDetails(
                 onSelect = { onIntent(GroupSetupIntent.SelectMonthlyLateJoinPolicy(it)) },
             )
         }
+        receivables?.receiving?.invoke()
         GroupPixSection(
+            hiddenFromAthletes = receivables?.active == true,
             pixKey = state.pixKey,
             pixType = state.pixType,
             onPixTypeSelect = { onIntent(GroupSetupIntent.SelectPixType(it)) },

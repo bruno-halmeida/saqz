@@ -215,6 +215,8 @@ data class OwnChargesUi(
     val debt: GroupOwnDebtUi? = null,
     val isLoading: Boolean = false,
     val failed: Boolean = false,
+    /** FIN-009: o grupo recebe pelo app e há o que pagar; entra o "Pagar" no lugar da chave. */
+    val payInApp: Boolean = false,
 )
 
 @Immutable
@@ -409,6 +411,9 @@ sealed interface GroupDetailsIntent {
 
     data object CopyPix : GroupDetailsIntent
 
+    /** "Pagar" em Minhas cobranças do grupo, com recebimento pelo app (FIN-011). */
+    data object PayCharges : GroupDetailsIntent
+
     data object DismissToast : GroupDetailsIntent
 
     /** Volta do editor com um jogo novo: confirma uma vez, no detalhe. */
@@ -455,6 +460,9 @@ sealed interface GroupDetailsEffect {
     data class OpenThread(val groupId: String, val notices: Boolean) : GroupDetailsEffect
 
     data object Left : GroupDetailsEffect
+
+    /** Minhas cobranças com o pagamento pelo app (FIN-011). */
+    data class OpenPayment(val groupId: String, val groupName: String) : GroupDetailsEffect
 
     /** Copiar a chave Pix é da área de transferência, não do back stack: morre no Root. */
     data class CopyPix(val key: String) : GroupDetailsEffect

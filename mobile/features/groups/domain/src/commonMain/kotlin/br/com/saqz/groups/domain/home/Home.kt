@@ -160,6 +160,8 @@ data class HomeOwnChargeGroup(
     val pixKey: String?,
     val pixLabel: String?,
     val oldest: HomeOwnChargeOldest,
+    /** FIN-009: o grupo recebe pelo app; o aviso troca o "copiar chave" pelo "Pagar". */
+    val receivablesActive: Boolean = false,
 )
 
 /** Os agregados no topo existem para o aviso do shell: um texto, sem varrer os grupos. */

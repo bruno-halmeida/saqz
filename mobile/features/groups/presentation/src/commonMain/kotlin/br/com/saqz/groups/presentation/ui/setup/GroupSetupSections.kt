@@ -76,7 +76,12 @@ import br.com.saqz.groups.presentation.ui.components.GroupRecurrenceSection
 import br.com.saqz.groups.presentation.ui.confirmationLeadLabel
 import br.com.saqz.groups.presentation.ui.durationLabel
 import br.com.saqz.groups.presentation.ui.label
+import br.com.saqz.designsystem.SaqzStatusChip
+import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.pix_hidden_from_athletes
+import br.com.saqz.groups.resources.pix_hidden_note
+import br.com.saqz.groups.resources.pix_personal_title
 import br.com.saqz.groups.resources.group_game_config_confirmation_lead_label
 import br.com.saqz.groups.resources.group_game_config_notice_lead_hint
 import br.com.saqz.groups.resources.group_game_config_notice_lead_label
@@ -334,6 +339,8 @@ internal fun GroupPixSection(
     modifier: Modifier = Modifier,
     pixKeyError: String? = null,
     pixTypeError: String? = null,
+    /** FIN-009: com recebimento pelo app a chave pessoal é do gestor e some dos atletas. */
+    hiddenFromAthletes: Boolean = false,
 ) {
     val keyLabel = stringResource(Res.string.group_pix_key_label)
     val typeLabel = stringResource(Res.string.group_pix_type_label)
@@ -342,8 +349,16 @@ internal fun GroupPixSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
     ) {
-        SaqzSectionHeader(title = stringResource(Res.string.group_pix_title))
+        SaqzSectionHeader(title = stringResource(if (hiddenFromAthletes) Res.string.pix_personal_title else Res.string.group_pix_title))
         SaqzCard {
+            if (hiddenFromAthletes) {
+                SaqzStatusChip(
+                    text = stringResource(Res.string.pix_hidden_from_athletes),
+                    tone = SaqzChipTone.Neutral,
+                    modifier = Modifier.testTag(GroupSetupTags.PixHidden),
+                )
+                GroupFieldHint(stringResource(Res.string.pix_hidden_note))
+            }
             GroupFieldLabel(typeLabel)
             SaqzSegmented(
                 options = typeNames,

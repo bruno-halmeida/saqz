@@ -51,6 +51,7 @@ fun GroupSetupRoot(
     modifier: Modifier = Modifier,
     showTrialOffer: Boolean = false,
     onOpenWhatsApp: (() -> Unit)? = null,
+    receivables: GroupSetupReceivables? = null,
     viewModel: GroupSetupViewModel = koinViewModel(
         key = "group-setup/$mode",
         parameters = { parametersOf(mode) },
@@ -137,6 +138,7 @@ fun GroupSetupRoot(
             onIntent = viewModel::onIntent,
             onBack = onBack,
             onOpenWhatsApp = onOpenWhatsApp,
+            receivables = receivables,
         )
         GroupPhotoSelectionSheet(
             open = photoSheetOpen,

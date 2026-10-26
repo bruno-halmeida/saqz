@@ -205,6 +205,9 @@ class HomeViewModel(
             is HomeIntent.OpenGameEditor -> emit(HomeEffect.OpenGameEditor(intent.groupId))
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
             is HomeIntent.CopyPix -> copyPix(intent.groupId)
+            is HomeIntent.PayCharges -> state.value.ownCharges?.groups
+                ?.firstOrNull { it.groupId == intent.groupId && it.payInApp }
+                ?.let { emit(HomeEffect.OpenPayment(it.groupId, it.groupName)) }
             is HomeCancelEntryIntent -> handleCancelEntry(intent)
             HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
             is HomeInviteSheetIntent -> handleInviteSheet(intent)
@@ -806,7 +809,9 @@ class HomeViewModel(
         ),
         overdue = overdue,
         countLabel = count.takeIf { it > 1 }?.let { getString(Res.string.home_own_charges_count, it) },
-        pix = pixKey?.trim()?.takeIf { it.isNotEmpty() }?.let { PixUi(it, pixLabel) },
+        // Com recebimento pelo app a chave pessoal some (FIN-009): o atleta paga pelo "Pagar".
+        pix = pixKey?.trim()?.takeIf { it.isNotEmpty() && !receivablesActive }?.let { PixUi(it, pixLabel) },
+        payInApp = receivablesActive,
     )
 
     /** "2026-08-05" → "05/08". Data civil do payload: formata, não converte de instante. */

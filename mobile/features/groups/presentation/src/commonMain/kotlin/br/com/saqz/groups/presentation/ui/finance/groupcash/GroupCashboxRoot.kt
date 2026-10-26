@@ -25,8 +25,8 @@ fun GroupCashboxRoot(
     onOpenGroupSettings: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
-    onOpenReceivables: (() -> Unit)? = null,
-    onOpenChargePayment: ((String) -> Unit)? = null,
+    receivingInApp: Boolean = false,
+    receivablesHeader: (@Composable () -> Unit)? = null,
     viewModel: GroupCashboxViewModel = koinViewModel(
         key = "cashbox/$groupId",
         parameters = { parametersOf(groupId) },
@@ -57,6 +57,6 @@ fun GroupCashboxRoot(
     }
     GroupCashboxScreen(state = state, onBack = onBack, onIntent = viewModel::onIntent,
         reminder = reminder,
-        onSendReminders = { reminders.onIntent(ChargeReminderIntent.Send(it)) }, onOpenReceivables = onOpenReceivables,
-        onOpenChargePayment = onOpenChargePayment)
+        onSendReminders = { reminders.onIntent(ChargeReminderIntent.Send(it)) }, receivingInApp = receivingInApp,
+        receivablesHeader = receivablesHeader)
 }
