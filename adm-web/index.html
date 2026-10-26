@@ -348,6 +348,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 .col-sort{font:inherit;letter-spacing:inherit;color:inherit;text-transform:inherit;text-align:left;background:none;border:0;padding:0;margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:4px}.col-sort:disabled{cursor:default}.col-sort:focus-visible{outline:2px solid var(--saqz-blue);outline-offset:3px;border-radius:4px}
 .pagination button:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}
 </style>
+<style>.flags{overflow:auto;padding:24px 28px;font-size:14px}.flags h1{margin-top:0}.flags h2{font-size:18px}.flags h3{font-size:15px;margin:18px 0 8px}.flags section{background:white;border:1px solid var(--saqz-border);border-radius:16px;padding:20px;margin:18px 0;display:grid;gap:12px}.flags p{line-height:1.5;color:var(--saqz-muted);margin:0;overflow-wrap:anywhere}.flags>p{margin-top:6px}.flags pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.flags textarea{min-height:60px;resize:vertical}.flags .rec-actions button,.flags .flg-row>button,.flags .flg-item button,.flags .flg-line>button,.flags article>button{font:600 13px Inter,sans-serif;padding:9px 14px;border:1px solid var(--saqz-border);border-radius:20px;background:white;color:var(--saqz-blue);cursor:pointer;white-space:nowrap}.flags button:disabled{opacity:.5;cursor:default}.flags .rec-toggle{display:inline-flex;align-items:center;border:0;background:none;padding:6px 0;cursor:pointer}.flg-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--saqz-border);padding:14px 0}.flg-row[aria-current="true"]{box-shadow:inset 3px 0 0 var(--saqz-blue);padding-left:12px}.flg-row strong{display:block;margin:4px 0 2px}.flg-line{display:flex;align-items:center;gap:14px}.flg-item{display:flex;align-items:center;gap:10px;border-top:1px solid var(--saqz-border);padding:8px 0}.flg-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.flg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.flags article{border-top:1px solid var(--saqz-border);padding:12px 0;display:grid;gap:6px;justify-items:start}@media(max-width:650px){.flg-grid{grid-template-columns:1fr}.flags{padding:20px 16px}}</style>
 </helmet>
 <div style="width:100vw;height:100vh;min-height:740px;display:grid;grid-template-columns:64px 1fr;background:var(--saqz-canvas);font-family:var(--font-ui);color:var(--saqz-navy);box-sizing:border-box;overflow:hidden">
   <aside style="background:var(--saqz-white);border-right:1px solid var(--saqz-border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;box-sizing:border-box">
@@ -355,6 +356,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     <button type="button" aria-label="Visão geral" title="Visão geral" sc-camel-on-click="{{ goVis }}" style="{{ sVis }}"><span style="{{ bVis }}"></span><span class="msr" style="font-size:20px">monitoring</span></button>
     <button type="button" aria-label="Usuários" title="Usuários" sc-camel-on-click="{{ goUsu }}" style="{{ sUsu }}"><span style="{{ bUsu }}"></span><span class="msr" style="font-size:20px">group</span></button>
     <button type="button" aria-label="Grupos" title="Grupos" sc-camel-on-click="{{ goGru }}" style="{{ sGru }}"><span style="{{ bGru }}"></span><span class="msr" style="font-size:20px">sports_volleyball</span></button>
+<button type="button" aria-label="Flags" title="Flags" sc-camel-on-click="{{ goFlags }}" style="{{ sFlags }}"><span style="{{ bFlags }}"></span><span class="msr" style="font-size:20px">toggle_on</span></button>
 <button type="button" aria-label="Recebimentos" title="Recebimentos" sc-camel-on-click="{{ goRecebimentos }}" style="{{ sRecebimentos }}"><span style="{{ bRecebimentos }}"></span><span class="msr" style="font-size:20px">account_balance</span></button>
     <button type="button" aria-label="Receita" title="Receita" sc-camel-on-click="{{ goRec }}" style="{{ sRec }}"><span style="{{ bRec }}"></span><span class="msr" style="font-size:20px">payments</span></button>
     <button type="button" aria-label="Cupons" title="Cupons" sc-camel-on-click="{{ goCup }}" style="{{ sCup }}"><span style="{{ bCup }}"></span><span class="msr" style="font-size:20px">sell</span></button>
@@ -414,6 +416,34 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   </div>
   </sc-if>
 
+<sc-if value="{{ isFlags }}"><div class="flags"><h1>Flags</h1><p>Cada mudança pede motivo, vai para o histórico e chega ao app em segundos. As flags nascem no código do backend: aqui só se edita a regra.</p>
+<section><h2>Flags do app</h2><p role="status">{{ flgListMsg }}</p><sc-for list="{{ flgRows }}" as="f"><article class="flg-row" aria-current="{{ f.sel }}"><div><span style="{{ f.alertStyle }}">{{ f.alertTxt }}</span><strong>{{ f.key }}</strong><p>{{ f.desc }}</p><p>{{ f.resumo }} · {{ f.barra }}</p></div><button type="button" sc-camel-on-click="{{ f.onOpen }}">Editar</button></article></sc-for></section>
+<sc-if value="{{ flgTemSel }}"><section><h2>{{ flgTitulo }}</h2><p>{{ flgDesc }}</p><sc-if value="{{ flgCarregada }}">
+<div class="flg-line"><span>Android</span><button type="button" class="rec-toggle" role="switch" aria-label="Interruptor do Android" aria-checked="{{ flgAndroid }}" sc-camel-on-click="{{ onFlgAndroid }}"><span class="rec-toggle-track" aria-hidden="true"><span></span></span></button><span>iPhone</span><button type="button" class="rec-toggle" role="switch" aria-label="Interruptor do iPhone" aria-checked="{{ flgIos }}" sc-camel-on-click="{{ onFlgIos }}"><span class="rec-toggle-track" aria-hidden="true"><span></span></span></button></div>
+<p class="cc-help">Interruptor desligado vale para todo mundo naquela plataforma, inclusive as listas.</p>
+<div class="cc-label">Estado<div class="cc-seg" role="group" aria-label="Estado"><sc-for list="{{ flgEstados }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.pick }}">{{ o.label }}</button></sc-for></div></div>
+<sc-if value="{{ flgPublico }}"><div class="flg-grid">
+<div class="cc-label">Plataforma<div class="cc-seg" role="group" aria-label="Plataforma do público"><sc-for list="{{ flgPlataformas }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.pick }}">{{ o.label }}</button></sc-for></div></div>
+<div class="cc-label">Situação da assinatura<div class="cc-seg" role="group" aria-label="Situação da assinatura"><sc-for list="{{ flgSituacoes }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.pick }}">{{ o.label }}</button></sc-for></div></div>
+<label class="cc-label">Plano<sc-raw-select class="cc-input" aria-label="Plano do público" value="{{ flgPlano }}" sc-camel-on-change="{{ onFlgPlano }}"><option value="">Qualquer plano</option><option value="TITULAR">Titular</option><option value="ORGANIZADOR">Organizador</option><option value="ILIMITADO">Ilimitado</option><option value="TRIAL">Em teste</option><option value="NONE">Sem plano</option><option value="__varios">Vários (definidos pela API)</option></sc-raw-select></label>
+<label class="cc-label">Papel (o maior em qualquer grupo)<sc-raw-select class="cc-input" aria-label="Papel do público" value="{{ flgPapel }}" sc-camel-on-change="{{ onFlgPapel }}"><option value="">Qualquer papel</option><option value="OWNER">Dono</option><option value="ADMIN">Admin</option><option value="ATHLETE">Atleta</option><option value="NONE">Nenhum</option><option value="__varios">Vários (definidos pela API)</option></sc-raw-select></label>
+<label class="cc-label">Versão mínima do app<input class="cc-input" aria-label="Versão mínima do público" placeholder="1.0.13" value="{{ flgMin }}" sc-camel-on-change="{{ onFlgMin }}"></label>
+<label class="cc-label">Versão máxima do app<input class="cc-input" aria-label="Versão máxima do público" placeholder="vazia = sem máxima" value="{{ flgMax }}" sc-camel-on-change="{{ onFlgMax }}"></label>
+<div class="cc-label">Porcentagem do público<div class="cc-count"><button type="button" aria-label="Menos 5%" disabled="{{ flgPctMenosOff }}" sc-camel-on-click="{{ onFlgPctMenos }}">−</button><span>{{ flgPct }}</span><button type="button" aria-label="Mais 5%" disabled="{{ flgPctMaisOff }}" sc-camel-on-click="{{ onFlgPctMais }}">+</button></div></div>
+</div><p class="cc-help">Critério vazio não filtra. Subir a porcentagem nunca tira quem já entrou.</p></sc-if>
+<sc-if value="{{ flgTemParams }}"><h3>Valores para quem recebe</h3><sc-for list="{{ flgParams }}" as="p"><div class="cc-label">{{ p.label }}<sc-if value="{{ p.isNumber }}"><div class="cc-count"><button type="button" sc-camel-on-click="{{ p.menos }}">−</button><span>{{ p.valor }}</span><button type="button" sc-camel-on-click="{{ p.mais }}">+</button></div></sc-if><sc-if value="{{ p.isText }}"><input class="cc-input" value="{{ p.valor }}" sc-camel-on-change="{{ p.onText }}"></sc-if><sc-if value="{{ p.isChoice }}"><div class="cc-seg" role="group"><sc-for list="{{ p.escolhas }}" as="o"><button type="button" aria-pressed="{{ o.on }}" sc-camel-on-click="{{ o.pick }}">{{ o.label }}</button></sc-for></div></sc-if></div></sc-for></sc-if>
+<div class="flg-grid"><div><h3>Sempre ligada</h3><sc-for list="{{ flgOnList }}" as="m"><div class="flg-item"><span>{{ m.txt }}</span><button type="button" sc-camel-on-click="{{ m.onRemove }}">Remover</button></div></sc-for><label class="cc-label">Adicionar grupo<sc-raw-select class="cc-input" aria-label="Grupo em sempre ligada" value="" sc-camel-on-change="{{ onFlgAddOnGroup }}"><option value="">Escolha um grupo</option><sc-for list="{{ flgGroupOptions }}" as="g"><option value="{{ g.v }}">{{ g.v }}</option></sc-for></sc-raw-select></label></div>
+<div><h3>Sempre desligada</h3><sc-for list="{{ flgOffList }}" as="m"><div class="flg-item"><span>{{ m.txt }}</span><button type="button" sc-camel-on-click="{{ m.onRemove }}">Remover</button></div></sc-for><label class="cc-label">Adicionar grupo<sc-raw-select class="cc-input" aria-label="Grupo em sempre desligada" value="" sc-camel-on-change="{{ onFlgAddOffGroup }}"><option value="">Escolha um grupo</option><sc-for list="{{ flgGroupOptions }}" as="g"><option value="{{ g.v }}">{{ g.v }}</option></sc-for></sc-raw-select></label></div></div>
+<div class="flg-line"><label class="cc-label" style="flex:1">Pessoa por e-mail ou telefone<input class="cc-input" type="search" aria-label="Buscar pessoa" value="{{ flgSearch }}" sc-camel-on-input="{{ onFlgSearch }}"></label><button type="button" sc-camel-on-click="{{ onFlgBuscar }}">Buscar</button></div><p role="status">{{ flgFoundMsg }}</p>
+<sc-for list="{{ flgFound }}" as="u"><div class="flg-item"><span>{{ u.txt }}</span><button type="button" sc-camel-on-click="{{ u.onOn }}">Sempre ligada</button><button type="button" sc-camel-on-click="{{ u.onOff }}">Sempre desligada</button><button type="button" sc-camel-on-click="{{ u.onGroup }}">No grupo aberto</button></div></sc-for>
+<div class="flg-line"><span>Desligar o alerta de flag antiga</span><button type="button" class="rec-toggle" role="switch" aria-label="Alerta de flag antiga desligado" aria-checked="{{ flgAlertaOff }}" sc-camel-on-click="{{ onFlgAlerta }}"><span class="rec-toggle-track" aria-hidden="true"><span></span></span></button></div>
+<label class="cc-label">Motivo (obrigatório)<textarea class="cc-input" aria-label="Motivo da mudança da flag" maxlength="500" value="{{ flgReason }}" sc-camel-on-change="{{ onFlgReason }}"></textarea></label>
+<div class="rec-actions"><button type="button" disabled="{{ flgSaveOff }}" sc-camel-on-click="{{ onFlgSave }}">Salvar e publicar</button><button type="button" sc-camel-on-click="{{ onFlgReload }}">Recarregar</button></div></sc-if><p role="status">{{ flgMsg }}</p></section>
+<section><h2>Histórico da flag</h2><p role="status">{{ flgHistMsg }}</p><sc-for list="{{ flgHistRows }}" as="e"><article><strong>{{ e.reason }}</strong><p>{{ e.titulo }}</p><details><summary>Ver antes e depois</summary><div class="flg-grid"><div>Antes<pre>{{ e.antes }}</pre></div><div>Depois<pre>{{ e.depois }}</pre></div></div></details><button type="button" sc-camel-on-click="{{ e.onVoltar }}">Voltar para esta versão</button></article></sc-for><p class="cc-help">Voltar usa o motivo escrito acima e cria uma mudança nova.</p></section></sc-if>
+<section><h2>Grupos com nome</h2><sc-for list="{{ flgGroupRows }}" as="g"><div class="flg-item"><strong>{{ g.name }}</strong><span>{{ g.txt }}</span><button type="button" sc-camel-on-click="{{ g.onOpen }}">Editar</button></div></sc-for><div class="flg-line"><label class="cc-label" style="flex:1">Novo grupo<input class="cc-input" aria-label="Nome do grupo novo" placeholder="testadores" value="{{ flgGroupNew }}" sc-camel-on-input="{{ onFlgGroupNew }}"></label><button type="button" sc-camel-on-click="{{ onFlgGroupCreate }}">Criar grupo</button></div>
+<sc-if value="{{ flgGroupOpen }}"><h3>{{ flgGroupTitulo }}</h3><sc-for list="{{ flgGroupMembers }}" as="m"><div class="flg-item"><span>{{ m.txt }}</span><button type="button" sc-camel-on-click="{{ m.onRemove }}">Remover</button></div></sc-for><p class="cc-help">Para adicionar, busque a pessoa no editor da flag e toque em "No grupo aberto".</p><label class="cc-label">Motivo (obrigatório)<textarea class="cc-input" aria-label="Motivo da mudança do grupo" maxlength="500" value="{{ flgGroupReason }}" sc-camel-on-change="{{ onFlgGroupReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ flgGroupSaveOff }}" sc-camel-on-click="{{ onFlgGroupSave }}">Salvar grupo</button></div></sc-if><p role="status">{{ flgGroupMsg }}</p></section>
+<section><h2>Versões do app</h2><p>Abaixo da mínima, o app pede para atualizar na loja; abaixo da recomendada, mostra um aviso que dá para fechar. Suba a mínima só depois de a versão estar liberada na loja daquela plataforma.</p><p role="status">{{ flgVersoesMsgCarga }}</p><sc-if value="{{ flgVersoesOk }}"><div class="flg-grid"><label class="cc-label">Android · mínima<input class="cc-input" aria-label="Android mínima" placeholder="vazia = sem mínima" value="{{ flgAm }}" sc-camel-on-change="{{ onFlgAm }}"></label><label class="cc-label">Android · recomendada<input class="cc-input" aria-label="Android recomendada" placeholder="vazia = sem recomendada" value="{{ flgAr }}" sc-camel-on-change="{{ onFlgAr }}"></label><label class="cc-label">iPhone · mínima<input class="cc-input" aria-label="iPhone mínima" placeholder="vazia = sem mínima" value="{{ flgIm }}" sc-camel-on-change="{{ onFlgIm }}"></label><label class="cc-label">iPhone · recomendada<input class="cc-input" aria-label="iPhone recomendada" placeholder="vazia = sem recomendada" value="{{ flgIr }}" sc-camel-on-change="{{ onFlgIr }}"></label></div><label class="cc-label">Motivo (obrigatório)<textarea class="cc-input" aria-label="Motivo da mudança de versões" maxlength="500" value="{{ flgVReason }}" sc-camel-on-change="{{ onFlgVReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ flgVersoesSaveOff }}" sc-camel-on-click="{{ onFlgVersoesSave }}">Salvar versões</button></div></sc-if><p role="status">{{ flgVersionsMsg }}</p></section>
+</div></sc-if>
 <sc-if value="{{ isRecebimentos }}"><div class="recebimentos"><h1>Recebimentos</h1>
 <section aria-labelledby="receipts-availability-title"><div class="rec-toggle-heading"><div><h2 id="receipts-availability-title">Disponibilidade de Recebimentos</h2><p>Ative para liberar a funcionalidade ao público escolhido. Desative para bloquear novos cadastros e operações.</p></div><button type="button" class="rec-toggle" role="switch" aria-label="Recebimentos ativo" aria-checked="{{ recG.activeText }}" disabled="{{ recG.locked }}" sc-camel-on-click="{{ recG.onToggle }}"><span class="rec-toggle-track" aria-hidden="true"><span></span></span>{{ recG.activeLabel }}</button></div><p>{{ recG.savedStatus }}</p><label>Liberar para<sc-raw-select aria-label="Público de Recebimentos" disabled="{{ recG.locked }}" value="{{ recG.audience }}" sc-camel-on-change="{{ recG.onAudience }}"><option value="ALL_USERS">Todos os usuários elegíveis</option><option value="SELECTED_USERS">Somente usuários selecionados</option></sc-raw-select></label><p>A alteração entra em vigor ao salvar. Contas existentes continuam acessíveis para consulta e manutenção, e cobranças já emitidas podem ser pagas.</p><label>Motivo obrigatório (3–500 caracteres)<textarea aria-label="Motivo global" maxlength="500" disabled="{{ recG.locked }}" value="{{ recG.reason }}" sc-camel-on-change="{{ recG.onReason }}"></textarea></label><div class="rec-actions"><button type="button" disabled="{{ recG.saveDisabled }}" sc-camel-on-click="{{ recG.onSave }}">{{ recG.saveLabel }}</button><button type="button" disabled="{{ recG.reloadDisabled }}" sc-camel-on-click="{{ recG.onReload }}">Recarregar</button><span>{{ recG.version }}</span></div><p role="status">{{ recG.status }}</p></section>
 <p><a href="recebimentos/index.html">Abrir fila operacional de falhas e avisos</a></p>
@@ -1063,7 +1093,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;receita&quot;, &quot;recebimentos&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;receita&quot;, &quot;recebimentos&quot;, &quot;flags&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
 class Component extends DCLogic {
   state = {
     page: this.props.paginaInicial ?? "visao",
@@ -1074,6 +1104,7 @@ class Component extends DCLogic {
     rTab: "ass",
     // Dados vindos da API /admin (null = carregando; {erro:true} = falhou)
     ...this.recebimentosInitial(),
+    ...this.flagsInitial(),
     ...this.trialInitial(),
     ...this.analyticsInitial(),
     overview: null, atrasadas: null,
@@ -1115,6 +1146,7 @@ class Component extends DCLogic {
           // aparece entre o logout e a validação do próximo login.
           this.setState({
             ...this.recebimentosInitial(),
+            ...this.flagsInitial(),
     ...this.trialInitial(),
     overview: null, atrasadas: null,
             usersPage: null, userDetail: null, userReceipts: null,
@@ -1342,6 +1374,245 @@ class Component extends DCLogic {
       recHistoryReload: () => this.recHistory(st.recHistoryPage), recHistoryPrev: () => this.recHistory(Math.max(1, st.recHistoryPage - 1)), recHistoryNext: () => this.recHistory(st.recHistoryPage + 1) };
   }
 
+  // Flags (DEB-119, FLG-002/004/007): regra de cada flag, grupos com nome, versões do app e histórico.
+  flagsInitial() {
+    return { flgList: null, flgSel: null, flgFlag: null, flgDraft: null, flgHist: null, flgMsg: "", flgBusy: false, flgConflict: false,
+      flgGroups: null, flgGroupSel: null, flgGroupDraft: null, flgGroupNew: "", flgGroupMsg: "", flgSearch: "", flgFound: null,
+      flgVersions: null, flgVersionsDraft: null, flgVersionsMsg: "", flgPeople: {} };
+  }
+  flgId() {
+    const c = typeof window !== "undefined" && window.crypto;
+    if (c && c.randomUUID) return c.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.random() * 16 | 0; return (ch === "x" ? r : (r & 3 | 8)).toString(16); });
+  }
+  flgLoad() {
+    const epoch = this._epoca;
+    const ok = () => epoch === this._epoca;
+    this.api("/admin/features").then(d => { if (ok()) this.setState({ flgList: d.flags }); }).catch(() => { if (ok()) this.setState({ flgList: { erro: true } }); });
+    this.flgGroupsLoad();
+    this.api("/admin/app-versions").then(v => { if (ok()) this.flgVersionsApply(v); }).catch(() => { if (ok()) this.setState({ flgVersions: { erro: true } }); });
+    if (this.state.flgSel) this.flgOpen(this.state.flgSel);
+  }
+  flgGroupsLoad() {
+    const epoch = this._epoca;
+    this.api("/admin/feature-groups").then(d => {
+      if (epoch !== this._epoca) return;
+      const people = { ...this.state.flgPeople };
+      d.groups.forEach(g => g.members.forEach(m => { people[m.userId] = m; }));
+      this.setState({ flgGroups: d.groups, flgPeople: people });
+    }).catch(() => { if (epoch === this._epoca) this.setState({ flgGroups: { erro: true } }); });
+  }
+  flgCopy(v) { return JSON.parse(JSON.stringify(v)); }
+  flgApply(flag) {
+    const r = this.flgCopy(flag.rule);
+    r.audience = { platforms: [], minVersion: null, maxVersion: null, plans: [], subscriptionStatuses: [], roles: [], ...(r.audience || {}) };
+    r.alwaysOn = { users: [], groups: [], ...(r.alwaysOn || {}) };
+    r.alwaysOff = { users: [], groups: [], ...(r.alwaysOff || {}) };
+    r.values = r.values || {};
+    this.setState({ flgFlag: flag, flgDraft: { rule: r, reason: "" }, flgConflict: false });
+  }
+  flgOpen(key) {
+    const epoch = this._epoca, req = this._flgReq = (this._flgReq || 0) + 1;
+    const ok = () => epoch === this._epoca && req === this._flgReq;
+    this.setState({ flgSel: key, flgFlag: null, flgDraft: null, flgHist: null, flgMsg: "" });
+    this.api("/admin/features/" + encodeURIComponent(key)).then(f => { if (ok()) this.flgApply(f); })
+      .catch(() => { if (ok()) this.setState({ flgMsg: "Não deu para carregar a flag. Use Recarregar." }); });
+    this.flgHistory(key);
+  }
+  flgHistory(key) {
+    const epoch = this._epoca;
+    this.api("/admin/features/history?type=FLAG&key=" + encodeURIComponent(key) + "&page=1&size=50")
+      .then(h => { if (epoch === this._epoca && this.state.flgSel === key) this.setState({ flgHist: h }); })
+      .catch(() => { if (epoch === this._epoca) this.setState({ flgHist: { erro: true, items: [] } }); });
+  }
+  flgEdit(fn) {
+    if (!this.state.flgDraft || this.state.flgBusy) return;
+    const d = this.flgCopy(this.state.flgDraft);
+    fn(d);
+    this.setState({ flgDraft: d });
+  }
+  flgMotivo(reason) {
+    const r = (reason || "").trim();
+    return r.length < 3 || r.length > 500 ? null : r;
+  }
+  // Corpo do PUT /admin/features/{chave}; { erro } quando falta algo.
+  flgCorpo(flag, draft) {
+    if (!flag || !draft) return { erro: "Carregue a flag antes de salvar." };
+    const reason = this.flgMotivo(draft.reason);
+    if (!reason) return { erro: "Informe o motivo (3 a 500 caracteres)." };
+    const on = new Set(draft.rule.alwaysOn.users), dup = draft.rule.alwaysOff.users.some(u => on.has(u)) || draft.rule.alwaysOff.groups.some(g => draft.rule.alwaysOn.groups.includes(g));
+    if (dup) return { erro: "A mesma pessoa ou grupo não pode estar em \"sempre ligada\" e \"sempre desligada\"." };
+    return { body: { requestId: this.flgId(), expectedVersion: flag.version, reason, rule: draft.rule } };
+  }
+  async flgEnviar(path, method, body, onOk, msgKey) {
+    this.setState({ flgBusy: true, [msgKey]: "Salvando…" });
+    try {
+      const r = await this.mutacao(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await r.json().catch(() => null);
+      if (r.status === 409) { this.setState({ [msgKey]: "Alguém mudou isto antes de você. Recarregue e revise antes de salvar.", flgConflict: msgKey === "flgMsg" }); return; }
+      if (!r.ok) { this.setState({ [msgKey]: (data && data.message ? data.message : "Não salvou (HTTP " + r.status + ").") }); return; }
+      onOk(data);
+      this.setState({ [msgKey]: "Salvo. O app recebe a mudança em segundos." });
+    } catch (_) {
+      this.setState({ [msgKey]: "Resultado não confirmado. Recarregue para conferir." });
+    } finally { this.setState({ flgBusy: false }); }
+  }
+  flgSalvar() {
+    const st = this.state;
+    if (st.flgBusy || st.flgConflict) return;
+    const c = this.flgCorpo(st.flgFlag, st.flgDraft);
+    if (c.erro) { this.setState({ flgMsg: c.erro }); return; }
+    const key = st.flgSel;
+    return this.flgEnviar("/admin/features/" + encodeURIComponent(key), "PUT", c.body, f => {
+      this.flgApply(f); this.flgHistory(key);
+      this.api("/admin/features").then(d => this.setState({ flgList: d.flags })).catch(() => {});
+    }, "flgMsg");
+  }
+  flgVoltar(entry) {
+    const st = this.state;
+    if (st.flgBusy || !st.flgFlag) return;
+    const reason = this.flgMotivo(st.flgDraft && st.flgDraft.reason);
+    if (!reason) { this.setState({ flgMsg: "Para voltar a uma versão, escreva o motivo no campo Motivo." }); return; }
+    const key = st.flgSel;
+    return this.flgEnviar("/admin/features/" + encodeURIComponent(key) + "/revert", "POST",
+      { requestId: this.flgId(), historyId: entry.id, expectedVersion: st.flgFlag.version, reason }, f => {
+        this.flgApply(f); this.flgHistory(key);
+        this.api("/admin/features").then(d => this.setState({ flgList: d.flags })).catch(() => {});
+      }, "flgMsg");
+  }
+  flgBuscar() {
+    const q = this.state.flgSearch.trim();
+    if (q.length < 3) { this.setState({ flgFound: { erro: "Digite ao menos 3 caracteres do e-mail ou do telefone." } }); return; }
+    const epoch = this._epoca;
+    this.setState({ flgFound: null });
+    this.api("/admin/feature-groups/users?q=" + encodeURIComponent(q)).then(d => {
+      if (epoch !== this._epoca) return;
+      const people = { ...this.state.flgPeople };
+      d.users.forEach(u => { people[u.userId] = u; });
+      this.setState({ flgFound: d.users, flgPeople: people });
+    }).catch(() => { if (epoch === this._epoca) this.setState({ flgFound: { erro: "Não deu para buscar agora." } }); });
+  }
+  flgPessoa(id) {
+    const p = this.state.flgPeople[id];
+    if (!p) return id;
+    return [p.displayName, p.email || p.phone].filter(Boolean).join(" · ") || id;
+  }
+  flgGrupoAbrir(name) {
+    const g = (this.state.flgGroups || []).find(x => x.name === name);
+    this.setState({ flgGroupSel: name, flgGroupDraft: { version: g ? g.version : 0, members: g ? g.members.map(m => m.userId) : [], reason: "" }, flgGroupMsg: "" });
+  }
+  flgGrupoCriar() {
+    const name = this.state.flgGroupNew.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9_-]{1,39}$/.test(name)) { this.setState({ flgGroupMsg: "Nome: 2 a 40 letras minúsculas, números, - ou _." }); return; }
+    if ((this.state.flgGroups || []).some(g => g.name === name)) { this.flgGrupoAbrir(name); return; }
+    this.setState({ flgGroupSel: name, flgGroupDraft: { version: 0, members: [], reason: "" }, flgGroupNew: "", flgGroupMsg: "Grupo novo: adicione pessoas e salve." });
+  }
+  flgGrupoSalvar() {
+    const st = this.state, d = st.flgGroupDraft;
+    if (!d || st.flgBusy) return;
+    const reason = this.flgMotivo(d.reason);
+    if (!reason) { this.setState({ flgGroupMsg: "Informe o motivo (3 a 500 caracteres)." }); return; }
+    return this.flgEnviar("/admin/feature-groups/" + encodeURIComponent(st.flgGroupSel), "PUT",
+      { requestId: this.flgId(), expectedVersion: d.version, reason, members: d.members }, g => {
+        this.setState({ flgGroupDraft: { version: g.version, members: g.members.map(m => m.userId), reason: "" } });
+        this.flgGroupsLoad();
+      }, "flgGroupMsg");
+  }
+  flgVersionsApply(v) {
+    this.setState({ flgVersions: v, flgVersionsDraft: { am: v.android.minimum || "", ar: v.android.recommended || "", im: v.ios.minimum || "", ir: v.ios.recommended || "", reason: "" } });
+  }
+  flgVersoesSalvar() {
+    const st = this.state, d = st.flgVersionsDraft;
+    if (!d || !st.flgVersions || st.flgVersions.erro || st.flgBusy) return;
+    const reason = this.flgMotivo(d.reason);
+    if (!reason) { this.setState({ flgVersionsMsg: "Informe o motivo (3 a 500 caracteres)." }); return; }
+    const bad = [d.am, d.ar, d.im, d.ir].some(x => x.trim() && !/^\d+\.\d+\.\d+$/.test(x.trim()));
+    if (bad) { this.setState({ flgVersionsMsg: "Versão no formato 1.0.13 (ou vazia)." }); return; }
+    const v = x => x.trim() || null;
+    return this.flgEnviar("/admin/app-versions", "PUT", { requestId: this.flgId(), expectedVersion: st.flgVersions.version, reason,
+      android: { minimum: v(d.am), recommended: v(d.ar) }, ios: { minimum: v(d.im), recommended: v(d.ir) } }, r => this.flgVersionsApply(r), "flgVersionsMsg");
+  }
+  flgAlerta(alert) {
+    return { YELLOW: { txt: "30+ dias em 100%", cor: "#B54708", fundo: "rgba(247,144,9,.14)" }, ORANGE: { txt: "60+ dias em 100%", cor: "#C4320A", fundo: "rgba(239,104,32,.16)" },
+      RED: { txt: "90+ dias em 100%", cor: "#B42318", fundo: "rgba(240,68,56,.16)" } }[alert] || null;
+  }
+  flgResumo(f) {
+    const estado = { OFF: "Desligada", AUDIENCE: "Para o público", ALL: "Para todos" }[f.rule.state];
+    return "Android " + (f.rule.android ? "ligado" : "desligado") + " · iPhone " + (f.rule.ios ? "ligado" : "desligado") + " · " + estado +
+      (f.rule.state === "AUDIENCE" ? " " + f.rule.percentage + "%" : "") + (f.experimentRunning ? " · experimento rodando" : "");
+  }
+  flagsVals() {
+    const st = this.state, d = st.flgDraft, r = d && d.rule, busy = st.flgBusy;
+    const seg = (opts, cur, pick) => opts.map(([v, label]) => ({ label, on: String(cur === v), pick: () => pick(v) }));
+    const one = list => list.length === 0 ? "" : list.length === 1 ? list[0] : "__varios";
+    const setOne = (field, v) => this.flgEdit(x => { if (v !== "__varios") x.rule.audience[field] = v ? [v] : []; });
+    const rows = Array.isArray(st.flgList) ? st.flgList.map(f => {
+      const a = this.flgAlerta(f.alert);
+      return { key: f.key, desc: f.description, resumo: this.flgResumo(f), barra: f.backendEnforced ? "O backend barra" : "Só o app esconde",
+        alertTxt: a ? a.txt : "", alertStyle: a ? "display:inline-block;white-space:nowrap;font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px;color:" + a.cor + ";background:" + a.fundo : "display:none",
+        sel: String(st.flgSel === f.key), onOpen: () => this.flgOpen(f.key) };
+    }) : [];
+    const lista = which => r ? [...r[which].groups.map(g => ({ txt: "Grupo " + g, onRemove: () => this.flgEdit(x => { x.rule[which].groups = x.rule[which].groups.filter(y => y !== g); }) })),
+      ...r[which].users.map(u => ({ txt: this.flgPessoa(u), onRemove: () => this.flgEdit(x => { x.rule[which].users = x.rule[which].users.filter(y => y !== u); }) }))] : [];
+    const groupNames = Array.isArray(st.flgGroups) ? st.flgGroups.map(g => g.name) : [];
+    const addGroup = which => e => { const g = e.target.value; if (g) this.flgEdit(x => { if (!x.rule[which].groups.includes(g)) x.rule[which].groups.push(g); }); };
+    const found = Array.isArray(st.flgFound) ? st.flgFound.map(u => ({ txt: this.flgPessoa(u.userId),
+      onOn: () => this.flgEdit(x => { if (!x.rule.alwaysOn.users.includes(u.userId)) x.rule.alwaysOn.users.push(u.userId); }),
+      onOff: () => this.flgEdit(x => { if (!x.rule.alwaysOff.users.includes(u.userId)) x.rule.alwaysOff.users.push(u.userId); }),
+      onGroup: () => st.flgGroupDraft && this.setState({ flgGroupDraft: { ...st.flgGroupDraft, members: st.flgGroupDraft.members.includes(u.userId) ? st.flgGroupDraft.members : [...st.flgGroupDraft.members, u.userId] } }) })) : [];
+    const params = st.flgFlag ? st.flgFlag.parameters.map(p => {
+      const val = r && r.values[p.key] !== undefined ? r.values[p.key] : p.default;
+      const set = v => this.flgEdit(x => { x.rule.values[p.key] = v; });
+      return { label: p.description + " (padrão: " + p.default + ")", isNumber: p.type === "NUMBER", isText: p.type === "TEXT", isChoice: p.type === "CHOICE",
+        valor: String(val), menos: () => set(Math.max(p.min ?? -1e12, Number(val) - 1)), mais: () => set(Math.min(p.max ?? 1e12, Number(val) + 1)),
+        onText: e => set(e.target.value), escolhas: seg(p.choices.map(c => [c, c]), val, set) };
+    }) : [];
+    const gd = st.flgGroupDraft, h = st.flgHist, vd = st.flgVersionsDraft;
+    const quando = s => new Date(s).toLocaleString("pt-BR");
+    return {
+      isFlags: st.page === "flags", goFlags: () => this.go("flags"),
+      flgRows: rows, flgListMsg: !st.flgList ? "Carregando flags…" : st.flgList.erro ? "Não deu para carregar as flags." : "",
+      flgTemSel: !!st.flgSel, flgCarregada: !!r, flgTitulo: st.flgFlag ? st.flgFlag.key + " · versão " + st.flgFlag.version : st.flgSel || "",
+      flgDesc: st.flgFlag ? st.flgFlag.description + (st.flgFlag.backendEnforced ? " · o backend barra quando desligada" : " · desligar só esconde no app") : "",
+      flgAndroid: String(!!(r && r.android)), flgIos: String(!!(r && r.ios)),
+      onFlgAndroid: () => this.flgEdit(x => { x.rule.android = !x.rule.android; }), onFlgIos: () => this.flgEdit(x => { x.rule.ios = !x.rule.ios; }),
+      flgEstados: r ? seg([["OFF", "Desligada"], ["AUDIENCE", "Para o público"], ["ALL", "Para todos"]], r.state, v => this.flgEdit(x => { x.rule.state = v; })) : [],
+      flgPublico: !!r && r.state === "AUDIENCE",
+      flgPlataformas: r ? seg([["", "Todas"], ["ANDROID", "Android"], ["IOS", "iPhone"]], one(r.audience.platforms), v => setOne("platforms", v)) : [],
+      flgSituacoes: r ? seg([["", "Qualquer"], ["ACTIVE", "Ativa"], ["PAST_DUE", "Atrasada"], ["CANCELED", "Cancelada"]], one(r.audience.subscriptionStatuses), v => setOne("subscriptionStatuses", v)) : [],
+      flgPlano: r ? one(r.audience.plans) : "", onFlgPlano: e => setOne("plans", e.target.value),
+      flgPapel: r ? one(r.audience.roles) : "", onFlgPapel: e => setOne("roles", e.target.value),
+      flgMin: r ? r.audience.minVersion || "" : "", onFlgMin: e => this.flgEdit(x => { x.rule.audience.minVersion = e.target.value.trim() || null; }),
+      flgMax: r ? r.audience.maxVersion || "" : "", onFlgMax: e => this.flgEdit(x => { x.rule.audience.maxVersion = e.target.value.trim() || null; }),
+      flgPct: r ? r.percentage + "%" : "", flgPctMenosOff: !r || r.percentage <= 0, flgPctMaisOff: !r || r.percentage >= 100,
+      onFlgPctMenos: () => this.flgEdit(x => { x.rule.percentage = Math.max(0, x.rule.percentage - 5); }),
+      onFlgPctMais: () => this.flgEdit(x => { x.rule.percentage = Math.min(100, x.rule.percentage + 5); }),
+      flgParams: params, flgTemParams: params.length > 0,
+      flgOnList: lista("alwaysOn"), flgOffList: lista("alwaysOff"), flgGroupOptions: groupNames.map(n => ({ v: n })),
+      onFlgAddOnGroup: addGroup("alwaysOn"), onFlgAddOffGroup: addGroup("alwaysOff"),
+      flgSearch: st.flgSearch, onFlgSearch: e => this.setState({ flgSearch: e.target.value }), onFlgBuscar: () => this.flgBuscar(),
+      flgFound: found, flgFoundMsg: st.flgFound && st.flgFound.erro ? st.flgFound.erro : Array.isArray(st.flgFound) && !st.flgFound.length ? "Ninguém encontrado." : "",
+      flgAlertaOff: String(!!(r && r.alertDisabled)), onFlgAlerta: () => this.flgEdit(x => { x.rule.alertDisabled = !x.rule.alertDisabled; }),
+      flgReason: d ? d.reason : "", onFlgReason: e => this.flgEdit(x => { x.reason = e.target.value; }),
+      flgSaveOff: !r || busy || st.flgConflict, onFlgSave: () => this.flgSalvar(), onFlgReload: () => st.flgSel && this.flgOpen(st.flgSel), flgMsg: st.flgMsg,
+      flgHistRows: h && !h.erro ? h.items.map(e => ({ titulo: quando(e.createdAt) + " · " + (e.actorName || (e.actorUserId ? e.actorUserId : "Sistema")) + " · versão " + e.version,
+        reason: e.reason, antes: e.before ? JSON.stringify(e.before, null, 2) : "—", depois: JSON.stringify(e.after, null, 2), onVoltar: () => this.flgVoltar(e) })) : [],
+      flgHistMsg: !h ? "Carregando histórico…" : h.erro ? "Não deu para carregar o histórico." : h.total + " mudanças",
+      flgGroupRows: Array.isArray(st.flgGroups) ? st.flgGroups.map(g => ({ name: g.name, txt: g.members.length + (g.members.length === 1 ? " pessoa" : " pessoas"), onOpen: () => this.flgGrupoAbrir(g.name) })) : [],
+      flgGroupNew: st.flgGroupNew, onFlgGroupNew: e => this.setState({ flgGroupNew: e.target.value }), onFlgGroupCreate: () => this.flgGrupoCriar(),
+      flgGroupOpen: !!gd, flgGroupTitulo: st.flgGroupSel ? "Grupo " + st.flgGroupSel + (gd && gd.version ? " · versão " + gd.version : " · novo") : "",
+      flgGroupMembers: gd ? gd.members.map(id => ({ txt: this.flgPessoa(id), onRemove: () => this.setState({ flgGroupDraft: { ...gd, members: gd.members.filter(m => m !== id) } }) })) : [],
+      flgGroupReason: gd ? gd.reason : "", onFlgGroupReason: e => gd && this.setState({ flgGroupDraft: { ...gd, reason: e.target.value } }),
+      onFlgGroupSave: () => this.flgGrupoSalvar(), flgGroupSaveOff: !gd || busy, flgGroupMsg: st.flgGroupMsg,
+      flgVersoesOk: !!vd, flgVersoesMsgCarga: !st.flgVersions ? "Carregando versões…" : st.flgVersions.erro ? "Não deu para carregar as versões." : "Versão " + st.flgVersions.version,
+      flgAm: vd ? vd.am : "", flgAr: vd ? vd.ar : "", flgIm: vd ? vd.im : "", flgIr: vd ? vd.ir : "", flgVReason: vd ? vd.reason : "",
+      onFlgAm: e => vd && this.setState({ flgVersionsDraft: { ...vd, am: e.target.value } }), onFlgAr: e => vd && this.setState({ flgVersionsDraft: { ...vd, ar: e.target.value } }),
+      onFlgIm: e => vd && this.setState({ flgVersionsDraft: { ...vd, im: e.target.value } }), onFlgIr: e => vd && this.setState({ flgVersionsDraft: { ...vd, ir: e.target.value } }),
+      onFlgVReason: e => vd && this.setState({ flgVersionsDraft: { ...vd, reason: e.target.value } }),
+      onFlgVersoesSave: () => this.flgVersoesSalvar(), flgVersoesSaveOff: !vd || busy, flgVersionsMsg: st.flgVersionsMsg
+    };
+  }
+
   mutacao(path, options) {
     const epoca = this._epoca || 0;
     const foraDeEpoca = () => (this._epoca || 0) !== epoca;
@@ -1374,6 +1645,7 @@ class Component extends DCLogic {
 
   carregarPagina(page, force) {
     const st = this.state;
+    if (page === "flags") this.flgLoad();
     if (page === "recebimentos") { this.recLoad("global"); this.recHistory(1); if (st.recUserId) this.recLoad("user"); }
     if (page === "visao" && (force || !st.overview)) this.carregarVisao();
     if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
@@ -2490,6 +2762,8 @@ class Component extends DCLogic {
     const suspenso = !!(det && det.suspendedAt);
     return {
       ...this.recebimentosVals(),
+      ...this.flagsVals(),
+      sFlags: navS(st.page === "flags"), bFlags: navB(st.page === "flags"),
       ...this.conditionsVals(),
       sRecebimentos: navS(st.page === "recebimentos"), bRecebimentos: navB(st.page === "recebimentos"),
       sVis: navS(pageKey === "vis"), sUsu: navS(pageKey === "usu"), sGru: navS(pageKey === "gru"), sRec: navS(pageKey === "rec"), sCup: navS(pageKey === "cup"), sPar: navS(pageKey === "par"), sSup: navS(pageKey === "sup"),
