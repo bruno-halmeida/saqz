@@ -22,6 +22,11 @@ class NotificationPushPayloadTest {
         gameId = UUID.fromString("00000000-0000-0000-0000-000000000002"),
     )
 
+    @Test fun `payment kind travels only when the notice has one`() {
+        assertEquals("REVIEW", push.copy(channel = "PAYMENT", paymentKind = "REVIEW").data()["paymentKind"])
+        assertFalse("paymentKind" in push.data())
+    }
+
     @Test fun `the window end travels as epoch millis`() {
         val end = Instant.parse("2026-09-26T22:00:00Z")
 

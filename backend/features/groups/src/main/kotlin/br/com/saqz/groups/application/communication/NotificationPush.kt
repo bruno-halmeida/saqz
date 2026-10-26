@@ -25,5 +25,7 @@ data class NotificationPush(
     /** Destino do toque nos avisos de cobrança do app (FIN-013): o pagamento daquele jogo ou daquela mensalidade. */
     val settleGameId: UUID? = null,
     val settleBillingMonth: java.time.LocalDate? = null,
+    /** Tipo do aviso do recebimento (`paymentKind`, V200): aditivo, o app antigo ignora. */
+    val paymentKind: String? = null,
 )
 fun interface NotificationPushSender { fun send(token: String, message: NotificationPush): PushDelivery }

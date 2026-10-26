@@ -102,6 +102,13 @@ class ReceivablesV1IntegrationTest {
         assertEquals("Mensalidade de setembro · Vôlei do CERET", f.body("Pagador de teste pagou R$ 100,00"))
         assertEquals("R$ 100,00 · mensalidade de setembro, Vôlei do CERET.", f.body("Pagamento confirmado"))
         assertEquals(2, f.count("notification_push_queue"), "um push ao gestor e um ao atleta")
+        // Rodada 3: o tipo do aviso vai nos dados do push, para o app abrir o destino certo.
+        f.sql("INSERT INTO notification_devices(installation_id,user_id,token,platform) VALUES ('${UUID.randomUUID()}','${f.athlete}','token-athlete','ANDROID')")
+        val sent = mutableListOf<br.com.saqz.groups.application.communication.NotificationPush>()
+        br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationPush(f.ds, JdbcTransactionRunner(f.ds))
+            .drain(br.com.saqz.groups.application.communication.NotificationPushSender { _, push ->
+                sent += push; br.com.saqz.groups.application.communication.PushDelivery.SENT })
+        assertEquals(setOf("PAID", "CONFIRMED"), sent.map { it.paymentKind }.toSet())
     }
 
     @Test fun `cartao por externalReference da baixa sem transferir comissao e Desfazer e recusado`() = fixture { f ->
@@ -297,6 +304,25 @@ class ReceivablesV1IntegrationTest {
         assertEquals("PIX", paid.appMethod)
         assertEquals("RECEIVABLES_FEES", items.single { it.type.name == "EXPENSE" }.origin)
         assertNotNull(code)
+    }
+
+    /** Rodada 3: repasse só quando o atleta consegue pagar pelo app; senão, e com erro na leitura, valor base. */
+    @Test fun `price so repassa quando o atleta consegue pagar e erro na leitura nao impede a cobranca`() = fixture { f ->
+        f.sql("UPDATE receivable_group_links SET fee_policy='PASS'")
+        val payable = JdbcGroupReceivablesPricing(f.ds, f.conditions, f.clock, payable = { f.athletes.payableSafely(it) })
+        assertTrue(payable.price(f.group, 10000)!!.payableCents > 10000)
+        f.sql("UPDATE receivable_accounts SET new_operations_enabled=false")
+        assertNull(payable.price(f.group, 10000), "o adm desligou: a cobrança nasce pelo valor base")
+        f.sql("UPDATE receivable_accounts SET new_operations_enabled=true")
+        val broken = JdbcGroupReceivablesPricing(f.ds, f.conditions, f.clock, payable = { error("banco fora") })
+        val charges = JdbcChargeTransactionRepository(f.ds, receivables = broken)
+        val id = JdbcTransactionRunner(f.ds).inTransaction {
+            charges.createMonthlyCharge(MonthlyGenerationCommand(UUID.randomUUID(), f.group, f.owner, YearMonth.of(2026, 11), 10000,
+                LocalDate.of(2026, 11, 10), setOf(f.athlete)), f.athlete, now).id
+        }
+        assertEquals(1, f.count("group_charges", "id='$id'"), "a cobrança nasce mesmo com a leitura falhando")
+        assertNull(f.long("SELECT payable_cents FROM group_charges WHERE id='$id'"))
+        assertFalse(broken.active(f.group))
     }
 
     private fun fixture(block: (Fixture) -> Unit) { Remote().use { block(Fixture(it)) } }

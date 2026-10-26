@@ -127,6 +127,7 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     // Aditivo: o toque abre o pagamento daquele jogo ou mensalidade (o mesmo destino do link /acerto).
     settleGameId?.let { put("settleGameId", it.toString()) }
     settleBillingMonth?.let { put("settleBillingMonth", it.toString().take(7)) }
+    paymentKind?.let { put("paymentKind", it) }
 }
 
 /** Nome do `ActivityAttributes` no app iOS (VUL-268): o sistema só abre a Live Activity se bater. */

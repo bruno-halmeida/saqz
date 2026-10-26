@@ -27,7 +27,10 @@ class JdbcGroupReceivablesPricing(private val dataSource: DataSource, private va
      * "O atleta consegue pagar pelo app agora": vínculo ligado e a regra do `/me`. Com a trava global ou o adm desligando,
      * a chave Pix pessoal volta a aparecer e o "Pagar" some.
      */
-    override fun active(groupId: UUID): Boolean = linked(groupId) && payable(groupId) != false
+    override fun active(groupId: UUID): Boolean = linked(groupId) && payableNow(groupId)
+
+    /** Sem a configuração de pagamentos (nulo), vale só o vínculo; erro na leitura conta como não pagável. */
+    private fun payableNow(groupId: UUID): Boolean = runCatching { payable(groupId) != false }.getOrDefault(false)
 
     private fun linked(groupId: UUID): Boolean = jdbc.sql(
         "SELECT count(*) FROM receivable_group_links WHERE group_id=:group AND enabled",
@@ -37,7 +40,12 @@ class JdbcGroupReceivablesPricing(private val dataSource: DataSource, private va
 
     override fun chargeCollection(groupId: UUID, payerId: UUID, chargeIds: List<UUID>) = collections(groupId, payerId, chargeIds)
 
+    /**
+     * Só repassa a taxa quando o atleta consegue pagar pelo app agora (a regra do `receivablesActive`); senão a cobrança
+     * nasce como sempre, pelo valor base.
+     */
     override fun price(groupId: UUID, amountCents: Long): ChargePricing? {
+        if (!payableNow(groupId)) return null
         val link = jdbc.sql("""
             SELECT account_id,fee_policy,fee_snapshot::text AS snapshot FROM receivable_group_links
             WHERE group_id=:group AND enabled

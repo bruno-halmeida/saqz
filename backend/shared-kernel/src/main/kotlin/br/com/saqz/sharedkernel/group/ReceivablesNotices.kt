@@ -17,9 +17,12 @@ data class SettleTarget(val gameId: UUID? = null, val billingMonth: LocalDate? =
  * Avisos do recebimento pelo app (FIN-012, FIN-013, FIN-014) pela fila dos grupos. Implementada em grupos; participa da
  * transação de quem chama, então o aviso só sai se o que o motivou for gravado. [requestId] fixo deixa repetir sem duplicar.
  */
+/** O tipo do aviso no push (`paymentKind`): o app decide para onde o toque leva. */
+enum class PaymentNoticeKind { PAID, REVIEW, CONFIRMED, SETTLE, REFUSED, PRICE_CHANGE, AUTOPAY_CANCELLED }
+
 interface ReceivablesNotices {
     fun publish(groupId: UUID, recipients: Set<UUID>, title: String, body: String, requestId: UUID,
-                whatsApp: PrivateWhatsApp? = null, target: SettleTarget? = null)
+                whatsApp: PrivateWhatsApp? = null, target: SettleTarget? = null, kind: PaymentNoticeKind? = null)
 
     /** Mensagem no grupo do WhatsApp vinculado (hora do acerto), com imagem, texto e um botão de URL. Nunca diz quem deve. */
     fun groupWhatsApp(groupId: UUID, text: String, buttonLabel: String, buttonUrl: String, requestId: UUID) {}
@@ -27,7 +30,7 @@ interface ReceivablesNotices {
     companion object {
         val NONE = object : ReceivablesNotices {
             override fun publish(groupId: UUID, recipients: Set<UUID>, title: String, body: String, requestId: UUID,
-                                 whatsApp: PrivateWhatsApp?, target: SettleTarget?) = Unit
+                                 whatsApp: PrivateWhatsApp?, target: SettleTarget?, kind: PaymentNoticeKind?) = Unit
         }
     }
 }

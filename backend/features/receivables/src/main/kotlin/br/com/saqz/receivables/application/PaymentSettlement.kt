@@ -1,5 +1,6 @@
 package br.com.saqz.receivables.application
 
+import br.com.saqz.sharedkernel.group.PaymentNoticeKind
 import br.com.saqz.receivables.domain.PaymentMethod
 import br.com.saqz.sharedkernel.group.GroupChargeLedger
 import br.com.saqz.sharedkernel.group.LedgerCharge
@@ -191,7 +192,7 @@ class PaymentSettlement(private val store: SettlementStore, private val codes: P
         val group = groups.firstOrNull() ?: return
         val managers = groups.flatMap { ledger.managers(it) }.toSet()
         notices.publish(group, managers, "Pix para revisar", "${brl(amount)} de $payerName caiu fora de uma cobrança. Quem é?",
-            UUID.nameUUIDFromBytes("review-push:${payment.id}".toByteArray()))
+            UUID.nameUUIDFromBytes("review-push:${payment.id}".toByteArray()), kind = PaymentNoticeKind.REVIEW)
     }
 
     private fun notify(groupId: UUID, payerId: UUID, payerName: String, settled: List<LedgerCharge>, now: Instant, paymentId: String) {
@@ -200,9 +201,10 @@ class PaymentSettlement(private val store: SettlementStore, private val codes: P
         val total = brl(settled.sumOf { it.payableCents })
         val what = describe(settled)
         notices.publish(groupId, ledger.managers(groupId) - payerId, "$payerName pagou $total", "$what · ${group.name}",
-            UUID.nameUUIDFromBytes("paid-manager:$paymentId".toByteArray()))
+            UUID.nameUUIDFromBytes("paid-manager:$paymentId".toByteArray()), kind = PaymentNoticeKind.PAID)
         notices.publish(groupId, setOf(payerId), "Pagamento confirmado",
-            "$total · ${what.replaceFirstChar { it.lowercase() }}, ${group.name}.", UUID.nameUUIDFromBytes("paid-athlete:$paymentId".toByteArray()))
+            "$total · ${what.replaceFirstChar { it.lowercase() }}, ${group.name}.", UUID.nameUUIDFromBytes("paid-athlete:$paymentId".toByteArray()),
+            kind = PaymentNoticeKind.CONFIRMED)
     }
 
     private fun ownerOf(record: SettlementRecord): UUID? = record.groupId?.let { ledger.group(it)?.ownerUserId }

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
+import br.com.saqz.sharedkernel.group.PaymentNoticeKind
 import br.com.saqz.sharedkernel.group.PrivateWhatsApp
 import br.com.saqz.sharedkernel.group.ReceivablesNotices
 import br.com.saqz.sharedkernel.group.SettleTarget
@@ -16,21 +17,22 @@ class JdbcReceivablesNotices(dataSource: DataSource) : ReceivablesNotices {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun publish(groupId: UUID, recipients: Set<UUID>, title: String, body: String, requestId: UUID,
-                         whatsApp: PrivateWhatsApp?, target: SettleTarget?) {
+                         whatsApp: PrivateWhatsApp?, target: SettleTarget?, kind: PaymentNoticeKind?) {
         if (recipients.isEmpty()) return
         val id = UUID.randomUUID()
         val inserted = jdbc.sql("""
             INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, push_body, push_title,
-                whatsapp_body, whatsapp_button_label, whatsapp_button_url, whatsapp_follow_up, settle_game_id, settle_month)
+                whatsapp_body, whatsapp_button_label, whatsapp_button_url, whatsapp_follow_up, settle_game_id, settle_month, payment_kind)
             SELECT :id, g.id, g.owner_user_id, u.display_name, CAST('PAYMENT' AS group_message_channel), :request, :body, :body, :title,
-                :waBody, :waLabel, :waUrl, :waFollow, :settleGame, :settleMonth
+                :waBody, :waLabel, :waUrl, :waFollow, :settleGame, :settleMonth, :kind
             FROM access_groups g JOIN access_users u ON u.id = g.owner_user_id WHERE g.id = :group AND g.deleted_at IS NULL
             ON CONFLICT DO NOTHING
         """.trimIndent()).param("id", id).param("group", groupId).param("request", requestId)
             .param("body", body.take(2000)).param("title", title.take(120))
             .param("waBody", whatsApp?.text?.take(2000), java.sql.Types.VARCHAR).param("waLabel", whatsApp?.buttonLabel?.take(40), java.sql.Types.VARCHAR)
             .param("waUrl", whatsApp?.buttonUrl, java.sql.Types.VARCHAR).param("waFollow", whatsApp?.followUp, java.sql.Types.VARCHAR)
-            .param("settleGame", target?.gameId, java.sql.Types.OTHER).param("settleMonth", target?.billingMonth, java.sql.Types.DATE).update()
+            .param("settleGame", target?.gameId, java.sql.Types.OTHER).param("settleMonth", target?.billingMonth, java.sql.Types.DATE)
+            .param("kind", kind?.name, java.sql.Types.VARCHAR).update()
         if (inserted == 0) return
         jdbc.sql("""
             INSERT INTO group_notifications (recipient_id, message_id)

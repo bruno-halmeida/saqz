@@ -1,5 +1,6 @@
 package br.com.saqz.receivables.application
 
+import br.com.saqz.sharedkernel.group.PaymentNoticeKind
 import br.com.saqz.sharedkernel.group.ChargeCollection
 import br.com.saqz.sharedkernel.group.GroupChargeLedger
 import br.com.saqz.sharedkernel.group.ReceivablesNotices
@@ -52,7 +53,8 @@ class SettleTime(private val ledger: GroupChargeLedger, private val codes: Payme
                 debts.forEach { (payer, cents) ->
                     notices.publish(game.groupId, setOf(payer), "Hora do acerto",
                         "${brl(cents)} do jogo de ${PaymentSettlement.weekday(day.dayOfWeek)} no ${group.name}. Toque para pagar.",
-                        UUID.nameUUIDFromBytes("settle-game:${game.gameId}:$payer".toByteArray()), target = SettleTarget(gameId = game.gameId))
+                        UUID.nameUUIDFromBytes("settle-game:${game.gameId}:$payer".toByteArray()), target = SettleTarget(gameId = game.gameId),
+                        kind = PaymentNoticeKind.SETTLE)
                 }
             }
         }
@@ -78,7 +80,8 @@ class SettleTime(private val ledger: GroupChargeLedger, private val codes: Payme
                 debtors.forEach { (payer, cents) ->
                     notices.publish(groupId, setOf(payer), "Hora do acerto",
                         "${brl(cents)} da mensalidade de $monthName no ${group.name}. Toque para pagar.",
-                        UUID.nameUUIDFromBytes("settle-month:$groupId:$month:$payer".toByteArray()), target = SettleTarget(billingMonth = month))
+                        UUID.nameUUIDFromBytes("settle-month:$groupId:$month:$payer".toByteArray()), target = SettleTarget(billingMonth = month),
+                        kind = PaymentNoticeKind.SETTLE)
                 }
             }
         }

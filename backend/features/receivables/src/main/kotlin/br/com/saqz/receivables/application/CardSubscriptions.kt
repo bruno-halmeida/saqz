@@ -1,5 +1,6 @@
 package br.com.saqz.receivables.application
 
+import br.com.saqz.sharedkernel.group.PaymentNoticeKind
 import br.com.saqz.receivables.domain.FeeCalculator
 import br.com.saqz.receivables.domain.PaymentMethod
 import br.com.saqz.sharedkernel.group.GroupChargeLedger
@@ -193,7 +194,8 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
                     val name = ledger.displayName(request.actorUserId) ?: "Atleta"
                     notices.publish(groupId, ledger.managers(groupId) - request.actorUserId, "$name cancelou o automático",
                         "As próximas mensalidades chegam para pagar por Pix.",
-                        UUID.nameUUIDFromBytes("subscription-cancelled:${cancelled.first().id}".toByteArray()))
+                        UUID.nameUUIDFromBytes("subscription-cancelled:${cancelled.first().id}".toByteArray()),
+                        kind = PaymentNoticeKind.AUTOPAY_CANCELLED)
                 }
             }
         }
@@ -228,10 +230,10 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
                 UUID.nameUUIDFromBytes("refused-athlete:${payment.id}".toByteArray()),
                 PrivateWhatsApp("Seu cartão não passou. A mensalidade de $monthName ($amount) continua em aberto.\n" +
                     "Atualize o cartão no app ou pague com o código da próxima mensagem.", "Atualizar cartão", link, pix?.payload),
-                SettleTarget(billingMonth = month))
+                SettleTarget(billingMonth = month), PaymentNoticeKind.REFUSED)
             notices.publish(subscription.groupId, ledger.managers(subscription.groupId) - subscription.memberId, "Cartão recusado",
                 "A mensalidade de $monthName de $name não passou no cartão. A pessoa já foi avisada.",
-                UUID.nameUUIDFromBytes("refused-manager:${payment.id}".toByteArray()))
+                UUID.nameUUIDFromBytes("refused-manager:${payment.id}".toByteArray()), kind = PaymentNoticeKind.REFUSED)
         }
     }
 
@@ -352,7 +354,7 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
                 PrivateWhatsApp("A mensalidade muda de ${brl(subscription.amountCents)} para $next a partir de $day.\n" +
                     "Ela continua no automático no seu cartão. Se quiser cancelar, é pelo app.", "Ver no app",
                     links.monthUrl(subscription.groupId, from.withDayOfMonth(1))),
-                SettleTarget(billingMonth = from.withDayOfMonth(1)))
+                SettleTarget(billingMonth = from.withDayOfMonth(1)), PaymentNoticeKind.PRICE_CHANGE)
             store.changeNotified(subscription.id, clock.instant())
         }
     }

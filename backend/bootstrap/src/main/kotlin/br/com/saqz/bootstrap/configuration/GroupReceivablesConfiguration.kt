@@ -26,7 +26,7 @@ class GroupReceivablesConfiguration {
         br.com.saqz.receivables.adapter.output.jdbc.JdbcGroupReceivablesPricing(dataSource,
             br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialConditions(dataSource), clock,
             collections = { group, payer, charges -> settle.ifAvailable?.collection(group, payer, charges) },
-            payable = { group -> athletes.ifAvailable?.payable(group) })
+            payable = { group -> athletes.ifAvailable?.payableSafely(group) })
     @Bean fun groupReceivablesStore(dataSource: DataSource): GroupReceivablesStore = JdbcGroupReceivablesStore(dataSource)
     @Bean fun manageGroupReceivables(accounts: FinancialAccountRepository, admins: GroupAdministrationDirectory,
         groups: GroupFinancialSetupLookup, store: GroupReceivablesStore, conditions: FinancialConditions,

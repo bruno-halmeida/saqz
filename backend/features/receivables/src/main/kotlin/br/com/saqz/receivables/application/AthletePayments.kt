@@ -231,6 +231,14 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
      */
     fun payable(groupId: UUID): Boolean = store.transaction { store.receivingAccount(groupId)?.let(::available) == true }
 
+    /**
+     * O mesmo [payable] para quem roda dentro da transação dos grupos (preço da cobrança nova, leitura do grupo): lê em
+     * transação própria (REQUIRES_NEW) e nunca lança. Erro conta como "não pagável pelo app" e a cobrança nasce pelo valor
+     * base; assim nada aqui marca a transação de fora como rollback-only (o defeito que o "Cobrar" já teve).
+     */
+    fun payableSafely(groupId: UUID): Boolean =
+        runCatching { store.independent { store.receivingAccount(groupId)?.let(::available) == true } }.getOrDefault(false)
+
     fun available(account: ReceivingAccount) = account.registration == RegistrationStatus.APPROVED &&
         account.newOperationsEnabled && eligibility.forOwner(account.ownerUserId, clock.instant()).eligible &&
         rollout.availability(account.ownerUserId).backendEnabled
