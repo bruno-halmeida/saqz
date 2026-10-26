@@ -11,6 +11,13 @@ data class LedgerCharge(val id: UUID, val groupId: UUID, val memberUserId: UUID,
 
 data class LedgerGroup(val id: UUID, val name: String, val ownerUserId: UUID)
 
+/** Vínculo de mensalista (FIN-003/MEM-003): valor e dia efetivos (o do membro, senão o do grupo). */
+data class MonthlyMembership(val active: Boolean, val mensalista: Boolean, val feeCents: Long?, val dueDay: Int?, val exempt: Boolean)
+
+/** Jogo encerrado (início + duração) com diária em aberto: candidato à hora do acerto (FIN-013). */
+data class FinishedGame(val groupId: UUID, val gameId: UUID, val localDate: LocalDate, val endsAt: Instant,
+    val venueName: String, val court: String?)
+
 /**
  * Cobranças e caixa do grupo para o recebimento pelo app (FIN-011, FIN-014). Implementada em grupos; todos os métodos
  * participam da transação de quem chama. Ordem de trava: cobranças (por id), depois as linhas de recebimentos.
@@ -30,6 +37,15 @@ interface GroupChargeLedger {
     fun settleByApp(chargeId: UUID, method: String, actorId: UUID, at: Instant): Boolean
     /** Estorno ou contestação: marca a revisão, sem reabrir a dívida (como em setembro). */
     fun requireReview(chargeIds: Collection<UUID>, actorId: UUID, at: Instant)
+    fun membership(groupId: UUID, userId: UUID): MonthlyMembership?
+    /** A mensalidade do mês ([month] = primeiro dia) da pessoa, em qualquer estado. */
+    fun monthlyCharge(groupId: UUID, memberId: UUID, month: LocalDate): LedgerCharge?
+    /** Jogos publicados que terminaram entre [from] e [until] e têm diária PENDING. */
+    fun finishedGames(from: Instant, until: Instant): List<FinishedGame>
+    /** O que cada pagador deve de diárias daquele jogo (dele e dos convidados), pelo valor que ele paga. */
+    fun gameDebts(groupId: UUID, gameId: UUID): Map<UUID, Long>
+    /** Grupos com mensalidade PENDING que vence em [date]; valor por pagador. */
+    fun monthlyDueOn(date: LocalDate): Map<UUID, Map<UUID, Long>>
     /** Lançamento automático no caixa (`origin`), idempotente pelo [id]. */
     fun record(id: UUID, groupId: UUID, direction: String, origin: String, description: String, amountCents: Long,
                date: LocalDate, actorId: UUID, at: Instant)

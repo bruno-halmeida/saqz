@@ -22,5 +22,8 @@ data class NotificationPush(
     val liveActivityStartToken: String? = null,
     /** Agrupa no celular os avisos de pagamento do mesmo grupo (FIN-014: "um por pagamento, que o celular agrupa"). */
     val thread: String? = null,
+    /** Destino do toque nos avisos de cobrança do app (FIN-013): o pagamento daquele jogo ou daquela mensalidade. */
+    val settleGameId: UUID? = null,
+    val settleBillingMonth: java.time.LocalDate? = null,
 )
 fun interface NotificationPushSender { fun send(token: String, message: NotificationPush): PushDelivery }

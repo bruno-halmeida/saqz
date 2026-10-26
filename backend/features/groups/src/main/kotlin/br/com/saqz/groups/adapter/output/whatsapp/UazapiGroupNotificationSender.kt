@@ -24,17 +24,21 @@ class UazapiGroupNotificationSender(
     private val reminderImageUrl: String? = null,
 ) : NotificationWhatsAppGroupSender {
     override fun send(jid: String, messageId: UUID, text: String, buttons: List<WhatsAppGroupButton>): WhatsAppDelivery =
-        if (buttons.isEmpty()) sendText(jid, messageId, text) else sendMenu(jid, messageId, text, buttons)
+        send(jid, messageId, text, buttons, null)
+
+    override fun send(jid: String, messageId: UUID, text: String, buttons: List<WhatsAppGroupButton>, imageUrl: String?): WhatsAppDelivery =
+        if (buttons.isEmpty()) sendText(jid, messageId, text) else sendMenu(jid, messageId, text, buttons, imageUrl ?: reminderImageUrl)
 
     private fun sendMenu(
         jid: String,
         messageId: UUID,
         text: String,
         buttons: List<WhatsAppGroupButton>,
+        image: String?,
     ): WhatsAppDelivery {
         val menu = MenuMessage.builder(jid, MenuType.BUTTON, text, buttons.map { "${it.label}|${it.url}" })
             .trackSource("saqz").trackId("group-$messageId").asyncSend(false)
-        reminderImageUrl?.takeIf { it.isNotBlank() }?.let(menu::imageButton)
+        image?.takeIf { it.isNotBlank() }?.let(menu::imageButton)
         val result = deliver { client.messages().sendMenu(menu.build()) }
         // Botão recusado de forma permanente (provider/cliente sem suporte): não perder o
         // lembrete — reenvia como texto com as URLs ao final.

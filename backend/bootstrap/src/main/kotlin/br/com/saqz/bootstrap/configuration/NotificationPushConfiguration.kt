@@ -124,6 +124,9 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     windowEndsAt?.let { put("windowEndsAt", it.toEpochMilli().toString()) }
     // Aditivo: o Android agrupa os avisos de pagamento pelo mesmo `thread`; app antigo ignora.
     thread?.let { put("thread", it) }
+    // Aditivo: o toque abre o pagamento daquele jogo ou mensalidade (o mesmo destino do link /acerto).
+    settleGameId?.let { put("settleGameId", it.toString()) }
+    settleBillingMonth?.let { put("settleBillingMonth", it.toString().take(7)) }
 }
 
 /** Nome do `ActivityAttributes` no app iOS (VUL-268): o sistema só abre a Live Activity se bater. */

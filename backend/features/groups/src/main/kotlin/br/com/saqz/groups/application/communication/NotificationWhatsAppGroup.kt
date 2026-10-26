@@ -18,4 +18,8 @@ fun interface NotificationWhatsAppGroupSender {
      * envia texto puro.
      */
     fun send(jid: String, messageId: UUID, text: String, buttons: List<WhatsAppGroupButton>): WhatsAppDelivery
+
+    /** Com [imageUrl], a imagem do topo é essa (hora do acerto) em vez da do lembrete. */
+    fun send(jid: String, messageId: UUID, text: String, buttons: List<WhatsAppGroupButton>, imageUrl: String?): WhatsAppDelivery =
+        send(jid, messageId, text, buttons)
 }

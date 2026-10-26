@@ -27,6 +27,8 @@ import javax.sql.DataSource
  */
 class JdbcNotificationWhatsAppGroup(
     dataSource: DataSource, private val transaction: TransactionRunner, private val links: AttendanceLinkFactory,
+    /** Imagem "Hora do acerto · Pague aqui embaixo" (links.saqz.app/assets/whatsapp-acerto.jpg). */
+    private val settleImageUrl: String? = null,
 ) {
     private val jdbc = JdbcClient.create(dataSource)
 
@@ -75,7 +77,7 @@ class JdbcNotificationWhatsAppGroup(
                 return@inTransaction QueueStep(failed = 1)
             }
             val content = content(message, binding) ?: run { finish(job.messageId, "CANCELLED"); return@inTransaction QueueStep() }
-            when (val result = sender.send(binding.whatsappJid, job.messageId, content.text, content.buttons)) {
+            when (val result = sender.send(binding.whatsappJid, job.messageId, content.text, content.buttons, content.image)) {
                 WhatsAppDelivery.Accepted -> {
                     finish(job.messageId, "ACCEPTED")
                     JobLog.item("notification_whatsapp_group", "whatsapp_group_accepted", *ids)
@@ -95,7 +97,8 @@ class JdbcNotificationWhatsAppGroup(
         }
 
     private fun load(messageId: UUID): PendingMessage? = jdbc.sql("""
-        SELECT m.group_id, m.channel, m.game_id, m.body, m.reminder_origin, g.attendance_updates_mode, b.whatsapp_jid, b.group_name, b.enabled,
+        SELECT m.group_id, m.channel, m.game_id, m.body, m.reminder_origin, m.event_kind, m.whatsapp_button_label, m.whatsapp_button_url,
+               g.attendance_updates_mode, b.whatsapp_jid, b.group_name, b.enabled,
                b.broken_at, link.code
         FROM group_messages m
         JOIN access_groups g ON g.id = m.group_id AND g.deleted_at IS NULL
@@ -121,6 +124,8 @@ class JdbcNotificationWhatsAppGroup(
             binding = binding,
             reminderOrigin = rs.getString("reminder_origin"),
             updatesMode = rs.getString("attendance_updates_mode"),
+            settleButton = rs.getString("whatsapp_button_url")?.takeIf { rs.getString("event_kind") == "SETTLE_TIME" }
+                ?.let { WhatsAppGroupButton(rs.getString("whatsapp_button_label"), it) },
         )
     }.optional().orElse(null)
 
@@ -130,6 +135,8 @@ class JdbcNotificationWhatsAppGroup(
     """).param("game", gameId).param("group", groupId).query(Int::class.java).single() == 1
 
     private fun content(message: PendingMessage, binding: Binding): GroupContent? {
+        // Hora do acerto (FIN-013): o texto já vem montado com o nome do grupo; um botão de URL e a imagem do acerto.
+        message.settleButton?.let { return GroupContent(message.body, listOf(it), settleImageUrl) }
         val prefix = if (message.channel == "REMINDER") binding.groupName else "Saqz · ${binding.groupName}"
         val text = "$prefix\n${message.body}"
         if (message.channel != "REMINDER") return GroupContent(text, emptyList())
@@ -179,10 +186,10 @@ class JdbcNotificationWhatsAppGroup(
     )
     private data class PendingMessage(
         val groupId: UUID, val channel: String, val gameId: UUID?, val body: String, val code: String?, val binding: Binding?,
-        val reminderOrigin: String?, val updatesMode: String,
+        val reminderOrigin: String?, val updatesMode: String, val settleButton: WhatsAppGroupButton? = null,
     )
     /** [buttons] vazio é mensagem de texto; não-vazio vira botões, nunca embutidos no texto. */
-    private data class GroupContent(val text: String, val buttons: List<WhatsAppGroupButton>)
+    private data class GroupContent(val text: String, val buttons: List<WhatsAppGroupButton>, val image: String? = null)
 
     private companion object {
         const val CONFIRM_LABEL = "😍 Vou, me confirma!"

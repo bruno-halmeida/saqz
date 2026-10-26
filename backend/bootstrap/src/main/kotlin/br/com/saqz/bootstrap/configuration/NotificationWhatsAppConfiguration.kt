@@ -57,14 +57,16 @@ class NotificationWhatsAppConfiguration {
     }
     @Bean fun whatsAppNumberCheck(client: UazapiClient): WhatsAppNumberCheck = UazapiNumberCheck(client)
     @Bean fun notificationWhatsAppQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
-        links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
-        JdbcNotificationWhatsApp(dataSource, transaction, links)
+        links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory,
+        receivables: br.com.saqz.sharedkernel.group.GroupReceivables) =
+        JdbcNotificationWhatsApp(dataSource, transaction, links, receivables)
     @Bean fun notificationWhatsAppWorker(queue: JdbcNotificationWhatsApp, sender: NotificationWhatsAppSender) =
         NotificationWhatsAppWorker(queue, sender)
 
     @Bean fun notificationWhatsAppGroupQueue(dataSource: DataSource, transaction: JdbcTransactionRunner,
-        links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory) =
-        JdbcNotificationWhatsAppGroup(dataSource, transaction, links)
+        links: br.com.saqz.groups.adapter.output.link.PublicAttendanceLinkFactory,
+        @Value("\${saqz.links.domain}") linksDomain: String) =
+        JdbcNotificationWhatsAppGroup(dataSource, transaction, links, "${linksDomain.trimEnd('/')}/assets/whatsapp-acerto.jpg")
     @Bean fun notificationWhatsAppGroupSender(
         client: UazapiClient,
         @Value("\${saqz.links.domain}") linksDomain: String,
@@ -72,9 +74,14 @@ class NotificationWhatsAppConfiguration {
         features: ObjectProvider<FeatureFlags>,
     ): NotificationWhatsAppGroupSender {
         val sender = UazapiGroupNotificationSender(client, groupReminderImageUrl(linksDomain, reminderImageUrl))
-        return NotificationWhatsAppGroupSender { jid, messageId, text, buttons ->
-            if (whatsAppFlagOn(features)) sender.send(jid, messageId, text, buttons)
-            else WhatsAppDelivery.Failed.also { flagOffLog.info("whatsapp_group_skipped cause=flag_off") }
+        return object : NotificationWhatsAppGroupSender {
+            override fun send(jid: String, messageId: java.util.UUID, text: String,
+                              buttons: List<br.com.saqz.groups.application.communication.WhatsAppGroupButton>) =
+                send(jid, messageId, text, buttons, null)
+            override fun send(jid: String, messageId: java.util.UUID, text: String,
+                              buttons: List<br.com.saqz.groups.application.communication.WhatsAppGroupButton>, imageUrl: String?) =
+                if (whatsAppFlagOn(features)) sender.send(jid, messageId, text, buttons, imageUrl)
+                else WhatsAppDelivery.Failed.also { flagOffLog.info("whatsapp_group_skipped cause=flag_off") }
         }
     }
     @Bean fun notificationWhatsAppGroupWorker(

@@ -2,6 +2,9 @@ package br.com.saqz.sharedkernel.group
 
 import java.util.UUID
 
+/** "Cobrar" com recebimentos ativos (FIN-013): botão "Pagar no app" e o copia e cola do Pix daquelas cobranças. */
+data class ChargeCollection(val buttonUrl: String, val pixPayload: String?)
+
 /** Valor que o atleta paga, fixado quando a cobrança nasce (FIN-010). `feeScheduleId` é a tabela usada no repasse. */
 data class ChargePricing(val payableCents: Long, val feePolicy: String, val feeScheduleId: UUID?)
 
@@ -19,6 +22,11 @@ interface GroupReceivables {
      * o cancelamento remoto das cobranças de cartão e dos QR. Sem rede aqui.
      */
     fun groupDeleted(groupId: UUID, actorId: UUID) {}
+    /**
+     * Nulo sem recebimentos ativos: o "Cobrar" sai como hoje, com a chave Pix pessoal. Pode consultar o Asaas (gera ou
+     * reaproveita o código Pix do atleta), então é chamada na entrega da fila do WhatsApp, não na transação de quem cobra.
+     */
+    fun chargeCollection(groupId: UUID, payerId: UUID, chargeIds: List<UUID>): ChargeCollection? = null
 
     companion object {
         val NONE: GroupReceivables = object : GroupReceivables {

@@ -1,8 +1,10 @@
 package br.com.saqz.groups.adapter.output.jdbc.finance
 
+import br.com.saqz.sharedkernel.group.FinishedGame
 import br.com.saqz.sharedkernel.group.GroupChargeLedger
 import br.com.saqz.sharedkernel.group.LedgerCharge
 import br.com.saqz.sharedkernel.group.LedgerGroup
+import br.com.saqz.sharedkernel.group.MonthlyMembership
 import org.springframework.jdbc.core.simple.JdbcClient
 import java.sql.ResultSet
 import java.sql.Timestamp
@@ -65,6 +67,47 @@ class JdbcGroupChargeLedger(dataSource: DataSource) : GroupChargeLedger {
             WHERE id IN (:ids) AND NOT review_required""").param("actor", actorId).param("at", Timestamp.from(at))
             .param("ids", chargeIds.toList()).update()
     }
+
+    override fun membership(groupId: UUID, userId: UUID): MonthlyMembership? = jdbc.sql("""
+        SELECT m.active, m.membership_type='MENSALISTA' AS mensalista, coalesce(m.monthly_fee_cents,g.monthly_fee_cents) AS fee,
+               coalesce(m.monthly_due_day,g.monthly_due_day) AS due_day, m.monthly_fee_exempt
+        FROM group_memberships m JOIN access_groups g ON g.id=m.group_id AND g.deleted_at IS NULL
+        WHERE m.group_id=:group AND m.user_id=:user
+    """.trimIndent()).param("group", groupId).param("user", userId).query { rs, _ ->
+        MonthlyMembership(rs.getBoolean("active"), rs.getBoolean("mensalista"), rs.getObject("fee") as Long?,
+            rs.getObject("due_day") as Int?, rs.getBoolean("monthly_fee_exempt"))
+    }.optional().orElse(null)
+
+    override fun monthlyCharge(groupId: UUID, memberId: UUID, month: LocalDate): LedgerCharge? = jdbc.sql(
+        "$SELECT WHERE c.group_id=:group AND c.member_user_id=:member AND c.kind='MONTHLY' AND c.billing_month=:month",
+    ).param("group", groupId).param("member", memberId).param("month", month.withDayOfMonth(1)).query(::map).optional().orElse(null)
+
+    override fun finishedGames(from: Instant, until: Instant): List<FinishedGame> = jdbc.sql("""
+        SELECT g.group_id,g.id,g.local_date,g.starts_at + make_interval(mins => g.duration_minutes) AS ends_at,g.venue_name,g.venue_court
+        FROM games g JOIN access_groups a ON a.id=g.group_id AND a.deleted_at IS NULL
+        WHERE g.status='PUBLISHED' AND g.starts_at + make_interval(mins => g.duration_minutes) >= :from
+          AND g.starts_at + make_interval(mins => g.duration_minutes) < :until
+          AND EXISTS (SELECT 1 FROM group_charges c WHERE c.game_id=g.id AND c.kind='GAME' AND c.status='PENDING')
+        ORDER BY ends_at,g.id
+    """.trimIndent()).param("from", Timestamp.from(from)).param("until", Timestamp.from(until)).query { rs, _ ->
+        FinishedGame(rs.getObject("group_id", UUID::class.java), rs.getObject("id", UUID::class.java),
+            rs.getObject("local_date", LocalDate::class.java), rs.getTimestamp("ends_at").toInstant(), rs.getString("venue_name"),
+            rs.getString("venue_court"))
+    }.list()
+
+    override fun gameDebts(groupId: UUID, gameId: UUID): Map<UUID, Long> = jdbc.sql("""
+        SELECT member_user_id, sum(coalesce(payable_cents,amount_cents)) AS total FROM group_charges
+        WHERE group_id=:group AND game_id=:game AND kind='GAME' AND status='PENDING' GROUP BY member_user_id
+    """.trimIndent()).param("group", groupId).param("game", gameId)
+        .query { rs, _ -> rs.getObject("member_user_id", UUID::class.java) to rs.getLong("total") }.list().toMap()
+
+    override fun monthlyDueOn(date: LocalDate): Map<UUID, Map<UUID, Long>> = jdbc.sql("""
+        SELECT c.group_id,c.member_user_id,sum(coalesce(c.payable_cents,c.amount_cents)) AS total
+        FROM group_charges c JOIN access_groups g ON g.id=c.group_id AND g.deleted_at IS NULL
+        WHERE c.kind='MONTHLY' AND c.status='PENDING' AND c.due_date=:date GROUP BY c.group_id,c.member_user_id
+    """.trimIndent()).param("date", date).query { rs, _ ->
+        Triple(rs.getObject("group_id", UUID::class.java), rs.getObject("member_user_id", UUID::class.java), rs.getLong("total"))
+    }.list().groupBy({ it.first }, { it.second to it.third }).mapValues { it.value.toMap() }
 
     override fun record(id: UUID, groupId: UUID, direction: String, origin: String, description: String, amountCents: Long,
                         date: LocalDate, actorId: UUID, at: Instant) {

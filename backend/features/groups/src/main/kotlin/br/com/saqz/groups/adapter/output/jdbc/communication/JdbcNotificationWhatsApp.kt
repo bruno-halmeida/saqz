@@ -16,6 +16,7 @@ import javax.sql.DataSource
 
 class JdbcNotificationWhatsApp(
     dataSource: DataSource, private val transaction: TransactionRunner, private val links: AttendanceLinkFactory,
+    private val receivables: br.com.saqz.sharedkernel.group.GroupReceivables = br.com.saqz.sharedkernel.group.GroupReceivables.NONE,
 ) {
     private val jdbc = JdbcClient.create(dataSource)
 
@@ -38,7 +39,8 @@ class JdbcNotificationWhatsApp(
         var messageId: UUID? = null
         val message = jdbc.sql("""
             SELECT c.phone, c.group_name, c.group_id, c.recipient_id, n.message_id, c.body, c.channel, link.code,
-                   coalesce(charge.payable_cents, charge.amount_cents) AS amount_cents, charge.due_date, owner.pix_key, owner.pix_label
+                   coalesce(charge.payable_cents, charge.amount_cents) AS amount_cents, charge.due_date, owner.pix_key, owner.pix_label,
+                   charge.id AS charge_id, m.whatsapp_body, m.whatsapp_button_label, m.whatsapp_button_url, m.whatsapp_follow_up
             FROM notification_delivery_context c
             JOIN group_notifications n ON n.sequence = c.sequence
             JOIN group_messages m ON m.id = n.message_id
@@ -52,13 +54,24 @@ class JdbcNotificationWhatsApp(
             userId = rs.getObject("recipient_id", UUID::class.java)
             messageId = rs.getObject("message_id", UUID::class.java)
             val link = rs.getString("code")?.let { "\nConfirmar minha presença no Saqz: ${links.confirm(AttendanceLinkCode.from(it))}" }.orEmpty()
-            val body = if (rs.getString("channel") == "CHARGE" && rs.getObject("amount_cents") != null) {
-                chargeBody(
-                    rs.getLong("amount_cents"), rs.getObject("due_date", LocalDate::class.java),
-                    rs.getString("pix_key"), rs.getString("pix_label"),
-                )
-            } else rs.getString("body")
-            WhatsAppNotification(id, rs.getString("phone"), "Saqz · ${rs.getString("group_name")}\n$body$link")
+            val header = "Saqz · ${rs.getString("group_name")}\n"
+            if (rs.getString("channel") == "PAYMENT") {
+                // F3/F4: texto, botão e a segunda mensagem só com o copia e cola, gravados por recebimentos.
+                val button = rs.getString("whatsapp_button_url")?.let { WhatsAppGroupButton(rs.getString("whatsapp_button_label") ?: "Abrir no app", it) }
+                return@query WhatsAppNotification(id, rs.getString("phone"), header + rs.getString("whatsapp_body"), button = button,
+                    followUp = rs.getString("whatsapp_follow_up"))
+            }
+            if (rs.getString("channel") == "CHARGE" && rs.getObject("amount_cents") != null) {
+                val amount = rs.getLong("amount_cents")
+                val due = rs.getObject("due_date", LocalDate::class.java)
+                // Com recebimentos ativos sai a chave pessoal e entram "Pagar no app" e o copia e cola numa segunda mensagem.
+                val collection = receivables.chargeCollection(groupId!!, userId!!, listOf(rs.getObject("charge_id", UUID::class.java)))
+                if (collection != null) return@query WhatsAppNotification(id, rs.getString("phone"), header + appChargeBody(amount, due),
+                    button = WhatsAppGroupButton("Pagar no app", collection.buttonUrl), followUp = collection.pixPayload)
+                return@query WhatsAppNotification(id, rs.getString("phone"),
+                    header + chargeBody(amount, due, rs.getString("pix_key"), rs.getString("pix_label")) + link)
+            }
+            WhatsAppNotification(id, rs.getString("phone"), header + rs.getString("body") + link)
         }.optional().orElse(null)
         if (message == null) {
             finish(id, "CANCELLED")
@@ -99,6 +112,14 @@ class JdbcNotificationWhatsApp(
                 attempts = attempts + CASE WHEN :status = 'CANCELLED' THEN 0 ELSE 1 END WHERE notification_id = :id
         """).param("id", id).param("status", status).update()
     }
+}
+
+/** Cobrança no WhatsApp particular com recebimentos ativos (FIN-013, texto do canvas "WhatsApp · particular do atleta"). */
+internal fun appChargeBody(amountCents: Long, dueDate: LocalDate): String {
+    val amount = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR"))
+        .format(BigDecimal.valueOf(amountCents, 2)).replace('\u00a0', ' ')
+    val due = dueDate.format(DateTimeFormatter.ofPattern("dd/MM"))
+    return "Você tem $amount em aberto (venceu em $due).\nPague pelo app ou copie o código da próxima mensagem no app do seu banco. A baixa sai sozinha."
 }
 
 /**
