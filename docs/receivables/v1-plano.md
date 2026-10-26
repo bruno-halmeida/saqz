@@ -163,8 +163,11 @@ Atleta (o próprio, logado):
 - Grupo do WhatsApp (vínculo ativo, NOT-008): imagem + texto e botão de URL no formato do lembrete de presença
   (`/send/menu`). Jogo: "Jogo finalizado, hora do acerto" / botão "Pagar meu jogo". Mensal: "Mensalistas, hora do
   acerto" / "Pagar mensalidade". Nunca diz quem deve.
-- Botão: link no padrão do link de presença (sem app → loja; deslogado → login), abre o pagamento do atleta daquele jogo
-  ou mês. Quem não deve vê "Você não tem nada em aberto aqui".
+- Botão: link no padrão do link de presença (mesmo domínio e mesmas regras: sem app → loja; deslogado → login), com um
+  código por (grupo, jogo) ou (grupo, mês), no caminho `/acerto/{codigo}`. O app resolve com
+  `GET /api/receivables/settle-links/{codigo}` → `{groupId,gameId,billingMonth}` e abre o pagamento do atleta logado com as
+  cobranças em aberto daquele jogo (dele e dos convidados) ou daquela mensalidade, filtradas do `/me`. Quem não deve vê
+  "Você não tem nada em aberto aqui". Push "Hora do acerto" e "Cobrar" abrem o mesmo destino.
 - Push a cada devedor: "Hora do acerto" · "R$ 40,00 do jogo de terça no Vôlei do CERET. Toque para pagar." Quem está no
   cartão não recebe a dos mensalistas.
 - WhatsApp particular ("Cobrar", FIN-005/NOT-005) em grupo ativo: sai a chave pessoal; entra o botão "Pagar no app" e,
