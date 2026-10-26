@@ -17,8 +17,9 @@ object StoreLaunchPolicy {
      */
     const val googlePlayPurchases = true
     const val chat = false
-    const val receivables = false
 
+    // O recebimento pelo app também não mora mais aqui (DEB-142): quem decide é
+    // `GET /api/receivables/availability`, lida na sessão pelo `ReceivablesCoordinator`.
     // O WhatsApp (vínculo com o grupo da galera e a aba das preferências) não mora aqui: quem
     // decide é o servidor, em `GET /api/whatsapp/availability`. "Cobrar no WhatsApp" (wa.me)
     // é outra coisa e vale sempre.

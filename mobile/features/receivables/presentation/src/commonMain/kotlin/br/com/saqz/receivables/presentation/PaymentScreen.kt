@@ -121,7 +121,7 @@ private fun Summary(state: PaymentState, modifier: Modifier) = Column(modifier, 
 }
 
 @Composable
-private fun PixContent(state: PaymentState, onIntent: (PaymentIntent) -> Unit) {
+private fun ColumnScope.PixContent(state: PaymentState, onIntent: (PaymentIntent) -> Unit) {
     val payload = state.pixPayload
     if (state.creatingCode || payload == null) {
         Text(stringResource(Res.string.pay_creating), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)

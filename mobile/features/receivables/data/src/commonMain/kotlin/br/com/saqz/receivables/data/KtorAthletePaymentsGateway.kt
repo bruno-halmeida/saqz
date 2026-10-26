@@ -29,7 +29,7 @@ class KtorAthletePaymentsGateway(private val network: AuthenticatedNetworkClient
 
     override suspend fun saveDocument(requestId: String, cpf: String): SaqzResult<Unit, PaymentError> {
         if (!cpf.isValidCpf()) return SaqzResult.Failure(PaymentError.INVALID_DOCUMENT)
-        return envelope(network, HttpMethod.Put, "api/receivables/me/document", DocumentTransport.serializer(), requestId,
+        return envelope(network, HttpMethod.Put, "api/receivables/me/document", AthleteDocumentTransport.serializer(), requestId,
             Json.encodeToString(DocumentCommand(requestId, cpf))) { require(it.hasDocument) }
     }
 }
@@ -193,7 +193,7 @@ private fun PaymentCodeTransport.domain(): PaymentCode {
 @Serializable internal data class DocumentCommand(val requestId: String, val cpf: String) {
     override fun toString() = "DocumentCommand(redacted)"
 }
-@Serializable internal data class DocumentTransport(val hasDocument: Boolean)
+@Serializable internal data class AthleteDocumentTransport(val hasDocument: Boolean)
 @Serializable internal data class RequestOnly(val requestId: String)
 @Serializable internal data class CancelCommand(val requestId: String, val reason: String)
 @Serializable internal data class CheckoutTransport(val checkoutUrl: String)

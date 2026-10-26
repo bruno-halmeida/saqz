@@ -8,6 +8,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
     private static let onboardingParameter = "saqz_onboarding"
     private static let intentParameter = "saqz_intent"
     private static let declineIntent = "decline"
+    private static let settleParameter = "saqz_settle"
+    private static let settlePath = "acerto"
     private let allowedHosts: Set<String>
     private var listeners: [ObjectIdentifier: GroupLinkEventListener] = [:]
     private var accessListeners: [ObjectIdentifier: InviteCodeListener] = [:]
@@ -150,8 +152,23 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         let parts = url.path.split(separator: "/").map(String.init)
         let hasAttendancePath = parts.count == 2 && parts[0] == "attendance" && isValidInviteCode(parts[1])
         if hasAttendancePath && components.queryItems?.contains(where: {
-            $0.name == inviteParameter || $0.name == attendanceParameter || $0.name == onboardingParameter
+            $0.name == inviteParameter || $0.name == attendanceParameter || $0.name == onboardingParameter ||
+                $0.name == settleParameter
         }) == true { return nil }
+        // Hora do acerto (FIN-013): /acerto/<código> ou ?saqz_settle=<código>, sozinho.
+        let settleItems = components.queryItems?.filter { $0.name == settleParameter } ?? []
+        let otherCodes = components.queryItems?.contains {
+            $0.name == inviteParameter || $0.name == attendanceParameter || $0.name == onboardingParameter
+        } == true
+        if parts.count == 2 && parts[0] == settlePath {
+            guard settleItems.isEmpty, !otherCodes, isValidSettleCode(parts[1]) else { return nil }
+            return GroupLinkEventSettle(code: parts[1])
+        }
+        if !settleItems.isEmpty {
+            guard settleItems.count == 1, !otherCodes, !hasAttendancePath, let code = settleItems[0].value,
+                  isValidSettleCode(code) else { return nil }
+            return GroupLinkEventSettle(code: code)
+        }
         let inviteValues = inviteItems.compactMap(\.value).compactMap(normalizeInviteCode)
         let attendanceValues = attendanceItems.compactMap(\.value).filter(isValidInviteCode)
         let hasOnboardingParameter = components.queryItems?.contains { $0.name == onboardingParameter } == true
@@ -182,7 +199,8 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         let values = onboardingItems.compactMap(\.value).filter(isValidInviteCode)
         let invite = components.queryItems?.contains { $0.name == inviteParameter } == true
         let attendance = components.queryItems?.contains { $0.name == attendanceParameter } == true
-        guard !invite, !attendance, values.count == 1 else { return nil }
+        let settle = components.queryItems?.contains { $0.name == settleParameter } == true
+        guard !invite, !attendance, !settle, values.count == 1 else { return nil }
         return values.last
     }
 
@@ -192,6 +210,11 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
         if isValidInviteCode(value) { return value }
         let short = value.filter { $0 != "-" && !$0.isWhitespace }.uppercased()
         return short.range(of: "^[2-9A-HJKMNP-Z]{8}$", options: .regularExpression) != nil ? short : nil
+    }
+
+    static func isValidSettleCode(_ value: String?) -> Bool {
+        guard let value else { return false }
+        return value.range(of: "^[A-Za-z0-9_-]{6,64}$", options: .regularExpression) != nil
     }
 
     static func isValidInviteCode(_ value: String?) -> Bool {

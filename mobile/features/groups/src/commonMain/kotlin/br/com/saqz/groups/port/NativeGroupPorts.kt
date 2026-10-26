@@ -31,6 +31,12 @@ sealed interface GroupLinkEvent {
      * Toque em push (ou no card da Live Activity): com [gameId] abre o jogo; sem, abre a central. [pickPosition] é o
      * "Vou" do push de jogo com posições (DEB-107): abre a tela de escolher posição, sem confirmar nada por baixo.
      */
+    /**
+     * Botão da hora do acerto (FIN-013): `https://links.saqz.app/acerto/<código>` ou `?saqz_settle=<código>` (o
+     * referrer do Play). O app resolve o código no servidor e abre o pagamento daquele jogo ou mês.
+     */
+    data class Settle(val code: String) : GroupLinkEvent
+
     data class NotificationOpen(
         val groupId: String?,
         val gameId: String? = null,

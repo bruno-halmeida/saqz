@@ -22,6 +22,30 @@ class AndroidLinkAdapterTest {
     }
 
     @Test
+    fun settleLinkOpensThePaymentWithoutBreakingInviteOrAttendance() {
+        val fixture = Fixture()
+        val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()
+        fixture.adapter.start(object : br.com.saqz.groups.port.GroupLinkEventListener {
+            override fun onEvent(event: br.com.saqz.groups.port.GroupLinkEvent) { events += event }
+        })
+        fixture.adapter.onColdStart("https://links.saqz.app/acerto/Ab12_cd-9")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_settle=Ab12_cd-9")
+        // Misturado com presença ou convite, ou código impossível: nada abre.
+        fixture.adapter.onWarmIntent("https://links.saqz.app/acerto/Ab12_cd-9?saqz_attendance=$CODE_A")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/?saqz_settle=Ab12_cd-9&saqz_invite=$CODE_A")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/acerto/a%2Fb")
+        fixture.adapter.onWarmIntent("https://links.saqz.app/attendance/$CODE_A")
+        assertEquals(
+            listOf(
+                br.com.saqz.groups.port.GroupLinkEvent.Settle("Ab12_cd-9"),
+                br.com.saqz.groups.port.GroupLinkEvent.Settle("Ab12_cd-9"),
+                br.com.saqz.groups.port.GroupLinkEvent.Attendance(CODE_A),
+            ),
+            events,
+        )
+    }
+
+    @Test
     fun declineParameterSelectsTheDeclineIntentAndAbsenceConfirms() {
         val fixture = Fixture()
         val events = mutableListOf<br.com.saqz.groups.port.GroupLinkEvent>()

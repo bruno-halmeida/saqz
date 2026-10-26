@@ -153,6 +153,7 @@ fun loadSaqzPlatformDependencies(
         koin.getOrNull<GroupInviteCoordinator>()?.stop()
         koin.getOrNull<AttendanceLinkInbox>()?.stop()
         koin.getOrNull<NotificationOpenInbox>()?.stop()
+        koin.getOrNull<br.com.saqz.composeapp.receivables.SettleLinkInbox>()?.stop()
         unloadKoinModules(commonModules + platformModules)
         loadKoinModules(commonModules)
     }
@@ -170,6 +171,7 @@ fun loadSaqzPlatformDependencies(
     // ouve desde aqui, como o convite. Ligados só pela tela, o evento ia só para o convite e sumia.
     koin.get<AttendanceLinkInbox>().start()
     koin.get<NotificationOpenInbox>().start()
+    koin.get<br.com.saqz.composeapp.receivables.SettleLinkInbox>().start()
     // Desde a abertura: renovação, Ask to Buy aprovado e pagamento pendente que caiu chegam
     // por `Transaction.updates` (App Store) ou pelo `PurchasesUpdatedListener` (Play).
     koin.get<StoreCheckout>().sync?.start()
@@ -185,6 +187,7 @@ internal fun stopSaqzKoin() {
         koin?.getOrNull<GroupInviteCoordinator>()?.stop()
         koin?.getOrNull<AttendanceLinkInbox>()?.stop()
         koin?.getOrNull<NotificationOpenInbox>()?.stop()
+        koin?.getOrNull<br.com.saqz.composeapp.receivables.SettleLinkInbox>()?.stop()
     }
     platformModules = emptyList()
     stopKoin()

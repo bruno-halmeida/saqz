@@ -240,14 +240,15 @@ class PaymentViewModel(
         else -> PaymentSubject.MANY
     }
 
-    private fun kickerOf(charges: List<OpenCharge>): String = when (subjectOf(charges)) {
-        PaymentSubject.GAME -> {
-            val date = charges.first().dueDate
-            listOfNotNull(args.groupName, PaymentLabels.weekday(date)?.let { "$it, ${PaymentLabels.dayMonth(date)}" })
-                .joinToString(" · ")
+    /** Sem o nome do grupo (link do acerto, push), o kicker fica só com o jogo ou o mês. */
+    private fun kickerOf(charges: List<OpenCharge>): String {
+        val what = when (subjectOf(charges)) {
+            PaymentSubject.GAME -> charges.first().dueDate.let { date ->
+                PaymentLabels.weekday(date)?.let { "$it, ${PaymentLabels.dayMonth(date)}" }
+            }
+            PaymentSubject.MONTHLY, PaymentSubject.MANY -> PaymentLabels.subject(charges)
         }
-        PaymentSubject.MONTHLY -> "${args.groupName} · ${PaymentLabels.subject(charges)}"
-        PaymentSubject.MANY -> "${args.groupName} · ${PaymentLabels.subject(charges)}"
+        return listOfNotNull(args.groupName.takeIf(String::isNotBlank), what).joinToString(" · ")
     }
 
     private fun validSession(): Boolean {

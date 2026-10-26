@@ -17,6 +17,7 @@ import br.com.saqz.groups.presentation.members.GroupInviteesViewModel
 import br.com.saqz.groups.presentation.members.GroupMembersEffect
 import br.com.saqz.groups.presentation.members.GroupMembersIntent
 import br.com.saqz.groups.presentation.members.GroupMembersViewModel
+import br.com.saqz.groups.presentation.members.MemberAutopayUi
 import br.com.saqz.groups.presentation.moderation.ModerationIntent
 import br.com.saqz.groups.presentation.moderation.ModerationViewModel
 import br.com.saqz.groups.presentation.moderation.ReportTargetUi

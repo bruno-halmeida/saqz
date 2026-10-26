@@ -57,11 +57,11 @@ class SaqzKoinBootstrapTest {
             assertNotNull(koin.get<br.com.saqz.receivables.presentation.FinancialManagementViewModel> {
                 org.koin.core.parameter.parametersOf(androidx.lifecycle.SavedStateHandle())
             })
-            assertNotNull(koin.get<br.com.saqz.receivables.presentation.MemberPaymentViewModel> {
-                org.koin.core.parameter.parametersOf("order", androidx.lifecycle.SavedStateHandle())
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.PaymentViewModel> {
+                org.koin.core.parameter.parametersOf(br.com.saqz.receivables.presentation.PaymentArgs("group", "Vôlei"))
             })
-            assertNotNull(koin.get<br.com.saqz.receivables.presentation.RecurrenceViewModel> {
-                org.koin.core.parameter.parametersOf("account", "group", androidx.lifecycle.SavedStateHandle())
+            assertNotNull(koin.get<br.com.saqz.receivables.presentation.AutopayViewModel> {
+                org.koin.core.parameter.parametersOf(br.com.saqz.receivables.presentation.GroupArgs("group", "Vôlei"))
             })
         } finally {
             stopSaqzKoin()

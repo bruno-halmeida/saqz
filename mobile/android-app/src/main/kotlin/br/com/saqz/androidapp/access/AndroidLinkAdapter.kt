@@ -110,9 +110,12 @@ internal class AndroidLinkAdapter(
         const val INTENT_PARAMETER = "saqz_intent"
         const val DECLINE_INTENT = "decline"
         const val ATTENDANCE_PATH_SEGMENT = "attendance"
+        const val SETTLE_PARAMETER = "saqz_settle"
+        const val SETTLE_PATH_SEGMENT = "acerto"
 
         fun directEvent(url: String?, allowedHosts: Set<String>): GroupLinkEvent? {
             val link = trustedLink(url, allowedHosts) ?: return null
+            settleEvent(link)?.let { return it }
             val inviteEntries = link.query.filter { it.first == INVITE_PARAMETER }
             val attendanceEntries = link.query.filter { it.first == ATTENDANCE_PARAMETER }
             val intentEntries = link.query.filter { it.first == INTENT_PARAMETER }
@@ -124,7 +127,7 @@ internal class AndroidLinkAdapter(
             val inviteCodes = inviteEntries.mapNotNull { normalizeInviteCode(it.second) }
             val attendanceCodes = attendanceEntries.map { it.second }.filter(::isValidInviteCode)
             val duplicated = inviteEntries.size > 1 || attendanceEntries.size > 1 || intentEntries.size > 1
-            val mixed = link.query.any { it.first == ONBOARDING_PARAMETER } ||
+            val mixed = link.query.any { it.first == ONBOARDING_PARAMETER || it.first == SETTLE_PARAMETER } ||
                 (inviteCodes.isNotEmpty() && attendanceCodes.isNotEmpty())
             return when {
                 duplicated || mixed -> null
@@ -134,12 +137,29 @@ internal class AndroidLinkAdapter(
             }
         }
 
+        /**
+         * Hora do acerto (FIN-013): `/acerto/<código>` ou `?saqz_settle=<código>`, sozinho. Misturado com convite,
+         * presença ou onboarding é link adulterado e não abre nada.
+         */
+        private fun settleEvent(link: TrustedLink): GroupLinkEvent? {
+            val queryCodes = link.query.filter { it.first == SETTLE_PARAMETER }.map { it.second }
+            val others = link.query.any { it.first in setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER) }
+            val code = when {
+                link.settlePathCode != null -> link.settlePathCode.takeIf { queryCodes.isEmpty() && !others }
+                queryCodes.isNotEmpty() -> queryCodes.singleOrNull()?.takeIf { !others && link.attendancePathCode == null }
+                else -> return null
+            } ?: return null
+            return GroupLinkEvent.Settle(code).takeIf { isValidSettleCode(code) }
+        }
+
+        fun isValidSettleCode(value: String?): Boolean = value?.matches(Regex("[A-Za-z0-9_-]{6,64}")) == true
+
         fun directOnboardingCode(url: String?, allowedHosts: Set<String>): String? {
             val link = trustedLink(url, allowedHosts) ?: return null
             val onboardingEntries = link.query.filter { it.first == ONBOARDING_PARAMETER }
             if (onboardingEntries.size != 1) return null
             val onboarding = onboardingEntries.map { it.second }.filter(::isValidInviteCode)
-            val mixed = link.query.any { it.first == INVITE_PARAMETER || it.first == ATTENDANCE_PARAMETER }
+            val mixed = link.query.any { it.first == INVITE_PARAMETER || it.first == ATTENDANCE_PARAMETER || it.first == SETTLE_PARAMETER }
             return if (mixed || onboarding.size != 1) null else onboarding.single()
         }
 
@@ -164,9 +184,10 @@ internal class AndroidLinkAdapter(
                 segments.size == 2 && segments[0] == ATTENDANCE_PATH_SEGMENT && isValidInviteCode(it)
             }
             // /attendance/<código> não aceita código concorrente na query.
-            val codeParameters = setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER)
+            val codeParameters = setOf(INVITE_PARAMETER, ATTENDANCE_PARAMETER, ONBOARDING_PARAMETER, SETTLE_PARAMETER)
             if (attendancePathCode != null && query.any { it.first in codeParameters }) return null
-            TrustedLink(query, attendancePathCode)
+            val settlePathCode = segments.getOrNull(1)?.takeIf { segments.size == 2 && segments[0] == SETTLE_PATH_SEGMENT }
+            TrustedLink(query, attendancePathCode, settlePathCode)
         }.getOrNull()
 
         fun isValidInviteCode(value: String?): Boolean =
@@ -185,4 +206,4 @@ internal class AndroidLinkAdapter(
     }
 }
 
-private class TrustedLink(val query: List<Pair<String, String>>, val attendancePathCode: String?)
+private class TrustedLink(val query: List<Pair<String, String>>, val attendancePathCode: String?, val settlePathCode: String? = null)

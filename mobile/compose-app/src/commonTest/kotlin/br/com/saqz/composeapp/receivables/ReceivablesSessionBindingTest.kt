@@ -22,7 +22,7 @@ class ReceivablesSessionBindingTest {
         val gateway = FakeGateway()
         val coordinator = ReceivablesCoordinator(gateway, backgroundScope, ReceivablesSessionContext {
             session.value
-        }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) }, EmptyMemberPaymentsGateway())
+        }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         val binding = ReceivablesSessionBinding(session, coordinator, backgroundScope)
         binding.onResume()
         runCurrent()

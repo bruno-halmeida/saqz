@@ -1,0 +1,13 @@
+<resources>
+    <!-- Recebimento pelo app v1 (FIN-009 a FIN-014): o que as telas de grupo mostram quando o grupo recebe pelo app. -->
+    <string name="paid_via_app_pix">pelo app · Pix</string>
+    <string name="paid_via_app_card">pelo app · cartão</string>
+    <string name="own_charges_pay_in_app">Pagar</string>
+    <string name="own_charges_view_groups">Ver</string>
+    <string name="home_own_charge_app_hint">Pix ou cartão, pelo app</string>
+    <string name="pix_personal_title">Sua chave Pix pessoal</string>
+    <string name="pix_hidden_from_athletes">Escondida dos atletas</string>
+    <string name="pix_hidden_note">Ela volta a aparecer se você desligar o recebimento pelo app.</string>
+    <string name="members_autopay_on">No automático</string>
+    <string name="members_autopay_refused">Cartão recusado</string>
+</resources>

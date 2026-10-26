@@ -292,14 +292,25 @@ class SaqzKoinModulesTest {
             koin.get<br.com.saqz.receivables.domain.ReceivablesAvailabilityGateway>(),
         )
         koin.get<br.com.saqz.receivables.presentation.ReceivablesCoordinator>()
-        assertIs<br.com.saqz.receivables.data.KtorMemberPaymentsGateway>(koin.get<br.com.saqz.receivables.domain.MemberPaymentsGateway>())
+        assertIs<br.com.saqz.receivables.data.KtorAthletePaymentsGateway>(koin.get<br.com.saqz.receivables.domain.AthletePaymentsGateway>())
         koin.get<br.com.saqz.receivables.domain.GroupReceivablesGateway>()
-        koin.get<br.com.saqz.receivables.presentation.MemberPaymentHistoryViewModel>()
+        koin.get<br.com.saqz.receivables.presentation.AthleteChargesViewModel> {
+            parametersOf(br.com.saqz.receivables.presentation.GroupArgs("group", "Vôlei"))
+        }
         koin.get<br.com.saqz.receivables.domain.FinancialOnboardingGateway>()
         koin.get<br.com.saqz.receivables.domain.port.ReceiptDocumentPicker>()
         koin.get<br.com.saqz.receivables.presentation.FinancialOnboardingViewModel> { parametersOf(SavedStateHandle()) }
-        koin.get<br.com.saqz.receivables.presentation.MemberPaymentViewModel> { parametersOf("order", SavedStateHandle()) }
-        koin.get<br.com.saqz.receivables.presentation.ChargeApprovalViewModel> { parametersOf("group", "charge", SavedStateHandle()) }
+        koin.get<br.com.saqz.receivables.presentation.PaymentViewModel> {
+            parametersOf(br.com.saqz.receivables.presentation.PaymentArgs("group", "Vôlei"))
+        }
+        koin.get<br.com.saqz.receivables.presentation.SettleLinkViewModel> { parametersOf("Ab12_cd-9") }
+        koin.get<br.com.saqz.receivables.presentation.GroupReceivablesViewModel> { parametersOf("group") }
+        koin.get<br.com.saqz.receivables.presentation.FeePolicyViewModel> {
+            parametersOf(br.com.saqz.receivables.presentation.FeePolicyArgs("group", "account"))
+        }
+        koin.get<br.com.saqz.receivables.presentation.PaymentReviewViewModel> {
+            parametersOf(br.com.saqz.receivables.presentation.PaymentReviewArgs("group", "account", "review"))
+        }
         koin.get<br.com.saqz.receivables.presentation.ReceiptConfigurationViewModel> { parametersOf("group", SavedStateHandle()) }
         koin.get<br.com.saqz.composeapp.receivables.ReceivablesSessionBinding>()
         koin.get<AccessRuntimeContract>()

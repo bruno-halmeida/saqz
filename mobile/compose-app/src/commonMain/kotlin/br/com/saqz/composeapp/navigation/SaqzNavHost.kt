@@ -112,20 +112,33 @@ import kotlinx.coroutines.launch
 import br.com.saqz.subscriptions.presentation.ui.myplan.MyPlanRoot
 import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute
 import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoot
-import br.com.saqz.receivables.presentation.RecurrenceRoute
-import br.com.saqz.receivables.presentation.RecurrenceRoot
 import br.com.saqz.receivables.presentation.FinancialManagementRoute
 import br.com.saqz.receivables.presentation.FinancialManagementRoot
 import br.com.saqz.receivables.presentation.ReceiptWalletRoute
 import br.com.saqz.receivables.presentation.ReceiptWalletRoot
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoot
-import br.com.saqz.receivables.presentation.ChargeApprovalRoute
-import br.com.saqz.receivables.presentation.ChargeApprovalRoot
-import br.com.saqz.receivables.presentation.MemberPaymentRoute
-import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoute
-import br.com.saqz.receivables.presentation.MemberPaymentRoot
-import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoot
+import br.com.saqz.receivables.domain.MemberAutopayStatus
+import br.com.saqz.receivables.presentation.AthleteChargesRoot
+import br.com.saqz.receivables.presentation.CashboxReceivablesCard
+import br.com.saqz.receivables.presentation.FeePreviewLine
+import br.com.saqz.receivables.presentation.GroupReceivingSection
+import br.com.saqz.receivables.presentation.GroupValuesReceivables
+import br.com.saqz.receivables.presentation.rememberGroupReceivingActive
+import br.com.saqz.receivables.presentation.rememberMemberAutopay
+import br.com.saqz.groups.presentation.members.MemberAutopayUi
+import br.com.saqz.groups.presentation.ui.setup.GroupSetupReceivables
+import br.com.saqz.receivables.presentation.AthleteChargesRoute
+import br.com.saqz.receivables.presentation.AutopayRoot
+import br.com.saqz.receivables.presentation.AutopayRoute
+import br.com.saqz.receivables.presentation.FeePolicyRoot
+import br.com.saqz.receivables.presentation.FeePolicyRoute
+import br.com.saqz.receivables.presentation.PaymentReviewRoot
+import br.com.saqz.receivables.presentation.PaymentReviewRoute
+import br.com.saqz.receivables.presentation.PaymentRoot
+import br.com.saqz.receivables.presentation.ReceivablePaymentRoute
+import br.com.saqz.receivables.presentation.SettleLinkRoot
+import br.com.saqz.receivables.presentation.SettleLinkRoute
 import br.com.saqz.receivables.presentation.ReceiptConfigurationRoot
 import br.com.saqz.receivables.presentation.ReceiptConfigurationRoute
 import org.koin.compose.koinInject
@@ -216,6 +229,20 @@ internal fun SaqzNavHost(
     val inviteRedeeming by inviteCoordinator.redeeming.collectAsStateWithLifecycle()
     val receiptsCoordinator = koinInject<ReceivablesCoordinator>()
     val receipts = receiptsCoordinator.state.collectAsStateWithLifecycle().value
+    // Recebimento pelo app (FIN-011): o "Pagar" só existe com a disponibilidade do servidor; sem ela, tudo como hoje.
+    val payCharges: ((String, String) -> Unit)? = if (receipts.paymentEntryAvailable) {
+        { groupId, groupName -> backStack.add(AthleteChargesRoute(groupId, groupName)) }
+    } else null
+    // Botão da hora do acerto (FIN-013): espera a sessão e a disponibilidade; desligada, o link não abre nada.
+    val settleLinks = koinInject<br.com.saqz.composeapp.receivables.SettleLinkInbox>()
+    val settleCode by settleLinks.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(settleLinks) { settleLinks.start() }
+    LaunchedEffect(settleCode, state.session, receipts.loading, receipts.paymentEntryAvailable) {
+        val code = settleCode ?: return@LaunchedEffect
+        if (state.session !is SessionAccessState.Ready || receipts.loading) return@LaunchedEffect
+        if (receipts.paymentEntryAvailable) backStack.add(SettleLinkRoute(code))
+        settleLinks.consume()
+    }
     val planAnalytics = koinInject<br.com.saqz.composeapp.analytics.PlanAnalytics>()
     val storeCheckout = koinInject<br.com.saqz.composeapp.subscriptiongate.StoreCheckout>()
     val groupLimitResolver = koinInject<br.com.saqz.subscriptions.presentation.limit.GroupLimitResolver>()
@@ -440,7 +467,10 @@ internal fun SaqzNavHost(
             // Push de jogo abre o jogo (onde se confirma); o do teste e do atraso abre os planos (ou Meu plano, para
             // quem já assina); os outros, a central.
             // "Vou" do push de jogo com posições: a tela de posição, que abre o jogo depois de confirmar (DEB-107).
-            if (groupId != null && gameId != null && opened.pickPosition) {
+            // Hora do acerto e "Cobrar" com recebimento pelo app (F4): abrem o pagamento daquele jogo (ou tudo).
+            if (opened.channel == SETTLE_CHANNEL && groupId != null && receipts.paymentEntryAvailable) {
+                backStack.add(ReceivablePaymentRoute(groupId, "", gameId = gameId))
+            } else if (groupId != null && gameId != null && opened.pickPosition) {
                 backStack.add(GroupsRoute.PositionPicker(groupId, gameId, PositionPickerOrigin.Push.routeValue))
             } else if (groupId != null && gameId != null) backStack.add(GroupsRoute.GameDetail(groupId, gameId))
             else if (opened.channel == "TRIAL_ENDING") openSubscriptionPlans()
@@ -618,6 +648,7 @@ internal fun SaqzNavHost(
                                 onCreateGroup = { backStack.add(GroupsRoute.Create) },
                                 // Link colado na folha "Tenho um convite": mesmo caminho do deep link.
                                 onAcceptInviteCode = inviteCoordinator::acceptInvite,
+                                onPayCharges = payCharges,
                             )
                         },
                         profileTab = {
@@ -670,6 +701,7 @@ internal fun SaqzNavHost(
                             var emailBannerDismissed by rememberSaveable { mutableStateOf(false) }
                             HomeOwnChargesBannerRoot(
                                 onOpenHome = onOpenHome,
+                                onPayCharges = payCharges,
                                 emailBanner = if (ready != null && !ready.accountVerified && !emailBannerDismissed) {
                                     {
                                         EmailVerificationBanner(
@@ -752,37 +784,54 @@ internal fun SaqzNavHost(
                         receiptsCoordinator.refresh(); profileRefreshVersion++
                     })
                 }
-                entry<RecurrenceRoute> { route ->
-                    RecurrenceRoot(route.accountId, route.groupId, onBack = pop)
-                }
                 entry<ReceiptWalletRoute> { ReceiptWalletRoot(onBack = pop) }
-                entry<MemberPaymentHistoryRoute> {
-                    MemberPaymentHistoryRoot(onBack = pop, onOpen = { backStack.add(MemberPaymentRoute(it)) })
+                entry<ReceiptConfigurationRoute> { route ->
+                    ReceiptConfigurationRoot(route.groupId, onBack = pop,
+                        onRegistration = { backStack.add(FinancialOnboardingRoute) })
                 }
-                entry<MemberPaymentRoute> { route ->
-                    MemberPaymentRoot(route.orderId, onBack = pop, onOpenRecurrence = { accountId, groupId ->
-                        backStack.add(RecurrenceRoute(accountId, groupId))
+                // Recebimento pelo app v1 (DEB-141): atleta.
+                entry<AthleteChargesRoute> { route ->
+                    AthleteChargesRoot(route, onBack = pop,
+                        onOpenPayment = { ids -> backStack.add(ReceivablePaymentRoute(route.groupId, route.groupName, ids.joinToString(","))) },
+                        onOpenAutopay = { backStack.add(AutopayRoute(route.groupId, route.groupName)) })
+                }
+                entry<ReceivablePaymentRoute> { route ->
+                    PaymentRoot(route, onClose = { groupDetailsRefreshVersion++; homeRefreshVersion++; pop() },
+                        onOpenAutopay = {
+                            backStack.removeLastOrNull()
+                            backStack.add(AutopayRoute(route.groupId, route.groupName))
+                        })
+                }
+                entry<AutopayRoute> { route -> AutopayRoot(route, onBack = pop) }
+                entry<SettleLinkRoute> { route ->
+                    // O link some da pilha ao abrir o pagamento: voltar não reabre a consulta.
+                    SettleLinkRoot(route.code, onBack = pop, onOpen = { target ->
+                        backStack.removeLastOrNull()
+                        backStack.add(ReceivablePaymentRoute(target.groupId, "", gameId = target.gameId,
+                            billingMonth = target.billingMonth))
                     })
                 }
-                entry<ChargeApprovalRoute> { route ->
-                    ChargeApprovalRoot(route.groupId, route.chargeId,
-                        onBack = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++; pop() },
-                        onMutationSuccess = { groupCashboxRefreshVersion++; groupDetailsRefreshVersion++ })
+                // Recebimento pelo app v1: gestor.
+                entry<FeePolicyRoute> { route ->
+                    FeePolicyRoot(route, onBack = pop, onSaved = pop)
                 }
-                entry<ReceiptConfigurationRoute> { route ->
-                    ReceiptConfigurationRoot(route.groupId, onBack = pop)
+                entry<PaymentReviewRoute> { route ->
+                    PaymentReviewRoot(route, onBack = pop, onResolved = { groupCashboxRefreshVersion++; pop() })
                 }
                 entry<FinanceRoute.GroupCashbox> { route ->
                     GroupCashboxRoot(
                         groupId = route.groupId,
                         onBack = pop,
                         onMutationSuccess = { groupDetailsRefreshVersion++ },
-                        onOpenReceivables = if (state.session.canOpenReceipts(receipts)) {
-                            { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
-                        } else null,
                         refreshVersion = groupCashboxRefreshVersion,
-                        onOpenChargePayment = if (state.session.canOpenReceipts(receipts)) {
-                            { chargeId -> backStack.add(ChargeApprovalRoute(route.groupId, chargeId)) }
+                        receivingInApp = receipts.configurationEntryAvailable && rememberGroupReceivingActive(route.groupId),
+                        receivablesHeader = if (receipts.configurationEntryAvailable) {
+                            {
+                                CashboxReceivablesCard(route.groupId, onOpenWallet = { backStack.add(ReceiptWalletRoute) },
+                                    onOpenReview = { accountId, reviewId ->
+                                        backStack.add(PaymentReviewRoute(route.groupId, accountId, reviewId))
+                                    })
+                            }
                         } else null,
                         onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
                         onOpenNewEntry = { groupId ->
@@ -960,6 +1009,24 @@ internal fun SaqzNavHost(
                     GroupSetupDestination(
                         mode = GroupSetupMode.Edit(route.groupId),
                         backStack = backStack,
+                        receivables = if (receipts.configurationEntryAvailable) {
+                            GroupSetupReceivables(
+                                active = rememberGroupReceivingActive(route.groupId),
+                                receiving = {
+                                    GroupReceivingSection(route.groupId,
+                                        onOpenFees = { accountId -> backStack.add(FeePolicyRoute(route.groupId, accountId)) },
+                                        onOpenWallet = { backStack.add(ReceiptWalletRoute) },
+                                        onOpenActivation = if (state.session.canOpenReceipts(receipts)) {
+                                            { backStack.add(ReceiptConfigurationRoute(route.groupId)) }
+                                        } else null)
+                                },
+                                values = {
+                                    GroupValuesReceivables(route.groupId,
+                                        onOpenFees = { accountId -> backStack.add(FeePolicyRoute(route.groupId, accountId)) })
+                                },
+                                feePreview = { cents -> FeePreviewLine(route.groupId, cents) },
+                            )
+                        } else null,
                         onOpenWhatsApp = if (whatsAppEnabled) {
                             { backStack.add(GroupsRoute.WhatsApp(route.groupId)) }
                         } else {
@@ -987,6 +1054,7 @@ internal fun SaqzNavHost(
                         onBack = pop,
                         gameCreatedToast = gameCreatedToastGroupId == route.groupId,
                         onConsumeGameCreatedToast = { gameCreatedToastGroupId = null },
+                        paymentsEnabled = receipts.paymentEntryAvailable,
                         onEffect = { effect ->
                             if (effect is GroupDetailsEffect.Left) {
                                 onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
@@ -1096,10 +1164,8 @@ internal fun SaqzNavHost(
                         receiptsCoordinator.refresh()
                         onPauseOrDispose { }
                     }
-                    OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) },
-                        onPayInApp = if (br.com.saqz.domain.StoreLaunchPolicy.receivables && receipts.paymentEntryAvailable) {
-                            { backStack.add(MemberPaymentHistoryRoute) }
-                        } else null)
+                    // O pagamento pelo app é por grupo (Minhas cobranças do grupo): daqui se abre o grupo.
+                    OwnMonthlyPaymentsRoot(onBack = pop, onOpenGroup = { backStack.add(GroupsRoute.Details(it)) })
                 }
                 entry<GroupsRoute.MemberProfile> { route ->
                     MemberProfileRoot(route.groupId, route.userId, onBack = pop)
@@ -1171,6 +1237,11 @@ internal fun SaqzNavHost(
                             backStack.add(GroupsRoute.Invite(groupId))
                         },
                         onOpenMonthlyInvite = { groupId -> backStack.add(GroupsRoute.MonthlyInvite(groupId)) },
+                        autopay = if (receipts.configurationEntryAvailable) {
+                            rememberMemberAutopay(route.groupId)?.mapValues { (_, status) ->
+                                if (status == MemberAutopayStatus.ACTIVE) MemberAutopayUi.Active else MemberAutopayUi.Refused
+                            }
+                        } else null,
                     )
                 }
                 entry<GroupsRoute.MonthlyInvite> { route ->
@@ -1444,10 +1515,12 @@ private fun GroupSetupDestination(
     onGroupListChange: () -> Unit,
     onOpenWhatsApp: (() -> Unit)? = null,
     showTrialOffer: Boolean = false,
+    receivables: GroupSetupReceivables? = null,
 ) {
     val pop: () -> Unit = { backStack.removeLastOrNull() }
     GroupSetupRoot(
         mode = mode,
+        receivables = receivables,
         showTrialOffer = showTrialOffer,
         onOpenWhatsApp = onOpenWhatsApp,
         // Criou: o formulário sai do stack e o grupo novo entra no lugar dele.
@@ -1504,6 +1577,8 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         is GroupDetailsEffect.ShareSaqz -> Unit // Native sharing is consumed by GroupDetailsRoot.
         // O sheet de denúncia é sobreposição do próprio detalhe: o `GroupDetailsRoot` consome.
         is GroupDetailsEffect.ReportGroup -> Unit
+        // Minhas cobranças do grupo com o pagamento pelo app (FIN-011).
+        is GroupDetailsEffect.OpenPayment -> add(AthleteChargesRoute(effect.groupId, effect.groupName))
     }
 }
 
@@ -1565,3 +1640,6 @@ private fun br.com.saqz.access.domain.session.AccessSession.isOnlyOwnedGroup(gro
     memberships.filter { it.role.value == OwnerRole }.map { it.groupId.value } == listOf(groupId)
 
 private const val OwnerRole = "OWNER"
+
+/** Canal do push "Hora do acerto" e do "Cobrar" com recebimento pelo app (contrato com a F4). */
+internal const val SETTLE_CHANNEL = "SETTLE"

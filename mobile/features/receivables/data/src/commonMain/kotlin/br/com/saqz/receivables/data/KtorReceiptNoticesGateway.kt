@@ -12,7 +12,7 @@ import kotlin.time.Instant
 class KtorReceiptNoticesGateway(private val network: AuthenticatedNetworkClient, private val clock: Clock) : ReceiptNoticesGateway {
     override suspend fun active(): SaqzResult<List<ReceiptNotice>, ReceiptError> = when (val result = network.execute(
         HttpMethod.Get, "api/receivables/notices", ListSerializer(ReceiptNoticeTransport.serializer()))) {
-        is NetworkResult.Failure -> SaqzResult.Failure(result.error.noticeError())
+        is NetworkResult.Failure -> SaqzResult.Failure(result.error.paymentError(false))
         is NetworkResult.Success -> try {
             val now = clock.now()
             require(result.value.map { it.id }.distinct().size == result.value.size)
@@ -27,17 +27,3 @@ class KtorReceiptNoticesGateway(private val network: AuthenticatedNetworkClient,
 @Serializable internal data class ReceiptNoticeTransport(val id: String, val audience: String, val title: String,
     val message: String, val startsAt: String, val endsAt: String? = null)
 
-private fun NetworkError.noticeError(): ReceiptError = when (this) {
-    is NetworkError.HttpStatus -> status.noticeError()
-    is NetworkError.ApiProblemError -> problem.status.noticeError()
-    NetworkError.Unavailable -> ReceiptError.SIGNED_OUT
-    NetworkError.InvalidResponse, NetworkError.PayloadTooLarge -> ReceiptError.INVALID
-    NetworkError.Timeout, NetworkError.Connectivity, NetworkError.Unknown -> ReceiptError.NETWORK
-}
-private fun Int.noticeError(): ReceiptError = when (this) {
-    401 -> ReceiptError.SIGNED_OUT
-    403, 404 -> ReceiptError.DENIED
-    409 -> ReceiptError.STALE
-    400 -> ReceiptError.INVALID
-    else -> ReceiptError.UNAVAILABLE
-}

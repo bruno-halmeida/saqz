@@ -133,6 +133,17 @@ final class IOSLinkAdapterTests: XCTestCase {
         XCTAssertEqual(fixture.received, [])
     }
 
+    func testSettleLinkDispatchesItsOwnEventAndRejectsMixedLinks() {
+        XCTAssertEqual((IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/acerto/Ab12_cd-9")) as? GroupLinkEventSettle)?.code,
+                       "Ab12_cd-9")
+        XCTAssertEqual((IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/?saqz_settle=Ab12_cd-9")) as? GroupLinkEventSettle)?.code,
+                       "Ab12_cd-9")
+        XCTAssertNil(IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/acerto/Ab12_cd-9?saqz_invite=\(Self.codeA)")))
+        XCTAssertNil(IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/?saqz_settle=Ab12_cd-9&saqz_attendance=\(Self.codeA)")))
+        XCTAssertNil(IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/acerto/x")))
+        XCTAssertTrue(IOSLinkAdapter.directEvent(URL(string: "https://links.saqz.app/attendance/\(Self.codeA)")) is GroupLinkEventAttendance)
+    }
+
     func testDeclineIntentTravelsOnlyWhenTheParameterSaysSo() {
         let fixture = Fixture(); fixture.start()
         fixture.adapter.onOpenURL(URL(string: "https://links.saqz.app/attendance/\(Self.codeA)?saqz_intent=decline")!)

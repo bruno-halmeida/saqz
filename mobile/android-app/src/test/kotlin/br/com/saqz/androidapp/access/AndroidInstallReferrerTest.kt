@@ -34,6 +34,12 @@ class AndroidInstallReferrerTest {
         assertEquals(listOf<GroupLinkEvent>(GroupLinkEvent.Invite(code)), deliver(url))
     }
 
+    @Test fun settleFromTheLinksPageOpensThePaymentLikeATappedButton() {
+        val url = link("saqz_settle=Ab12_cd-9")
+        assertEquals("https://links.saqz.app/?saqz_settle=Ab12_cd-9", url)
+        assertEquals(listOf<GroupLinkEvent>(GroupLinkEvent.Settle("Ab12_cd-9")), deliver(url))
+    }
+
     @Test fun attendanceFromTheLinksPageConfirmsOrDeclinesLikeATappedLink() {
         val confirm = link("saqz_attendance=$code")
         assertEquals("https://links.saqz.app/?saqz_attendance=$code", confirm)

@@ -52,7 +52,7 @@ internal class AndroidInstallReferrer(
     internal companion object {
         private const val FILE = "saqz_install_referrer"
         private const val CONSUMED = "consumed"
-        private val PARAMETERS = setOf("saqz_invite", "saqz_onboarding", "saqz_attendance")
+        private val PARAMETERS = setOf("saqz_invite", "saqz_onboarding", "saqz_attendance", "saqz_settle")
         private const val ATTENDANCE = "saqz_attendance"
         private const val DECLINE = "saqz_intent=decline"
         private const val MAX_AGE_SECONDS = 7L * 24 * 60 * 60

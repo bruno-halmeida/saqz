@@ -12,11 +12,13 @@ import br.com.saqz.subscriptions.presentation.navigation.SubscriptionsRoute
 import br.com.saqz.receivables.presentation.ReceiptFinanceHomeRoute
 import br.com.saqz.receivables.presentation.ReceiptWalletRoute
 import br.com.saqz.receivables.presentation.FinancialManagementRoute
-import br.com.saqz.receivables.presentation.RecurrenceRoute
 import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
-import br.com.saqz.receivables.presentation.ChargeApprovalRoute
-import br.com.saqz.receivables.presentation.MemberPaymentRoute
-import br.com.saqz.receivables.presentation.MemberPaymentHistoryRoute
+import br.com.saqz.receivables.presentation.AthleteChargesRoute
+import br.com.saqz.receivables.presentation.AutopayRoute
+import br.com.saqz.receivables.presentation.FeePolicyRoute
+import br.com.saqz.receivables.presentation.PaymentReviewRoute
+import br.com.saqz.receivables.presentation.ReceivablePaymentRoute
+import br.com.saqz.receivables.presentation.SettleLinkRoute
 import br.com.saqz.receivables.presentation.ReceiptConfigurationRoute
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.PolymorphicSerializer
@@ -38,10 +40,12 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(ReceiptFinanceHomeRoute::class, ReceiptFinanceHomeRoute.serializer())
             subclass(ReceiptWalletRoute::class, ReceiptWalletRoute.serializer())
             subclass(FinancialManagementRoute::class, FinancialManagementRoute.serializer())
-            subclass(RecurrenceRoute::class, RecurrenceRoute.serializer())
-            subclass(MemberPaymentHistoryRoute::class, MemberPaymentHistoryRoute.serializer())
-            subclass(MemberPaymentRoute::class, MemberPaymentRoute.serializer())
-            subclass(ChargeApprovalRoute::class, ChargeApprovalRoute.serializer())
+            subclass(AthleteChargesRoute::class, AthleteChargesRoute.serializer())
+            subclass(ReceivablePaymentRoute::class, ReceivablePaymentRoute.serializer())
+            subclass(AutopayRoute::class, AutopayRoute.serializer())
+            subclass(SettleLinkRoute::class, SettleLinkRoute.serializer())
+            subclass(FeePolicyRoute::class, FeePolicyRoute.serializer())
+            subclass(PaymentReviewRoute::class, PaymentReviewRoute.serializer())
             subclass(FinancialOnboardingRoute::class, FinancialOnboardingRoute.serializer())
             subclass(ReceiptConfigurationRoute::class, ReceiptConfigurationRoute.serializer())
             subclass(AccessRoute.Starting::class, AccessRoute.Starting.serializer())
