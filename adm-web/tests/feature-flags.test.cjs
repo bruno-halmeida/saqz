@@ -68,7 +68,7 @@ test('editar: segmentado do estado, contador da porcentagem e salvar com versão
   app.go('flags'); await flush();
   app.flgOpen('chat'); await flush(); await flush();
   let v = app.flagsVals();
-  assert.deepEqual(v.flgEstados.map(o => o.label), ['Desligada', 'Para o público', 'Para todos']);
+  assert.equal(v.flgEstados.map(o => o.label).join('|'), 'Desligada|Para o público|Para todos');
   v.flgEstados[1].pick();
   v = app.flagsVals();
   assert.equal(v.flgPublico, true);

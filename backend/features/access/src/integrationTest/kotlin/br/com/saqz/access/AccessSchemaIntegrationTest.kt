@@ -26,7 +26,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(database.jdbcUrl, database.username, database.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(19, flyway.migrate().migrationsExecuted)
+        assertEquals(20, flyway.migrate().migrationsExecuted)
     }
 
     @BeforeEach
@@ -57,6 +57,11 @@ class AccessSchemaIntegrationTest {
                 "app_onboarding_login_tokens",
                 "access_phone_confirmations",
                 "access_user_app_versions",
+                "feature_flags",
+                "feature_user_groups",
+                "feature_user_group_members",
+                "feature_app_versions",
+                "feature_history",
             ),
             queryStrings(
                 "SELECT table_name FROM information_schema.tables " +

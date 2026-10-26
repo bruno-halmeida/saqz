@@ -55,7 +55,7 @@ class JdbcFeatureFlagStore(dataSource: DataSource) : FeatureFlagStore {
                 INSERT INTO feature_flags(flag_key, version, rule, full_rollout_since, updated_at)
                 VALUES (:key, 1, CAST(:rule AS jsonb), :since, :at) ON CONFLICT (flag_key) DO NOTHING
             """).param("key", definition.key).param("rule", FeatureJson.encode(definition.initialRule))
-                .param("since", if (definition.initialRule.fullRollout()) Timestamp.from(now) else null, Types.TIMESTAMP_WITH_TIMEZONE)
+                .param("since", if (definition.initialRule.fullRollout()) Timestamp.from(now) else null, Types.TIMESTAMP)
                 .param("at", Timestamp.from(now)).update() == 1
             if (created) history(UUID.randomUUID(), FeatureHistoryType.FLAG, definition.key, 1, null, definition.initialReason,
                 now, null, definition.initialRule)
@@ -150,7 +150,7 @@ class JdbcFeatureFlagStore(dataSource: DataSource) : FeatureFlagStore {
         jdbc.sql("""
             UPDATE feature_flags SET version = version + 1, rule = CAST(:rule AS jsonb), full_rollout_since = :since, updated_at = :at
             WHERE flag_key = :key
-        """).param("rule", FeatureJson.encode(change.rule)).param("since", since?.let(Timestamp::from), Types.TIMESTAMP_WITH_TIMEZONE)
+        """).param("rule", FeatureJson.encode(change.rule)).param("since", since?.let(Timestamp::from), Types.TIMESTAMP)
             .param("at", Timestamp.from(change.now)).param("key", change.key).update()
         val after = StoredFeatureFlag(change.key, before.version + 1, change.rule, since, change.now)
         history(change.id, FeatureHistoryType.FLAG, change.key, after.version, change.actor, change.reason, change.now, before.rule, change.rule)
