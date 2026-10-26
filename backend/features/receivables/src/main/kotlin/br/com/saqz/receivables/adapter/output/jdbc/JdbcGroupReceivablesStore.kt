@@ -71,6 +71,10 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
                 .param("at", Timestamp.from(at)).param("account", accountId).param("group", groupId).update()
             // G: códigos em aberto param; pagamento que chegar mesmo assim ainda dá baixa (FIN-009).
             cancelLiveCodes(accountId, groupId, request.actorUserId, at)
+            // F3 (FIN-012): desligar corta a mensalidade no cartão; o job de assinaturas cancela no Asaas.
+            jdbc.sql("""UPDATE card_subscriptions SET status='ENDED',end_reason='GROUP_DISABLED',remote_cancel_pending=true,ended_at=:at,updated_at=:at
+                WHERE account_id=:account AND group_id=:group AND status IN ('ACTIVE','AUTHORIZING')""")
+                .param("at", Timestamp.from(at)).param("account", accountId).param("group", groupId).update()
             val recurrences = jdbc.sql("""
                 UPDATE receivable_recurrences SET status='STOP_PENDING',cutoff_at=:at
                 WHERE account_id=:account AND group_id=:group AND status IN ('AUTHORIZING','ACTIVE') RETURNING id
@@ -125,8 +129,10 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
         }
         jdbc.sql("SELECT id FROM receivable_accounts WHERE id=:id FOR UPDATE").param("id", account).query(UUID::class.java).single()
         val request = FinancialRequest(UUID.nameUUIDFromBytes("group-deleted:$groupId".toByteArray()), actor)
-        // F3: as recorrências no cartão são cortadas aqui, pelo STOP_RECURRENCE que configure(null) agenda.
+        // F3: a mensalidade no cartão é cortada aqui (configure(null) encerra as assinaturas do grupo).
         configure(account, groupId, request, paymentDigest("DEACTIVATE_GROUP:$groupId"), null, at)
+        jdbc.sql("UPDATE card_subscriptions SET end_reason='GROUP_DELETED' WHERE group_id=:group AND end_reason='GROUP_DISABLED' AND ended_at=:at")
+            .param("group", groupId).param("at", Timestamp.from(at)).update()
     }
 
     override fun feePolicy(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, policy: FeePolicy,

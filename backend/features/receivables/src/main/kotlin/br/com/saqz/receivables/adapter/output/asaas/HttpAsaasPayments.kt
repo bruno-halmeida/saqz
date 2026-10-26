@@ -50,7 +50,9 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
             "email" to requireNotNull(webhookEmail), "enabled" to true, "interrupted" to false,
             "apiVersion" to 3, "authToken" to token, "sendType" to "SEQUENTIALLY",
             "events" to listOf("PAYMENT_CREATED", "PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_DELETED",
-                "PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE", "PAYMENT_AWAITING_CHARGEBACK_REVERSAL", "PAYMENT_SPLIT_DONE"))), "id")
+                "PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE", "PAYMENT_AWAITING_CHARGEBACK_REVERSAL", "PAYMENT_SPLIT_DONE",
+                // F3: recusa do cartão na mensalidade automática.
+                "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED"))), "id")
     }
 
     override fun prepareCustomer(context: ProviderPaymentContext): Boolean {

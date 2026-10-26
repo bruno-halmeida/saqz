@@ -43,31 +43,77 @@ interface SettlementStore {
 /** Baixa automática pelo aviso do Asaas (FIN-014). Só fatos consultados no Asaas; o corpo do aviso só acorda. */
 class PaymentSettlement(private val store: SettlementStore, private val codes: PaymentCodeStore,
     private val ledger: GroupChargeLedger, private val notices: ReceivablesNotices, private val facts: PaymentFactsProvider,
-    private val commissions: CommissionTransfers, private val clock: Clock, private val zone: ZoneId = ZoneId.of("America/Sao_Paulo")) {
+    private val commissions: CommissionTransfers, private val clock: Clock, private val zone: ZoneId = ZoneId.of("America/Sao_Paulo"),
+    private val subscriptions: SubscriptionStore? = null, private val cards: CardSubscriptions? = null) {
 
     /** Nulo: o pagamento não é do v1 (segue o caminho de setembro). Verdadeiro: processado. Falso: tentar de novo. */
-    fun handle(accountId: UUID, eventType: String, paymentId: String, reference: String?, qrId: String?, billingPix: Boolean): Boolean? {
+    fun handle(accountId: UUID, eventType: String, paymentId: String, reference: String?, qrId: String?, billingPix: Boolean,
+               subscriptionId: String? = null, checkoutSession: String? = null): Boolean? {
         val code = store.transaction { store.codeByReference(accountId, reference, qrId) }
+        if (code == null && (subscriptionId != null || checkoutSession != null)) {
+            val subscription = subscriptions?.let { s -> s.transaction { s.byProvider(accountId, subscriptionId, checkoutSession, reference) } }
+            if (subscription != null) return subscriptionEvent(subscription, eventType, paymentId)
+        }
         if (code == null && !billingPix) return null
         if (eventType !in SETTLE && eventType !in REVERSE) return true
         val observed = try { facts.payment(accountId, paymentId) } catch (_: Exception) { return false }
         if (observed.id != paymentId) return false
-        if (eventType in REVERSE || observed.status in REVERSED) {
-            store.transaction {
-                val record = store.settlement(accountId, paymentId) ?: return@transaction
-                if (store.markReversed(accountId, paymentId, clock.instant())) {
-                    // Setembro: reversão marca a cobrança para revisão do gestor, sem reabrir a dívida.
-                    ledger.requireReview(record.settledChargeIds, ownerOf(record) ?: return@transaction, clock.instant())
-                }
-            }
-            return true
-        }
+        if (eventType in REVERSE || observed.status in REVERSED) { reverse(accountId, paymentId); return true }
         if (observed.deleted) return true
         // O aviso chegou antes de a consulta refletir o pagamento: tenta de novo no próximo ciclo.
         if (observed.status !in PAID) return false
         val operation = store.transaction { settle(accountId, observed) }
         operation?.let { runCatching { commissions.run(accountId, it) } }
         return true
+    }
+
+    /**
+     * Cobrança da mensalidade no cartão (FIN-012): baixa a mensalidade do mês do vencimento. Se ela ainda não existe (a
+     * geração mensal ainda não rodou), tenta de novo no próximo ciclo; depois de [SUBSCRIPTION_MATCH_DAYS] dias, revisão.
+     */
+    private fun subscriptionEvent(subscription: CardSubscription, eventType: String, paymentId: String): Boolean {
+        val accountId = subscription.accountId
+        val observed = try { facts.payment(accountId, paymentId) } catch (_: Exception) { return false }
+        if (observed.id != paymentId) return false
+        val due = observed.dueDate ?: return false
+        val store = subscriptions!!
+        val firstSeen = store.transaction { store.recordPayment(accountId, paymentId, subscription.id, due, observed.valueCents, clock.instant()) }
+        if (subscription.status == "AUTHORIZING" && observed.subscriptionId != null) cards?.activated(subscription, observed.subscriptionId)
+        if (eventType == "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED") { cards?.refused(subscription, observed); return true }
+        if (eventType in REVERSE || observed.status in REVERSED) { reverse(accountId, paymentId); return true }
+        if (eventType !in SETTLE) return true
+        if (observed.deleted) return true
+        if (observed.status !in PAID) return false
+        val month = due.withDayOfMonth(1)
+        val ready = this.store.transaction { ledger.monthlyCharge(subscription.groupId, subscription.memberId, month) != null }
+        if (!ready && firstSeen.plusSeconds(SUBSCRIPTION_MATCH_DAYS * 86400) > clock.instant()) return false
+        this.store.transaction {
+            val now = clock.instant()
+            if (!this.store.claim(accountId, observed.id, now)) return@transaction
+            val target = ledger.monthlyCharge(subscription.groupId, subscription.memberId, month)
+            if (target == null) {
+                val payer = ledger.displayName(subscription.memberId) ?: "Atleta"
+                review(accountId, observed, payer, observed.valueCents, observed.netCents?.let { observed.valueCents - it }?.coerceAtLeast(0) ?: 0, now)
+                this.store.save(SettlementRecord(accountId, observed.id, null, subscription.groupId, PaymentMethod.CARD, observed.valueCents,
+                    observed.netCents, 0, emptyList(), observed.valueCents, null, now))
+                return@transaction
+            }
+            val commission = if (observed.valueCents == subscription.amountCents) subscription.commissionCents else 0
+            settleCharges(accountId, observed, subscription.groupId, subscription.memberId, ledger.lock(listOf(target.id)),
+                subscription.amountCents, commission, PaymentMethod.CARD, null, now)
+            store.clearRefused(listOf(target.id))
+        }
+        return true
+    }
+
+    private fun reverse(accountId: UUID, paymentId: String) {
+        store.transaction {
+            val record = store.settlement(accountId, paymentId) ?: return@transaction
+            if (store.markReversed(accountId, paymentId, clock.instant())) {
+                // Setembro: reversão marca a cobrança para revisão do gestor, sem reabrir a dívida.
+                ledger.requireReview(record.settledChargeIds, ownerOf(record) ?: return@transaction, clock.instant())
+            }
+        }
     }
 
     private fun settle(accountId: UUID, payment: ObservedPayment): UUID? {
@@ -86,32 +132,42 @@ class PaymentSettlement(private val store: SettlementStore, private val codes: P
             return null
         }
         val method = payment.method ?: code.method
-        val own = ledger.lock(code.chargeIds)
-        val chosen = if (own.size == code.chargeIds.size && own.all { it.status == "PENDING" } && payment.valueCents == code.amountCents) own
+        val commission = if (payment.valueCents == code.amountCents) code.commissionCents else 0
+        return settleCharges(accountId, payment, code.groupId, code.payerId, ledger.lock(code.chargeIds), code.amountCents, commission,
+            method, code, now)
+    }
+
+    /**
+     * Baixa das cobranças esperadas ([own]) se todas ainda estão em aberto e o valor bate; senão (FIN-014) as mais antigas
+     * em aberto do mesmo atleta, enquanto cobrirem cobranças inteiras, e a sobra vai para a revisão. Devolve a operação
+     * da comissão do Pix, se houver.
+     */
+    private fun settleCharges(accountId: UUID, payment: ObservedPayment, groupId: UUID, payerId: UUID, own: List<LedgerCharge>,
+                              expectedCents: Long, commission: Long, method: PaymentMethod, code: StoredPaymentCode?, now: Instant): UUID? {
+        val chosen = if (own.isNotEmpty() && own.all { it.status == "PENDING" } && payment.valueCents == expectedCents) own
         else {
             // FIN-014: a cobrança do código já foi resolvida (o "Recebi" chegou antes). O valor quita as mais antigas em
             // aberto do mesmo atleta, enquanto cobrir cobranças inteiras; o que sobra vai para a revisão.
-            val open = ledger.lock(ledger.openCharges(code.groupId, code.payerId).map { it.id })
+            val open = ledger.lock(ledger.openCharges(groupId, payerId).map { it.id })
                 .sortedWith(compareBy<LedgerCharge>({ it.dueDate }, { it.createdAt }, { it.id.toString() }))
             var left = payment.valueCents
             open.takeWhile { charge -> (charge.payableCents <= left).also { if (it) left -= charge.payableCents } }
         }
-        val settled = chosen.filter { ledger.settleByApp(it.id, method.name, code.payerId, now) }
+        val settled = chosen.filter { ledger.settleByApp(it.id, method.name, payerId, now) }
         val leftover = payment.valueCents - settled.sumOf { it.payableCents }
-        codes.changeStatus(code.id, setOf("CREATING", "PENDING", "EXPIRED", "CANCELLED"), "PAID", now)
-        store.expireCodesCovering(settled.map { it.id }, code.id, now)
-        val payerName = ledger.displayName(code.payerId) ?: "Atleta"
+        code?.let { codes.changeStatus(it.id, setOf("CREATING", "PENDING", "EXPIRED", "CANCELLED"), "PAID", now) }
+        store.expireCodesCovering(settled.map { it.id }, code?.id, now)
+        val payerName = ledger.displayName(payerId) ?: "Atleta"
         if (leftover > 0) review(accountId, payment, payerName, leftover, 0, now)
         // E: comissão do Pix por transferência logo depois da baixa (no cartão ela saiu na divisão). Zero não transfere.
-        val commission = if (payment.valueCents == code.amountCents) code.commissionCents else 0
         val operation = if (method == PaymentMethod.PIX && commission > 0)
             UUID.nameUUIDFromBytes("commission:$accountId:${payment.id}".toByteArray()).also {
-                store.registerCommissionTransfer(accountId, it, code.payerId, now)
+                store.registerCommissionTransfer(accountId, it, payerId, now)
             } else null
-        store.save(SettlementRecord(accountId, payment.id, code.id, code.groupId, method, payment.valueCents, payment.netCents,
+        store.save(SettlementRecord(accountId, payment.id, code?.id, groupId, method, payment.valueCents, payment.netCents,
             commission, settled.map { it.id }, leftover, operation, now))
-        cashFees(code.groupId, payment, settled, leftover, commission, code.payerId, now)
-        notify(code.groupId, code.payerId, payerName, settled, now, payment.id)
+        cashFees(groupId, payment, settled, leftover, commission, payerId, now)
+        notify(groupId, payerId, payerName, settled, now, payment.id)
         return operation
     }
 
@@ -153,6 +209,7 @@ class PaymentSettlement(private val store: SettlementStore, private val codes: P
 
     companion object {
         const val FEES_LABEL = "Taxas de serviço e pagamento"
+        private const val SUBSCRIPTION_MATCH_DAYS = 3L
         private val SETTLE = setOf("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED")
         private val REVERSE = setOf("PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE",
             "PAYMENT_AWAITING_CHARGEBACK_REVERSAL")

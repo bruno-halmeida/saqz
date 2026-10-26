@@ -22,8 +22,10 @@ import java.util.UUID
  */
 class HttpAsaasPaymentCodes(private val baseUrl: URI, private val platformWalletId: String,
     private val credentials: PaymentProviderCredentials,
+    /** Retorno do checkout da assinatura (F3); a página do Asaas volta para cá. */
+    private val callbackBaseUrl: URI? = null,
     private val http: HttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
-        .followRedirects(HttpClient.Redirect.NEVER).build()) : PaymentCodeProvider, PaymentFactsProvider {
+        .followRedirects(HttpClient.Redirect.NEVER).build()) : PaymentCodeProvider, PaymentFactsProvider, SubscriptionProvider {
     private val mapper = jacksonObjectMapper()
     init {
         require(baseUrl.scheme == "https" || (baseUrl.scheme == "http" && baseUrl.host in setOf("localhost", "127.0.0.1", "::1")))
@@ -52,13 +54,7 @@ class HttpAsaasPaymentCodes(private val baseUrl: URI, private val platformWallet
     override fun createCardCharge(accountId: UUID, codeId: UUID, customer: CardCustomer, amountCents: Long, commissionCents: Long,
                                   dueDate: LocalDate, description: String, savedCustomer: (String) -> Unit): CardCharge? {
         val key = credentials.apiKey(accountId)
-        val customerId = customer.providerId ?: run {
-            val found = single(send(key, "GET", "/customers?externalReference=${encoded(customer.reference.toString())}&limit=2"))
-            val node = found ?: send(key, "POST", "/customers", mapOf("name" to customer.name, "cpfCnpj" to customer.cpf,
-                "externalReference" to customer.reference.toString(), "notificationDisabled" to true))
-            require(node.path("externalReference").asText() == customer.reference.toString())
-            identifier(node, "id").also(savedCustomer)
-        }
+        val customerId = customerId(key, customer, savedCustomer)
         val created = try {
             send(key, "POST", "/payments", mapOf("customer" to customerId, "billingType" to "CREDIT_CARD",
                 "value" to BigDecimal.valueOf(amountCents, 2), "dueDate" to dueDate.toString(), "description" to description,
@@ -74,6 +70,76 @@ class HttpAsaasPaymentCodes(private val baseUrl: URI, private val platformWallet
         require(uri.scheme == "https" && uri.userInfo == null && uri.host != null && (uri.host == "asaas.com" || uri.host.endsWith(".asaas.com")))
         return CardCharge(identifier(created, "id"), url)
     }
+
+    /** Cliente por (conta, atleta), criado sob demanda com o nome do perfil e o CPF guardado; consulta antes de criar. */
+    private fun customerId(key: String, customer: CardCustomer, saved: (String) -> Unit): String = customer.providerId ?: run {
+        val found = single(send(key, "GET", "/customers?externalReference=${encoded(customer.reference.toString())}&limit=2"))
+        val node = found ?: send(key, "POST", "/customers", mapOf("name" to customer.name, "cpfCnpj" to customer.cpf,
+            "externalReference" to customer.reference.toString(), "notificationDisabled" to true))
+        require(node.path("externalReference").asText() == customer.reference.toString())
+        identifier(node, "id").also(saved)
+    }
+
+    override fun createCheckout(accountId: UUID, subscriptionId: UUID, customer: CardCustomer, amountCents: Long, commissionCents: Long,
+                                nextDueDate: LocalDate, savedCustomer: (String) -> Unit): HostedCheckout {
+        val key = credentials.apiKey(accountId)
+        val callback = requireNotNull(callbackBaseUrl).toString().trimEnd('/') + "/receivables/return/"
+        val node = send(key, "POST", "/checkouts", mapOf("billingTypes" to listOf("CREDIT_CARD"), "chargeTypes" to listOf("RECURRENT"),
+            "minutesToExpire" to 60, "externalReference" to subscriptionId.toString(), "customer" to customerId(key, customer, savedCustomer),
+            "callback" to mapOf("successUrl" to callback + "success", "cancelUrl" to callback + "cancel", "expiredUrl" to callback + "expired"),
+            "items" to listOf(mapOf("name" to "Mensalidade", "description" to "Mensalidade no cartão", "quantity" to 1,
+                "value" to BigDecimal.valueOf(amountCents, 2))),
+            "subscription" to mapOf("cycle" to "MONTHLY", "nextDueDate" to nextDueDate.toString()),
+            "splits" to splits(commissionCents)))
+        val id = identifier(node, "id")
+        val link = node.get("link")?.asText()?.takeIf { it.isNotBlank() } ?: "https://asaas.com/checkoutSession/show?id=$id"
+        val uri = URI(link)
+        require(uri.scheme == "https" && uri.userInfo == null && uri.host != null && (uri.host == "asaas.com" || uri.host.endsWith(".asaas.com")))
+        return HostedCheckout(id, link)
+    }
+
+    override fun subscriptionOfCheckout(accountId: UUID, checkoutId: String): String? {
+        val payment = single(send(credentials.apiKey(accountId), "GET", "/payments?checkoutSession=${encoded(checkoutId)}&limit=2")) ?: return null
+        return payment.path("subscription").asText().takeIf { it.isNotBlank() }?.let(::safeId)
+    }
+
+    override fun cancelSubscription(accountId: UUID, subscriptionId: String): Boolean {
+        val node = send(credentials.apiKey(accountId), "DELETE", "/subscriptions/${safeId(subscriptionId)}")
+        return node.path("deleted").asBoolean(false)
+    }
+
+    override fun cancelCheckout(accountId: UUID, checkoutId: String): Boolean {
+        send(credentials.apiKey(accountId), "POST", "/checkouts/${safeId(checkoutId)}/cancel"); return true
+    }
+
+    /**
+     * Reajuste (FIN-012): valor novo só nas cobranças que ainda vão nascer (`updatePendingPayments=false`) e a divisão
+     * recalculada. A troca de valor em cartão pode exigir o cartão tokenizado no Asaas: validar no sandbox (DEB-138).
+     */
+    override fun updateSubscriptionValue(accountId: UUID, subscriptionId: String, amountCents: Long, commissionCents: Long): Boolean {
+        val node = send(credentials.apiKey(accountId), "PUT", "/subscriptions/${safeId(subscriptionId)}", mapOf(
+            "value" to BigDecimal.valueOf(amountCents, 2), "updatePendingPayments" to false, "split" to splits(commissionCents)))
+        return node.path("id").asText() == subscriptionId && cents(node, "value") == amountCents
+    }
+
+    override fun subscriptionPayments(accountId: UUID, subscriptionId: String): List<SubscriptionPayment> {
+        val key = credentials.apiKey(accountId)
+        val result = mutableListOf<SubscriptionPayment>()
+        var offset = 0
+        repeat(20) {
+            val page = send(key, "GET", "/subscriptions/${safeId(subscriptionId)}/payments?limit=100&offset=$offset")
+            page.path("data").forEach { node ->
+                result += SubscriptionPayment(identifier(node, "id"), LocalDate.parse(required(node, "dueDate")), node.path("status").asText(),
+                    cents(node, "value"))
+            }
+            if (!page.path("hasMore").asBoolean(false)) return result
+            offset += 100
+        }
+        return result
+    }
+
+    private fun splits(commissionCents: Long): List<Map<String, Any>> = if (commissionCents == 0L) emptyList()
+        else listOf(mapOf("walletId" to platformWalletId, "fixedValue" to BigDecimal.valueOf(commissionCents, 2)))
 
     override fun cancelPixQr(accountId: UUID, qrId: String): Boolean =
         send(credentials.apiKey(accountId), "DELETE", "/pix/qrCodes/static/${safeId(qrId)}").path("deleted").asBoolean(true)
@@ -92,7 +158,9 @@ class HttpAsaasPaymentCodes(private val baseUrl: URI, private val platformWallet
         return ObservedPayment(identifier(node, "id"), cents(node, "value"),
             node.get("netValue")?.takeIf { it.isNumber }?.let { cents(node, "netValue") }, method, node.path("status").asText(),
             node.path("externalReference").asText().takeIf { it.isNotBlank() }, node.path("pixQrCodeId").asText().takeIf { it.isNotBlank() },
-            payer, node.path("deleted").asBoolean(false))
+            payer, node.path("deleted").asBoolean(false),
+            node.path("dueDate").asText().takeIf { it.isNotBlank() }?.let(LocalDate::parse),
+            node.path("subscription").asText().takeIf { it.isNotBlank() }, node.path("checkoutSession").asText().takeIf { it.isNotBlank() })
     }
 
     override fun transfer(accountId: UUID, operationId: UUID, amountCents: Long): String? {

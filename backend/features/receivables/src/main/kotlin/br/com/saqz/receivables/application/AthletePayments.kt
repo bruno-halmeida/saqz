@@ -76,7 +76,9 @@ class ProviderUnavailable : RuntimeException("Provider unavailable")
 class AthletePayments(private val store: PaymentCodeStore, private val ledger: GroupChargeLedger,
     private val conditions: FinancialConditions, private val eligibility: ReceivablesEligibility,
     private val rollout: ReceivablesRolloutAccess, private val provider: PaymentCodeProvider,
-    private val clock: Clock, private val zone: ZoneId = ZoneId.of("America/Sao_Paulo")) {
+    private val clock: Clock, private val zone: ZoneId = ZoneId.of("America/Sao_Paulo"),
+    /** `recurrence` do `/me` (F3): a mensalidade no cartão do atleta naquele grupo, ou nula. */
+    private val recurrence: (UUID, UUID) -> Any? = { _, _ -> null }) {
 
     fun me(groupId: UUID, request: FinancialRequest): FinancialResult<AthletePaymentState> = safely(request) {
         store.transaction {
@@ -88,7 +90,8 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
             val charges = ledger.openCharges(groupId, request.actorUserId).map { it.view(today) }
             AthletePaymentState(active, if (active) ledger.displayName(group.ownerUserId) else null,
                 if (active) listOf(PaymentMethod.PIX, PaymentMethod.CARD) else emptyList(),
-                active && account!!.pixKey != null, store.hasDocument(request.actorUserId), charges, charges.sumOf { it.payableCents })
+                active && account!!.pixKey != null, store.hasDocument(request.actorUserId), charges, charges.sumOf { it.payableCents },
+                recurrence(groupId, request.actorUserId))
         }
     }
 
@@ -101,32 +104,48 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
                 if (prior != digest) fail(FinancialError.CONFLICT)
                 return@transaction store.find(id)!!
             }
-            ledger.group(groupId) ?: fail(FinancialError.NOT_FOUND)
-            if (!ledger.isActiveMember(groupId, request.actorUserId)) fail(FinancialError.NOT_FOUND)
-            val account = store.receivingAccount(groupId) ?: fail(FinancialError.OPERATIONS_DISABLED)
-            if (!available(account)) fail(FinancialError.OPERATIONS_DISABLED)
-            if (!account.webhookReady) fail(FinancialError.CONFIGURATION_UNAVAILABLE)
-            store.lockPayer(groupId, request.actorUserId)
-            val charges = ledger.lock(chargeIds)
-            if (charges.size != chargeIds.size || charges.any { it.groupId != groupId || it.memberUserId != request.actorUserId || it.status != "PENDING" })
-                fail(FinancialError.CHARGE_NOT_PAYABLE)
-            if (method == PaymentMethod.PIX && account.pixKey == null) fail(FinancialError.PIX_NOT_READY)
-            if (method == PaymentMethod.CARD && !store.hasDocument(request.actorUserId)) fail(FinancialError.DOCUMENT_REQUIRED)
-            val amount = charges.sumOf { it.payableCents }
-            val reusable = store.live(groupId, request.actorUserId, method, key)?.takeIf { it.amountCents == amount && it.status == "PENDING" }
-            val stored = reusable ?: run {
-                val schedule = conditions.current(setOf(method), clock.instant(), account.accountId).singleOrNull()
-                    ?: fail(FinancialError.CONFIGURATION_UNAVAILABLE)
-                StoredPaymentCode(UUID.randomUUID(), account.accountId, groupId, request.actorUserId, method, amount,
-                    FeeCalculator.commission(amount, schedule), chargeIds, "CREATING", null, null, null, null)
-                    .also { store.insert(it, key, schedule.id, clock.instant()) }
-            }
+            val stored = prepare(groupId, request.actorUserId, method, chargeIds, key)
             store.remember(request.actorUserId, request.requestId, digest, stored.id)
             stored
         }
         if (code.status == "CREATING") issue(code)
         view(store.transaction { refreshed(code.id) })
     }
+
+    /** Valida e reserva o código (dentro da transação): atleta membro, recebimentos ativos, cobranças dele em aberto. */
+    private fun prepare(groupId: UUID, payerId: UUID, method: PaymentMethod, chargeIds: List<UUID>, key: String): StoredPaymentCode {
+        ledger.group(groupId) ?: fail(FinancialError.NOT_FOUND)
+        if (!ledger.isActiveMember(groupId, payerId)) fail(FinancialError.NOT_FOUND)
+        val account = store.receivingAccount(groupId) ?: fail(FinancialError.OPERATIONS_DISABLED)
+        if (!available(account)) fail(FinancialError.OPERATIONS_DISABLED)
+        if (!account.webhookReady) fail(FinancialError.CONFIGURATION_UNAVAILABLE)
+        store.lockPayer(groupId, payerId)
+        val charges = ledger.lock(chargeIds)
+        if (charges.size != chargeIds.size || charges.any { it.groupId != groupId || it.memberUserId != payerId || it.status != "PENDING" })
+            fail(FinancialError.CHARGE_NOT_PAYABLE)
+        if (method == PaymentMethod.PIX && account.pixKey == null) fail(FinancialError.PIX_NOT_READY)
+        if (method == PaymentMethod.CARD && !store.hasDocument(payerId)) fail(FinancialError.DOCUMENT_REQUIRED)
+        val amount = charges.sumOf { it.payableCents }
+        val reusable = store.live(groupId, payerId, method, key)?.takeIf { it.amountCents == amount && it.status == "PENDING" }
+        return reusable ?: run {
+            val schedule = conditions.current(setOf(method), clock.instant(), account.accountId).singleOrNull()
+                ?: fail(FinancialError.CONFIGURATION_UNAVAILABLE)
+            StoredPaymentCode(UUID.randomUUID(), account.accountId, groupId, payerId, method, amount,
+                FeeCalculator.commission(amount, schedule), chargeIds, "CREATING", null, null, null, null)
+                .also { store.insert(it, key, schedule.id, clock.instant()) }
+        }
+    }
+
+    /**
+     * Código Pix interno (F3/F4: recusa do cartão e "Cobrar" no WhatsApp), sem requestId do app. Reaproveita o PENDING do
+     * mesmo conjunto; nulo quando não dá (sem chave, cobrança resolvida, Asaas fora), e a mensagem sai sem o copia e cola.
+     */
+    fun internalPix(groupId: UUID, payerId: UUID, chargeIds: List<UUID>): PixCode? = try {
+        val key = chargeIds.sortedBy { it.toString() }.joinToString(",")
+        val code = store.transaction { prepare(groupId, payerId, PaymentMethod.PIX, chargeIds, key) }
+        if (code.status == "CREATING") issue(code)
+        store.transaction { refreshed(code.id) }.takeIf { it.status == "PENDING" }?.pix
+    } catch (_: Exception) { null }
 
     fun get(codeId: UUID, request: FinancialRequest): FinancialResult<PaymentCodeView> = safely(request) {
         val code = store.transaction { store.find(codeId)?.takeIf { it.payerId == request.actorUserId } ?: fail(FinancialError.NOT_FOUND) }
@@ -185,7 +204,8 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
         return store.find(id)!!
     }
 
-    private fun available(account: ReceivingAccount) = account.registration == RegistrationStatus.APPROVED &&
+    /** Dá para fazer negócio novo pelo app (código, adesão ao cartão): conta aprovada, plano e liberação do adm. */
+    fun available(account: ReceivingAccount) = account.registration == RegistrationStatus.APPROVED &&
         account.newOperationsEnabled && eligibility.forOwner(account.ownerUserId, clock.instant()).eligible &&
         rollout.availability(account.ownerUserId).backendEnabled
 
@@ -218,7 +238,8 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
 
 /** Fatos do Asaas lidos de novo a cada aviso: o corpo do webhook só acorda o processamento. */
 data class ObservedPayment(val id: String, val valueCents: Long, val netCents: Long?, val method: PaymentMethod?,
-    val status: String, val externalReference: String?, val pixQrCodeId: String?, val payerName: String?, val deleted: Boolean)
+    val status: String, val externalReference: String?, val pixQrCodeId: String?, val payerName: String?, val deleted: Boolean,
+    val dueDate: LocalDate? = null, val subscriptionId: String? = null, val checkoutSession: String? = null)
 
 interface PaymentFactsProvider {
     fun payment(accountId: UUID, paymentId: String): ObservedPayment

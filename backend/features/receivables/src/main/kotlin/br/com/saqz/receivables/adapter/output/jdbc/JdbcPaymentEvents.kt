@@ -57,7 +57,8 @@ class JdbcPaymentEvents(dataSource: DataSource, private val secrets: FinancialSe
                     // v1 (FIN-014): código do Saqz por externalReference ou pixQrCodeId, ou Pix fora de código (revisão).
                     val handled = settlement?.handle(account, node.path("event").asText(), payment.path("id").asText(),
                         payment.path("externalReference").asText().ifBlank { null }, payment.path("pixQrCodeId").asText().ifBlank { null },
-                        payment.path("billingType").asText() == "PIX")
+                        payment.path("billingType").asText() == "PIX", payment.path("subscription").asText().ifBlank { null },
+                        payment.path("checkoutSession").asText().ifBlank { null })
                     when (handled) {
                         true -> { processed(event); processed++; JobLog.item("payment_events", "event_settled", "eventId" to event, "accountId" to account) }
                         false -> { failure(event, account, "PROVIDER_RESULT_PENDING"); failed++ }
