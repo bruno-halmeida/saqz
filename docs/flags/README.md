@@ -32,6 +32,10 @@ e busca as flags de novo.
 - Nunca barre a validação de compra da App Store ou do Google Play.
 - Para o que roda sem pessoa (filas, jobs), use `FeatureFlags.enabledOnServer(chave)`: ligada quando o estado não é
   "desligada" e ao menos um interruptor de plataforma está ligado. É assim que a fila do WhatsApp obedece a flag.
+  **Limite:** isso ignora público, listas e porcentagem. Com a flag `whatsapp` ligada só para uma parte das pessoas, as
+  mensagens saem para todos; com ela desligada e alguém em "sempre ligada", nada sai. A mensagem descartada pela flag
+  não volta para a fila. A correção (fila sabendo de quem é a mensagem) é a DEB-144 do cofre; faça antes de liberar o
+  WhatsApp para só uma parte das pessoas.
 
 Hoje barram: `POST /subscriptions` (`purchases_asaas`, só app) e `PUT /api/groups/{id}/whatsapp-binding` (`whatsapp`).
 O chat ainda não tem rota no backend.
