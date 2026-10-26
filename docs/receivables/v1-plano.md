@@ -164,7 +164,8 @@ Atleta (o próprio, logado):
   (`/send/menu`). Jogo: "Jogo finalizado, hora do acerto" / botão "Pagar meu jogo". Mensal: "Mensalistas, hora do
   acerto" / "Pagar mensalidade". Nunca diz quem deve.
 - Botão: link no padrão do link de presença (mesmo domínio e mesmas regras: sem app → loja; deslogado → login), com um
-  código por (grupo, jogo) ou (grupo, mês), no caminho `/acerto/{codigo}`. O app resolve com
+  código por (grupo, jogo) ou (grupo, mês): `https://links.saqz.app/acerto/{codigo}` (como `/attendance/{codigo}`; o
+  `apple-app-site-association` e a página do links.saqz.app ficam com a F4, o intent filter e o iPhone com a F2). O app resolve com
   `GET /api/receivables/settle-links/{codigo}` → `{groupId,gameId,billingMonth}` e abre o pagamento do atleta logado com as
   cobranças em aberto daquele jogo (dele e dos convidados) ou daquela mensalidade, filtradas do `/me`. Quem não deve vê
   "Você não tem nada em aberto aqui". Push "Hora do acerto" e "Cobrar" abrem o mesmo destino.
