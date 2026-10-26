@@ -35,6 +35,10 @@ services:
       SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS: ${SAQZ_NOTIFICATIONS_REMINDER_DELAY_MS:-25200000}
       # Janela de presença das 24 h com o cartão ao vivo (DEB-113): ligada só em dev para o teste em aparelho; produção desligada.
       SAQZ_NOTIFICATIONS_ATTENDANCEWINDOW_ENABLED: ${SAQZ_NOTIFICATIONS_ATTENDANCEWINDOW_ENABLED:-true}
+    # Recebimento pelo app (DEB-140): SAQZ_RECEIVABLES_* só nesse arquivo, sem linha vazia (variável vazia liga a
+    # configuração e derruba a subida). O deploy cria o arquivo vazio se faltar; vazio = recebimento desligado.
+    env_file:
+      - ${SAQZ_RECEIVABLES_ENV_FILE:-./receivables.env}
     depends_on: !reset {}
     networks:
       - default

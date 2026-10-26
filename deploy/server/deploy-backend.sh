@@ -16,6 +16,10 @@ k() { /usr/local/bin/k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml "$@"; }
 
 if [[ "$target" == dev ]]; then
   [[ -f "$repo_dir/.env" ]] || fail 'Arquivo .env de dev não encontrado no servidor.'
+  # Recebimento pelo app (DEB-140): variáveis só no receivables.env (600). Vazio = recebimento desligado; o arquivo
+  # precisa existir porque o compose não aceita env_file ausente em todas as versões.
+  [[ -f "$repo_dir/receivables.env" ]] || install -m 600 /dev/null "$repo_dir/receivables.env"
+  export SAQZ_RECEIVABLES_ENV_FILE="$repo_dir/receivables.env"
   export SAQZ_BACKEND_VERSION="$version"
   compose=(docker compose --project-directory "$repo_dir" --env-file "$repo_dir/.env"
     -f "$bundle_dir/compose.yaml" -f "$bundle_dir/compose.server.yaml" -f "$script_dir/compose.image.yaml")
