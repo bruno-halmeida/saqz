@@ -237,6 +237,23 @@ class ReceivablesV1RecurrenceAndSettleIntegrationTest {
         assertEquals(listOf("ACCEPTED", "ACCEPTED"), f.jdbc.sql("SELECT status FROM notification_whatsapp_queue ORDER BY notification_id").query(String::class.java).list())
     }
 
+    @Test fun `adesao cobrada na hora no dia 22 realinha a assinatura para o dia 10 e a troca do dia realinha de novo`() = fixture { f ->
+        f.clock.set(java.time.Instant.parse("2026-10-22T15:00:00Z"))
+        f.monthly("2026-10")
+        f.active()
+        assertEquals("2026-10-22", f.remote.lastCheckout!!["subscription"]["nextDueDate"].asText(), "mês em aberto: primeira cobrança hoje")
+        f.remote.subscriptionPayments = listOf(mapOf("id" to "pay_wrong", "dueDate" to "2026-11-22", "status" to "PENDING", "value" to 100))
+        f.cards.realignDueDates()
+        assertEquals(listOf("2026-11-10"), f.remote.realigned, "outubro já foi cobrado na adesão: a seguinte é 10/11")
+        assertEquals(listOf("/v3/payments/pay_wrong"), f.remote.deletes, "cobrança gerada no dia 22 sai para o Asaas gerar no dia 10")
+        f.remote.subscriptionPayments = emptyList()
+        f.cards.realignDueDates()
+        assertEquals(1, f.remote.realigned.size, "já alinhada: não repete")
+        f.sql("UPDATE group_memberships SET monthly_due_day=15 WHERE user_id='${f.athlete}'")
+        f.cards.realignDueDates()
+        assertEquals("2026-11-15", f.remote.realigned.last())
+    }
+
     private fun fixture(block: (Fixture) -> Unit) { Remote().use { block(Fixture(it)) } }
 
     class MutableClock(var now: Instant) : Clock() {
@@ -349,6 +366,7 @@ class ReceivablesV1RecurrenceAndSettleIntegrationTest {
         var lastCheckout: JsonNode? = null; var lastPut: JsonNode? = null
         var checkoutSubscription: String? = null
         var subscriptionPayments: List<Map<String, Any>> = emptyList()
+        val realigned = mutableListOf<String>()
         val deletes = mutableListOf<String>()
         private val payments = mutableMapOf<String, Map<String, Any?>>()
         fun payment(id: String, billing: String, cents: Long, net: Long, status: String, due: String, subscription: String? = null) {
@@ -371,7 +389,8 @@ class ReceivablesV1RecurrenceAndSettleIntegrationTest {
                     path.startsWith("/v3/subscriptions/") && path.endsWith("/payments") -> mapOf("hasMore" to false, "data" to subscriptionPayments)
                     path.startsWith("/v3/subscriptions/") && method == "PUT" -> {
                         subscriptionPuts++; lastPut = mapper.readTree(exchange.requestBody.readBytes())
-                        mapOf("id" to path.substringAfterLast('/'), "value" to lastPut!!["value"].decimalValue())
+                        lastPut!!["nextDueDate"]?.let { realigned += it.asText() }
+                        mapOf("id" to path.substringAfterLast('/'), "value" to (lastPut!!["value"]?.decimalValue() ?: BigDecimal.ONE))
                     }
                     method == "DELETE" -> { deletes += path; mapOf("deleted" to true, "id" to path.substringAfterLast('/')) }
                     path.startsWith("/v3/payments/") -> payments.getValue(path.substringAfterLast('/'))

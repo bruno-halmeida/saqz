@@ -85,7 +85,7 @@ class CardSubscriptionJobs(private val cards: CardSubscriptions) {
     @Scheduled(fixedDelayString = "\${saqz.receivables.subscription-delay-ms:300000}")
     fun run() {
         JobLog.frequent("card_subscriptions", {
-            cards.activatePending(); cards.enforceCutoffs(); cards.adjustValues(); cards.removeExemptMonths()
+            cards.activatePending(); cards.enforceCutoffs(); cards.realignDueDates(); cards.adjustValues(); cards.removeExemptMonths()
         }) { mapOf("ran" to 1) }
     }
 }

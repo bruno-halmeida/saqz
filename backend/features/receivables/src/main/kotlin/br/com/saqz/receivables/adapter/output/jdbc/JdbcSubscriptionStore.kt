@@ -46,12 +46,13 @@ class JdbcSubscriptionStore(dataSource: DataSource) : SubscriptionStore {
     override fun insert(subscription: CardSubscription, requestId: UUID) {
         jdbc.sql("""
             INSERT INTO card_subscriptions(id,account_id,group_id,member_user_id,status,amount_cents,commission_cents,first_due_date,request_id,
-                replaces_id,created_at,updated_at)
-            VALUES (:id,:account,:group,:member,:status,:amount,:commission,:first,:request,:replaces,:at,:at)
+                replaces_id,created_at,updated_at,aligned_due_day)
+            VALUES (:id,:account,:group,:member,:status,:amount,:commission,:first,:request,:replaces,:at,:at,:aligned)
         """.trimIndent()).param("id", subscription.id).param("account", subscription.accountId).param("group", subscription.groupId)
             .param("member", subscription.memberId).param("status", subscription.status).param("amount", subscription.amountCents)
             .param("commission", subscription.commissionCents).param("first", subscription.firstDueDate).param("request", requestId)
-            .param("replaces", subscription.replacesId, java.sql.Types.OTHER).param("at", Timestamp.from(subscription.createdAt)).update()
+            .param("replaces", subscription.replacesId, java.sql.Types.OTHER).param("at", Timestamp.from(subscription.createdAt))
+            .param("aligned", subscription.alignedDueDay, java.sql.Types.INTEGER).update()
     }
 
     override fun checkout(id: UUID, checkout: HostedCheckout) {
@@ -91,6 +92,10 @@ class JdbcSubscriptionStore(dataSource: DataSource) : SubscriptionStore {
     override fun applyChange(id: UUID, amountCents: Long, commissionCents: Long) {
         jdbc.sql("""UPDATE card_subscriptions SET amount_cents=:amount,commission_cents=:commission,next_amount_cents=NULL,next_amount_from=NULL,
             updated_at=now() WHERE id=:id""").param("amount", amountCents).param("commission", commissionCents).param("id", id).update()
+    }
+
+    override fun aligned(id: UUID, dueDay: Int) {
+        jdbc.sql("UPDATE card_subscriptions SET aligned_due_day=:day,updated_at=now() WHERE id=:id").param("day", dueDay).param("id", id).update()
     }
 
     override fun refused(id: UUID, chargeId: UUID?) {
@@ -148,5 +153,6 @@ class JdbcSubscriptionStore(dataSource: DataSource) : SubscriptionStore {
         rs.getTimestamp("change_notified_at")?.toInstant(), rs.getObject("first_due_date", LocalDate::class.java),
         rs.getObject("replaces_id", UUID::class.java), rs.getString("provider_checkout_id"), rs.getString("checkout_url"),
         rs.getString("provider_subscription_id"), rs.getObject("refused_charge_id", UUID::class.java), rs.getTimestamp("created_at").toInstant(),
+        rs.getObject("aligned_due_day") as Int?,
     )
 }

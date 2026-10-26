@@ -122,6 +122,16 @@ class HttpAsaasPaymentCodes(private val baseUrl: URI, private val platformWallet
         return node.path("id").asText() == subscriptionId && cents(node, "value") == amountCents
     }
 
+    /**
+     * Realinhamento (FIN-012): `nextDueDate` da assinatura. Ponto do sandbox (DEB-138): confirmar que o PUT não mexe na
+     * cobrança já gerada e que, apagada a cobrança na data errada, o Asaas gera de novo na data nova.
+     */
+    override fun realignSubscription(accountId: UUID, subscriptionId: String, nextDueDate: LocalDate): Boolean {
+        val node = send(credentials.apiKey(accountId), "PUT", "/subscriptions/${safeId(subscriptionId)}", mapOf(
+            "nextDueDate" to nextDueDate.toString(), "updatePendingPayments" to false))
+        return node.path("id").asText() == subscriptionId
+    }
+
     override fun subscriptionPayments(accountId: UUID, subscriptionId: String): List<SubscriptionPayment> {
         val key = credentials.apiKey(accountId)
         val result = mutableListOf<SubscriptionPayment>()

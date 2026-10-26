@@ -26,6 +26,8 @@ interface SubscriptionProvider {
     fun cancelCheckout(accountId: UUID, checkoutId: String): Boolean
     fun updateSubscriptionValue(accountId: UUID, subscriptionId: String, amountCents: Long, commissionCents: Long): Boolean
     fun subscriptionPayments(accountId: UUID, subscriptionId: String): List<SubscriptionPayment>
+    /** Próxima cobrança da assinatura na data dada (o ciclo MONTHLY segue dali). */
+    fun realignSubscription(accountId: UUID, subscriptionId: String, nextDueDate: LocalDate): Boolean
     fun cancelPayment(accountId: UUID, paymentId: String): Boolean
 }
 
@@ -38,7 +40,9 @@ interface SettleLinkUrls {
 data class CardSubscription(val id: UUID, val accountId: UUID, val groupId: UUID, val memberId: UUID, val status: String,
     val amountCents: Long, val commissionCents: Long, val nextAmountCents: Long?, val nextAmountFrom: LocalDate?,
     val changeNotifiedAt: Instant?, val firstDueDate: LocalDate, val replacesId: UUID?, val checkoutId: String?,
-    val checkoutUrl: String?, val providerSubscriptionId: String?, val refusedChargeId: UUID?, val createdAt: Instant)
+    val checkoutUrl: String?, val providerSubscriptionId: String?, val refusedChargeId: UUID?, val createdAt: Instant,
+    /** Dia de vencimento para o qual a assinatura no Asaas está alinhada; nulo = realinhar. */
+    val alignedDueDay: Int? = null)
 
 interface SubscriptionStore {
     fun <T> transaction(block: () -> T): T
@@ -58,6 +62,7 @@ interface SubscriptionStore {
     fun scheduleChange(id: UUID, amountCents: Long?, from: LocalDate?)
     fun changeNotified(id: UUID, at: Instant)
     fun applyChange(id: UUID, amountCents: Long, commissionCents: Long)
+    fun aligned(id: UUID, dueDay: Int)
     fun refused(id: UUID, chargeId: UUID?)
     fun clearRefused(chargeIds: Collection<UUID>)
     /** Guarda a cobrança gerada pela assinatura e devolve quando ela foi vista pela primeira vez. */
@@ -141,8 +146,10 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
                 current == null && dueIn(month, dueDay) >= today -> dueIn(month, dueDay)
                 else -> dueIn(month.plusMonths(1), dueDay)
             }
+            // Cobrada na hora fora do dia de vencimento: a assinatura precisa ser realinhada depois de ativar.
             CardSubscription(UUID.randomUUID(), account.accountId, group.id, member, "AUTHORIZING", amount,
-                FeeCalculator.commission(amount, schedule), null, null, null, first, active?.id, null, null, null, null, clock.instant())
+                FeeCalculator.commission(amount, schedule), null, null, null, first, active?.id, null, null, null, null, clock.instant(),
+                dueDay.takeIf { first.dayOfMonth == dueIn(first.withDayOfMonth(1), it).dayOfMonth })
                 .also { store.insert(it, request.requestId) }
         }
         subscription.checkoutUrl?.let { return RecurrenceCheckout(it) }
@@ -289,6 +296,33 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
                     catch (_: Exception) { false }
                 if (updated) store.transaction { store.applyChange(current.id, target, commission) }
             }
+        }
+    }
+
+    /**
+     * Realinha o ciclo da assinatura ao dia de vencimento do atleta (FIN-012, protótipo Netflix-Gerenciar: "Julho · cobrado
+     * na adesão, 22/07", "Agosto · cobrado em 10/08"): depois da adesão que cobrou na hora e quando o dia do atleta muda.
+     * A próxima cobrança vai para o primeiro vencimento de um mês ainda não coberto; cobrança futura já gerada na data errada
+     * é apagada para o Asaas gerar de novo na data certa.
+     */
+    fun realignDueDates() {
+        val today = today()
+        store.transaction { store.withStatus("ACTIVE") }.forEach { subscription ->
+            val remote = subscription.providerSubscriptionId ?: return@forEach
+            val dueDay = store.transaction { ledger.membership(subscription.groupId, subscription.memberId)?.dueDay } ?: return@forEach
+            if (subscription.alignedDueDay == dueDay) return@forEach
+            var next = nextDue(dueDay, today.plusDays(1))
+            val covered = store.transaction {
+                val charge = ledger.monthlyCharge(subscription.groupId, subscription.memberId, next.withDayOfMonth(1))
+                (charge != null && charge.status != "PENDING") || subscription.firstDueDate.withDayOfMonth(1) == next.withDayOfMonth(1)
+            }
+            if (covered) next = dueIn(next.withDayOfMonth(1).plusMonths(1), dueDay)
+            val moved = try { provider.realignSubscription(subscription.accountId, remote, next) } catch (_: Exception) { false }
+            if (!moved) return@forEach
+            val stale = try { provider.subscriptionPayments(subscription.accountId, remote) } catch (_: Exception) { return@forEach }
+                .filter { it.status == "PENDING" && it.dueDate > today && it.dueDate != next }
+            if (stale.all { runCatching { provider.cancelPayment(subscription.accountId, it.id) }.getOrDefault(false) })
+                store.transaction { store.aligned(subscription.id, dueDay) }
         }
     }
 
