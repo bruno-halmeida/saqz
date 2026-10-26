@@ -9,7 +9,9 @@ enum class ExpenseStatus{ACTIVE,VOIDED}
 enum class ExpenseAction{CREATED,EDITED,VOIDED}
 data class ExpenseDraft(val description:String?,val amountCents:Long?,val expenseDate:LocalDate?,val category:ExpenseCategory?,val customCategory:String?=null,val notes:String?=null,val direction:ExpenseDirection?=null)
 data class ExpenseSnapshot(val description:String,val amountCents:Long,val expenseDate:LocalDate,val category:ExpenseCategory,val customCategory:String?,val notes:String?,val direction:ExpenseDirection=ExpenseDirection.OUT)
-data class Expense(val id:UUID,val groupId:UUID,val snapshot:ExpenseSnapshot,val status:ExpenseStatus=ExpenseStatus.ACTIVE,val version:Long=1){init{require(version>=1)}}
+data class Expense(val id:UUID,val groupId:UUID,val snapshot:ExpenseSnapshot,val status:ExpenseStatus=ExpenseStatus.ACTIVE,val version:Long=1,
+    /** Lançamento automático do recebimento pelo app (RECEIVABLES_FEES/RECEIVABLES_REVIEW): o gestor não edita nem anula. */
+    val origin:String?=null){init{require(version>=1)}}
 data class ExpenseEvent(val id:UUID,val expenseId:UUID,val actorId:UUID,val action:ExpenseAction,val snapshot:ExpenseSnapshot,val status:ExpenseStatus,val version:Long,val occurredAt:Instant)
 data class ExpenseValidation(val snapshot:ExpenseSnapshot?,val fields:Set<String>)
 object ExpenseValidator{
