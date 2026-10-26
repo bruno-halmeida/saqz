@@ -14,6 +14,7 @@ class GroupReceivablesRequest {
     var methods: Set<PaymentMethod>? = null
     var fingerprint: String? = null
     var accepted: Boolean = false
+    var feePolicy: FeePolicy? = null
 }
 
 @RestController
@@ -39,6 +40,20 @@ class GroupReceivablesController(private val actors: FinancialActorResolver, pri
         service.activate(account, groupId, request, body.methods.orEmpty(), body.fingerprint.orEmpty(), body.accepted)
     }
 
+    @PutMapping("/fee-policy")
+    fun feePolicy(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: UUID,
+                  @RequestBody body: GroupReceivablesRequest): ResponseEntity<*> = execute(identity, body) { account, request ->
+        body.feePolicy?.let { service.feePolicy(account, groupId, request, it) }
+            ?: FinancialResult.Failure(FinancialError.INVALID_INPUT, request.requestId)
+    }
+
+    @GetMapping("/quote")
+    fun quote(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: UUID,
+              @RequestParam accountId: UUID, @RequestParam baseCents: Long): ResponseEntity<*> {
+        val result = service.quote(accountId, groupId, baseCents, FinancialRequest(UUID.randomUUID(), actors.resolve(identity)))
+        return ResponseEntity.status(status(result)).header("Cache-Control", "no-store").body(result)
+    }
+
     @PostMapping("/deactivate")
     fun deactivate(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: UUID,
                    @RequestBody body: GroupReceivablesRequest): ResponseEntity<*> = execute(identity, body) { account, request ->
@@ -52,15 +67,17 @@ class GroupReceivablesController(private val actors: FinancialActorResolver, pri
             return ResponseEntity.badRequest().body(FinancialResult.Failure(FinancialError.INVALID_INPUT, id))
         }
         val result = action(body.accountId!!, FinancialRequest(id, actors.resolve(identity)))
-        return ResponseEntity.status(when (result) {
-            is FinancialResult.Success -> 200
-            is FinancialResult.Failure -> when (result.error) {
-                FinancialError.NOT_FOUND, FinancialError.UNAUTHORIZED -> 404
-                FinancialError.CONFLICT -> 409
-                FinancialError.INVALID_INPUT -> 400
-                FinancialError.CONFIGURATION_UNAVAILABLE, FinancialError.PROVIDER_UNAVAILABLE -> 503
-                else -> 403
-            }
-        }).body(result)
+        return ResponseEntity.status(status(result)).header("Cache-Control", "no-store").body(result)
+    }
+
+    private fun status(result: FinancialResult<*>) = when (result) {
+        is FinancialResult.Success -> 200
+        is FinancialResult.Failure -> when (result.error) {
+            FinancialError.NOT_FOUND, FinancialError.UNAUTHORIZED -> 404
+            FinancialError.CONFLICT -> 409
+            FinancialError.INVALID_INPUT -> 400
+            FinancialError.CONFIGURATION_UNAVAILABLE, FinancialError.PROVIDER_UNAVAILABLE -> 503
+            else -> 403
+        }
     }
 }

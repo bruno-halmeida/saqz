@@ -10,7 +10,13 @@ import java.time.Instant
 import java.util.UUID
 
 data class GroupReceivablesState(val accountId: UUID, val groupId: UUID, val enabled: Boolean,
-                                 val pixEnabled: Boolean, val cardEnabled: Boolean)
+                                 val pixEnabled: Boolean, val cardEnabled: Boolean,
+                                 /** FIN-010: ABSORB ou PASS; vale para as cobranças novas. */
+                                 val feePolicy: String = FeePolicy.ABSORB.name,
+                                 /** A chave aleatória da subconta existe: sem ela, o código Pix responde PIX_NOT_READY. */
+                                 val pixReady: Boolean = false,
+                                 /** Pix fora de código esperando o gestor dizer de quem é (FIN-014). */
+                                 val openReviews: Int = 0)
 data class GroupReceivablesMaintenance(val state: GroupReceivablesState, val permissions: Map<FinancialAction, ActionPermission>)
 data class GroupPriceQuotes(val kind: String, val baseCents: Long, val quotes: List<FeeQuote>)
 data class GroupReceivablesReview(val state: GroupReceivablesState, val schedules: List<FeeSchedule>,
@@ -25,12 +31,21 @@ interface GroupReceivablesStore {
     fun replay(accountId: UUID, request: FinancialRequest, digest: String): Boolean
     fun configure(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String,
                   review: GroupReceivablesReview?, at: Instant): GroupReceivablesState
+    /** Troca a política e o retrato das tarifas do Asaas usado no repasse das cobranças novas. */
+    fun feePolicy(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, policy: FeePolicy,
+                  snapshot: String, at: Instant): GroupReceivablesState
+}
+
+/** Efeitos de rede da ativação (chave Pix da subconta, webhook), sempre depois da transação. */
+fun interface GroupActivationEffects {
+    fun activated(accountId: UUID, request: FinancialRequest)
 }
 
 class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
     private val administrators: GroupAdministrationDirectory, private val groups: GroupFinancialSetupLookup,
     private val store: GroupReceivablesStore, private val conditions: FinancialConditions,
-    private val eligibility: ReceivablesEligibility, private val clock: Clock, private val rollout: ReceivablesRolloutAccess) {
+    private val eligibility: ReceivablesEligibility, private val clock: Clock, private val rollout: ReceivablesRolloutAccess,
+    private val effects: GroupActivationEffects = GroupActivationEffects { _, _ -> }) {
 
     fun read(accountId: UUID, groupId: UUID, request: FinancialRequest): FinancialResult<GroupReceivablesMaintenance> = safely(request) {
         store.transaction {
@@ -66,7 +81,7 @@ class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
         if (!accepted || methods.isEmpty() || !fingerprint.matches(Regex("[a-f0-9]{64}"))) {
             return@safely FinancialResult.Failure(FinancialError.INVALID_INPUT, request.requestId)
         }
-        store.transaction {
+        val result = store.transaction {
             val group = groups.lockActive(groupId) ?: return@transaction hidden(request)
             val account = store.lockAccount(accountId) ?: return@transaction hidden(request)
             val context = context(account, groupId, request)
@@ -87,6 +102,42 @@ class ManageGroupReceivables(private val accounts: FinancialAccountRepository,
             val review = review(group, context, methods)
             if (review.fingerprint != fingerprint) throw FinancialRequestConflict()
             FinancialResult.Success(store.configure(accountId, groupId, request, digest, review, clock.instant()), request.requestId)
+        }
+        if (result is FinancialResult.Success) {
+            // G: a chave aleatória e o webhook são garantidos depois do commit; falha aqui só adia o Pix (pixReady=false).
+            runCatching { effects.activated(accountId, request) }
+            return@safely FinancialResult.Success(store.transaction { store.state(accountId, groupId)!! }, request.requestId)
+        }
+        result
+    }
+
+    /** FIN-010: absorver ou repassar. Dono ou admin delegado; vale para as cobranças que nascerem depois. */
+    fun feePolicy(accountId: UUID, groupId: UUID, request: FinancialRequest, policy: FeePolicy): FinancialResult<GroupReceivablesState> = safely(request) {
+        store.transaction {
+            val account = store.lockAccount(accountId) ?: return@transaction hidden(request)
+            if (!FinancialAccess.permission(FinancialAction.READ, context(account, groupId, request, false)).allowed) return@transaction hidden(request)
+            val state = store.state(accountId, groupId)?.takeIf { it.enabled } ?: return@transaction hidden(request)
+            val digest = digest("FEE_POLICY:$groupId:$policy")
+            if (store.replay(accountId, request, digest)) return@transaction FinancialResult.Success(state, request.requestId)
+            val schedules = conditions.current(setOf(PaymentMethod.PIX, PaymentMethod.CARD), clock.instant(), accountId)
+            if (schedules.size != 2) throw ConditionsUnavailable()
+            FinancialResult.Success(store.feePolicy(accountId, groupId, request, digest, policy, FeeSnapshot.of(schedules), clock.instant()),
+                request.requestId)
+        }
+    }
+
+    /** Prévia "Atleta paga · Você recebe" nas duas escolhas, com a tarifa atual da conta (FIN-010). */
+    fun quote(accountId: UUID, groupId: UUID, baseCents: Long, request: FinancialRequest): FinancialResult<GroupFeeQuote> = safely(request) {
+        require(baseCents in 1..99_999_999)
+        store.transaction {
+            val account = store.lockAccount(accountId) ?: return@transaction hidden(request)
+            if (accounts.findById(accountId)?.ownerUserId != groups.lockActive(groupId)?.ownerUserId) return@transaction hidden(request)
+            if (!FinancialAccess.permission(FinancialAction.READ, context(account, groupId, request, false)).allowed) return@transaction hidden(request)
+            val schedules = conditions.current(setOf(PaymentMethod.PIX, PaymentMethod.CARD), clock.instant(), accountId)
+                .associateBy { it.method }
+            val pix = schedules[PaymentMethod.PIX] ?: throw ConditionsUnavailable()
+            val card = schedules[PaymentMethod.CARD] ?: throw ConditionsUnavailable()
+            FinancialResult.Success(groupFeeQuote(baseCents, pix, card), request.requestId)
         }
     }
 

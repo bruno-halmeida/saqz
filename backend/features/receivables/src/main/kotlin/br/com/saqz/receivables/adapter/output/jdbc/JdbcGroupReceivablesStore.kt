@@ -28,9 +28,10 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
         return accounts.findById(id)
     }
     override fun state(accountId: UUID, groupId: UUID): GroupReceivablesState? = jdbc.sql("""
-        SELECT enabled,pix_enabled,card_enabled FROM receivable_group_links WHERE account_id=:account AND group_id=:group
+        SELECT enabled,pix_enabled,card_enabled,fee_policy FROM receivable_group_links WHERE account_id=:account AND group_id=:group
     """.trimIndent()).param("account", accountId).param("group", groupId).query { rs, _ ->
-        GroupReceivablesState(accountId, groupId, rs.getBoolean("enabled"), rs.getBoolean("pix_enabled"), rs.getBoolean("card_enabled"))
+        GroupReceivablesState(accountId, groupId, rs.getBoolean("enabled"), rs.getBoolean("pix_enabled"), rs.getBoolean("card_enabled"),
+            rs.getString("fee_policy"))
     }.optional().orElse(null)
 
     override fun replay(accountId: UUID, request: FinancialRequest, digest: String): Boolean {
@@ -54,11 +55,12 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
             .param("group", groupId).param("digest", digest).param("at", Timestamp.from(at)).update()
         if (enabled) {
             jdbc.sql("""
-                INSERT INTO receivable_group_links(account_id,group_id,enabled,pix_enabled,card_enabled,activated_by,activated_at)
-                VALUES (:account,:group,true,:pix,:card,:actor,:at)
+                INSERT INTO receivable_group_links(account_id,group_id,enabled,pix_enabled,card_enabled,activated_by,activated_at,fee_policy,fee_snapshot)
+                VALUES (:account,:group,true,:pix,:card,:actor,:at,'ABSORB',CAST(:snapshot AS jsonb))
                 ON CONFLICT(account_id,group_id) DO UPDATE SET enabled=true,pix_enabled=EXCLUDED.pix_enabled,
-                    card_enabled=EXCLUDED.card_enabled,activated_by=EXCLUDED.activated_by,activated_at=EXCLUDED.activated_at,disabled_at=NULL
-            """.trimIndent()).param("account", accountId).param("group", groupId)
+                    card_enabled=EXCLUDED.card_enabled,activated_by=EXCLUDED.activated_by,activated_at=EXCLUDED.activated_at,disabled_at=NULL,
+                    fee_policy='ABSORB',fee_snapshot=EXCLUDED.fee_snapshot
+            """.trimIndent()).param("account", accountId).param("group", groupId).param("snapshot", FeeSnapshot.of(review.schedules))
                 .param("pix", review.schedules.any { it.method == PaymentMethod.PIX })
                 .param("card", review.schedules.any { it.method == PaymentMethod.CARD })
                 .param("actor", request.actorUserId).param("at", Timestamp.from(at)).update()
@@ -85,6 +87,18 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
             .param("actor", request.actorUserId).param("enabled", enabled).param("fingerprint", review?.fingerprint)
             .param("conditions", mapper.writeValueAsString(mapOf("schedules" to review?.schedules.orEmpty(), "prices" to review?.prices.orEmpty())))
             .param("at", Timestamp.from(at)).update()
+        return state(accountId, groupId)!!
+    }
+
+    override fun feePolicy(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, policy: FeePolicy,
+                           snapshot: String, at: Instant): GroupReceivablesState {
+        jdbc.sql("""
+            INSERT INTO receivable_operations(id,account_id,request_id,actor_user_id,kind,resource_id,request_digest,status,next_attempt_at,created_at,updated_at)
+            VALUES (:id,:account,:request,:actor,'FEE_POLICY',:group,:digest,'SUCCEEDED',:at,:at,:at)
+        """.trimIndent()).param("id", UUID.randomUUID()).param("account", accountId).param("request", request.requestId)
+            .param("actor", request.actorUserId).param("group", groupId).param("digest", digest).param("at", Timestamp.from(at)).update()
+        jdbc.sql("UPDATE receivable_group_links SET fee_policy=:policy,fee_snapshot=CAST(:snapshot AS jsonb) WHERE account_id=:account AND group_id=:group AND enabled")
+            .param("policy", policy.name).param("snapshot", snapshot).param("account", accountId).param("group", groupId).update()
         return state(accountId, groupId)!!
     }
 }

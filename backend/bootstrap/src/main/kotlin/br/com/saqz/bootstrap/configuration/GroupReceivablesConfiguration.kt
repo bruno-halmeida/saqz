@@ -20,6 +20,9 @@ import javax.sql.DataSource
 class GroupReceivablesConfiguration {
     @Bean fun groupChargePaymentCancellation(dataSource: DataSource): br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation = JdbcGroupPaymentCancellation(dataSource, br.com.saqz.groups.adapter.output.jdbc.finance.JdbcGroupChargePayments(dataSource))
     @Bean fun groupFinancialSetupLookup(dataSource: DataSource): GroupFinancialSetupLookup = JdbcGroupFinancialSetupLookup(dataSource)
+    @Bean fun groupReceivables(dataSource: DataSource, clock: Clock): br.com.saqz.sharedkernel.group.GroupReceivables =
+        br.com.saqz.receivables.adapter.output.jdbc.JdbcGroupReceivablesPricing(dataSource,
+            br.com.saqz.receivables.adapter.output.jdbc.JdbcFinancialConditions(dataSource), clock)
     @Bean fun groupReceivablesStore(dataSource: DataSource): GroupReceivablesStore = JdbcGroupReceivablesStore(dataSource)
     @Bean fun manageGroupReceivables(accounts: FinancialAccountRepository, admins: GroupAdministrationDirectory,
         groups: GroupFinancialSetupLookup, store: GroupReceivablesStore, conditions: FinancialConditions,

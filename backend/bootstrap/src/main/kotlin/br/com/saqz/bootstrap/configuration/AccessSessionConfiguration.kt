@@ -544,7 +544,8 @@ class AccessSessionConfiguration {
         verifiedGroupActorResolver: VerifiedGroupActorResolver,
         getGroup: GetGroup,
         pastGames: br.com.saqz.groups.application.game.PastGames,
-    ) = AccessGroupReadController(verifiedGroupActorResolver, getGroup, pastGames)
+        receivables: br.com.saqz.sharedkernel.group.GroupReceivables,
+    ) = AccessGroupReadController(verifiedGroupActorResolver, getGroup, pastGames, receivables)
 
     @Bean
     fun pastGames(transaction: JdbcTransactionRunner, dataSource: DataSource) = br.com.saqz.groups.application.game.PastGames(
@@ -1029,7 +1030,8 @@ class AccessSessionConfiguration {
     @Bean fun settleWaitlistAtDeadlineJob(settle: br.com.saqz.groups.application.attendance.SettleWaitlistAtDeadline) =
         br.com.saqz.groups.adapter.input.scheduling.SettleWaitlistAtDeadlineJob(settle)
     @Bean fun weeklySeriesController(actor: VerifiedGroupActorResolver, series: WeeklySeriesService, boundaries: ApplySeriesBoundary) = WeeklySeriesController(actor, series, boundaries)
-    @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation) = JdbcChargeTransactionRepository(dataSource, cancellation)
+    @Bean fun chargeTransactionRepository(dataSource: DataSource, cancellation: br.com.saqz.sharedkernel.group.GroupChargePaymentCancellation,
+        receivables: br.com.saqz.sharedkernel.group.GroupReceivables) = JdbcChargeTransactionRepository(dataSource, cancellation, receivables)
     @Bean fun chargeTransactions(transaction: JdbcTransactionRunner, repository: JdbcChargeTransactionRepository, writeAccess: br.com.saqz.sharedkernel.subscription.GroupWriteAccess) = ChargeTransactions(transaction, repository, Instant::now, writeAccess)
     @Bean
     fun gameSideEffects(

@@ -66,6 +66,38 @@ object FeeCalculator {
             lower, lower - providerFee - commission, commission, providerFee)
     }
 
+    /** Comissão do Saqz sobre o valor pago (FIN-010); zero é permitido. */
+    fun commission(paidCents: Long, schedule: FeeSchedule): Long =
+        Math.addExact(rounded(paidCents, schedule.commissionRate), schedule.commissionFixedCents)
+
+    /** O que fica para o gestor quando o atleta paga [paidCents]: tarifa do provedor e comissão saem do valor pago. */
+    fun net(paidCents: Long, schedule: FeeSchedule): Long {
+        require(paidCents > 0)
+        return paidCents - providerFee(paidCents, schedule) - commission(paidCents, schedule)
+    }
+
+    /**
+     * Repassar a taxa (FIN-010): o menor valor pago que deixa [baseCents] líquido para o gestor. O líquido cresce com o
+     * valor pago (taxas abaixo de 100%), então a busca dobra até cobrir e depois afina por bisseção.
+     */
+    fun passThrough(baseCents: Long, schedule: FeeSchedule): Long {
+        require(baseCents > 0)
+        var lower = baseCents
+        var upper = baseCents
+        while (net(upper, schedule) < baseCents) {
+            lower = upper + 1
+            upper = Math.addExact(Math.multiplyExact(upper, 2L), 1L)
+            if (upper > PASS_LIMIT_CENTS) throw ArithmeticException("Taxa impede o repasse")
+        }
+        while (lower < upper) {
+            val candidate = lower + (upper - lower) / 2
+            if (net(candidate, schedule) >= baseCents) upper = candidate else lower = candidate + 1
+        }
+        return lower
+    }
+
+    private const val PASS_LIMIT_CENTS = 999_999_999L
+
     private fun providerFee(cents: Long, schedule: FeeSchedule): Long {
         val fee = (BigDecimal.valueOf(cents).multiply(schedule.providerRate).setScale(0, RoundingMode.HALF_UP) +
             BigDecimal.valueOf(schedule.providerFixedCents)).max(BigDecimal.valueOf(schedule.providerMinimumCents))

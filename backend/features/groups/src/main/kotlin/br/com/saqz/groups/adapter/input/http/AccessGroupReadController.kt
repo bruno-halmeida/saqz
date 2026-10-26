@@ -19,6 +19,7 @@ import br.com.saqz.groups.domain.group.GroupModality
 import br.com.saqz.groups.domain.group.MonthlyLateJoinPolicy
 import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.RequestIdentity
+import br.com.saqz.sharedkernel.group.GroupReceivables
 import java.time.DayOfWeek
 import java.time.LocalTime
 import org.springframework.http.ResponseEntity
@@ -43,6 +44,8 @@ data class GroupReadResponse(
     val entryRequiresApproval: Boolean,
     /** JOGO-011: o grupo já teve jogo anterior (encerrado ou cancelado publicado). Só para dono e admin; nulo para o atleta. */
     val hasPastGames: Boolean? = null,
+    /** FIN-009, aditivo: o grupo recebe pelo app. O app esconde a chave Pix pessoal e mostra "Pagar". */
+    val receivablesActive: Boolean = false,
 )
 
 data class GroupProfileReadResponse(
@@ -102,6 +105,7 @@ class AccessGroupReadController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val getGroup: GetGroup,
     private val pastGames: PastGames? = null,
+    private val receivables: GroupReceivables = GroupReceivables.NONE,
 ) {
     @GetMapping("/api/groups/{groupId}")
     fun get(
@@ -122,6 +126,7 @@ class AccessGroupReadController(
                         hasPastGames = pastGames
                             ?.takeIf { result.group.role != GroupRole.ATHLETE }
                             ?.hasPastGames(result.group.id, result.group.role),
+                        receivablesActive = receivables.active(result.group.id),
                     ),
                 )
         }
