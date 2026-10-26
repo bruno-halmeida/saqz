@@ -93,9 +93,9 @@ fun SettleLinkRoot(
 }
 
 @Composable
-fun SettleLinkScreen(state: SettleLinkState, onRetry: () -> Unit, onBack: () -> Unit) = ReceivablesPage(
+fun SettleLinkScreen(state: SettleLinkState, onRetry: () -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) = ReceivablesPage(
     stringResource(Res.string.pay_title_many),
-    "settle-link", onBack,
+    "settle-link", onBack, modifier,
 ) {
     val metrics = SaqzTheme.metrics
     val padded = Modifier.padding(metrics.horizontalPadding)

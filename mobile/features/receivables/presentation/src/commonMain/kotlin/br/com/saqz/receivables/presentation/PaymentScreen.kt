@@ -109,7 +109,8 @@ fun PaymentScreen(state: PaymentState, onIntent: (PaymentIntent) -> Unit, onClos
 }
 
 @Composable
-private fun Summary(state: PaymentState, modifier: Modifier) = Column(modifier, verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+private fun Summary(state: PaymentState, modifier: Modifier = Modifier) = Column(modifier,
+    verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
     Text(state.kicker.uppercase(), style = SaqzTheme.typography.eyebrow, color = SaqzTheme.colors.textSecondary)
     Text(state.amountLabel, style = SaqzTheme.typography.display, color = SaqzTheme.colors.textPrimary)
     state.lines.forEach { line ->
@@ -147,7 +148,7 @@ private fun ColumnScope.PixContent(state: PaymentState, onIntent: (PaymentIntent
 }
 
 @Composable
-private fun CardContent(state: PaymentState, onIntent: (PaymentIntent) -> Unit) {
+private fun ColumnScope.CardContent(state: PaymentState, onIntent: (PaymentIntent) -> Unit) {
     if (state.needsDocument) {
         Text(stringResource(Res.string.pay_cpf_intro), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
         SaqzInput(value = state.cpf, onValueChange = { onIntent(PaymentIntent.CpfChanged(it)) },
@@ -170,7 +171,7 @@ private fun Waiting(text: String) = Row(Modifier.fillMaxWidth(), verticalAlignme
 }
 
 @Composable
-private fun Expired(onIntent: (PaymentIntent) -> Unit) {
+private fun ColumnScope.Expired(onIntent: (PaymentIntent) -> Unit) {
     Text(stringResource(Res.string.pay_expired), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
     SaqzButton(stringResource(Res.string.pay_new_code), { onIntent(PaymentIntent.NewCode) }, fullWidth = true,
         modifier = Modifier.testTag(PaymentScreenTags.NewCode))
@@ -178,7 +179,8 @@ private fun Expired(onIntent: (PaymentIntent) -> Unit) {
 
 @Composable
 private fun ConfirmedScreen(confirmed: PaymentConfirmedUi, onIntent: (PaymentIntent) -> Unit, onClose: () -> Unit,
-    modifier: Modifier) = ReceivablesPage(stringResource(Res.string.confirmed_title), PaymentScreenTags.Confirmed, onClose, modifier,
+    modifier: Modifier = Modifier) = ReceivablesPage(stringResource(Res.string.confirmed_title), PaymentScreenTags.Confirmed, onClose,
+    modifier,
     footer = {
         SaqzButton(stringResource(Res.string.confirmed_back), onClose, fullWidth = true,
             variant = if (confirmed.offer) SaqzButtonVariant.Ghost else SaqzButtonVariant.Primary,

@@ -18,7 +18,7 @@ class PaymentViewModelTest {
         val fake = PaymentsFake()
         val vm = model(fake, PaymentArgs("ceret", "Vôlei do CERET"))
         assertEquals(listOf(ReceiptMethod.PIX to listOf("c1", "c2", "c3")), fake.created)
-        assertEquals("R$ 60,00", vm.state.value.amountLabel)
+        assertEquals("R$\u00A060,00", vm.state.value.amountLabel)
         assertEquals("000201pix", vm.state.value.pixPayload)
         assertEquals("Marcos Lima", vm.state.value.payeeName)
         assertEquals(PaymentSubject.MANY, vm.state.value.subject)
@@ -48,7 +48,7 @@ class PaymentViewModelTest {
         assertEquals(1, fake.polls)
         fake.status = PaymentCodeStatus.PAID
         advanceTimeBy(PaymentViewModel.POLL_MILLIS + 1)
-        assertEquals("R$ 40,00 · jogo de terça", vm.state.value.confirmed?.summary)
+        assertEquals("R$\u00A040,00 · jogo de terça", vm.state.value.confirmed?.summary)
         val polls = fake.polls
         advanceTimeBy(PaymentViewModel.POLL_MILLIS * 3)
         assertEquals(polls, fake.polls, "para de consultar depois do PAID")

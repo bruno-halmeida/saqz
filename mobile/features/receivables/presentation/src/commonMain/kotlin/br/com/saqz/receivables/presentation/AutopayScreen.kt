@@ -85,7 +85,9 @@ fun AutopayScreen(state: AutopayState, onIntent: (AutopayIntent) -> Unit, onBack
                     support = if (state.status == RecurrenceStatus.NONE) stringResource(Res.string.netflix_tagline) else null,
                 ) {
                     if (state.status != RecurrenceStatus.NONE) SaqzStatusChip(
-                        stringResource(if (state.status == RecurrenceStatus.ACTIVE) Res.string.netflix_active else Res.string.netflix_refused),
+                        stringResource(
+                            if (state.status == RecurrenceStatus.ACTIVE) Res.string.netflix_active else Res.string.netflix_refused,
+                        ),
                         tone = if (state.status == RecurrenceStatus.ACTIVE) SaqzChipTone.Inverse else SaqzChipTone.WarningInverse)
                 }
                 state.error?.let { Text(paymentErrorText(it), padded.padding(top = metrics.blockGap),
@@ -139,7 +141,7 @@ private val reasonText: Map<AutopayCancelReason, StringResource> = mapOf(
 
 /** Netflix-Cancelar: a lista curta e obrigatória, num segmentado vertical (seis opções, uma escolha). */
 @Composable
-private fun CancelScreen(state: AutopayState, onIntent: (AutopayIntent) -> Unit, onBack: () -> Unit, modifier: Modifier) {
+private fun CancelScreen(state: AutopayState, onIntent: (AutopayIntent) -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
     val reasons = AutopayCancelReason.entries
     ReceivablesPage(stringResource(Res.string.netflix_title), AutopayTags.Screen, onBack, modifier, footer = {

@@ -61,13 +61,7 @@ class GroupReceivablesViewModel(
         val expected = ++generation
         viewModelScope.launch {
             val accounts = (receivables.accounts() as? SaqzResult.Success)?.value.orEmpty()
-            var chosen: ReceiptStatus? = null
-            for (account in accounts) {
-                val status = (receivables.status(groupId, account.id) as? SaqzResult.Success)?.value ?: continue
-                if (status.state.groupId != groupId) continue
-                if (chosen == null || status.state.enabled && !chosen.state.enabled) chosen = status
-                if (status.state.enabled) break
-            }
+            val chosen = chooseStatus(accounts)
             if (expected != generation || sessionKey != session.currentKey()) return@launch
             val state = chosen?.state
             if (state == null) {
@@ -86,6 +80,17 @@ class GroupReceivablesViewModel(
             }
             if (state.enabled) loadAutopay()
         }
+    }
+
+    /** A conta que recebe neste grupo: a ativa, se houver; senão a primeira que responde por ele. */
+    private suspend fun chooseStatus(accounts: List<ReceiptAccount>): ReceiptStatus? {
+        val statuses = mutableListOf<ReceiptStatus>()
+        for (account in accounts) {
+            val status = (receivables.status(groupId, account.id) as? SaqzResult.Success)?.value
+            if (status != null && status.state.groupId == groupId) statuses += status
+            if (status?.state?.enabled == true) break
+        }
+        return statuses.firstOrNull { it.state.enabled } ?: statuses.firstOrNull()
     }
 
     private fun loadAutopay() {

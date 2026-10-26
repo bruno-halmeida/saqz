@@ -30,11 +30,11 @@ object PaymentReviewTags {
 }
 
 @Composable
-fun PaymentReviewRoot(route: PaymentReviewRoute, onBack: () -> Unit, onResolved: () -> Unit,
+fun PaymentReviewRoot(route: PaymentReviewRoute, onBack: () -> Unit, onResolve: () -> Unit,
     viewModel: PaymentReviewViewModel = koinViewModel(key = "review/${route.reviewId}",
         parameters = { parametersOf(PaymentReviewArgs(route.groupId, route.accountId, route.reviewId)) })) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ObserveAsEvents(viewModel.effects) { onResolved() }
+    ObserveAsEvents(viewModel.effects) { onResolve() }
     PaymentReviewScreen(state, viewModel::onIntent, onBack)
 }
 
@@ -75,7 +75,7 @@ fun PaymentReviewScreen(state: PaymentReviewState, onIntent: (PaymentReviewInten
 }
 
 @Composable
-private fun AssignScreen(state: PaymentReviewState, onIntent: (PaymentReviewIntent) -> Unit, modifier: Modifier) {
+private fun AssignScreen(state: PaymentReviewState, onIntent: (PaymentReviewIntent) -> Unit, modifier: Modifier = Modifier) {
     val metrics = SaqzTheme.metrics
     val member = state.member
     ReceivablesPage(stringResource(Res.string.assign_title, state.amountLabel), PaymentReviewTags.Screen,
@@ -95,7 +95,8 @@ private fun AssignScreen(state: PaymentReviewState, onIntent: (PaymentReviewInte
         Box(Modifier.padding(metrics.horizontalPadding)) {
             SaqzInput(value = state.query, onValueChange = { onIntent(PaymentReviewIntent.Search(it)) },
                 label = stringResource(Res.string.assign_search), showLabel = false,
-                placeholder = stringResource(Res.string.assign_search), modifier = Modifier.fillMaxWidth().testTag(PaymentReviewTags.Search))
+                placeholder = stringResource(Res.string.assign_search),
+                    modifier = Modifier.fillMaxWidth().testTag(PaymentReviewTags.Search))
         }
         state.error?.let { Box(Modifier.padding(horizontal = metrics.horizontalPadding)) { ReceiptErrorText(it) } }
         state.visibleDebtors.forEach { debtor ->
@@ -114,7 +115,8 @@ private fun AssignScreen(state: PaymentReviewState, onIntent: (PaymentReviewInte
                     ReceivablesRow(charge.label, charge.support, supportWarning = charge.overdue) {
                         Text(charge.amountLabel, style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
                             color = SaqzTheme.colors.textPrimary)
-                        SaqzSwitch(checked = charge.checked, onCheckedChange = { onIntent(PaymentReviewIntent.ToggleCharge(charge.chargeId)) },
+                        SaqzSwitch(checked = charge.checked,
+                            onCheckedChange = { onIntent(PaymentReviewIntent.ToggleCharge(charge.chargeId)) },
                             contentDescription = charge.label, modifier = Modifier.testTag(PaymentReviewTags.charge(charge.chargeId)))
                     }
                 }

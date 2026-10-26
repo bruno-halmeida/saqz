@@ -792,7 +792,8 @@ internal fun SaqzNavHost(
                 // Recebimento pelo app v1 (DEB-141): atleta.
                 entry<AthleteChargesRoute> { route ->
                     AthleteChargesRoot(route, onBack = pop,
-                        onOpenPayment = { ids -> backStack.add(ReceivablePaymentRoute(route.groupId, route.groupName, ids.joinToString(","))) },
+                        onOpenPayment = { ids -> backStack.add(ReceivablePaymentRoute(route.groupId, route.groupName,
+                            ids.joinToString(","))) },
                         onOpenAutopay = { backStack.add(AutopayRoute(route.groupId, route.groupName)) })
                 }
                 entry<ReceivablePaymentRoute> { route ->
@@ -813,10 +814,10 @@ internal fun SaqzNavHost(
                 }
                 // Recebimento pelo app v1: gestor.
                 entry<FeePolicyRoute> { route ->
-                    FeePolicyRoot(route, onBack = pop, onSaved = pop)
+                    FeePolicyRoot(route, onBack = pop, onSave = pop)
                 }
                 entry<PaymentReviewRoute> { route ->
-                    PaymentReviewRoot(route, onBack = pop, onResolved = { groupCashboxRefreshVersion++; pop() })
+                    PaymentReviewRoot(route, onBack = pop, onResolve = { groupCashboxRefreshVersion++; pop() })
                 }
                 entry<FinanceRoute.GroupCashbox> { route ->
                     GroupCashboxRoot(
@@ -1056,7 +1057,9 @@ internal fun SaqzNavHost(
                         onConsumeGameCreatedToast = { gameCreatedToastGroupId = null },
                         paymentsEnabled = receipts.paymentEntryAvailable,
                         onEffect = { effect ->
-                            if (effect is GroupDetailsEffect.Left) {
+                            if (effect is GroupDetailsEffect.OpenPayment) {
+                                backStack.add(AthleteChargesRoute(effect.groupId, effect.groupName))
+                            } else if (effect is GroupDetailsEffect.Left) {
                                 onIntent(AccessIntent.Session(SessionIntent.MembershipRemoved(route.groupId)))
                                 profileRefreshVersion++
                                 backStack.resetTo(SaqzShellDestination.Groups)
@@ -1575,10 +1578,9 @@ internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop
         // não é `else`, e nenhum efeito de navegação cai nele.
         is GroupDetailsEffect.CopyPix -> Unit
         is GroupDetailsEffect.ShareSaqz -> Unit // Native sharing is consumed by GroupDetailsRoot.
-        // O sheet de denúncia é sobreposição do próprio detalhe: o `GroupDetailsRoot` consome.
-        is GroupDetailsEffect.ReportGroup -> Unit
-        // Minhas cobranças do grupo com o pagamento pelo app (FIN-011).
-        is GroupDetailsEffect.OpenPayment -> add(AthleteChargesRoute(effect.groupId, effect.groupName))
+        // O sheet de denúncia é sobreposição do próprio detalhe: o `GroupDetailsRoot` consome. Minhas cobranças com
+        // o pagamento pelo app (FIN-011) é tratado no destino do detalhe, antes daqui.
+        is GroupDetailsEffect.ReportGroup, is GroupDetailsEffect.OpenPayment -> Unit
     }
 }
 

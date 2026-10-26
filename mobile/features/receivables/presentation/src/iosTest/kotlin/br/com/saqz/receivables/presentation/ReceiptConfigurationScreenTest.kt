@@ -23,7 +23,7 @@ class ReceiptConfigurationScreenTest {
 
     @Test fun withoutAccountTheOnlyActionIsStartingTheRegistration() = runComposeUiTest {
         var opened = 0
-        setContent { SaqzTheme { ReceiptConfigurationScreen(ReceiptConfigurationState(loading = false), {}, {}, { opened++ }) } }
+        setContent { SaqzTheme { ReceiptConfigurationScreen(ReceiptConfigurationState(loading = false), {}, {}, onRegistration = { opened++ }) } }
         onNodeWithTag(ReceiptConfigurationTags.Preview).assertDoesNotExist()
         onNodeWithTag(ReceiptConfigurationTags.Registration).performClick()
         assertEquals(1, opened)

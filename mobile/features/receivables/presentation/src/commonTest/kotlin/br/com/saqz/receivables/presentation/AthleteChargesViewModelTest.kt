@@ -15,7 +15,7 @@ class AthleteChargesViewModelTest {
     @Test fun avulsoHeroSumsTheOpenChargesAndPayAllCoversThemAll() = runTest {
         val vm = model(PaymentsFake())
         val state = vm.state.value
-        assertEquals("R$ 60,00", state.totalLabel)
+        assertEquals("R$\u00A060,00", state.totalLabel)
         assertEquals("3 cobranças", state.summaryLabel)
         assertEquals("1 vencida", state.overdueLabel)
         assertNull(state.monthlyKicker)
@@ -33,7 +33,7 @@ class AthleteChargesViewModelTest {
             PaidCharge("p2", OpenChargeKind.GAME, null, null, "2026-07-14", 2000, PaidVia.CASH),
             PaidCharge("p3", OpenChargeKind.MONTHLY, "2026-07", null, "2026-07-10", 10000, PaidVia.APP_CARD),
         )))
-        assertEquals(listOf("R$ 20,00 · pelo app, no Pix", "R$ 20,00 · em dinheiro", "R$ 100,00 · pelo app · cartão"),
+        assertEquals(listOf("R$\u00A020,00 · pelo app, no Pix", "R$\u00A020,00 · em dinheiro", "R$\u00A0100,00 · pelo app · cartão"),
             vm.state.value.history.map { it.support })
         assertEquals("Jogo de quinta · 16/07", vm.state.value.history.first().title)
         assertEquals("Mensalidade · julho", vm.state.value.history.last().title)
@@ -101,7 +101,7 @@ class AutopayViewModelTest {
         assertEquals(RecurrenceStatus.NONE, vm.state.value.status)
         assertEquals("10", vm.state.value.dueDay)
         assertEquals("Agosto", vm.state.value.openMonth)
-        assertEquals("R$ 100,00", vm.state.value.amountLabel)
+        assertEquals("R$\u00A0100,00", vm.state.value.amountLabel)
         val effect = async { vm.effects.first() }
         vm.onIntent(AutopayIntent.Start)
         assertEquals(AutopayEffect.OpenUrl("https://sandbox.asaas.com/c/abc"), effect.await())

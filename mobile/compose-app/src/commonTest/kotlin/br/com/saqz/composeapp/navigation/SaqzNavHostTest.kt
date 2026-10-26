@@ -424,8 +424,9 @@ class SaqzNavHostTest {
             assertFalse(organizer.canOpenReceipts(off))
             assertFalse(organizer.canOpenReceipts(off.copy(loading = true)))
             assertFalse(organizer.canOpenReceipts(off.copy(accountLookupFailed = true)))
-            assertFalse(organizer.canOpenReceipts(on))
-            assertFalse(organizer.canOpenReceipts(existing))
+            // DEB-142: sem a constante, a disponibilidade (ou a conta já criada) libera a entrada.
+            assertTrue(organizer.canOpenReceipts(on))
+            assertTrue(organizer.canOpenReceipts(existing))
         }
         listOf(on, existing).forEach { receipts ->
             assertFalse(SessionAccessState.Ready(sessionWith("ATHLETE")).canOpenReceipts(receipts))

@@ -72,6 +72,9 @@ data class PaymentState(
     val confirmed: PaymentConfirmedUi? = null,
 ) {
     val canContinueCard get() = !loading && !creatingCode && (!needsDocument || cpf.length == 11)
+    val canPayByCard get() = tab == PayTab.CARD && canContinueCard && confirmed == null
+    /** Ainda esperando a baixa: a volta à tela consulta o código. */
+    val waiting get() = confirmed == null && !loading
 }
 
 sealed interface PaymentIntent {

@@ -52,7 +52,7 @@ fun ReceiptConfigurationRoot(groupId: String, onBack: () -> Unit, onRegistration
             viewModel.onIntent(ReceiptConfigurationIntent.SelectAccount(only.id))
         }
     }
-    ReceiptConfigurationScreen(state, viewModel::onIntent, onBack, onRegistration)
+    ReceiptConfigurationScreen(state, viewModel::onIntent, onBack, onRegistration = onRegistration)
 }
 
 /**
@@ -61,7 +61,7 @@ fun ReceiptConfigurationRoot(groupId: String, onBack: () -> Unit, onRegistration
  */
 @Composable
 fun ReceiptConfigurationScreen(state: ReceiptConfigurationState, onIntent: (ReceiptConfigurationIntent) -> Unit,
-    onBack: () -> Unit, onRegistration: () -> Unit = {}, modifier: Modifier = Modifier,
+    onBack: () -> Unit, modifier: Modifier = Modifier, onRegistration: () -> Unit = {},
 ) {
     val enabled = state.status?.state?.enabled == true
     val account = state.accounts.firstOrNull { it.id == state.accountId } ?: state.accounts.singleOrNull()
@@ -94,7 +94,8 @@ fun ReceiptConfigurationScreen(state: ReceiptConfigurationState, onIntent: (Rece
                 FeeTable(review.schedules.firstOrNull { it.method == ReceiptMethod.PIX }?.let { feeLabel(it) },
                     review.schedules.firstOrNull { it.method == ReceiptMethod.CARD }?.let { feeLabel(it) })
             }
-            Text(stringResource(Res.string.activate_fees_choice), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
+            Text(stringResource(Res.string.activate_fees_choice), style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.textSecondary)
             if (state.terms.isNotEmpty()) {
                 var showTerms by remember { mutableStateOf(false) }
                 SaqzTextLink(stringResource(Res.string.activate_terms), { showTerms = !showTerms })
@@ -103,7 +104,8 @@ fun ReceiptConfigurationScreen(state: ReceiptConfigurationState, onIntent: (Rece
                     Text(document.content, Modifier.testTag(ReceiptConfigurationTags.Terms), style = SaqzTheme.typography.caption)
                 }
             }
-            Text(stringResource(Res.string.activate_wallet_note), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+            Text(stringResource(Res.string.activate_wallet_note), style = SaqzTheme.typography.caption,
+                color = SaqzTheme.colors.textSecondary)
             if (account == null || account.registration != AccountRegistration.APPROVED) {
                 Text(stringResource(Res.string.activate_registration_note), style = SaqzTheme.typography.caption,
                     color = SaqzTheme.colors.textSecondary)
@@ -117,7 +119,7 @@ fun ReceiptConfigurationScreen(state: ReceiptConfigurationState, onIntent: (Rece
 }
 
 @Composable
-private fun ActivationFooter(state: ReceiptConfigurationState, account: ReceiptAccount?, enabled: Boolean,
+private fun ColumnScope.ActivationFooter(state: ReceiptConfigurationState, account: ReceiptAccount?, enabled: Boolean,
     onIntent: (ReceiptConfigurationIntent) -> Unit, onRegistration: () -> Unit) {
     val busy = state.loading || state.pendingMutation
     when {

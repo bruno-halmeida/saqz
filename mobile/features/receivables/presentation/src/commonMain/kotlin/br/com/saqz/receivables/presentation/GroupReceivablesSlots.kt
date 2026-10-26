@@ -97,7 +97,8 @@ fun GroupReceivingContent(
             SaqzDivider()
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(Res.string.receiving_wallet), style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
+                    Text(stringResource(Res.string.receiving_wallet), style = SaqzTheme.typography.body,
+                        color = SaqzTheme.colors.textPrimary)
                     state.walletLabel?.let {
                         Text(stringResource(Res.string.receiving_wallet_value, it), style = SaqzTheme.typography.caption,
                             color = SaqzTheme.colors.textSecondary)
@@ -201,7 +202,8 @@ fun CashboxReceivablesContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(Res.string.cashbox_review_count, state.reviews.size),
-                            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold), color = SaqzTheme.colors.warningForeground)
+                            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
+                                color = SaqzTheme.colors.warningForeground)
                         Text(stringResource(Res.string.cashbox_review_detail, formatBrl(review.amountCents), review.payerName),
                             style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
                     }

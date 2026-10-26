@@ -49,11 +49,8 @@ class PaymentViewModel(
             is PaymentIntent.CpfChanged -> update {
                 it.copy(cpf = intent.value.filter(Char::isDigit).take(CPF_LENGTH), cpfInvalid = false)
             }
-            PaymentIntent.ContinueCard -> if (current.tab == PayTab.CARD && current.canContinueCard &&
-                current.confirmed == null) continueCard()
-            PaymentIntent.Resumed -> if (current.confirmed == null && !current.loading) {
-                current.activeCode()?.let { checkNow(it) }
-            }
+            PaymentIntent.ContinueCard -> if (current.canPayByCard) continueCard()
+            PaymentIntent.Resumed -> if (current.waiting) current.activeCode()?.let { checkNow(it) }
             PaymentIntent.AcceptOffer -> if (current.confirmed?.offer == true) {
                 update { it.copy(confirmed = it.confirmed?.copy(offer = false)) }
                 emit(PaymentEffect.OpenAutopay)
@@ -79,7 +76,8 @@ class PaymentViewModel(
                     me = value
                     charges = value.chargesFor(args.gameId, args.billingMonth, args.chargeIds.ifEmpty { null })
                     if (!value.active || charges.isEmpty()) {
-                        update { it.copy(loading = false, nothingOpen = true, error = if (value.active) null else PaymentError.UNAVAILABLE) }
+                        update { it.copy(loading = false, nothingOpen = true,
+                            error = if (value.active) null else PaymentError.UNAVAILABLE) }
                         return@launch
                     }
                     val pix = value.pixReady && ReceiptMethod.PIX in value.methods
@@ -189,7 +187,8 @@ class PaymentViewModel(
         polling?.cancel()
         val expected = generation
         polling = viewModelScope.launch {
-            while (true) {
+            // Com teto: quem deixa a tela aberta e não paga não fica consultando para sempre; "Resumed" reconsulta.
+            repeat(MAX_POLLS) {
                 delay(POLL_MILLIS)
                 if (!fetch(code, expected)) return@launch
             }
@@ -266,6 +265,8 @@ class PaymentViewModel(
 
     internal companion object {
         const val POLL_MILLIS = 4_000L
+        /** 15 minutos de espera na tela. */
+        const val MAX_POLLS = 225
         const val CPF_LENGTH = 11
     }
 }

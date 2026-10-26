@@ -116,11 +116,11 @@ object FeePolicyTags {
 }
 
 @Composable
-fun FeePolicyRoot(route: FeePolicyRoute, onBack: () -> Unit, onSaved: () -> Unit,
+fun FeePolicyRoot(route: FeePolicyRoute, onBack: () -> Unit, onSave: () -> Unit,
     viewModel: FeePolicyViewModel = koinViewModel(key = "fees/${route.groupId}",
         parameters = { parametersOf(FeePolicyArgs(route.groupId, route.accountId)) })) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    ObserveAsEvents(viewModel.effects) { onSaved() }
+    ObserveAsEvents(viewModel.effects) { onSave() }
     FeePolicyScreen(state, viewModel::onIntent, onBack)
 }
 
@@ -134,7 +134,8 @@ fun FeePolicyScreen(state: FeePolicyState, onIntent: (FeePolicyIntent) -> Unit, 
         Column(Modifier.fillMaxWidth().padding(metrics.horizontalPadding), verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
             if (state.loading) { SaqzSpinner(Modifier.align(Alignment.CenterHorizontally)); return@Column }
             state.error?.let { ReceiptErrorText(it) }
-            Text(stringResource(Res.string.fee_policy_question), style = SaqzTheme.typography.headline, color = SaqzTheme.colors.textPrimary)
+            Text(stringResource(Res.string.fee_policy_question), style = SaqzTheme.typography.headline,
+                color = SaqzTheme.colors.textPrimary)
             Text(stringResource(Res.string.fee_policy_intro), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary)
             val options = listOf(FeePolicy.ABSORB, FeePolicy.PASS)
             SaqzSegmented(
@@ -144,15 +145,18 @@ fun FeePolicyScreen(state: FeePolicyState, onIntent: (FeePolicyIntent) -> Unit, 
                 optionTags = options.map(FeePolicyTags::option),
             )
             SaqzCard(tone = SaqzCardTone.Soft) {
-                Text(stringResource(if (state.selected == FeePolicy.PASS) Res.string.fee_policy_pass_body else Res.string.fee_policy_absorb_body),
+                val pass = state.selected == FeePolicy.PASS
+                Text(stringResource(if (pass) Res.string.fee_policy_pass_body else Res.string.fee_policy_absorb_body),
                     style = SaqzTheme.typography.support, color = SaqzTheme.colors.textPrimary)
                 Text(stringResource(if (state.selected == FeePolicy.PASS) Res.string.fee_policy_pass_example
                     else Res.string.fee_policy_absorb_example), style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.SemiBold),
                     color = SaqzTheme.colors.textSecondary)
             }
             FeeTable(state.pixFee, state.cardFee)
-            Text(stringResource(Res.string.fee_policy_terms_note), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
-            Text(stringResource(Res.string.fee_policy_new_only), style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
+            Text(stringResource(Res.string.fee_policy_terms_note), style = SaqzTheme.typography.caption,
+                color = SaqzTheme.colors.textSecondary)
+            Text(stringResource(Res.string.fee_policy_new_only), style = SaqzTheme.typography.caption,
+                color = SaqzTheme.colors.textSecondary)
         }
     }
 

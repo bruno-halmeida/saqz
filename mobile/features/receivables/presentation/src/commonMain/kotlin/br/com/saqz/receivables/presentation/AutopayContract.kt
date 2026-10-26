@@ -32,6 +32,10 @@ data class AutopayState(
     val cancelled: Boolean = false,
 ) {
     val canConfirmCancel get() = cancelling && reason != null && !busy
+    /** Já aderiu (ativo ou com o cartão recusado): gerencia e cancela. */
+    val enrolled get() = status == RecurrenceStatus.ACTIVE || status == RecurrenceStatus.REFUSED
+    val canStart get() = status == RecurrenceStatus.NONE && !busy
+    val idle get() = !loading && !busy && !cancelling
 }
 
 sealed interface AutopayIntent {

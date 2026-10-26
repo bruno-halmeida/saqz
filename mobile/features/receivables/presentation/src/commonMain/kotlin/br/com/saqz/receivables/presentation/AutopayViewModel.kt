@@ -30,15 +30,11 @@ class AutopayViewModel(
         }
         when (intent) {
             AutopayIntent.Retry -> load()
-            AutopayIntent.Resumed -> if (!current.loading && !current.busy && !current.cancelling) load(silent = true)
-            AutopayIntent.Start -> if (current.status == RecurrenceStatus.NONE && !current.busy) checkout { autopay.start(args.groupId, it) }
-            AutopayIntent.ChangeCard -> if (current.status != RecurrenceStatus.NONE && current.status != null && !current.busy) {
-                checkout { autopay.changeCard(args.groupId, it) }
-            }
-            AutopayIntent.RequestCancel -> if (current.status != RecurrenceStatus.NONE && current.status != null) {
-                update { it.copy(cancelling = true, reason = null, error = null) }
-            }
-            is AutopayIntent.SelectReason -> if (current.cancelling && !current.busy) update { it.copy(reason = intent.reason) }
+            AutopayIntent.Resumed -> if (current.idle) load(silent = true)
+            AutopayIntent.Start -> if (current.canStart) checkout { autopay.start(args.groupId, it) }
+            AutopayIntent.ChangeCard -> if (current.enrolled && !current.busy) checkout { autopay.changeCard(args.groupId, it) }
+            AutopayIntent.RequestCancel -> if (current.enrolled) update { it.copy(cancelling = true, reason = null, error = null) }
+            is AutopayIntent.SelectReason -> if (current.cancelling) update { it.copy(reason = intent.reason) }
             // Motivo obrigatório: sem ele, nada sai (FIN-012).
             AutopayIntent.ConfirmCancel -> if (current.canConfirmCancel) cancel(current.reason!!)
             AutopayIntent.KeepAutopay -> if (!current.busy) update { it.copy(cancelling = false, reason = null) }

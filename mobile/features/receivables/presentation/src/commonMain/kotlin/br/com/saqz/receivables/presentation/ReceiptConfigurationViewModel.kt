@@ -48,20 +48,25 @@ class ReceiptConfigurationViewModel(
                 update { it.copy(methods = toggled(it.methods, intent.method),
                     review = null, terms = emptyList(), accepted = false, error = null, completed = false) }
             }
-            ReceiptConfigurationIntent.Preview -> if (current.canPreview) preview()
-            ReceiptConfigurationIntent.PreviewAllMethods -> {
-                if (current.methods != ReceiptMethod.entries.toSet()) {
-                    activation = null
-                    update { it.copy(methods = ReceiptMethod.entries.toSet(), review = null, terms = emptyList(), accepted = false) }
-                }
-                if (state.value.canPreview) preview()
-            }
+            ReceiptConfigurationIntent.Preview, ReceiptConfigurationIntent.PreviewAllMethods -> previewFor(intent)
             is ReceiptConfigurationIntent.Accept -> if (current.canAccept) update { it.copy(accepted = intent.accepted) }
             ReceiptConfigurationIntent.Activate -> if (current.canActivate) mutate(activate = true)
             ReceiptConfigurationIntent.RequestDeactivation -> if (current.canDeactivate) update { it.copy(confirmingDeactivation = true) }
             ReceiptConfigurationIntent.DismissDeactivation -> update { it.copy(confirmingDeactivation = false) }
             ReceiptConfigurationIntent.Deactivate -> if (canConfirmDeactivation()) mutate(activate = false)
         }
+    }
+
+    private fun previewFor(intent: ReceiptConfigurationIntent) {
+        if (intent == ReceiptConfigurationIntent.Preview) {
+            if (state.value.canPreview) preview()
+            return
+        }
+        if (state.value.methods != ReceiptMethod.entries.toSet()) {
+            activation = null
+            update { it.copy(methods = ReceiptMethod.entries.toSet(), review = null, terms = emptyList(), accepted = false) }
+        }
+        if (state.value.canPreview) preview()
     }
 
     private fun canConfirmDeactivation() = state.value.canDeactivate && state.value.confirmingDeactivation

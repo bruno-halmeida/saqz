@@ -115,7 +115,8 @@ internal class AndroidLinkAdapter(
 
         fun directEvent(url: String?, allowedHosts: Set<String>): GroupLinkEvent? {
             val link = trustedLink(url, allowedHosts) ?: return null
-            settleEvent(link)?.let { return it }
+            // Com sinal de acerto, só ele decide: misturado com outro código, nada abre.
+            if (link.settlePathCode != null || link.query.any { it.first == SETTLE_PARAMETER }) return settleEvent(link)
             val inviteEntries = link.query.filter { it.first == INVITE_PARAMETER }
             val attendanceEntries = link.query.filter { it.first == ATTENDANCE_PARAMETER }
             val intentEntries = link.query.filter { it.first == INTENT_PARAMETER }

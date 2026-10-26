@@ -84,8 +84,8 @@ internal fun ReceivablesHero(
     kicker: String,
     amount: String,
     support: String?,
-    detail: String? = null,
     modifier: Modifier = Modifier,
+    detail: String? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) = SaqzHeroCard(kicker = kicker, title = amount, shape = RectangleShape, modifier = modifier.testTag(PaymentTags.Hero)) {
     if (support != null || detail != null) {

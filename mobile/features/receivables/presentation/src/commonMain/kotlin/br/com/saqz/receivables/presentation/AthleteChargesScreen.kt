@@ -54,7 +54,9 @@ fun AthleteChargesScreen(state: AthleteChargesState, onIntent: (AthleteChargesIn
     onBack, modifier) {
     val metrics = SaqzTheme.metrics
     when {
-        state.loading -> Box(Modifier.fillMaxWidth().padding(metrics.sectionGap)) { SaqzSpinner(Modifier.align(androidx.compose.ui.Alignment.Center)) }
+        state.loading -> Box(Modifier.fillMaxWidth().padding(metrics.sectionGap)) {
+            SaqzSpinner(Modifier.align(androidx.compose.ui.Alignment.Center))
+        }
         state.error != null -> PaymentFailure(state.error, { onIntent(AthleteChargesIntent.Refresh) },
             Modifier.padding(metrics.horizontalPadding))
         !state.active -> ReceivablesNote(stringResource(Res.string.charges_inactive))

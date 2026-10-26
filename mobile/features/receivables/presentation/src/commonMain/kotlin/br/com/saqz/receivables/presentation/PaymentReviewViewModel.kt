@@ -77,13 +77,16 @@ class PaymentReviewViewModel(
             PaymentReviewIntent.StartAssign -> if (!current.loading && current.error == null) startAssign()
             PaymentReviewIntent.BackToDetail -> update { it.copy(assigning = false, member = null, charges = emptyList()) }
             is PaymentReviewIntent.Search -> update { it.copy(query = intent.query) }
-            is PaymentReviewIntent.SelectMember -> current.debtors.firstOrNull { it.memberUserId == intent.memberUserId }
+            // Quem não deve nada não pode receber o Pix.
+            is PaymentReviewIntent.SelectMember -> current.debtors
+                .firstOrNull { it.memberUserId == intent.memberUserId && it.openCount > 0 }
                 ?.let(::selectMember)
             is PaymentReviewIntent.ToggleCharge -> update {
                 it.copy(charges = it.charges.map { c -> if (c.chargeId == intent.chargeId) c.copy(checked = !c.checked) else c })
             }
             PaymentReviewIntent.ConfirmAssign -> if (current.canAssign) resolve {
-                payments.assign(args.reviewId, it, current.member!!.memberUserId, current.charges.filter { c -> c.checked }.map { c -> c.chargeId })
+                payments.assign(args.reviewId, it, current.member!!.memberUserId,
+                    current.charges.filter { c -> c.checked }.map { c -> c.chargeId })
             }
             PaymentReviewIntent.NotCharge -> if (!current.loading && !current.assigning) resolve { payments.notCharge(args.reviewId, it) }
         }
@@ -139,7 +142,8 @@ class PaymentReviewViewModel(
                 // A sugestão já vem marcada: as mais antigas que o valor cobre. O gestor pode desmarcar.
                 is SaqzResult.Success -> update {
                     it.copy(charges = result.value.charges.map { c ->
-                        SuggestedChargeUi(c.chargeId, c.label, if (c.overdue) "Vencida" else "Vence em ${PaymentLabels.dayMonth(c.dueDate)}",
+                        SuggestedChargeUi(c.chargeId, c.label,
+                            if (c.overdue) "Vencida" else "Vence em ${PaymentLabels.dayMonth(c.dueDate)}",
                             c.overdue, formatBrl(c.payableCents), c.payableCents, checked = true)
                     })
                 }

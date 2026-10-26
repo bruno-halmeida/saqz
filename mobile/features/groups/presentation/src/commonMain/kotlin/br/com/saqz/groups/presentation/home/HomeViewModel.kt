@@ -204,10 +204,8 @@ class HomeViewModel(
             is HomeIntent.OpenGameSettlement -> emit(HomeEffect.OpenGameSettlement(intent.groupId, intent.gameId))
             is HomeIntent.OpenGameEditor -> emit(HomeEffect.OpenGameEditor(intent.groupId))
             is HomeIntent.OpenInvite -> emit(HomeEffect.OpenInvite(intent.groupId))
-            is HomeIntent.CopyPix -> copyPix(intent.groupId)
-            is HomeIntent.PayCharges -> state.value.ownCharges?.groups
-                ?.firstOrNull { it.groupId == intent.groupId && it.payInApp }
-                ?.let { emit(HomeEffect.OpenPayment(it.groupId, it.groupName)) }
+            // Os dois verbos do aviso de cobrança: copiar a chave (sem recebimento) ou pagar pelo app.
+            is HomeIntent.CopyPix, is HomeIntent.PayCharges -> ownChargeAction(intent)
             is HomeCancelEntryIntent -> handleCancelEntry(intent)
             HomeIntent.CreateGroup -> emit(HomeEffect.OpenCreateGroup)
             is HomeInviteSheetIntent -> handleInviteSheet(intent)
@@ -249,6 +247,19 @@ class HomeViewModel(
                 }
             }
         }
+    }
+
+    private fun ownChargeAction(intent: HomeIntent) = when (intent) {
+        is HomeIntent.CopyPix -> copyPix(intent.groupId)
+        is HomeIntent.PayCharges -> payCharges(intent.groupId)
+        else -> Unit
+    }
+
+    /** Só grupo que recebe pelo app abre o pagamento (FIN-011); o resto volta cedo. */
+    private fun payCharges(groupId: String) {
+        state.value.ownCharges?.groups
+            ?.firstOrNull { it.groupId == groupId && it.payInApp }
+            ?.let { emit(HomeEffect.OpenPayment(it.groupId, it.groupName)) }
     }
 
     /** Grupo sem chave, ou sem pendência, não emite nada — intent inválido volta cedo. */
