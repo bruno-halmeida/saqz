@@ -215,6 +215,28 @@ class ReceivablesV1RecurrenceAndSettleIntegrationTest {
         assertNull(plain.button); assertNull(plain.followUp)
     }
 
+    @Test fun `Cobrar com a chave Pix ainda nao pronta sai uma vez so sem o copia e cola e depois sai com ele`() = fixture { f ->
+        val charge = f.monthly("2026-10")
+        f.sql("UPDATE access_users SET phone='+5511999990000',verified_phone='+5511999990000' WHERE id='${f.athlete}'")
+        f.sql("UPDATE receivable_accounts SET pix_key_ready=false")
+        val sent = mutableListOf<WhatsAppNotification>()
+        val queue = JdbcNotificationWhatsApp(f.ds, JdbcTransactionRunner(f.ds), PublicAttendanceLinkFactory(URI("https://links.saqz.app")),
+            JdbcGroupReceivablesPricing(f.ds, f.conditions, f.clock) { g, p, c -> f.settle.collection(g, p, c) })
+        f.charge(charge)
+        queue.drain({ sent += it; WhatsAppDelivery.Accepted })
+        queue.drain({ sent += it; WhatsAppDelivery.Accepted })
+        assertEquals(1, sent.size, "PIX_NOT_READY dentro do código interno não derruba o commit da fila")
+        assertEquals(listOf("ACCEPTED"), f.jdbc.sql("SELECT status FROM notification_whatsapp_queue").query(String::class.java).list())
+        assertEquals("Pagar no app", sent.single().button!!.label)
+        assertNull(sent.single().followUp)
+        f.sql("UPDATE receivable_accounts SET pix_key_ready=true")
+        f.charge(charge)
+        queue.drain({ sent += it; WhatsAppDelivery.Accepted })
+        assertEquals(2, sent.size)
+        assertEquals("pix-payload", sent.last().followUp)
+        assertEquals(listOf("ACCEPTED", "ACCEPTED"), f.jdbc.sql("SELECT status FROM notification_whatsapp_queue ORDER BY notification_id").query(String::class.java).list())
+    }
+
     private fun fixture(block: (Fixture) -> Unit) { Remote().use { block(Fixture(it)) } }
 
     class MutableClock(var now: Instant) : Clock() {

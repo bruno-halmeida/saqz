@@ -37,6 +37,11 @@ data class CardCustomer(val reference: UUID, val providerId: String?, val name: 
 
 interface PaymentCodeStore {
     fun <T> transaction(block: () -> T): T
+    /**
+     * Transação nova (REQUIRES_NEW), suspendendo a de quem chama: falha aqui dentro nunca marca a transação de fora como
+     * rollback-only (ex.: a fila do WhatsApp que chama o "Cobrar").
+     */
+    fun <T> independent(block: () -> T): T = transaction(block)
     /** Vínculo ativo do grupo, ou nulo. */
     fun receivingAccount(groupId: UUID): ReceivingAccount?
     fun hasDocument(userId: UUID): Boolean
@@ -140,12 +145,17 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
      * Código Pix interno (F3/F4: recusa do cartão e "Cobrar" no WhatsApp), sem requestId do app. Reaproveita o PENDING do
      * mesmo conjunto; nulo quando não dá (sem chave, cobrança resolvida, Asaas fora), e a mensagem sai sem o copia e cola.
      */
-    fun internalPix(groupId: UUID, payerId: UUID, chargeIds: List<UUID>): PixCode? = try {
+    fun internalPix(groupId: UUID, payerId: UUID, chargeIds: List<UUID>): PixCode? {
         val key = chargeIds.sortedBy { it.toString() }.joinToString(",")
-        val code = store.transaction { prepare(groupId, payerId, PaymentMethod.PIX, chargeIds, key) }
-        if (code.status == "CREATING") issue(code)
-        store.transaction { refreshed(code.id) }.takeIf { it.status == "PENDING" }?.pix
-    } catch (_: Exception) { null }
+        // Cada passo numa transação nova: quem chama pode estar dentro de outra (fila do WhatsApp) e uma recusa aqui
+        // (PIX_NOT_READY, sem webhook, cobrança resolvida) não pode derrubar o commit dela.
+        val code = try { store.independent { prepare(groupId, payerId, PaymentMethod.PIX, chargeIds, key) } } catch (_: Exception) { return null }
+        if (code.status == "CREATING") {
+            // issue() grava cada passo em transação própria; a rede fica fora de qualquer transação.
+            try { issue(code) } catch (_: Exception) { return null }
+        }
+        return try { store.independent { refreshed(code.id) }.takeIf { it.status == "PENDING" }?.pix } catch (_: Exception) { null }
+    }
 
     fun get(codeId: UUID, request: FinancialRequest): FinancialResult<PaymentCodeView> = safely(request) {
         val code = store.transaction { store.find(codeId)?.takeIf { it.payerId == request.actorUserId } ?: fail(FinancialError.NOT_FOUND) }
@@ -162,34 +172,34 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
 
     /** Rede fora da transação. QR que falhou some (ninguém tem o código); cartão incerto fica CREATING até a consulta. */
     private fun issue(code: StoredPaymentCode, recoverOnly: Boolean = false) {
-        val account = store.transaction { store.receivingAccount(code.groupId) }
+        val account = store.independent { store.receivingAccount(code.groupId) }
         val description = "Saqz · " + (ledger.group(code.groupId)?.name ?: "grupo")
         when (code.method) {
             PaymentMethod.PIX -> {
                 if (recoverOnly) return
                 val qr = try { provider.createPixQr(code.accountId, account?.pixKey ?: fail(FinancialError.PIX_NOT_READY), code.id, code.amountCents, description) }
-                catch (failure: Failed) { store.transaction { store.changeStatus(code.id, setOf("CREATING"), "CANCELLED", clock.instant()) }; throw failure }
+                catch (failure: Failed) { store.independent { store.changeStatus(code.id, setOf("CREATING"), "CANCELLED", clock.instant()) }; throw failure }
                 catch (_: Exception) {
-                    store.transaction { store.changeStatus(code.id, setOf("CREATING"), "CANCELLED", clock.instant()) }
+                    store.independent { store.changeStatus(code.id, setOf("CREATING"), "CANCELLED", clock.instant()) }
                     fail(FinancialError.PROVIDER_UNAVAILABLE)
                 }
-                store.transaction { store.created(code.id, qr.id, null, PixCode(qr.payload, qr.image), null) }
+                store.independent { store.created(code.id, qr.id, null, PixCode(qr.payload, qr.image), null) }
             }
             PaymentMethod.CARD -> {
-                val customer = store.transaction {
+                val customer = store.independent {
                     val cpf = store.document(code.payerId) ?: fail(FinancialError.DOCUMENT_REQUIRED)
                     store.customer(code.accountId, code.payerId, ledger.displayName(code.payerId) ?: "Atleta Saqz", cpf)
                 }
                 val charge = try {
                     provider.createCardCharge(code.accountId, code.id, customer, code.amountCents, code.commissionCents,
-                        LocalDate.now(clock.withZone(zone)), description) { id -> store.transaction { store.saveCustomer(code.accountId, code.payerId, id) } }
+                        LocalDate.now(clock.withZone(zone)), description) { id -> store.independent { store.saveCustomer(code.accountId, code.payerId, id) } }
                 } catch (_: Exception) { null }
                 if (charge == null) {
                     // Nada encontrado: segue CREATING e a próxima leitura consulta de novo; o app pode pedir outro código.
                     if (!recoverOnly) fail(FinancialError.PROVIDER_UNAVAILABLE)
                     return
                 }
-                store.transaction { store.created(code.id, null, charge.paymentId, null, charge.checkoutUrl) }
+                store.independent { store.created(code.id, null, charge.paymentId, null, charge.checkoutUrl) }
             }
         }
     }

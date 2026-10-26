@@ -19,10 +19,16 @@ import javax.sql.DataSource
 class JdbcPaymentCodeStore(dataSource: DataSource, private val secrets: FinancialSecrets) : PaymentCodeStore {
     private val jdbc = JdbcClient.create(dataSource)
     private val transactions = TransactionTemplate(DataSourceTransactionManager(dataSource))
+    private val separate = TransactionTemplate(DataSourceTransactionManager(dataSource)).apply {
+        propagationBehavior = org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    }
     private val mapper = jacksonObjectMapper()
     private class Holder<T>(val value: T)
 
     override fun <T> transaction(block: () -> T): T = try { transactions.execute { Holder(block()) }!!.value }
+    catch (_: DuplicateKeyException) { throw FinancialRequestConflict() }
+
+    override fun <T> independent(block: () -> T): T = try { separate.execute { Holder(block()) }!!.value }
     catch (_: DuplicateKeyException) { throw FinancialRequestConflict() }
 
     override fun receivingAccount(groupId: UUID): ReceivingAccount? = jdbc.sql("""

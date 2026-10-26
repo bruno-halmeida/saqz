@@ -92,13 +92,14 @@ class SettleTime(private val ledger: GroupChargeLedger, private val codes: Payme
 
     /** "Cobrar" com recebimentos ativos (FIN-013): botão "Pagar no app" para o link daquele jogo ou mês e o copia e cola. */
     fun collection(groupId: UUID, payerId: UUID, chargeIds: List<UUID>): ChargeCollection? {
-        val charge = codes.transaction {
-            if (!active(groupId)) return@transaction null
-            ledger.lock(chargeIds).firstOrNull { it.groupId == groupId }
-        } ?: return null
-        val url = codes.transaction {
-            charge.gameId?.let { links.gameUrl(groupId, it) } ?: links.monthUrl(groupId, (charge.billingMonth ?: charge.dueDate).withDayOfMonth(1))
-        }
+        // Chamado de dentro da transação da fila do WhatsApp: tudo em transação nova e sem lançar para fora.
+        val url = try {
+            codes.independent {
+                if (!active(groupId)) return@independent null
+                val charge = ledger.lock(chargeIds).firstOrNull { it.groupId == groupId } ?: return@independent null
+                charge.gameId?.let { links.gameUrl(groupId, it) } ?: links.monthUrl(groupId, (charge.billingMonth ?: charge.dueDate).withDayOfMonth(1))
+            }
+        } catch (_: Exception) { null } ?: return null
         return ChargeCollection(url, athletes.internalPix(groupId, payerId, chargeIds)?.payload)
     }
 
