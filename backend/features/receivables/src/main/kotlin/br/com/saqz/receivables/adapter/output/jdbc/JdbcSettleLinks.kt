@@ -14,7 +14,7 @@ data class SettleLink(val code: String, val groupId: UUID, val gameId: UUID?, va
 
 /** Link da hora do acerto (FIN-013), no domínio do link de presença: `https://links.saqz.app/acerto/{code}`. */
 class JdbcSettleLinks(dataSource: DataSource, private val linksDomain: URI, private val clock: java.time.Clock = java.time.Clock.systemUTC()) :
-    br.com.saqz.receivables.application.SettleLinkUrls {
+    br.com.saqz.receivables.application.SettleLinkStore {
     private val jdbc = JdbcClient.create(dataSource)
     private val random = SecureRandom()
 
@@ -28,6 +28,14 @@ class JdbcSettleLinks(dataSource: DataSource, private val linksDomain: URI, priv
 
     override fun monthUrl(groupId: UUID, month: LocalDate): String = url(forMonth(groupId, month, clock.instant()).code)
     override fun gameUrl(groupId: UUID, gameId: UUID): String = url(forGame(groupId, gameId, clock.instant()).code)
+
+    override fun announceGame(groupId: UUID, gameId: UUID): String? =
+        forGame(groupId, gameId, clock.instant()).takeIf { announce(it.code, clock.instant()) }?.let { url(it.code) }
+    override fun announceMonth(groupId: UUID, month: LocalDate): String? =
+        forMonth(groupId, month, clock.instant()).takeIf { announce(it.code, clock.instant()) }?.let { url(it.code) }
+    override fun resolve(code: String) = find(code)?.let {
+        br.com.saqz.receivables.application.SettleDestination(it.groupId, it.gameId, it.billingMonth)
+    }
 
     fun find(code: String): SettleLink? {
         if (!code.matches(Regex("[A-Za-z0-9_-]{8,32}"))) return null

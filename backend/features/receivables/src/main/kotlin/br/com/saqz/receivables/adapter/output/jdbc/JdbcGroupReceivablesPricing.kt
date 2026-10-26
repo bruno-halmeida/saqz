@@ -16,7 +16,9 @@ import javax.sql.DataSource
  * publicada (comissão) e o retrato das tarifas do Asaas gravado na ativação. Nunca consulta o Asaas aqui.
  */
 class JdbcGroupReceivablesPricing(private val dataSource: DataSource, private val published: FinancialConditions,
-    private val clock: Clock) : GroupReceivables {
+    private val clock: Clock,
+    /** "Cobrar" com recebimentos ativos (F4); fora da configuração de pagamentos, o WhatsApp sai como hoje. */
+    private val collections: (UUID, UUID, List<UUID>) -> br.com.saqz.sharedkernel.group.ChargeCollection? = { _, _, _ -> null }) : GroupReceivables {
     private val jdbc = JdbcClient.create(dataSource)
 
     override fun active(groupId: UUID): Boolean = jdbc.sql(
@@ -24,6 +26,8 @@ class JdbcGroupReceivablesPricing(private val dataSource: DataSource, private va
     ).param("group", groupId).query(Int::class.java).single() > 0
 
     override fun groupDeleted(groupId: UUID, actorId: UUID) = JdbcGroupReceivablesStore(dataSource).groupDeleted(groupId, actorId, clock.instant())
+
+    override fun chargeCollection(groupId: UUID, payerId: UUID, chargeIds: List<UUID>) = collections(groupId, payerId, chargeIds)
 
     override fun price(groupId: UUID, amountCents: Long): ChargePricing? {
         val link = jdbc.sql("""

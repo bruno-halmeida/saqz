@@ -66,6 +66,18 @@ class ReceivablesV1Configuration {
     @Bean fun receivablesV1Jobs(pixKeys: JdbcPixKeys, commissions: JdbcCommissionTransfers, cancellations: JdbcPaymentCodeCancellations) =
         ReceivablesV1Jobs(pixKeys, commissions, cancellations)
     @Bean fun cardSubscriptionJobs(cards: CardSubscriptions) = CardSubscriptionJobs(cards)
+    @Bean fun settleTime(ledger: GroupChargeLedger, codes: JdbcPaymentCodeStore, athletes: AthletePayments,
+        subscriptions: JdbcSubscriptionStore, links: JdbcSettleLinks, notices: ReceivablesNotices, clock: Clock) =
+        SettleTime(ledger, codes, athletes, subscriptions, links, notices, clock)
+    @Bean fun settleLinksController(actors: SubscriptionActorResolver, service: SettleTime) =
+        br.com.saqz.receivables.adapter.input.http.SettleLinksController(FinancialActorResolver { actors.resolve(it) }, service)
+    @Bean fun settleTimeJob(settle: SettleTime) = SettleTimeJob(settle)
+}
+
+/** Hora do acerto (F4): roda a cada minuto; o link anunciado uma vez garante uma mensagem por jogo ou mês. */
+class SettleTimeJob(private val settle: SettleTime) {
+    @Scheduled(fixedDelayString = "\${saqz.receivables.settle-time-delay-ms:60000}")
+    fun run() { JobLog.frequent("settle_time", { settle.run() }) { mapOf("ran" to 1) } }
 }
 
 /** Assinaturas no cartão (F3): ativação do checkout, corte, reajuste e isenção. Tudo idempotente; rodar de novo não duplica. */
