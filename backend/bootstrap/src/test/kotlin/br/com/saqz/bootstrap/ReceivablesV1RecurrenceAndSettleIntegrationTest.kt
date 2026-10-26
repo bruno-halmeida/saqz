@@ -24,6 +24,7 @@ import java.net.InetSocketAddress
 import java.net.URI
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -182,12 +183,38 @@ class ReceivablesV1RecurrenceAndSettleIntegrationTest {
         assertEquals(listOf(f.other), pushes)
     }
 
+    @Test fun `me traz o nome do grupo e a oferta NONE para o mensalista e nada para o avulso`() = fixture { f ->
+        val me = assertIs<FinancialResult.Success<AthletePaymentState>>(f.athletes.me(f.group, f.request(f.athlete))).value
+        assertEquals("Vôlei do CERET", me.groupName)
+        val offer = assertIs<RecurrenceView>(me.recurrence)
+        assertEquals("NONE", offer.status)
+        assertEquals(10000, offer.amountCents)
+        assertEquals(LocalDate.of(2026, 11, 10), offer.nextChargeDate)
+        assertTrue(offer.history.isEmpty())
+        f.sql("UPDATE group_memberships SET membership_type='AVULSO' WHERE user_id='${f.athlete}'")
+        assertNull(assertIs<FinancialResult.Success<AthletePaymentState>>(f.athletes.me(f.group, f.request(f.athlete))).value.recurrence)
+        f.sql("UPDATE group_memberships SET membership_type='MENSALISTA' WHERE user_id='${f.athlete}'")
+        f.sql("UPDATE receivable_group_links SET enabled=false")
+        assertNull(f.cards.view(f.group, f.athlete), "sem recebimento, sem oferta")
+    }
+
+    @Test fun `historico marca a cobranca feita na hora da adesao`() = fixture { f ->
+        f.monthly("2026-10")
+        f.active()
+        f.remote.payment("pay_sub_0", "CREDIT_CARD", 10000, 9500, "CONFIRMED", due = "2026-10-20", subscription = "sub_1")
+        f.event("evt_0", "PAYMENT_CONFIRMED", "pay_sub_0", subscription = "sub_1")
+        val history = f.cards.view(f.group, f.athlete)!!.history
+        assertEquals(1, history.size)
+        assertTrue(history.single().atAdhesion, "outubro em aberto: cobrado na adesão, no dia 20")
+        assertEquals(LocalDate.of(2026, 10, 1), history.single().month)
+    }
+
     @Test fun `link do acerto resolve so para membro`() = fixture { f ->
         val game = f.game(endedMinutesAgo = 40)
         val url = JdbcSettleLinks(f.ds, URI("https://links.saqz.app"), f.clock).gameUrl(f.group, game)
         val code = url.substringAfterLast('/')
         val ok = assertIs<FinancialResult.Success<SettleDestination>>(f.settle.resolve(code, f.request(f.athlete))).value
-        assertEquals(SettleDestination(f.group, game, null), ok)
+        assertEquals(SettleDestination(f.group, game, null, "Vôlei do CERET"), ok)
         assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.settle.resolve(code, f.request(UUID.randomUUID()))).error)
         assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.settle.resolve("nada", f.request(f.athlete))).error)
     }

@@ -12,7 +12,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-data class SettleDestination(val groupId: UUID, val gameId: UUID?, val billingMonth: LocalDate?)
+/** [groupName] é aditivo (rodada 2 da F2): o app abre o pagamento sem saber o nome do grupo. */
+data class SettleDestination(val groupId: UUID, val gameId: UUID?, val billingMonth: LocalDate?, val groupName: String? = null)
 
 /** Links da hora do acerto: o mesmo código por (grupo, jogo) ou (grupo, mês); anunciar uma vez só. */
 interface SettleLinkStore : SettleLinkUrls {
@@ -85,7 +86,10 @@ class SettleTime(private val ledger: GroupChargeLedger, private val codes: Payme
 
     /** Link aberto pelo app (logado): só para quem é membro ativo do grupo. */
     fun resolve(code: String, request: FinancialRequest): FinancialResult<SettleDestination> {
-        val destination = codes.transaction { links.resolve(code)?.takeIf { ledger.isActiveMember(it.groupId, request.actorUserId) } }
+        val destination = codes.transaction {
+            links.resolve(code)?.takeIf { ledger.isActiveMember(it.groupId, request.actorUserId) }
+                ?.let { it.copy(groupName = ledger.group(it.groupId)?.name) }
+        }
             ?: return FinancialResult.Failure(FinancialError.NOT_FOUND, request.requestId)
         return FinancialResult.Success(destination, request.requestId)
     }

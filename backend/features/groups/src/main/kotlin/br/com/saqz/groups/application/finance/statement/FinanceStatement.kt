@@ -18,6 +18,10 @@ data class FinanceStatementItem(
     val paidMethod: String?,
     val occurredAt: Instant,
     val amountCents: Long,
+    /** Recebimento pelo app (FIN-014): `APP` com o meio (`PIX`/`CARD`); e a origem do lançamento automático. */
+    val settledBy: String? = null,
+    val appMethod: String? = null,
+    val origin: String? = null,
 )
 
 data class FinanceStatementSummary(

@@ -17,11 +17,19 @@ import javax.sql.DataSource
  */
 class JdbcGroupReceivablesPricing(private val dataSource: DataSource, private val published: FinancialConditions,
     private val clock: Clock,
+    /** A regra do `active` do `/me` (`AthletePayments.payable`); nulo fora da configuração de pagamentos. */
+    private val payable: (UUID) -> Boolean? = { null },
     /** "Cobrar" com recebimentos ativos (F4); fora da configuração de pagamentos, o WhatsApp sai como hoje. */
     private val collections: (UUID, UUID, List<UUID>) -> br.com.saqz.sharedkernel.group.ChargeCollection? = { _, _, _ -> null }) : GroupReceivables {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun active(groupId: UUID): Boolean = jdbc.sql(
+    /**
+     * "O atleta consegue pagar pelo app agora": vínculo ligado e a regra do `/me`. Com a trava global ou o adm desligando,
+     * a chave Pix pessoal volta a aparecer e o "Pagar" some.
+     */
+    override fun active(groupId: UUID): Boolean = linked(groupId) && payable(groupId) != false
+
+    private fun linked(groupId: UUID): Boolean = jdbc.sql(
         "SELECT count(*) FROM receivable_group_links WHERE group_id=:group AND enabled",
     ).param("group", groupId).query(Int::class.java).single() > 0
 

@@ -73,7 +73,8 @@ interface SubscriptionStore {
     fun managerStatuses(groupId: UUID): List<MemberRecurrence>
 }
 
-data class RecurrenceHistoryItem(val month: LocalDate, val amountCents: Long, val paidAt: Instant)
+/** [atAdhesion]: a cobrança feita na hora da adesão (o mês já em aberto), fora do dia de vencimento. */
+data class RecurrenceHistoryItem(val month: LocalDate, val amountCents: Long, val paidAt: Instant, val atAdhesion: Boolean = false)
 data class RecurrenceView(val status: String, val amountCents: Long, val nextChargeDate: LocalDate?, val refusedChargeId: UUID?,
     val history: List<RecurrenceHistoryItem>)
 data class RecurrenceCheckout(val checkoutUrl: String)
@@ -90,11 +91,25 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
 
     fun view(groupId: UUID, memberId: UUID): RecurrenceView? = store.transaction {
         val live = store.live(groupId, memberId).firstOrNull { it.status == "ACTIVE" } ?: store.live(groupId, memberId).firstOrNull()
-            ?: return@transaction null
+            ?: return@transaction offer(groupId, memberId)
         val refused = live.refusedChargeId?.takeIf { id -> ledger.lock(listOf(id)).singleOrNull()?.status == "PENDING" }
         val status = if (live.status == "ACTIVE" && refused != null) "REFUSED" else live.status
         val dueDay = ledger.membership(groupId, memberId)?.dueDay
         RecurrenceView(status, live.amountCents, dueDay?.let { nextDue(it, today()) }, refused, store.history(groupId, memberId))
+    }
+
+    /**
+     * Sem assinatura viva: `NONE` para o mensalista ativo num grupo em que ele consegue pagar pelo app (a oferta), com a
+     * mensalidade que ele pagaria e o que já pagou no cartão; nulo para o avulso (e sem recebimento).
+     */
+    private fun offer(groupId: UUID, memberId: UUID): RecurrenceView? {
+        val membership = ledger.membership(groupId, memberId)?.takeIf { it.active && it.mensalista } ?: return null
+        val fee = membership.feeCents ?: return null
+        val dueDay = membership.dueDay ?: return null
+        val account = codes.receivingAccount(groupId) ?: return null
+        if (!athletes.available(account)) return null
+        val amount = pricing.price(groupId, fee)?.payableCents ?: fee
+        return RecurrenceView("NONE", amount, nextDue(dueDay, today()), null, store.history(groupId, memberId))
     }
 
     fun get(groupId: UUID, request: FinancialRequest): FinancialResult<RecurrenceView?> = safely(request) {

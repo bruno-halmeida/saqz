@@ -90,6 +90,9 @@ class JdbcFinanceStatementRepository(
         paidMethod = rs.getString("paid_method"),
         occurredAt = rs.getTimestamp("occurred_at").toInstant(),
         amountCents = rs.getLong("amount_cents"),
+        settledBy = rs.getString("settled_by"),
+        appMethod = rs.getString("app_method"),
+        origin = rs.getString("origin"),
     )
 
     private data class SummaryRow(
@@ -150,7 +153,10 @@ class JdbcFinanceStatementRepository(
                    ledger.category,
                    ledger.paid_method,
                    ledger.occurred_at,
-                   ledger.amount_cents
+                   ledger.amount_cents,
+                   ledger.settled_by,
+                   ledger.app_method,
+                   ledger.origin
             FROM (
                 SELECT charges.id,
                        'CHARGE' AS type,
@@ -162,7 +168,10 @@ class JdbcFinanceStatementRepository(
                        charges.kind::text AS category,
                        charges.paid_method::text AS paid_method,
                        paid.occurred_at,
-                       $PAID_AMOUNT AS amount_cents
+                       $PAID_AMOUNT AS amount_cents,
+                       charges.settled_by::text AS settled_by,
+                       charges.app_method::text AS app_method,
+                       NULL::text AS origin
                 FROM paid_charge_events paid
                 JOIN group_charges charges ON charges.id = paid.charge_id
                 JOIN access_groups groups
@@ -182,7 +191,10 @@ class JdbcFinanceStatementRepository(
                        CASE expenses.direction::text
                            WHEN 'OUT' THEN -expenses.amount_cents
                            ELSE expenses.amount_cents
-                       END AS amount_cents
+                       END AS amount_cents,
+                       NULL::text AS settled_by,
+                       NULL::text AS app_method,
+                       expenses.origin::text AS origin
                 FROM group_expenses expenses
                 JOIN access_groups groups
                   ON groups.id = expenses.group_id AND groups.deleted_at IS NULL

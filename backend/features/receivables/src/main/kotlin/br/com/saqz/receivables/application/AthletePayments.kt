@@ -21,7 +21,9 @@ data class OpenChargeView(val chargeId: UUID, val kind: String, val gameId: UUID
 data class AthletePaymentState(val active: Boolean, val payeeName: String?, val methods: List<PaymentMethod>,
     val pixReady: Boolean, val hasDocument: Boolean, val openCharges: List<OpenChargeView>, val totalCents: Long,
     /** Recorrência no cartão: nula até a F3. */
-    val recurrence: Any? = null)
+    val recurrence: Any? = null,
+    /** Aditivo (rodada 2 da F2): o link do acerto e o push abrem o pagamento sem saber o nome do grupo. */
+    val groupName: String? = null)
 data class DocumentState(val hasDocument: Boolean)
 
 /** Código guardado. `status` interno CREATING aparece como PENDING (ainda sem QR ou link). */
@@ -96,7 +98,7 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
             AthletePaymentState(active, if (active) ledger.displayName(group.ownerUserId) else null,
                 if (active) listOf(PaymentMethod.PIX, PaymentMethod.CARD) else emptyList(),
                 active && account!!.pixKey != null, store.hasDocument(request.actorUserId), charges, charges.sumOf { it.payableCents },
-                recurrence(groupId, request.actorUserId))
+                recurrence(groupId, request.actorUserId), group.name)
         }
     }
 
@@ -223,6 +225,12 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
         rollout.adminEnabled(account.ownerUserId)
 
     /** Dá para fazer negócio novo pelo app (código, adesão ao cartão): conta aprovada, plano e liberação do adm. */
+    /**
+     * O atleta consegue pagar pelo app agora neste grupo: o mesmo `active` do `/me` (vínculo ligado, conta aprovada e
+     * liberada, plano e liberação do dono, trava global). É o `receivablesActive` do grupo e da Início.
+     */
+    fun payable(groupId: UUID): Boolean = store.transaction { store.receivingAccount(groupId)?.let(::available) == true }
+
     fun available(account: ReceivingAccount) = account.registration == RegistrationStatus.APPROVED &&
         account.newOperationsEnabled && eligibility.forOwner(account.ownerUserId, clock.instant()).eligible &&
         rollout.availability(account.ownerUserId).backendEnabled

@@ -180,6 +180,17 @@ class MyHomeControllerTest {
         )
     }
 
+    /** FIN-009: `receivablesActive` por grupo vem da porta (a regra do `/me`); sem a porta, falso como hoje. */
+    @Test
+    fun ownChargesCarryWhetherTheAthleteCanPayInTheAppPerGroup() {
+        val active = controller(receivables = object : br.com.saqz.sharedkernel.group.GroupReceivables {
+            override fun active(groupId: java.util.UUID) = groupId == group
+            override fun price(groupId: java.util.UUID, amountCents: Long): br.com.saqz.sharedkernel.group.ChargePricing? = null
+        }).home(identity).ownCharges!!.groups
+        assertEquals(listOf(true, false), active.map { it.receivablesActive })
+        assertEquals(listOf(false, false), controller().home(identity).ownCharges!!.groups.map { it.receivablesActive })
+    }
+
     @Test
     fun exposesThePendingEntryRequestsOfTheActor() {
         val controller = controller(
@@ -241,6 +252,7 @@ class MyHomeControllerTest {
     private fun controller(
         onFind: (UUID) -> Unit = {},
         fixed: HomeReadModel? = null,
+        receivables: br.com.saqz.sharedkernel.group.GroupReceivables = br.com.saqz.sharedkernel.group.GroupReceivables.NONE,
     ): MyHomeController {
         val repository = object : HomeRepository {
             override fun find(actorId: UUID, now: Instant, today: LocalDate): HomeReadModel {
@@ -357,6 +369,7 @@ class MyHomeControllerTest {
         return MyHomeController(
             actorResolver = VerifiedGroupActorResolver { actor },
             query = HomeQuery(repository, Clock.fixed(now, ZoneId.of("UTC")), ZoneId.of("America/Sao_Paulo")),
+            receivables = receivables,
         )
     }
 }

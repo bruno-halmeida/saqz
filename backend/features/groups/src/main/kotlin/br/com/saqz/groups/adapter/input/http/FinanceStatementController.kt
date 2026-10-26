@@ -24,6 +24,10 @@ data class FinanceStatementItemResponse(
     val paidMethod: String?,
     val occurredAt: java.time.Instant,
     val amountCents: Long,
+    /** Aditivos (FIN-014): "pelo app · Pix/cartão" e o lançamento automático das taxas. */
+    val settledBy: String? = null,
+    val appMethod: String? = null,
+    val origin: String? = null,
 )
 
 data class FinanceStatementSummaryResponse(
@@ -111,6 +115,9 @@ private fun FinanceStatementItem.response() = FinanceStatementItemResponse(
     paidMethod = paidMethod,
     occurredAt = occurredAt,
     amountCents = amountCents,
+    settledBy = settledBy,
+    appMethod = appMethod,
+    origin = origin,
 )
 
 private fun FinanceStatementSummary.response() = FinanceStatementSummaryResponse(

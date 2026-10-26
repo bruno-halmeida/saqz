@@ -266,6 +266,39 @@ class ReceivablesV1IntegrationTest {
         assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.groupReceivables.quote(f.account, f.group, 2000, f.request(f.athlete))).error)
     }
 
+    /** Revisão da rodada 2: `receivablesActive` é "o atleta consegue pagar pelo app agora", a regra do `active` do `/me`. */
+    @Test fun `receivablesActive segue a regra do me e some com o adm ou a trava global desligando`() = fixture { f ->
+        val linked = JdbcGroupReceivablesPricing(f.ds, f.conditions, f.clock)
+        val active = JdbcGroupReceivablesPricing(f.ds, f.conditions, f.clock, payable = { f.athletes.payable(it) })
+        assertTrue(active.active(f.group))
+        assertTrue(assertIs<FinancialResult.Success<AthletePaymentState>>(f.athletes.me(f.group, f.request(f.athlete))).value.active)
+        f.sql("UPDATE receivable_accounts SET new_operations_enabled=false")
+        assertFalse(active.active(f.group), "o adm desligou a conta: a chave pessoal volta e o Pagar some")
+        assertTrue(linked.active(f.group), "só o vínculo continua ligado")
+        f.sql("UPDATE receivable_accounts SET new_operations_enabled=true")
+        val locked = AthletePayments(f.codes, f.ledger, f.conditions, ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) },
+            LaunchReceivablesRollout(f.rollout, false), f.provider, f.clock)
+        assertFalse(JdbcGroupReceivablesPricing(f.ds, f.conditions, f.clock, payable = { locked.payable(it) }).active(f.group),
+            "trava global desligada")
+        f.sql("UPDATE receivable_group_links SET enabled=false")
+        assertFalse(active.active(f.group))
+    }
+
+    @Test fun `extrato traz settledBy appMethod e a origem do lancamento automatico`() = fixture { f ->
+        val charge = f.monthly("2026-10", f.athlete)
+        val code = f.code(PaymentMethod.PIX, charge)
+        f.remote.payment("pay_1", "PIX", 10000, 9901, "RECEIVED", qr = "qr_1")
+        f.event("evt_1", "PAYMENT_RECEIVED", "pay_1", qr = "qr_1")
+        assertEquals("PAID", f.string("SELECT status::text FROM group_charges WHERE id='$charge'"))
+        val items = br.com.saqz.groups.adapter.output.jdbc.finance.JdbcFinanceStatementRepository(f.ds).page(
+            br.com.saqz.groups.application.finance.statement.FinanceStatementQuery(f.group, YearMonth.of(2026, 10), null, 50, 0)).items
+        val paid = items.single { it.id == charge }
+        assertEquals("APP", paid.settledBy)
+        assertEquals("PIX", paid.appMethod)
+        assertEquals("RECEIVABLES_FEES", items.single { it.type.name == "EXPENSE" }.origin)
+        assertNotNull(code)
+    }
+
     private fun fixture(block: (Fixture) -> Unit) { Remote().use { block(Fixture(it)) } }
 
     private inner class Fixture(val remote: Remote) {

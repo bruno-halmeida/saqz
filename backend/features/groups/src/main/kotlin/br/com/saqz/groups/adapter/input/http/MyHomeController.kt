@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.sharedkernel.group.GroupReceivables
 import br.com.saqz.groups.application.photo.MemberPhotoDirectory
 import br.com.saqz.groups.application.photo.NoMemberPhotos
 import br.com.saqz.groups.application.photo.tagsOf
@@ -167,6 +168,8 @@ data class HomeOwnChargeGroupResponse(
     val pixKey: String?,
     val pixLabel: String?,
     val oldest: HomeOwnChargeOldestResponse,
+    /** FIN-009, aditivo: o atleta consegue pagar pelo app neste grupo agora; o app troca a chave pessoal por "Pagar". */
+    val receivablesActive: Boolean = false,
 )
 
 data class HomeOwnChargesResponse(
@@ -186,11 +189,16 @@ class MyHomeController(
     private val actorResolver: VerifiedGroupActorResolver,
     private val query: HomeQuery,
     private val photos: MemberPhotoDirectory = NoMemberPhotos,
+    private val receivables: GroupReceivables = GroupReceivables.NONE,
 ) {
     @GetMapping("/api/me/home")
     fun home(@AuthenticationPrincipal identity: RequestIdentity): HomeResponse {
         val actor = actorResolver.resolve(identity)
-        val response = query.execute(actor).toResponse()
+        val response = query.execute(actor).toResponse().let { home ->
+            home.copy(ownCharges = home.ownCharges?.let { own ->
+                own.copy(groups = own.groups.map { it.copy(receivablesActive = receivables.active(it.groupId)) })
+            })
+        }
         val next = response.member.nextGame ?: return response
         val preview = next.rosterPreview
         val tags = photos.tagsOf(actor, next.groupId, (preview.confirmed + preview.waitlisted).map { it.userId })

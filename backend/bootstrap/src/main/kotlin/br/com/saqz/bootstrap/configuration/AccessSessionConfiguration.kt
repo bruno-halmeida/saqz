@@ -1074,7 +1074,8 @@ class AccessSessionConfiguration {
         repository: JdbcHomeRepository,
         @Value("\${saqz.finance.monthly-charges.zone}") zone: String,
     ) = HomeQuery(repository, Clock.systemUTC(), ZoneId.of(zone))
-    @Bean fun homeController(actor: VerifiedGroupActorResolver, query: HomeQuery, photos: MemberPhotoDirectory) = MyHomeController(actor, query, photos)
+    @Bean fun homeController(actor: VerifiedGroupActorResolver, query: HomeQuery, photos: MemberPhotoDirectory,
+        receivables: br.com.saqz.sharedkernel.group.GroupReceivables) = MyHomeController(actor, query, photos, receivables)
     @Bean fun financeStatementRepository(dataSource: DataSource) = JdbcFinanceStatementRepository(dataSource)
     @Bean fun financeStatementService(repository: JdbcFinanceStatementRepository) = FinanceStatementService(repository)
     @Bean fun financeStatementController(actor: VerifiedGroupActorResolver, service: FinanceStatementService) = FinanceStatementController(actor, service)

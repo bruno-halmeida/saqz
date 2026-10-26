@@ -129,13 +129,15 @@ class JdbcSubscriptionStore(dataSource: DataSource) : SubscriptionStore {
     """.trimIndent()).param("at", Timestamp.from(at)).param("account", accountId).param("payment", paymentId).update() == 1
 
     override fun history(groupId: UUID, memberId: UUID): List<RecurrenceHistoryItem> = jdbc.sql("""
-        SELECT date_trunc('month', p.due_date)::date AS month, s.value_cents, s.settled_at
+        SELECT date_trunc('month', p.due_date)::date AS month, s.value_cents, s.settled_at,
+               (p.due_date = c.first_due_date AND (c.created_at AT TIME ZONE 'America/Sao_Paulo')::date = c.first_due_date) AS at_adhesion
         FROM card_subscription_payments p JOIN card_subscriptions c ON c.id=p.subscription_id
         JOIN payment_settlements s ON s.account_id=p.account_id AND s.provider_payment_id=p.provider_payment_id
         WHERE c.group_id=:group AND c.member_user_id=:member AND s.reversed_at IS NULL
         ORDER BY p.due_date DESC LIMIT 12
     """.trimIndent()).param("group", groupId).param("member", memberId).query { rs, _ ->
-        RecurrenceHistoryItem(rs.getObject("month", LocalDate::class.java), rs.getLong("value_cents"), rs.getTimestamp("settled_at").toInstant())
+        RecurrenceHistoryItem(rs.getObject("month", LocalDate::class.java), rs.getLong("value_cents"), rs.getTimestamp("settled_at").toInstant(),
+            rs.getBoolean("at_adhesion"))
     }.list()
 
     override fun managerStatuses(groupId: UUID): List<MemberRecurrence> = jdbc.sql("""
