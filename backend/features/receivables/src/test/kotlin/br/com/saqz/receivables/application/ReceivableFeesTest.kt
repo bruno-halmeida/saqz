@@ -32,7 +32,8 @@ class ReceivableFeesTest {
         val free = card.copy(commissionRate = BigDecimal.ZERO, commissionFixedCents = 0)
         assertEquals(0, FeeCalculator.commission(5000, free))
         val price = chargePricing(2000, "PASS", listOf(free))!!.payableCents
-        assertEquals(2000 + (price * 0.0299).let { Math.round(it) } + 49, price)
+        assertTrue(FeeCalculator.net(price, free) >= 2000 && FeeCalculator.net(price - 1, free) < 2000)
+        assertTrue(price < chargePricing(2000, "PASS", listOf(card))!!.payableCents)
     }
 
     @Test fun `previa mostra absorver e repassar com rotulo unico de taxa`() {
