@@ -32,7 +32,14 @@ object RolloutPolicy {
     }
 }
 
-fun interface ReceivablesRolloutAccess { fun availability(userId: UUID): ReceivablesAvailability }
+fun interface ReceivablesRolloutAccess {
+    fun availability(userId: UUID): ReceivablesAvailability
+    /**
+     * Só a decisão do adm para a pessoa (modo e exceção), sem a trava de deploy `saqz.receivables.launch-enabled`. É o que
+     * vale para cortar o que já existe (FIN-012): a trava global barra negócio novo, nunca encerra nada.
+     */
+    fun adminEnabled(userId: UUID): Boolean = availability(userId).backendEnabled
+}
 interface ReceivablesRollout : ReceivablesRolloutAccess {
     fun read(): RolloutState
     fun user(userId: UUID): UserRolloutState

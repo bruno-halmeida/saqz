@@ -214,6 +214,14 @@ class AthletePayments(private val store: PaymentCodeStore, private val ledger: G
         return store.find(id)!!
     }
 
+    /**
+     * O gestor ainda tem o direito (corte da mensalidade no cartão, FIN-012): plano (fim do teste, Titular), decisão do adm
+     * para a pessoa e a conta liberada; ignora a trava global de deploy, que só barra negócio novo.
+     */
+    fun entitled(account: ReceivingAccount) = account.registration == RegistrationStatus.APPROVED &&
+        account.newOperationsEnabled && eligibility.forOwner(account.ownerUserId, clock.instant()).eligible &&
+        rollout.adminEnabled(account.ownerUserId)
+
     /** Dá para fazer negócio novo pelo app (código, adesão ao cartão): conta aprovada, plano e liberação do adm. */
     fun available(account: ReceivingAccount) = account.registration == RegistrationStatus.APPROVED &&
         account.newOperationsEnabled && eligibility.forOwner(account.ownerUserId, clock.instant()).eligible &&

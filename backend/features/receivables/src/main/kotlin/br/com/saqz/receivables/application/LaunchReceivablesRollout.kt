@@ -10,6 +10,8 @@ class LaunchReceivablesRollout(
     override fun availability(userId: UUID): ReceivablesAvailability =
         if (enabled) delegate.availability(userId) else ReceivablesAvailability(false, false)
 
+    override fun adminEnabled(userId: UUID): Boolean = delegate.adminEnabled(userId)
+
     override fun user(userId: UUID): UserRolloutState = delegate.user(userId).let {
         if (enabled) it else it.copy(backendEnabled = false, mobileEnabled = false)
     }

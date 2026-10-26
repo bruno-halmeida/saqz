@@ -254,6 +254,22 @@ class ReceivablesV1RecurrenceAndSettleIntegrationTest {
         assertEquals("2026-11-15", f.remote.realigned.last())
     }
 
+    @Test fun `trava global de deploy desligada nao corta assinatura e o adm desligando a pessoa corta`() = fixture { f ->
+        f.active()
+        val locked = LaunchReceivablesRollout(f.rollout, false)
+        val athletes = AthletePayments(f.codes, f.ledger, f.conditions, ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) },
+            locked, f.provider, f.clock)
+        val cards = CardSubscriptions(f.subscriptions, f.codes, athletes, f.ledger, f.pricing, f.conditions, f.provider, f.notices, f.links, f.clock)
+        cards.enforceCutoffs()
+        assertEquals("ACTIVE", f.string("SELECT status FROM card_subscriptions"), "launch-enabled desligado: só barra negócio novo")
+        assertTrue(f.remote.deletes.isEmpty())
+        f.sql("INSERT INTO receivable_rollout_users VALUES ('${f.owner}',1)")
+        f.sql("INSERT INTO receivable_rollout_overrides VALUES ('${f.owner}','BACKEND','DENY')")
+        cards.enforceCutoffs()
+        assertEquals("INELIGIBLE", f.string("SELECT end_reason FROM card_subscriptions"))
+        assertTrue(f.remote.deletes.contains("/v3/subscriptions/sub_1"))
+    }
+
     private fun fixture(block: (Fixture) -> Unit) { Remote().use { block(Fixture(it)) } }
 
     class MutableClock(var now: Instant) : Clock() {

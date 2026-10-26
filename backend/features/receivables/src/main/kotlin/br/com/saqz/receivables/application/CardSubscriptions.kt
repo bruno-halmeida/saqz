@@ -255,7 +255,7 @@ class CardSubscriptions(private val store: SubscriptionStore, private val codes:
                     membership == null || !membership.active -> "MEMBER_LEFT"
                     !membership.mensalista -> "NOT_MENSALISTA"
                     account == null || account.accountId != subscription.accountId -> "GROUP_DISABLED"
-                    !athletes.available(account) -> "INELIGIBLE"
+                    !athletes.entitled(account) -> "INELIGIBLE"
                     else -> null
                 }?.takeIf { store.end(subscription.id, "ENDED", it, null, clock.instant()) }
             }
