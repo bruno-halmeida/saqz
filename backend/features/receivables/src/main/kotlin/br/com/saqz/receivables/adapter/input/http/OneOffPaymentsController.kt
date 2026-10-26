@@ -8,10 +8,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import java.util.UUID
 
-class PaymentPayerRequest {
-    var name: String = ""
-    var cpfCnpj: String = ""
-}
 
 class PaymentCommand {
     var requestId: UUID? = null
@@ -24,53 +20,6 @@ class PaymentCommand {
 
 @RestController
 @RequestMapping("/api/receivables")
-class OneOffPaymentsController(private val actors: FinancialActorResolver, private val service: OneOffPayments) {
-    @GetMapping("/orders")
-    fun ownOrders(@AuthenticationPrincipal identity: RequestIdentity, @RequestParam(required = false) after: UUID?): ResponseEntity<*> =
-        response(service.ownOrders(FinancialRequest(UUID.randomUUID(), actors.resolve(identity)), after))
-    @GetMapping("/charges/{chargeId}/order")
-    fun chargeOrder(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable chargeId: UUID,
-                    @RequestParam accountId: UUID): ResponseEntity<*> =
-        response(service.orderForCharge(chargeId, accountId, FinancialRequest(UUID.randomUUID(), actors.resolve(identity))))
-    @PostMapping("/charges/{chargeId}/preview")
-    fun preview(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable chargeId: UUID, @RequestBody body: PaymentCommand) =
-        execute(identity, body) { service.preview(chargeId, body.accountId ?: invalid(), it) }
-    @PostMapping("/charges/{chargeId}/approve")
-    fun approve(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable chargeId: UUID, @RequestBody body: PaymentCommand) =
-        execute(identity, body) { service.approve(chargeId, body.accountId ?: invalid(), it, body.fingerprint.orEmpty(), body.accepted) }
-    @GetMapping("/orders/{orderId}")
-    fun get(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable orderId: UUID): ResponseEntity<*> =
-        response(service.get(orderId, FinancialRequest(UUID.randomUUID(), actors.resolve(identity))))
-    @PostMapping("/orders/{orderId}/instruments")
-    fun instrument(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable orderId: UUID, @RequestBody body: PaymentCommand) =
-        execute(identity, body) { service.instrument(orderId, it, body.method ?: invalid(), body.fingerprint.orEmpty(), body.accepted, body.payer?.let { payer -> PaymentPayer(payer.name, payer.cpfCnpj) } ?: invalid()) }
-    @PostMapping("/orders/{orderId}/cancel")
-    fun cancel(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable orderId: UUID, @RequestBody body: PaymentCommand) =
-        execute(identity, body) { service.cancel(orderId, it) }
-    @PostMapping("/orders/{orderId}/reconcile")
-    fun reconcile(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable orderId: UUID, @RequestBody body: PaymentCommand) =
-        execute(identity, body) { service.reconcile(orderId, it) }
-    private fun invalid(): Nothing = throw IllegalArgumentException()
-    private fun execute(identity: RequestIdentity, body: PaymentCommand, action: (FinancialRequest) -> FinancialResult<*>): ResponseEntity<*> {
-        val requestId = body.requestId ?: UUID.randomUUID()
-        val result = try {
-            require(body.requestId != null)
-            action(FinancialRequest(requestId, actors.resolve(identity)))
-        } catch (_: IllegalArgumentException) { FinancialResult.Failure(FinancialError.INVALID_INPUT, requestId) }
-        return response(result)
-    }
-    private fun response(result: FinancialResult<*>): ResponseEntity<*> = ResponseEntity.status(when (result) {
-        is FinancialResult.Success -> 200
-        is FinancialResult.Failure -> when (result.error) {
-            FinancialError.NOT_FOUND, FinancialError.UNAUTHORIZED -> 404
-            FinancialError.CONFLICT -> 409
-            FinancialError.INVALID_INPUT -> 400
-            FinancialError.CONFIGURATION_UNAVAILABLE, FinancialError.PROVIDER_UNAVAILABLE -> 503
-            FinancialError.RESULT_PENDING -> 202
-            else -> 403
-        }
-    }).header("Cache-Control", "no-store").body(result)
-}
 
 @RestController
 class PaymentWebhookController(private val events: PaymentEventInbox) {

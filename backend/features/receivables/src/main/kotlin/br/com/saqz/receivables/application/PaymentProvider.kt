@@ -20,8 +20,6 @@ interface OneOffPaymentProvider {
     fun create(context: ProviderPaymentContext): ProviderPaymentObservation?
     fun recover(context: ProviderPaymentContext): ProviderPaymentObservation?
     fun cancel(context: ProviderPaymentContext): ProviderPaymentObservation?
-    fun renewPix(context: ProviderPaymentContext, dueDate: LocalDate): ProviderPaymentObservation? =
-        throw UnsupportedOperationException("Pix renewal is not configured")
 }
 
 data class PaymentCustomer(val reference: UUID, val providerId: String?, val canCreate: Boolean, val payer: PaymentPayer)

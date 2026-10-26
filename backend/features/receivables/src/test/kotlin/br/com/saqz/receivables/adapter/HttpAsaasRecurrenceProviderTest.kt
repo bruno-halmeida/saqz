@@ -25,21 +25,6 @@ class HttpAsaasRecurrenceProviderTest {
 
     @AfterEach fun close() = server.shutdown()
 
-    @Test fun `pix subscription sends exact monthly snapshot and fixed split`() {
-        val context = recurrence(PaymentMethod.PIX)
-        server.enqueue(json("""{"id":"sub_1","externalReference":"${context.recurrence.id}","billingType":"PIX","value":104.90}"""))
-        val result = provider.create(context)
-        val request = server.takeRequest(); val body = mapper.readTree(request.body.readUtf8())
-        assertEquals("POST", request.method)
-        assertEquals("/v3/subscriptions", request.path)
-        assertEquals("MONTHLY", body.path("cycle").asText())
-        assertEquals("PIX", body.path("billingType").asText())
-        assertEquals("104.9", body.path("value").decimalValue().stripTrailingZeros().toPlainString())
-        assertEquals(context.recurrence.id.toString(), body.path("externalReference").asText())
-        assertEquals("3", body.path("split").single().path("fixedValue").decimalValue().stripTrailingZeros().toPlainString())
-        assertEquals("sub_1", result.subscriptionId)
-        assertEquals("ACTIVE", result.status)
-    }
 
     @Test fun `card recurrence creates hosted checkout without card secrets`() {
         val context = recurrence(PaymentMethod.CARD)
@@ -90,27 +75,6 @@ class HttpAsaasRecurrenceProviderTest {
         assertEquals(4, server.requestCount)
     }
 
-    @Test fun `expired pix renewal updates same payment with exact snapshot and no post`() {
-        val quote = quote(PaymentMethod.PIX)
-        val instrument = PaymentInstrument(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), quote,
-            "EXPIRED", paymentId = "pay_1", expiresAt = Instant.parse("2026-09-12T00:00:00Z"))
-        val context = ProviderPaymentContext(instrument, UUID.randomUUID(), LocalDate.of(2026, 9, 10))
-        server.enqueue(json("""{"id":"pay_1","externalReference":"${instrument.id}","billingType":"PIX","value":104.90,
-          "dueDate":"2026-09-20","status":"PENDING","split":[{"id":"split_1","walletId":"wallet_platform","fixedValue":3.00,"status":"PENDING"}] }"""))
-        server.enqueue(json("""{"payload":"000201renewed","encodedImage":"qr-renewed","expirationDate":"2026-09-20 23:59:59"}"""))
-        val paymentProvider = HttpAsaasPayments(server.url("/v3").toUri(), "wallet_platform", credentials)
-        val result = paymentProvider.renewPix(context, LocalDate.of(2026, 9, 20))
-        val request = server.takeRequest(); val body = mapper.readTree(request.body.readUtf8())
-        assertEquals("PUT", request.method)
-        assertEquals("/v3/payments/pay_1", request.path)
-        assertEquals("PIX", body.path("billingType").asText())
-        assertEquals("104.9", body.path("value").decimalValue().stripTrailingZeros().toPlainString())
-        assertEquals(instrument.id.toString(), body.path("externalReference").asText())
-        assertEquals("/v3/payments/pay_1/pixQrCode", server.takeRequest().path)
-        assertEquals(LocalDate.of(2026, 9, 20), result!!.dueDate)
-        assertEquals("pay_1", result.paymentId)
-        assertEquals("000201renewed", result.pixPayload)
-    }
 
     @Test fun `refund exposes only exact observed fee linked to same payment`() {
         val quote = quote(PaymentMethod.PIX)

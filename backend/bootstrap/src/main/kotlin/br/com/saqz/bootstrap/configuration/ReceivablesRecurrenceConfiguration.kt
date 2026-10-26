@@ -1,7 +1,6 @@
 package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.receivables.adapter.input.http.RecurrencePaymentsController
-import br.com.saqz.receivables.adapter.input.http.RecurrencePixRenewalController
 import br.com.saqz.receivables.adapter.input.http.FinancialActorResolver
 import br.com.saqz.receivables.adapter.output.asaas.HttpAsaasRecurrenceProvider
 import br.com.saqz.receivables.adapter.output.jdbc.JdbcPaymentExecution
@@ -40,8 +39,6 @@ class ReceivablesRecurrenceConfiguration {
         RecurrencePayments(store, accounts, groups, conditions, eligibility, rollout, execution, clock)
     @Bean fun recurrencePaymentsController(actors: SubscriptionActorResolver, service: RecurrencePayments) =
         RecurrencePaymentsController(FinancialActorResolver { actors.resolve(it) }, service)
-    @Bean fun recurrencePixRenewalController(actors: SubscriptionActorResolver, payments: OneOffPayments) =
-        RecurrencePixRenewalController(FinancialActorResolver { actors.resolve(it) }, payments)
     @Bean fun recurrenceJobs(execution: JdbcRecurrenceExecution, payments: JdbcPaymentExecution) =
         ReceivablesRecurrenceJobs(execution, payments)
 }
@@ -49,7 +46,7 @@ class ReceivablesRecurrenceConfiguration {
 class ReceivablesRecurrenceJobs(private val execution: RecurrenceExecution,
     private val payments: JdbcPaymentExecution) {
     @Scheduled(fixedDelayString = "\${saqz.receivables.recurrence-recovery-delay-ms:60000}")
-    fun recover() { execution.recoverDue(); payments.recoverPixRenewals() }
+    fun recover() { execution.recoverDue() }
     @Scheduled(fixedDelayString = "\${saqz.receivables.recurrence-sync-delay-ms:300000}")
     fun synchronize() { execution.synchronize() }
     @Scheduled(fixedDelayString = "\${saqz.receivables.recurrence-cutoff-delay-ms:60000}")

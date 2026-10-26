@@ -98,18 +98,6 @@ class HttpAsaasPayments(private val baseUrl: URI, private val walletId: String,
         if (!response.path("deleted").asBoolean(false) || response.path("id").asText() != id) return null
         return observed.copy(status = "CANCELLED")
     }
-    override fun renewPix(context: ProviderPaymentContext, dueDate: java.time.LocalDate): ProviderPaymentObservation? {
-        val instrument = context.instrument
-        require(instrument.quote.method == PaymentMethod.PIX)
-        val id = safeId(requireNotNull(instrument.paymentId))
-        val node = send(credentials.apiKey(instrument.accountId), "PUT", "/payments/$id", mapOf(
-            "billingType" to "PIX", "value" to BigDecimal.valueOf(instrument.quote.totalCents, 2),
-            "dueDate" to dueDate.toString(), "description" to "Pagamento Saqz",
-            "externalReference" to instrument.id.toString(), "interest" to mapOf("value" to 0),
-            "fine" to mapOf("value" to 0), "split" to if (instrument.quote.commissionCents == 0L) emptyList<Any>()
-                else listOf(mapOf("walletId" to walletId, "fixedValue" to instrument.quote.fixedSplitValue()))))
-        return observation(context, node).also { require(it.dueDate == dueDate) }
-    }
     private fun observation(context: ProviderPaymentContext, node: JsonNode, includeVisuals: Boolean = true): ProviderPaymentObservation {
         val instrument = context.instrument
         val reference = node.path("externalReference").asText()

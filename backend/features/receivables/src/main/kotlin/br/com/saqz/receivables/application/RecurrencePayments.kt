@@ -130,6 +130,8 @@ class RecurrencePayments(private val store: RecurrenceStore,
 
     private fun review(accountId: UUID, groupId: UUID, method: PaymentMethod, firstDueDate: LocalDate,
                        request: FinancialRequest): RecurrenceReview {
+        // DEB-142 (FIN-012): a recorrência Pix de setembro não é oferecida na v1; só o cartão ("modo Netflix").
+        if (method == PaymentMethod.PIX) fail(FinancialError.INVALID_INPUT)
         val account = accounts.findById(accountId) ?: fail(FinancialError.NOT_FOUND)
         if (account.registration != br.com.saqz.receivables.domain.RegistrationStatus.APPROVED) fail(FinancialError.REGISTRATION_RESTRICTED)
         if (!account.newOperationsEnabled) fail(FinancialError.OPERATIONS_DISABLED)

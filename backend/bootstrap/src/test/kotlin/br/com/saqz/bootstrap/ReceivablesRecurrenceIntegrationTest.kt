@@ -7,7 +7,6 @@ import br.com.saqz.receivables.adapter.output.crypto.FinancialSecrets
 import br.com.saqz.receivables.adapter.output.jdbc.*
 import br.com.saqz.receivables.adapter.input.http.FinancialActorResolver
 import br.com.saqz.receivables.adapter.input.http.RecurrencePaymentsController
-import br.com.saqz.receivables.adapter.input.http.RecurrencePixRenewalController
 import br.com.saqz.receivables.application.*
 import br.com.saqz.receivables.domain.PaymentMethod
 import br.com.saqz.sharedkernel.RequestIdentity
@@ -42,7 +41,7 @@ class ReceivablesRecurrenceIntegrationTest {
         val mvc = MockMvcBuilders.standaloneSetup(RecurrencePaymentsController(FinancialActorResolver { f.member }, f.service))
             .setCustomArgumentResolvers(resolver).build()
         val requestId = UUID.randomUUID()
-        val body = """{"requestId":"$requestId","accountId":"${f.account}","groupId":"${f.group}","method":"PIX","firstDueDate":"2026-10-10"}"""
+        val body = """{"requestId":"$requestId","accountId":"${f.account}","groupId":"${f.group}","method":"CARD","firstDueDate":"2026-10-10"}"""
         val response = mvc.perform(post("/api/receivables/recurrences/preview").contentType("application/json").content(body)).andReturn().response
         assertEquals(200, response.status)
         assertEquals("no-store", response.getHeader("Cache-Control"))
@@ -62,12 +61,12 @@ class ReceivablesRecurrenceIntegrationTest {
 
     @Test fun `authorization is durable idempotent actor bound and concurrent live recurrence is unique`() = fixture { f ->
         val review = assertIs<FinancialResult.Success<RecurrenceReview>>(f.service.preview(f.account, f.group,
-            PaymentMethod.PIX, LocalDate.of(2026, 10, 10), f.request())).value
+            PaymentMethod.CARD, LocalDate.of(2026, 10, 10), f.request())).value
         val request = f.request(); val payer = PaymentPayer("Maria Silva", "12345678901")
         val first = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true, payer, request)).value
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true, payer, request)).value
         val replay = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true, payer, request)).value
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true, payer, request)).value
         assertEquals(first.id, replay.id)
         assertEquals(1, f.count("receivable_recurrences"))
         assertEquals(1, f.count("receivable_terms_acceptances", "purpose='RECURRENCE'"))
@@ -76,12 +75,12 @@ class ReceivablesRecurrenceIntegrationTest {
         assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(f.service.byRequest(
             FinancialRequest(request.requestId, UUID.randomUUID()))).error)
         assertEquals(FinancialError.CONFLICT, assertIs<FinancialResult.Failure>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true,
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true,
             PaymentPayer("Outra Pessoa", "98765432100"), request)).error)
 
         Executors.newFixedThreadPool(2).use { pool ->
             val outcomes = (1..2).map { pool.submit<FinancialResult<PaymentRecurrence>> {
-                f.service.authorize(f.account, f.group, PaymentMethod.PIX, review.firstDueDate,
+                f.service.authorize(f.account, f.group, PaymentMethod.CARD, review.firstDueDate,
                     review.fingerprint, true, payer, f.request()) } }.map { it.get() }
             assertEquals(2, outcomes.count { it is FinancialResult.Failure && it.error == FinancialError.CONFLICT })
         }
@@ -90,12 +89,12 @@ class ReceivablesRecurrenceIntegrationTest {
 
     @Test fun `provider competencies materialize once with immutable recurrence quote snapshot`() = fixture { f ->
         val review = assertIs<FinancialResult.Success<RecurrenceReview>>(f.service.preview(f.account, f.group,
-            PaymentMethod.PIX, LocalDate.of(2026, 10, 10), f.request())).value
+            PaymentMethod.CARD, LocalDate.of(2026, 10, 10), f.request())).value
         val recurrence = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true,
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true,
             PaymentPayer("Maria Silva", "12345678901"), f.request())).value
         val active = f.store.find(recurrence.id)!!
-        val payment = ProviderRecurringPayment("pay_1", "sub_1", LocalDate.of(2026, 10, 10), "PENDING", PaymentMethod.PIX, review.totalCents)
+        val payment = ProviderRecurringPayment("pay_1", "sub_1", LocalDate.of(2026, 10, 10), "PENDING", PaymentMethod.CARD, review.totalCents)
         repeat(2) { f.store.transaction { f.store.materialize(active, listOf(payment), now) } }
         assertEquals(1, f.count("receivable_orders", "recurrence_id='${recurrence.id}'"))
         assertEquals(1, f.count("receivable_instruments", "provider_payment_id='pay_1'"))
@@ -107,14 +106,14 @@ class ReceivablesRecurrenceIntegrationTest {
 
     @Test fun `completed cutoff cancels only future recurrence competencies and preserves overdue debt`() = fixture { f ->
         val review = assertIs<FinancialResult.Success<RecurrenceReview>>(f.service.preview(f.account, f.group,
-            PaymentMethod.PIX, LocalDate.of(2026, 10, 10), f.request())).value
+            PaymentMethod.CARD, LocalDate.of(2026, 10, 10), f.request())).value
         val recurrence = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true,
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true,
             PaymentPayer("Maria Silva", "12345678901"), f.request())).value
         val active = f.store.find(recurrence.id)!!
         f.store.transaction { f.store.materialize(active, listOf(
-            ProviderRecurringPayment("pay_overdue", "sub_1", LocalDate.of(2026, 9, 12), "OVERDUE", PaymentMethod.PIX, review.totalCents),
-            ProviderRecurringPayment("pay_future", "sub_1", LocalDate.of(2026, 10, 10), "PENDING", PaymentMethod.PIX, review.totalCents)
+            ProviderRecurringPayment("pay_overdue", "sub_1", LocalDate.of(2026, 9, 12), "OVERDUE", PaymentMethod.CARD, review.totalCents),
+            ProviderRecurringPayment("pay_future", "sub_1", LocalDate.of(2026, 10, 10), "PENDING", PaymentMethod.CARD, review.totalCents)
         ), now) }
 
         val stopRequest = f.request()
@@ -131,70 +130,16 @@ class ReceivablesRecurrenceIntegrationTest {
         assertEquals(1, f.count("group_charge_events", "new_status='CANCELLED'"))
     }
 
-    @Test fun `expired pix renewal after cutoff preserves debt snapshot and recovers timeout without second update`() = fixture { f ->
-        val review = assertIs<FinancialResult.Success<RecurrenceReview>>(f.service.preview(f.account, f.group,
-            PaymentMethod.PIX, LocalDate.of(2026, 10, 10), f.request())).value
-        val recurrence = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true, PaymentPayer("Maria Silva", "12345678901"), f.request())).value
-        val active = f.store.find(recurrence.id)!!
-        val instrument = f.store.transaction { f.store.materialize(active, listOf(ProviderRecurringPayment("pay_1", "sub_1",
-            LocalDate.of(2026, 10, 10), "OVERDUE", PaymentMethod.PIX, review.totalCents)), now).single() }
-        f.sql("UPDATE receivable_recurrences SET status='STOPPED',cutoff_at=now() WHERE id='${recurrence.id}'")
-        f.sql("UPDATE receivable_instruments SET status='EXPIRED',expires_at='2026-09-12' WHERE id='$instrument'")
-        val remote = TimeoutRenewalProvider(LocalDate.of(2026, 10, 10))
-        val paymentStore = JdbcPaymentStore(f.ds, f.secrets)
-        val paymentExecution = JdbcPaymentExecution(f.ds, paymentStore, JdbcGroupChargePayments(f.ds),
-            JdbcFinancialOperationStore(f.ds), remote, f.secrets, Clock.fixed(now, ZoneOffset.UTC),
-            ReconcileExternalResidualCost(JdbcExternalResidualCostLedger(f.ds)))
-        val oneOff = OneOffPayments(paymentStore, JdbcGroupChargePayments(f.ds), JdbcFinancialAccountRepository(f.ds),
-            JdbcGroupReceivablesStore(f.ds), JdbcGroupAdministrationDirectory(f.ds), JdbcFinancialConditions(f.ds),
-            ReceivablesEligibility { _, _ -> ReceivablesEntitlement(false, now) },
-            ReceivablesRolloutAccess { ReceivablesAvailability(false, false) }, paymentExecution, Clock.fixed(now, ZoneOffset.UTC))
-        val order = f.uuid("SELECT order_id FROM receivable_instruments WHERE id='$instrument'")
-        val request = f.request(); val target = LocalDate.of(2026, 10, 20)
-        val pending = assertIs<FinancialResult.Failure>(oneOff.renewPix(order, target, request))
-        assertEquals(FinancialError.RESULT_PENDING, pending.error)
-        assertEquals(FinancialError.RESULT_PENDING, assertIs<FinancialResult.Failure>(oneOff.pixRenewal(order, request)).error)
-        assertEquals(FinancialError.NOT_FOUND, assertIs<FinancialResult.Failure>(oneOff.pixRenewal(order,
-            FinancialRequest(request.requestId, UUID.randomUUID()))).error)
-        val resolver = object : HandlerMethodArgumentResolver {
-            override fun supportsParameter(parameter: MethodParameter) = parameter.parameterType == RequestIdentity::class.java
-            override fun resolveArgument(parameter: MethodParameter, container: ModelAndViewContainer?, webRequest: NativeWebRequest,
-                binder: WebDataBinderFactory?) = RequestIdentity("subject", "request")
-        }
-        val recoveryMvc = MockMvcBuilders.standaloneSetup(RecurrencePixRenewalController(FinancialActorResolver { f.member }, oneOff))
-            .setCustomArgumentResolvers(resolver).build()
-        assertEquals(202, recoveryMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
-            "/api/receivables/orders/$order/pix-renewal/${request.requestId}")).andReturn().response.status)
-        assertEquals(1, remote.renewCalls)
-        assertEquals(1, f.count("receivable_pix_renewals"))
-        f.sql("UPDATE receivable_pix_renewals SET next_attempt_at='2026-09-13 11:00:00Z'")
-        paymentExecution.recoverPixRenewals()
-        val replay = assertIs<FinancialResult.Success<PixRenewal>>(oneOff.renewPix(order, target, request))
-        val recoveredByRequest = assertIs<FinancialResult.Success<PixRenewal>>(oneOff.pixRenewal(order, request))
-        assertEquals(instrument, replay.value.instrumentId)
-        assertEquals(replay.value, recoveredByRequest.value)
-        assertEquals(200, recoveryMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
-            "/api/receivables/orders/$order/pix-renewal/${request.requestId}")).andReturn().response.status)
-        assertEquals("pay_1", replay.value.providerPaymentId)
-        assertEquals(1, remote.renewCalls)
-        assertEquals(1, remote.recoverCalls)
-        assertEquals("SUCCEEDED", f.string("SELECT status FROM receivable_pix_renewals"))
-        assertEquals(target.toString(), f.string("SELECT due_date::text FROM receivable_orders WHERE id='$order'"))
-        assertEquals(review.totalCents, f.long("SELECT total_cents FROM receivable_instruments WHERE id='$instrument'"))
-        assertEquals(1, f.count("receivable_orders", "id='$order'"))
-        assertEquals(1, f.count("receivable_instruments", "id='$instrument'"))
-    }
 
     @Test fun `terminal reversal appends exact observed residual cost once`() = fixture { f ->
         val review = assertIs<FinancialResult.Success<RecurrenceReview>>(f.service.preview(f.account, f.group,
-            PaymentMethod.PIX, LocalDate.of(2026, 10, 10), f.request())).value
+            PaymentMethod.CARD, LocalDate.of(2026, 10, 10), f.request())).value
         val recurrence = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true,
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true,
             PaymentPayer("Maria Silva", "12345678901"), f.request())).value
         val active = f.store.find(recurrence.id)!!
         val instrumentId = f.store.transaction { f.store.materialize(active, listOf(ProviderRecurringPayment("pay_refund", "sub_1",
-            LocalDate.of(2026, 10, 10), "RECEIVED", PaymentMethod.PIX, review.totalCents)), now).single() }
+            LocalDate.of(2026, 10, 10), "RECEIVED", PaymentMethod.CARD, review.totalCents)), now).single() }
         val paymentStore = JdbcPaymentStore(f.ds, f.secrets)
         val execution = JdbcPaymentExecution(f.ds, paymentStore, JdbcGroupChargePayments(f.ds), JdbcFinancialOperationStore(f.ds),
             ReversalProvider(), f.secrets, Clock.fixed(now, ZoneOffset.UTC),
@@ -210,13 +155,13 @@ class ReceivablesRecurrenceIntegrationTest {
 
     @Test fun `administrative observation probe never creates cancels or renews uncertain payment`() = fixture { f ->
         val review = assertIs<FinancialResult.Success<RecurrenceReview>>(f.service.preview(f.account, f.group,
-            PaymentMethod.PIX, LocalDate.of(2026, 10, 10), f.request())).value
+            PaymentMethod.CARD, LocalDate.of(2026, 10, 10), f.request())).value
         val recurrence = assertIs<FinancialResult.Success<PaymentRecurrence>>(f.service.authorize(f.account, f.group,
-            PaymentMethod.PIX, review.firstDueDate, review.fingerprint, true,
+            PaymentMethod.CARD, review.firstDueDate, review.fingerprint, true,
             PaymentPayer("Maria Silva", "12345678901"), f.request())).value
         val instrumentId = f.store.transaction { f.store.materialize(f.store.find(recurrence.id)!!,
             listOf(ProviderRecurringPayment("pay_probe", "sub_1", LocalDate.of(2026, 10, 10), "PENDING",
-                PaymentMethod.PIX, review.totalCents)), now).single() }
+                PaymentMethod.CARD, review.totalCents)), now).single() }
         val orderId = f.uuid("SELECT order_id FROM receivable_instruments WHERE id='$instrumentId'")
         f.sql("UPDATE receivable_instruments SET status='UNKNOWN' WHERE id='$instrumentId'")
         f.sql("UPDATE receivable_orders SET status='CANCEL_PENDING' WHERE id='$orderId'")
@@ -239,40 +184,21 @@ class ReceivablesRecurrenceIntegrationTest {
         f.sql("UPDATE receivable_instruments SET status='CREATING' WHERE id='$instrumentId'")
         assertEquals(OperationStatus.UNKNOWN, observe().status)
         assertEquals(2, provider.recoverCalls)
-        assertEquals(0, provider.createCalls + provider.cancelCalls + provider.renewCalls)
+        assertEquals(0, provider.createCalls + provider.cancelCalls)
         assertEquals("CANCEL_PENDING", f.string("SELECT status FROM receivable_orders WHERE id='$orderId'"))
         provider.observation = { context -> ProviderPaymentObservation(
-            paymentId = "pay_probe", reference = context.instrument.id.toString(), method = PaymentMethod.PIX,
+            paymentId = "pay_probe", reference = context.instrument.id.toString(), method = PaymentMethod.CARD,
             totalCents = 10100, status = "ACTIVE", providerFeeCents = 90, splitCents = 10) }
         assertEquals(OperationStatus.SUCCEEDED, observe().status)
         assertEquals("SUCCEEDED", f.string("SELECT status FROM receivable_operations WHERE id='$instrumentId'"))
         assertEquals(3, provider.recoverCalls)
-        assertEquals(0, provider.createCalls + provider.cancelCalls + provider.renewCalls)
+        assertEquals(0, provider.createCalls + provider.cancelCalls)
         assertEquals("CANCEL_PENDING", f.string("SELECT status FROM receivable_orders WHERE id='$orderId'"))
         assertEquals(0, f.count("receivable_movements", "instrument_id='$instrumentId'"))
     }
 
     private fun fixture(test: (Fixture) -> Unit) = test(Fixture())
 
-    private class TimeoutRenewalProvider(var remoteDueDate: LocalDate) : OneOffPaymentProvider {
-        var renewCalls = 0; var recoverCalls = 0
-        override fun prepareCustomer(context: ProviderPaymentContext) = true
-        override fun create(context: ProviderPaymentContext) = null
-        override fun cancel(context: ProviderPaymentContext) = null
-        override fun recover(context: ProviderPaymentContext): ProviderPaymentObservation {
-            recoverCalls++
-            return observation(context, remoteDueDate)
-        }
-        override fun renewPix(context: ProviderPaymentContext, dueDate: LocalDate): ProviderPaymentObservation {
-            renewCalls++; remoteDueDate = dueDate
-            throw IllegalStateException("response lost after provider update")
-        }
-        private fun observation(context: ProviderPaymentContext, dueDate: LocalDate) = ProviderPaymentObservation(
-            paymentId = context.instrument.paymentId, reference = context.instrument.id.toString(), method = PaymentMethod.PIX,
-            totalCents = context.instrument.quote.totalCents, status = "ACTIVE",
-            providerFeeCents = context.instrument.quote.providerFeeCents, splitCents = context.instrument.quote.commissionCents,
-            pixPayload = "000201renewed", pixImage = "qr-renewed", expiresAt = Instant.parse("2026-10-20T23:59:59Z"), dueDate = dueDate)
-    }
     private class ReversalProvider : OneOffPaymentProvider {
         override fun prepareCustomer(context: ProviderPaymentContext) = true
         override fun create(context: ProviderPaymentContext) = null
@@ -287,11 +213,10 @@ class ReceivablesRecurrenceIntegrationTest {
     }
     private class ReadOnlyProbeProvider : OneOffPaymentProvider {
         var observation: ((ProviderPaymentContext) -> ProviderPaymentObservation)? = null
-        var createCalls = 0; var cancelCalls = 0; var renewCalls = 0; var recoverCalls = 0
+        var createCalls = 0; var cancelCalls = 0; var recoverCalls = 0
         override fun prepareCustomer(context: ProviderPaymentContext) = true
         override fun create(context: ProviderPaymentContext): ProviderPaymentObservation? { createCalls++; return null }
         override fun cancel(context: ProviderPaymentContext): ProviderPaymentObservation? { cancelCalls++; return null }
-        override fun renewPix(context: ProviderPaymentContext, dueDate: LocalDate): ProviderPaymentObservation? { renewCalls++; return null }
         override fun recover(context: ProviderPaymentContext): ProviderPaymentObservation? { recoverCalls++; return observation?.invoke(context) }
     }
     private inner class Fixture {
@@ -317,7 +242,7 @@ class ReceivablesRecurrenceIntegrationTest {
             sql("INSERT INTO receivable_webhook_credentials(account_id,token_encrypted) VALUES ('$account','ciphertext')")
             sql("INSERT INTO receivable_group_links VALUES ('$account','$group',true,true,true,'$owner',now(),NULL)")
             sql("INSERT INTO receivable_terms VALUES ('v1','Terms','${"a".repeat(64)}','2026-09-01','2026-09-01')")
-            sql("INSERT INTO receivable_fee_schedules VALUES ('${UUID.randomUUID()}','PIX',0,90,0,10,'v1','2026-09-01','2026-09-01','$owner')")
+            sql("INSERT INTO receivable_fee_schedules VALUES ('${UUID.randomUUID()}','CARD',0,90,0,10,'v1','2026-09-01','2026-09-01','$owner')")
             val accounts = JdbcFinancialAccountRepository(ds)
             service = RecurrencePayments(store, accounts, JdbcGroupReceivablesStore(ds), JdbcFinancialConditions(ds),
                 ReceivablesEligibility { _, _ -> ReceivablesEntitlement(true, null) },

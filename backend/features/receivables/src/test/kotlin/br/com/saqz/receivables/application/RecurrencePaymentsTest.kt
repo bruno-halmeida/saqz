@@ -17,7 +17,7 @@ class RecurrencePaymentsTest {
     private val member = UUID.randomUUID()
     private val account = FinancialAccount(UUID.randomUUID(), owner, RegistrationStatus.APPROVED, true)
     private val group = UUID.randomUUID()
-    private val fee = FeeSchedule(UUID.randomUUID(), PaymentMethod.PIX, BigDecimal.ZERO, 90,
+    private val fee = FeeSchedule(UUID.randomUUID(), PaymentMethod.CARD, BigDecimal.ZERO, 90,
         BigDecimal.ZERO, 10, "terms-2026-09")
     private val store = MemoryStore()
     private val execution = RecordingExecution()
@@ -26,7 +26,7 @@ class RecurrencePaymentsTest {
         ReceivablesRolloutAccess { ReceivablesAvailability(true, true) }, execution, clock)
 
     @Test fun `preview fixes payer method terms and exact cents in fingerprint`() {
-        val result = service.preview(account.id, group, PaymentMethod.PIX, LocalDate.of(2026, 10, 10), request()) as FinancialResult.Success
+        val result = service.preview(account.id, group, PaymentMethod.CARD, LocalDate.of(2026, 10, 10), request()) as FinancialResult.Success
         val review = result.value
         assertEquals(member, review.memberUserId)
         assertEquals(10_000, review.baseCents)
@@ -43,9 +43,9 @@ class RecurrencePaymentsTest {
         val preview = preview()
         val request = request()
         val payer = PaymentPayer("Maria Silva", "12345678901")
-        val first = service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        val first = service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             preview.fingerprint, true, payer, request) as FinancialResult.Success
-        val second = service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        val second = service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             preview.fingerprint, true, payer, request) as FinancialResult.Success
         assertEquals(first.value.id, second.value.id)
         assertEquals(member, store.rows.single().recurrence.memberUserId)
@@ -56,16 +56,16 @@ class RecurrencePaymentsTest {
 
     @Test fun `tampered review and reused request with another payload are conflicts`() {
         val preview = preview(); val request = request(); val payer = PaymentPayer("Maria Silva", "12345678901")
-        assertEquals(FinancialError.CONFLICT, (service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        assertEquals(FinancialError.CONFLICT, (service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             "0".repeat(64), true, payer, request) as FinancialResult.Failure).error)
-        service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate, preview.fingerprint, true, payer, request)
-        assertEquals(FinancialError.CONFLICT, (service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate, preview.fingerprint, true, payer, request)
+        assertEquals(FinancialError.CONFLICT, (service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             preview.fingerprint, true, PaymentPayer("Outra Pessoa", "98765432100"), request) as FinancialResult.Failure).error)
         assertEquals(1, store.inserts)
     }
 
     @Test fun `only authenticated payer reads or cancels recurrence`() {
-        val preview = preview(); val accepted = service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        val preview = preview(); val accepted = service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             preview.fingerprint, true, PaymentPayer("Maria Silva", "12345678901"), request()) as FinancialResult.Success
         val stranger = FinancialRequest(UUID.randomUUID(), UUID.randomUUID())
         assertEquals(FinancialError.NOT_FOUND, (service.get(accepted.value.id, stranger) as FinancialResult.Failure).error)
@@ -77,7 +77,7 @@ class RecurrencePaymentsTest {
 
     @Test fun `mobile recovery finds current and original request only for payer`() {
         val preview = preview(); val authorizationRequest = request()
-        val accepted = service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        val accepted = service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             preview.fingerprint, true, PaymentPayer("Maria Silva", "12345678901"), authorizationRequest) as FinancialResult.Success
         assertEquals(accepted.value.id, (service.current(account.id, group, request()) as FinancialResult.Success).value?.id)
         assertEquals(accepted.value.id, (service.byRequest(authorizationRequest) as FinancialResult.Success).value.id)
@@ -88,10 +88,10 @@ class RecurrencePaymentsTest {
 
     @Test fun `resume requires stopped state and creates a new acceptance and recurrence id`() {
         val preview = preview(); val firstRequest = request()
-        val first = service.authorize(account.id, group, PaymentMethod.PIX, preview.firstDueDate, preview.fingerprint,
+        val first = service.authorize(account.id, group, PaymentMethod.CARD, preview.firstDueDate, preview.fingerprint,
             true, PaymentPayer("Maria Silva", "12345678901"), firstRequest) as FinancialResult.Success
         store.replace(first.value.id) { it.copy(recurrence = it.recurrence.copy(status = "STOPPED")) }
-        val resumed = service.resume(first.value.id, account.id, group, PaymentMethod.PIX, preview.firstDueDate,
+        val resumed = service.resume(first.value.id, account.id, group, PaymentMethod.CARD, preview.firstDueDate,
             preview.fingerprint, true, PaymentPayer("Maria Silva", "12345678901"), request()) as FinancialResult.Success
         assertNotEquals(first.value.id, resumed.value.id)
         assertEquals("STOPPED", store.find(first.value.id)!!.recurrence.status)
@@ -100,15 +100,15 @@ class RecurrencePaymentsTest {
 
     @Test fun `inactive member and ineligible owner cannot start new recurrence`() {
         store.memberActive = false
-        assertEquals(FinancialError.NOT_FOUND, (service.preview(account.id, group, PaymentMethod.PIX,
+        assertEquals(FinancialError.NOT_FOUND, (service.preview(account.id, group, PaymentMethod.CARD,
             LocalDate.of(2026, 10, 10), request()) as FinancialResult.Failure).error)
         val denied = RecurrencePayments(store.apply { memberActive = true }, accounts(), groups(), conditions(),
             ReceivablesEligibility { _, _ -> ReceivablesEntitlement(false, now) }, ReceivablesRolloutAccess { ReceivablesAvailability(true, true) }, execution, clock)
-        assertEquals(FinancialError.INELIGIBLE_PLAN, (denied.preview(account.id, group, PaymentMethod.PIX,
+        assertEquals(FinancialError.INELIGIBLE_PLAN, (denied.preview(account.id, group, PaymentMethod.CARD,
             LocalDate.of(2026, 10, 10), request()) as FinancialResult.Failure).error)
     }
 
-    private fun preview() = (service.preview(account.id, group, PaymentMethod.PIX,
+    private fun preview() = (service.preview(account.id, group, PaymentMethod.CARD,
         LocalDate.of(2026, 10, 10), request()) as FinancialResult.Success).value
     private fun request() = FinancialRequest(UUID.randomUUID(), member)
     private fun accounts() = object : FinancialAccountRepository {
@@ -123,6 +123,8 @@ class RecurrencePaymentsTest {
         override fun state(accountId: UUID, groupId: UUID) = GroupReceivablesState(accountId, groupId, true, true, true)
         override fun replay(accountId: UUID, request: FinancialRequest, digest: String) = false
         override fun configure(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, review: GroupReceivablesReview?, at: Instant) = state(accountId, groupId)!!
+        override fun feePolicy(accountId: UUID, groupId: UUID, request: FinancialRequest, digest: String, policy: FeePolicy,
+                               snapshot: String, at: Instant) = state(accountId, groupId)!!
     }
     private fun conditions() = object : FinancialConditions {
         override fun current(methods: Set<PaymentMethod>, at: Instant, accountId: UUID?) = listOf(fee.copy(method = methods.single())).also { assertEquals(account.id, accountId) }

@@ -48,16 +48,8 @@ class HttpAsaasRecurrenceProvider(private val baseUrl: URI, private val platform
         val recurrence = context.recurrence
         val customer = credentials.customer(recurrence.accountId, recurrence.memberUserId).providerId ?: error("Customer unavailable")
         val key = credentials.apiKey(recurrence.accountId)
-        return if (recurrence.method == PaymentMethod.PIX) {
-            val node = send(key, "POST", "/subscriptions", mapOf("customer" to customer, "billingType" to "PIX",
-                "value" to BigDecimal.valueOf(recurrence.totalCents, 2), "nextDueDate" to recurrence.firstDueDate.toString(),
-                "cycle" to "MONTHLY", "description" to "Mensalidade Saqz", "externalReference" to recurrence.id.toString(),
-                "interest" to mapOf("value" to 0), "fine" to mapOf("value" to 0), "split" to splits(context)))
-            require(node.path("externalReference").asText() == recurrence.id.toString())
-            require(node.path("billingType").asText() == "PIX")
-            require(cents(node, "value") == recurrence.totalCents)
-            ProviderRecurrenceResult(subscriptionId = identifier(node, "id"), status = "ACTIVE")
-        } else {
+        require(recurrence.method == PaymentMethod.CARD) { "Pix recurrence was removed (DEB-142)" }
+        return run {
             val callbacks = mapOf("successUrl" to callback("success"), "cancelUrl" to callback("cancel"), "expiredUrl" to callback("expired"))
             val node = send(key, "POST", "/checkouts", mapOf("billingTypes" to listOf("CREDIT_CARD"),
                 "chargeTypes" to listOf("RECURRENT"), "minutesToExpire" to 60,
@@ -82,10 +74,6 @@ class HttpAsaasRecurrenceProvider(private val baseUrl: URI, private val platform
             require(node.path("externalReference").asText() == recurrence.id.toString())
             return ProviderRecurrenceResult(subscriptionId = id, checkoutId = context.providerCheckoutId,
                 checkoutUrl = recurrence.hostedCheckoutUrl, status = if (node.path("status").asText() == "ACTIVE") "ACTIVE" else "STOPPED")
-        }
-        if (recurrence.method == PaymentMethod.PIX) {
-            val found = single(send(key, "GET", "/subscriptions?externalReference=${encoded(recurrence.id.toString())}&limit=2")) ?: return null
-            return ProviderRecurrenceResult(subscriptionId = identifier(found, "id"), status = if (found.path("status").asText() == "ACTIVE") "ACTIVE" else "STOPPED")
         }
         val checkout = context.providerCheckoutId ?: return null
         val payment = single(send(key, "GET", "/payments?checkoutSession=${encoded(checkout)}&limit=2"))
