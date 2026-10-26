@@ -203,6 +203,7 @@ final class SaqzPushDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         opened["channel"] = userInfo["channel"] as? String
         opened["settleGameId"] = userInfo["settleGameId"] as? String
         opened["settleBillingMonth"] = userInfo["settleBillingMonth"] as? String
+        opened["paymentKind"] = userInfo["paymentKind"] as? String
         if actionIdentifier == pickPositionAction { opened["pickPosition"] = "true" }
         return opened
     }

@@ -135,9 +135,11 @@ final class IOSLinkAdapterTests: XCTestCase {
 
     func testPaymentPushCarriesTheSettleTarget() {
         let opened = SaqzPushDelegate.openedInfo(actionIdentifier: "open",
-            userInfo: ["groupId": "g", "channel": "PAYMENT", "settleGameId": "game-1", "settleBillingMonth": "2026-10"])
+            userInfo: ["groupId": "g", "channel": "PAYMENT", "settleGameId": "game-1", "settleBillingMonth": "2026-10",
+                       "paymentKind": "REFUSED"])
         XCTAssertEqual(opened["settleGameId"], "game-1")
         XCTAssertEqual(opened["settleBillingMonth"], "2026-10")
+        XCTAssertEqual(opened["paymentKind"], "REFUSED")
         XCTAssertNil(opened["gameId"])
     }
 

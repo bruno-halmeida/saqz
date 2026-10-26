@@ -239,3 +239,28 @@ private fun CashboxReceivablesPreview() = SaqzTheme {
         reviews = listOf(br.com.saqz.receivables.domain.PaymentReview("r1", "João P. Silva", 2000, "2026-07-28T23:04:00Z"))),
         {}, { _, _ -> })
 }
+
+/** Push "Pix para revisar" (`paymentKind=REVIEW`): abre o primeiro Pix em aberto da conta, ou o caixa se não houver. */
+@kotlinx.serialization.Serializable
+data class FirstReviewRoute(val groupId: String) : androidx.navigation3.runtime.NavKey
+
+@Composable
+fun FirstReviewRoot(
+    groupId: String,
+    onOpenReview: (accountId: String, reviewId: String) -> Unit,
+    onOpenCashbox: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val viewModel = groupReceivablesViewModel(groupId)
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val openReview by androidx.compose.runtime.rememberUpdatedState(onOpenReview)
+    val openCashbox by androidx.compose.runtime.rememberUpdatedState(onOpenCashbox)
+    LaunchedEffect(viewModel) { viewModel.onIntent(GroupReceivablesIntent.Refresh) }
+    LaunchedEffect(state.loading, state.reviews, state.accountId) {
+        if (state.loading) return@LaunchedEffect
+        val account = state.accountId
+        val review = state.reviews.firstOrNull()
+        if (account != null && review != null) openReview(account, review.id) else openCashbox()
+    }
+    Box(modifier.fillMaxSize()) { SaqzSpinner(Modifier.align(Alignment.Center)) }
+}

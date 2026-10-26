@@ -101,6 +101,8 @@ class AttendanceNotificationsTest {
         val push = AttendancePush.from(mapOf("channel" to "PAYMENT", "groupId" to "g", "settleBillingMonth" to "2026-10"),
             "Hora do acerto", "R$ 100,00", "m")
         assertEquals(PaymentSettle(null, "2026-10"), push.settle())
+        val review = AttendancePush.from(mapOf("channel" to "PAYMENT", "groupId" to "g", "paymentKind" to "REVIEW"), "Pix para revisar", "x", "m")
+        assertEquals(PaymentSettle(null, null, "REVIEW"), review.settle())
         assertEquals(null, push.gameId)
         assertEquals(null, AttendancePush.from(mapOf("channel" to "PAYMENT", "groupId" to "g"), "Saqz", "Corpo", "m").settle())
     }

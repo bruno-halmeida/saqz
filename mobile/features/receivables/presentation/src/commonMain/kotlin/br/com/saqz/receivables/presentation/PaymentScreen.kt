@@ -37,6 +37,7 @@ object PaymentScreenTags {
     const val AcceptOffer = "receivable-payment-offer-accept"
     const val DeclineOffer = "receivable-payment-offer-decline"
     const val Done = "receivable-payment-done"
+    const val UpdateCard = "receivable-payment-update-card"
 }
 
 @Composable
@@ -60,11 +61,13 @@ fun PaymentRoot(
     }
     // Volta da página do Asaas: consulta o código na hora, sem esperar a próxima volta.
     RefreshWhenVisible { viewModel.onIntent(PaymentIntent.Resumed) }
-    PaymentScreen(state, viewModel::onIntent, onClose)
+    PaymentScreen(state, viewModel::onIntent, onClose,
+        onUpdateCard = if (route.offerCardUpdate) onOpenAutopay else null)
 }
 
 @Composable
-fun PaymentScreen(state: PaymentState, onIntent: (PaymentIntent) -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier) {
+fun PaymentScreen(state: PaymentState, onIntent: (PaymentIntent) -> Unit, onClose: () -> Unit, modifier: Modifier = Modifier,
+    onUpdateCard: (() -> Unit)? = null) {
     val confirmed = state.confirmed
     if (confirmed != null) {
         ConfirmedScreen(confirmed, onIntent, onClose, modifier)
@@ -101,6 +104,10 @@ fun PaymentScreen(state: PaymentState, onIntent: (PaymentIntent) -> Unit, onClos
                         state.codeExpired -> Expired(onIntent)
                         state.tab == PayTab.PIX -> PixContent(state, onIntent)
                         else -> CardContent(state, onIntent)
+                    }
+                    onUpdateCard?.let {
+                        SaqzButton(stringResource(Res.string.refused_update_card), it, fullWidth = true,
+                            variant = SaqzButtonVariant.Secondary, modifier = Modifier.testTag(PaymentScreenTags.UpdateCard))
                     }
                 }
             }

@@ -16,6 +16,7 @@ import br.com.saqz.receivables.presentation.FinancialOnboardingRoute
 import br.com.saqz.receivables.presentation.AthleteChargesRoute
 import br.com.saqz.receivables.presentation.AutopayRoute
 import br.com.saqz.receivables.presentation.FeePolicyRoute
+import br.com.saqz.receivables.presentation.FirstReviewRoute
 import br.com.saqz.receivables.presentation.PaymentReviewRoute
 import br.com.saqz.receivables.presentation.ReceivablePaymentRoute
 import br.com.saqz.receivables.presentation.SettleLinkRoute
@@ -45,6 +46,7 @@ val saqzLocalNavConfiguration: SavedStateConfiguration = SavedStateConfiguration
             subclass(AutopayRoute::class, AutopayRoute.serializer())
             subclass(SettleLinkRoute::class, SettleLinkRoute.serializer())
             subclass(FeePolicyRoute::class, FeePolicyRoute.serializer())
+            subclass(FirstReviewRoute::class, FirstReviewRoute.serializer())
             subclass(PaymentReviewRoute::class, PaymentReviewRoute.serializer())
             subclass(FinancialOnboardingRoute::class, FinancialOnboardingRoute.serializer())
             subclass(ReceiptConfigurationRoute::class, ReceiptConfigurationRoute.serializer())

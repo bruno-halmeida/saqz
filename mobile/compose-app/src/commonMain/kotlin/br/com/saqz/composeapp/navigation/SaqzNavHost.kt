@@ -133,6 +133,8 @@ import br.com.saqz.receivables.presentation.AthleteChargesRoute
 import br.com.saqz.receivables.presentation.AutopayRoot
 import br.com.saqz.receivables.presentation.AutopayRoute
 import br.com.saqz.receivables.presentation.FeePolicyRoot
+import br.com.saqz.receivables.presentation.FirstReviewRoot
+import br.com.saqz.receivables.presentation.FirstReviewRoute
 import br.com.saqz.receivables.presentation.FeePolicyRoute
 import br.com.saqz.receivables.presentation.PaymentReviewRoot
 import br.com.saqz.receivables.presentation.PaymentReviewRoute
@@ -804,6 +806,18 @@ internal fun SaqzNavHost(
                         })
                 }
                 entry<AutopayRoute> { route -> AutopayRoot(route, onBack = pop) }
+                entry<FirstReviewRoute> { route ->
+                    // Troca a si mesma pelo destino: voltar não reabre a busca.
+                    FirstReviewRoot(route.groupId,
+                        onOpenReview = { accountId, reviewId ->
+                            backStack.removeLastOrNull()
+                            backStack.add(PaymentReviewRoute(route.groupId, accountId, reviewId))
+                        },
+                        onOpenCashbox = {
+                            backStack.removeLastOrNull()
+                            backStack.add(FinanceRoute.GroupCashbox(route.groupId))
+                        })
+                }
                 entry<SettleLinkRoute> { route ->
                     // O link some da pilha ao abrir o pagamento: voltar não reabre a consulta.
                     SettleLinkRoot(route.code, onBack = pop, onOpen = { target ->
@@ -1647,18 +1661,32 @@ private const val OwnerRole = "OWNER"
 internal const val PAYMENT_CHANNEL = "PAYMENT"
 
 /**
- * Para onde vai o toque num push do recebimento (FIN-013/FIN-014). O backend não manda o tipo do aviso:
- * - com `settleGameId`/`settleBillingMonth` (hora do acerto, cartão recusado, reajuste): o pagamento daquele jogo ou mês;
- * - sem eles, quem administra o grupo ("Fulano pagou", "Pix para revisar") vai ao caixa, onde ficam a entrada e o cartão
- *   de revisão; o atleta ("Pagamento confirmado"), a Minhas cobranças do grupo.
+ * Para onde vai o toque num push do recebimento (FIN-013/FIN-014), pelo `paymentKind` (rodada 3):
+ * - `REVIEW`: o primeiro Pix em aberto da conta (ou o caixa); `PAID`: o caixa; `AUTOPAY_CANCELLED`: os membros;
+ * - `CONFIRMED`: Minhas cobranças; `PRICE_CHANGE`: o automático;
+ * - `REFUSED`: para o atleta, o pagamento do mês com "Atualizar cartão"; para o gestor (sem mês), os membros;
+ * - `SETTLE` e push sem a chave (servidor anterior): pelo `settleGameId`/`settleBillingMonth`, senão caixa ou Minhas cobranças.
  */
-internal fun paymentPushDestination(opened: GroupLinkEvent.NotificationOpen, groupId: String, administers: Boolean): NavKey =
-    when {
-        opened.settleGameId != null || opened.settleBillingMonth != null ->
-            ReceivablePaymentRoute(groupId, "", gameId = opened.settleGameId, billingMonth = opened.settleBillingMonth)
-        administers -> FinanceRoute.GroupCashbox(groupId)
-        else -> AthleteChargesRoute(groupId, "")
+internal fun paymentPushDestination(opened: GroupLinkEvent.NotificationOpen, groupId: String, administers: Boolean): NavKey {
+    val settles = opened.settleGameId != null || opened.settleBillingMonth != null
+    return when (opened.paymentKind) {
+        "REVIEW" -> FirstReviewRoute(groupId)
+        "PAID" -> FinanceRoute.GroupCashbox(groupId)
+        "AUTOPAY_CANCELLED" -> GroupsRoute.Members(groupId)
+        "CONFIRMED" -> AthleteChargesRoute(groupId, "")
+        "PRICE_CHANGE" -> AutopayRoute(groupId, "")
+        "REFUSED" -> if (settles) {
+            ReceivablePaymentRoute(groupId, "", billingMonth = opened.settleBillingMonth, offerCardUpdate = true)
+        } else {
+            GroupsRoute.Members(groupId)
+        }
+        else -> when {
+            settles -> ReceivablePaymentRoute(groupId, "", gameId = opened.settleGameId, billingMonth = opened.settleBillingMonth)
+            administers -> FinanceRoute.GroupCashbox(groupId)
+            else -> AthleteChargesRoute(groupId, "")
+        }
     }
+}
 
 internal fun SessionAccessState.administers(groupId: String): Boolean =
     this is SessionAccessState.Ready &&

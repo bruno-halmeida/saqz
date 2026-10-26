@@ -52,6 +52,7 @@ internal fun reminderNotification(
         .putExtra(EXTRA_NOTIFICATION_CHANNEL, channel)
         .putExtra(EXTRA_SETTLE_GAME_ID, settle?.gameId)
         .putExtra(EXTRA_SETTLE_MONTH, settle?.billingMonth)
+        .putExtra(EXTRA_PAYMENT_KIND, settle?.kind)
     val content = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     return NotificationCompat.Builder(context, REMINDER_CHANNEL)
         .setSmallIcon(R.drawable.ic_saqz_notification).setContentTitle(title)
@@ -63,9 +64,10 @@ internal const val EXTRA_NOTIFICATION_GROUP_ID = "saqz.notification.groupId"
 internal const val EXTRA_NOTIFICATION_CHANNEL = "saqz.notification.channel"
 internal const val EXTRA_SETTLE_GAME_ID = "saqz.notification.settleGameId"
 internal const val EXTRA_SETTLE_MONTH = "saqz.notification.settleBillingMonth"
+internal const val EXTRA_PAYMENT_KIND = "saqz.notification.paymentKind"
 
-/** O jogo ou o mês que o toque no push do recebimento paga. */
-internal data class PaymentSettle(val gameId: String?, val billingMonth: String?)
+/** O jogo ou o mês que o toque no push do recebimento paga, e o tipo do aviso. */
+internal data class PaymentSettle(val gameId: String?, val billingMonth: String?, val kind: String? = null)
 internal fun initializeNotificationFirebase(application: android.app.Application) {
     val manager = application.getSystemService(NotificationManager::class.java)
     if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(

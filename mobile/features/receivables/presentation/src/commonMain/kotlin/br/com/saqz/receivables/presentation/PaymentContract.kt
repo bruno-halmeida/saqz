@@ -16,6 +16,8 @@ data class ReceivablePaymentRoute(
     val chargeIds: String = "",
     val gameId: String? = null,
     val billingMonth: String? = null,
+    /** Cartão recusado (`paymentKind=REFUSED`): além do Pix, "Atualizar cartão" leva ao automático. */
+    val offerCardUpdate: Boolean = false,
 ) : NavKey
 
 data class PaymentArgs(
