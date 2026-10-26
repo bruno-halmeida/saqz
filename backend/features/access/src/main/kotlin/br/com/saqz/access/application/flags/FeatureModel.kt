@@ -52,9 +52,7 @@ data class FeatureFlagDefinition(
     val defaultValues: Map<String, Any> get() = parameters.associate { it.key to it.default }
 }
 
-data class FeatureMembers(val users: List<UUID> = emptyList(), val groups: List<String> = emptyList()) {
-    val isEmpty: Boolean get() = users.isEmpty() && groups.isEmpty()
-}
+data class FeatureMembers(val users: List<UUID> = emptyList(), val groups: List<String> = emptyList())
 
 /** Critérios do público: todos valem juntos; lista vazia ou versão nula não filtram. */
 data class FeatureAudience(
@@ -85,7 +83,7 @@ data class FeatureRule(
     val alertDisabled: Boolean = false,
 ) {
     /** 100% nas duas plataformas: é o que conta para os alertas de 30/60/90 dias. */
-    val fullRollout: Boolean get() = state == FeatureState.ALL && android && ios
+    fun fullRollout(): Boolean = state == FeatureState.ALL && android && ios
 }
 
 data class StoredFeatureFlag(

@@ -215,7 +215,7 @@ class FeatureFlags(
         val since = stored.fullRolloutSince
         val days = since?.let { Duration.between(it, now).toDays() } ?: -1
         val alert = when {
-            stored.rule.alertDisabled || since == null || !stored.rule.fullRollout -> null
+            stored.rule.alertDisabled || since == null || !stored.rule.fullRollout() -> null
             days >= 90 -> FeatureAlert.RED
             days >= 60 -> FeatureAlert.ORANGE
             days >= 30 -> FeatureAlert.YELLOW

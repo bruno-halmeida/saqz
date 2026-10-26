@@ -55,7 +55,7 @@ class JdbcFeatureFlagStore(dataSource: DataSource) : FeatureFlagStore {
                 INSERT INTO feature_flags(flag_key, version, rule, full_rollout_since, updated_at)
                 VALUES (:key, 1, CAST(:rule AS jsonb), :since, :at) ON CONFLICT (flag_key) DO NOTHING
             """).param("key", definition.key).param("rule", FeatureJson.encode(definition.initialRule))
-                .param("since", if (definition.initialRule.fullRollout) Timestamp.from(now) else null, Types.TIMESTAMP_WITH_TIMEZONE)
+                .param("since", if (definition.initialRule.fullRollout()) Timestamp.from(now) else null, Types.TIMESTAMP_WITH_TIMEZONE)
                 .param("at", Timestamp.from(now)).update() == 1
             if (created) history(UUID.randomUUID(), FeatureHistoryType.FLAG, definition.key, 1, null, definition.initialReason,
                 now, null, definition.initialRule)
@@ -143,8 +143,8 @@ class JdbcFeatureFlagStore(dataSource: DataSource) : FeatureFlagStore {
         change.validate()
         // A contagem dos alertas começa quando a flag passa a valer 100% e zera quando deixa de valer.
         val since = when {
-            !change.rule.fullRollout -> null
-            before.rule.fullRollout -> before.fullRolloutSince ?: change.now
+            !change.rule.fullRollout() -> null
+            before.rule.fullRollout() -> before.fullRolloutSince ?: change.now
             else -> change.now
         }
         jdbc.sql("""
