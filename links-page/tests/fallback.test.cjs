@@ -75,6 +75,20 @@ test('Android does not leave for the store when the app took over the page', () 
   assert.equal(backgrounded.location.replaced, undefined);
 });
 
+test('settle link opens the payment in the app and falls back to the store with the code', () => {
+  const settle = 'AbCdEfGh_jKl-123';
+  const android = page('Android', '/acerto/' + settle);
+  const store = `${play}&referrer=saqz_settle%3D${settle}`;
+  const intent = `intent://links.saqz.app/acerto/${settle}#Intent;scheme=https;package=app.saqz;S.browser_fallback_url=${encodeURIComponent(store)};end`;
+  assert.equal(android.location.href, intent);
+  assert.equal(android.heading.textContent, 'Pague no Saqz');
+  assert.equal(android.primary.href, store);
+  android.elapse();
+  assert.equal(android.location.replaced, store);
+  const malformed = page('Android', '/acerto/curto');
+  assert.notEqual(malformed.heading.textContent, 'Pague no Saqz');
+});
+
 test('Android attendance goes to Google Play with the link in the referrer, decline included', () => {
   const attendance = page('Android', '/attendance/' + code);
   const confirmStore = `${play}&referrer=saqz_attendance%3D${code}`;

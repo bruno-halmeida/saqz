@@ -54,6 +54,7 @@ test('Apple association identifies production and all supported link paths', () 
   const details = data.applinks.details.find(item => item.appIDs.includes('8JG4JP8VMT.app.saqz'));
   assert.ok(details);
   assert.ok(details.components.some(item => item['/'] === '/attendance/*'));
+  assert.ok(details.components.some(item => item['/'] === '/acerto/*'));
   for (const key of ['saqz_invite', 'saqz_onboarding']) {
     assert.ok(details.components.some(item => item['/'] === '/' && item['?']?.[key] === '*'));
   }

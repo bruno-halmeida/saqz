@@ -7,7 +7,7 @@ set -eu
 cd "$(dirname "$0")"
 CHROME=${CHROME:-$(find "$HOME/.cache/hyperframes/chrome" -name chrome-headless-shell -type f | head -1)}
 OUT=../../links-page/assets
-for name in lembrete link; do
+for name in lembrete link acerto; do
   "$CHROME" --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
     --virtual-time-budget=3000 --allow-file-access-from-files --window-size=1200,630 \
     --screenshot="$PWD/$name.png" "file://$PWD/$name.html" 2>/dev/null

@@ -100,6 +100,8 @@
     var site = "https://saqz.app";
     var code = "[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]";
     var path = location.pathname.match(new RegExp("^/attendance/(" + code + ")$"));
+    // Hora do acerto (FIN-013): /acerto/<codigo de 16>, um por jogo ou mensalidade; o app abre o pagamento.
+    var settle = location.pathname.match(/^\/acerto\/([A-Za-z0-9_-]{16})$/);
     var params = new URLSearchParams(location.search);
     var invite = inviteCode(params.get("saqz_invite"));
     var onboarding = params.get("saqz_onboarding");
@@ -109,6 +111,9 @@
     if (path) {
       kind = "attendance";
       route = "attendance/" + path[1] + (decline ? "?saqz_intent=decline" : "");
+    } else if (settle) {
+      kind = "settle";
+      route = "acerto/" + settle[1];
     } else if (invite) {
       kind = "invite";
       route = "?saqz_invite=" + invite;
@@ -135,6 +140,7 @@
     if (kind === "invite") heading.textContent = "Entre no grupo no Saqz";
     if (kind === "onboarding") heading.textContent = "Continue no app Saqz";
     if (kind === "attendance") heading.textContent = "Responda no Saqz";
+    if (kind === "settle") heading.textContent = "Pague no Saqz";
 
     // O celular vai à loja do sistema e o app retoma o link; o computador mostra o QR do link e as duas lojas.
     if (!isIOS && !isAndroid) return desktopFlow();
@@ -145,6 +151,7 @@
       // depois da instalação: o link de presença também traz quem ainda não está no grupo, que
       // entra e já confirma. O "não vou" vai junto, para nunca virar confirmação.
       var referrer = kind === "attendance" ? "saqz_attendance=" + path[1] + (decline ? "&saqz_intent=decline" : "")
+        : kind === "settle" ? "saqz_settle=" + settle[1]
         : kind ? route.slice(1) : null;
       var store = isIOS ? appStore : googlePlay + (referrer ? "&referrer=" + encodeURIComponent(referrer) : "");
       var open = !kind ? null : isAndroid
@@ -153,7 +160,7 @@
         : "saqz:///" + route;
 
       if (kind) lead.textContent = "Instale o Saqz e entre com sua conta: o app abre " +
-        (kind === "invite" ? "o convite" : kind === "attendance" ? "o jogo" : "o próximo passo") + " sozinho.";
+        (kind === "invite" ? "o convite" : kind === "attendance" ? "o jogo" : kind === "settle" ? "o pagamento" : "o próximo passo") + " sozinho.";
 
       if (isAndroid) {
         link(primary, store, "Baixar no Google Play");

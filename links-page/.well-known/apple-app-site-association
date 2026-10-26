@@ -9,6 +9,10 @@
             "comment": "Confirmacao de presenca: /attendance/<codigo>"
           },
           {
+            "/": "/acerto/*",
+            "comment": "Hora do acerto: /acerto/<codigo> abre o pagamento do jogo ou da mensalidade"
+          },
+          {
             "/": "/",
             "?": { "saqz_invite": "*" },
             "comment": "Convite de grupo: /?saqz_invite=<codigo>"
