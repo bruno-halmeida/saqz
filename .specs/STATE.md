@@ -1,6 +1,10 @@
 # Estado de implementação
 
-## Status atual — 2026-09-13, conclusão paralela
+## Direção nova — 2026-10-26 (prevalece sobre o status de setembro abaixo)
+
+O dono redesenhou a v1 do piloto de recebimentos. As regras ficam no cofre (`~/Documents/Obsidian Vault/Saqz/Regras/Financeiro`, FIN-009 a FIN-014) e os débitos em `Regras/Débitos.md` (DEB-138 a DEB-142). Em resumo: todo pagamento nasce no Saqz, ligado a um atleta e a cobranças, com valor fixo (QR e copia e cola sem formulário de nome e CPF e sem aceite do atleta); baixa automática das cobranças do grupo; "hora do acerto" no grupo do WhatsApp com botões; copia e cola no WhatsApp particular; Pix e cartão por acerto e mensalidade recorrente no cartão ("modo Netflix") na v1; o gestor absorve ou repassa a taxa e o atleta vê um valor só; comissão do Saqz desde o primeiro dia, definida no adm. Antes de código: teste no sandbox (DEB-138), protótipos visuais aprovados pelo dono e termos revisados (DEB-139). Onde o código de setembro divergir, valem as regras novas (DEB-142).
+
+## Status de 2026-09-13, conclusão paralela
 
 As jornadas de pagamento, cadastro/gestão/delegação, carteira/saque, recorrência, renovação Pix, comprovante, operação e páginas públicas foram implementadas e verificadas. Commits desta conclusão: `91410d94`, `fda7607d`, `cd0a4a3c`, `a401eb7b`, `de5e7eed`, `6f700201`, `af0a043a`, `777abef4`, `e40d5c0b`. Quatro revisões independentes finais aprovadas; todos os defeitos reproduzidos foram corrigidos. O procedimento operacional de credencial perdida (T04) também está concluído e aprovado: importação cifrada auditada, somente consultas ao provedor e comando sem servidor web. Não há tarefa de implementação pendente. Homologação real T20, condições comerciais e termos aprovados permanecem externos; nenhum deploy ou teste financeiro real nesta onda. O restante deste arquivo conserva o histórico e não substitui este status atual.
 
