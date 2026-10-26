@@ -28,10 +28,12 @@ class JdbcGroupReceivablesStore(dataSource: DataSource) : GroupReceivablesStore 
         return accounts.findById(id)
     }
     override fun state(accountId: UUID, groupId: UUID): GroupReceivablesState? = jdbc.sql("""
-        SELECT enabled,pix_enabled,card_enabled,fee_policy FROM receivable_group_links WHERE account_id=:account AND group_id=:group
+        SELECT l.enabled,l.pix_enabled,l.card_enabled,l.fee_policy,a.pix_key_ready,
+            (SELECT count(*) FROM payment_reviews r WHERE r.account_id=l.account_id AND r.status='OPEN') AS open_reviews
+        FROM receivable_group_links l JOIN receivable_accounts a ON a.id=l.account_id WHERE l.account_id=:account AND l.group_id=:group
     """.trimIndent()).param("account", accountId).param("group", groupId).query { rs, _ ->
         GroupReceivablesState(accountId, groupId, rs.getBoolean("enabled"), rs.getBoolean("pix_enabled"), rs.getBoolean("card_enabled"),
-            rs.getString("fee_policy"))
+            rs.getString("fee_policy"), rs.getBoolean("pix_key_ready"), rs.getInt("open_reviews"))
     }.optional().orElse(null)
 
     override fun replay(accountId: UUID, request: FinancialRequest, digest: String): Boolean {

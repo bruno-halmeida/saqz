@@ -14,7 +14,8 @@ import javax.sql.DataSource
 
 /** Accept commits ciphertext before returning. Processing is independent and uses account-scoped provider queries. */
 class JdbcPaymentEvents(dataSource: DataSource, private val secrets: FinancialSecrets,
-    private val execution: PaymentExecution, private val clock: Clock) : PaymentEventInbox {
+    private val execution: PaymentExecution, private val clock: Clock,
+    private val settlement: br.com.saqz.receivables.application.PaymentSettlement? = null) : PaymentEventInbox {
     private val jdbc = JdbcClient.create(dataSource)
     private val mapper = jacksonObjectMapper()
     override fun accept(account: UUID, token: String, body: String): Boolean {
@@ -52,7 +53,18 @@ class JdbcPaymentEvents(dataSource: DataSource, private val secrets: FinancialSe
                 val id = jdbc.sql("""SELECT id FROM receivable_instruments WHERE account_id=:account
                     AND (id=:ref OR provider_payment_id=:payment)""").param("account", account)
                     .param("ref", ref).param("payment", payment.path("id").asText()).query(UUID::class.java).optional().orElse(null)
-                if (id == null) { failure(event, account, "UNMATCHED_EVENT"); failed++; continue }
+                if (id == null) {
+                    // v1 (FIN-014): código do Saqz por externalReference ou pixQrCodeId, ou Pix fora de código (revisão).
+                    val handled = settlement?.handle(account, node.path("event").asText(), payment.path("id").asText(),
+                        payment.path("externalReference").asText().ifBlank { null }, payment.path("pixQrCodeId").asText().ifBlank { null },
+                        payment.path("billingType").asText() == "PIX")
+                    when (handled) {
+                        true -> { processed(event); processed++; JobLog.item("payment_events", "event_settled", "eventId" to event, "accountId" to account) }
+                        false -> { failure(event, account, "PROVIDER_RESULT_PENDING"); failed++ }
+                        null -> { failure(event, account, "UNMATCHED_EVENT"); failed++ }
+                    }
+                    continue
+                }
                 // The event is only a wake-up signal. Never trust redirect state or payload amounts as current facts.
                 val reconciled = execution.reconcile(id)
                 val known = jdbc.sql("SELECT provider_payment_id IS NOT NULL FROM receivable_instruments WHERE id=:id")
@@ -89,6 +101,10 @@ class JdbcPaymentEvents(dataSource: DataSource, private val secrets: FinancialSe
                 }
             }
         return reconciled to failed
+    }
+    private fun processed(id: UUID) {
+        jdbc.sql("UPDATE receivable_provider_events SET processed_at=:at,attempts=attempts+1,failure_code=NULL WHERE id=:id")
+            .param("at", Timestamp.from(clock.instant())).param("id", id).update()
     }
     private fun failure(id: UUID, account: UUID, code: String) {
         JobLog.itemFailed("payment_events", "event_failed", code, "eventId" to id, "accountId" to account)

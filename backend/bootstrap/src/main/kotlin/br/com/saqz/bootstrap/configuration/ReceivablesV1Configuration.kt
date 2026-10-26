@@ -2,6 +2,9 @@ package br.com.saqz.bootstrap.configuration
 
 import br.com.saqz.groups.adapter.output.jdbc.finance.JdbcGroupChargeLedger
 import br.com.saqz.receivables.adapter.input.http.AthletePaymentsController
+import br.com.saqz.receivables.adapter.input.http.PaymentReviewsController
+import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcReceivablesNotices
+import br.com.saqz.sharedkernel.group.ReceivablesNotices
 import br.com.saqz.receivables.adapter.input.http.FinancialActorResolver
 import br.com.saqz.receivables.adapter.output.asaas.HttpAsaasPaymentCodes
 import br.com.saqz.receivables.adapter.output.crypto.FinancialSecrets
@@ -33,10 +36,20 @@ class ReceivablesV1Configuration {
         AthletePayments(store, ledger, conditions, eligibility, rollout, provider, clock)
     @Bean fun athletePaymentsController(actors: SubscriptionActorResolver, service: AthletePayments) =
         AthletePaymentsController(FinancialActorResolver { actors.resolve(it) }, service)
-    @Bean fun receivablesV1Jobs(pixKeys: JdbcPixKeys) = ReceivablesV1Jobs(pixKeys)
+    @Bean fun receivablesNotices(dataSource: DataSource): ReceivablesNotices = JdbcReceivablesNotices(dataSource)
+    @Bean fun commissionTransfers(dataSource: DataSource, operations: JdbcFinancialOperationStore, provider: HttpAsaasPaymentCodes,
+        clock: Clock) = JdbcCommissionTransfers(dataSource, operations, provider, clock)
+    @Bean fun paymentSettlement(dataSource: DataSource, codes: JdbcPaymentCodeStore, ledger: GroupChargeLedger,
+        notices: ReceivablesNotices, provider: HttpAsaasPaymentCodes, commissions: JdbcCommissionTransfers, clock: Clock) =
+        PaymentSettlement(JdbcSettlementStore(dataSource), codes, ledger, notices, provider, commissions, clock)
+    @Bean fun paymentReviews(dataSource: DataSource, ledger: GroupChargeLedger, clock: Clock) =
+        PaymentReviews(JdbcReviewStore(dataSource), ledger, clock)
+    @Bean fun paymentReviewsController(actors: SubscriptionActorResolver, service: PaymentReviews) =
+        PaymentReviewsController(FinancialActorResolver { actors.resolve(it) }, service)
+    @Bean fun receivablesV1Jobs(pixKeys: JdbcPixKeys, commissions: JdbcCommissionTransfers) = ReceivablesV1Jobs(pixKeys, commissions)
 }
 
-class ReceivablesV1Jobs(private val pixKeys: JdbcPixKeys) {
+class ReceivablesV1Jobs(private val pixKeys: JdbcPixKeys, private val commissions: JdbcCommissionTransfers) {
     @Scheduled(fixedDelayString = "\${saqz.receivables.v1-recovery-delay-ms:60000}")
-    fun recover() { pixKeys.recoverPending() }
+    fun recover() { pixKeys.recoverPending(); commissions.recoverPending() }
 }

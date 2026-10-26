@@ -42,8 +42,8 @@ class OneOffPaymentsConfiguration {
         OneOffPayments(store, charges, accounts, groups, admins, conditions, eligibility, rollout, execution, clock)
     @Bean fun oneOffPaymentsController(actors: SubscriptionActorResolver, service: OneOffPayments) =
         OneOffPaymentsController(FinancialActorResolver { actors.resolve(it) }, service)
-    @Bean fun paymentEvents(dataSource: DataSource, secrets: FinancialSecrets, execution: JdbcPaymentExecution, clock: Clock) =
-        JdbcPaymentEvents(dataSource, secrets, execution, clock)
+    @Bean fun paymentEvents(dataSource: DataSource, secrets: FinancialSecrets, execution: JdbcPaymentExecution, clock: Clock,
+        settlement: PaymentSettlement) = JdbcPaymentEvents(dataSource, secrets, execution, clock, settlement)
     @Bean fun paymentWebhookController(events: JdbcPaymentEvents) = PaymentWebhookController(events)
     @Bean fun paymentRecovery(events: JdbcPaymentEvents) = PaymentRecovery(events)
 }
