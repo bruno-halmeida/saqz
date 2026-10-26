@@ -26,7 +26,10 @@ class GroupReceivablesConfiguration {
     @Bean fun groupReceivablesStore(dataSource: DataSource): GroupReceivablesStore = JdbcGroupReceivablesStore(dataSource)
     @Bean fun manageGroupReceivables(accounts: FinancialAccountRepository, admins: GroupAdministrationDirectory,
         groups: GroupFinancialSetupLookup, store: GroupReceivablesStore, conditions: FinancialConditions,
-        eligibility: ReceivablesEligibility, clock: Clock, rollout: ReceivablesRollout) = ManageGroupReceivables(accounts, admins, groups, store, conditions, eligibility, clock, rollout)
+        eligibility: ReceivablesEligibility, clock: Clock, rollout: ReceivablesRollout,
+        pixKeys: org.springframework.beans.factory.ObjectProvider<br.com.saqz.receivables.adapter.output.jdbc.JdbcPixKeys>) =
+        ManageGroupReceivables(accounts, admins, groups, store, conditions, eligibility, clock, rollout,
+            GroupActivationEffects { account, _ -> pixKeys.ifAvailable { it.ensure(account) } })
     @Bean fun groupReceivablesController(actors: SubscriptionActorResolver, service: ManageGroupReceivables) =
         GroupReceivablesController(FinancialActorResolver { actors.resolve(it) }, service)
 }

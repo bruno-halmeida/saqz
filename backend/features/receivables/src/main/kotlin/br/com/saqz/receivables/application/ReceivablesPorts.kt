@@ -31,6 +31,9 @@ enum class FinancialError {
     NOT_FOUND, UNAUTHORIZED, INVALID_INPUT, CONFLICT, INSUFFICIENT_BALANCE,
     REGISTRATION_RESTRICTED, PROVIDER_UNAVAILABLE, RESULT_PENDING, CONFIGURATION_UNAVAILABLE,
     RECENT_AUTHENTICATION_REQUIRED, INELIGIBLE_PLAN, OPERATIONS_DISABLED,
+    // Recebimento pelo app v1 (seção H do plano): cartão sem CPF, cobrança que não é mais do atleta ou não está em aberto,
+    // subconta ainda sem a chave aleatória do Pix.
+    DOCUMENT_REQUIRED, CHARGE_NOT_PAYABLE, PIX_NOT_READY,
 }
 
 sealed interface FinancialResult<out T> {
