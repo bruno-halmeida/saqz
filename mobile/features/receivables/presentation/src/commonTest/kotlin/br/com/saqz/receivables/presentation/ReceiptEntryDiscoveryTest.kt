@@ -16,9 +16,8 @@ import kotlin.test.assertTrue
 class ReceiptEntryDiscoveryTest {
     @Test fun loadingAndFailuresDoNotAdvertiseAnUnreleasedFeature() = runTest {
         val availability = Availability(false)
-        val payments = emptyPaymentHistory().apply { pageError = true }
         val coordinator = ReceivablesCoordinator(availability, backgroundScope,
-            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Failure(ReceiptError.NETWORK) }, payments)
+            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Failure(ReceiptError.NETWORK) })
         coordinator.onSessionChanged("session")
         assertFalse(coordinator.state.value.configurationEntryAvailable)
         assertFalse(coordinator.state.value.paymentEntryAvailable)
@@ -33,10 +32,11 @@ class ReceiptEntryDiscoveryTest {
         assertFalse(coordinator.state.value.paymentEntryAvailable)
     }
 
-    @Test fun disablingRolloutHidesUnusedEntriesOnRefresh() = runTest {
+    /** DEB-142: a disponibilidade do servidor substitui a constante do app; desligada, nenhuma entrada aparece. */
+    @Test fun disablingAvailabilityHidesEveryEntryOnRefresh() = runTest {
         val availability = Availability(true)
         val coordinator = ReceivablesCoordinator(availability, backgroundScope,
-            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) }, emptyPaymentHistory())
+            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         coordinator.onSessionChanged("session")
         runCurrent()
         assertTrue(coordinator.state.value.configurationEntryAvailable)
@@ -48,46 +48,24 @@ class ReceiptEntryDiscoveryTest {
         assertFalse(coordinator.state.value.paymentEntryAvailable)
     }
 
-    @Test fun existingPaymentsRemainAccessibleWithoutRolloutOrAFinancialAccount() = runTest {
-        val payments = MemberPaymentFake()
-        val coordinator = ReceivablesCoordinator(Availability(false), backgroundScope,
-            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) }, payments)
+    /** O rollout é do gestor: com o servidor ligado, o atleta fora do rollout ainda paga em grupo ativo. */
+    @Test fun athletePaymentFollowsTheServerSwitchNotTheOrganizerRollout() = runTest {
+        val coordinator = ReceivablesCoordinator(Rollout(backend = true, mobile = false), backgroundScope,
+            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) })
         coordinator.onSessionChanged("session")
         runCurrent()
         assertTrue(coordinator.state.value.paymentEntryAvailable)
         assertFalse(coordinator.state.value.configurationEntryAvailable)
-        payments.pageError = true
-        coordinator.refresh()
-        runCurrent()
-        assertTrue(coordinator.state.value.paymentEntryAvailable)
         coordinator.onBackground()
-        assertTrue(coordinator.state.value.paymentEntryAvailable)
+        assertFalse(coordinator.state.value.paymentEntryAvailable)
         coordinator.onSessionChanged(null)
         assertFalse(coordinator.state.value.paymentEntryAvailable)
-        assertFalse(coordinator.state.value.hasPayments)
-    }
-
-    @Test fun previousSessionsPaymentsCannotExposeEntry() = runTest {
-        var session = "old"
-        val response = CompletableDeferred<SaqzResult<MemberPaymentPage, ReceiptError>>()
-        val payments = object : MemberPaymentsGateway by emptyPaymentHistory() {
-            override suspend fun orders(after: String?) = withContext(NonCancellable) { response.await() }
-        }
-        val coordinator = ReceivablesCoordinator(Availability(false), backgroundScope,
-            ReceivablesSessionContext { session }, ReceiptAccountDirectory { SaqzResult.Success(emptyList()) }, payments)
-        coordinator.onSessionChanged(session)
-        runCurrent()
-        session = "new"
-        response.complete(SaqzResult.Success(MemberPaymentPage(listOf(paymentOrder), null)))
-        runCurrent()
-        assertFalse(coordinator.state.value.paymentEntryAvailable)
-        assertFalse(coordinator.state.value.hasPayments)
     }
 
     @Test fun offWithoutAccountHidesEntryAndOffWithAccountPreservesIt() = runTest {
         var accounts = emptyList<ReceiptAccount>()
         val coordinator = ReceivablesCoordinator(Availability(false), backgroundScope,
-            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(accounts) }, emptyPaymentHistory())
+            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { SaqzResult.Success(accounts) })
         coordinator.onSessionChanged("session")
         runCurrent()
         assertFalse(coordinator.state.value.configurationEntryAvailable)
@@ -104,7 +82,7 @@ class ReceiptEntryDiscoveryTest {
         val availability = Availability(true)
         var result: SaqzResult<List<ReceiptAccount>, ReceiptError> = SaqzResult.Success(emptyList())
         val coordinator = ReceivablesCoordinator(availability, backgroundScope,
-            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { result }, emptyPaymentHistory())
+            ReceivablesSessionContext { "session" }, ReceiptAccountDirectory { result })
         coordinator.onSessionChanged("session")
         runCurrent()
         assertTrue(coordinator.state.value.configurationEntryAvailable)
@@ -125,7 +103,7 @@ class ReceiptEntryDiscoveryTest {
         val coordinator = ReceivablesCoordinator(Availability(false), backgroundScope,
             ReceivablesSessionContext { session }, ReceiptAccountDirectory {
                 SaqzResult.Success(withContext(NonCancellable) { response.await() })
-            }, emptyPaymentHistory())
+            })
         coordinator.onSessionChanged(session)
         runCurrent()
         session = null
@@ -133,6 +111,11 @@ class ReceiptEntryDiscoveryTest {
         runCurrent()
         assertFalse(coordinator.state.value.configurationEntryAvailable)
         assertFalse(coordinator.state.value.hasAccount)
+    }
+
+    private class Rollout(val backend: Boolean, val mobile: Boolean) : ReceivablesAvailabilityGateway {
+        override suspend fun get(): SaqzResult<ReceivablesAvailability, ReceivablesError> =
+            SaqzResult.Success(ReceivablesAvailability(backend, mobile))
     }
 
     private class Availability(var enabled: Boolean) : ReceivablesAvailabilityGateway {
@@ -143,4 +126,3 @@ class ReceiptEntryDiscoveryTest {
     }
 }
 
-internal fun emptyPaymentHistory() = MemberPaymentFake().apply { page = MemberPaymentPage(emptyList(), null) }

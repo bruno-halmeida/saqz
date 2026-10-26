@@ -203,6 +203,17 @@ class NetworkClientTest {
     }
 
     @Test
+    fun `receivables envelope error keeps its code and the real HTTP status`() = runTest {
+        val body = """{"error":"DOCUMENT_REQUIRED","requestId":"8d3b1c1e-2f4a-4c1e-9a55-0c4b8e0f1a22"}"""
+        val result = client(responding(body, HttpStatusCode.Conflict))
+            .execute(HttpMethod.Get, "probe", serializer<ProbeResponse>())
+
+        val problem = assertIs<NetworkError.ApiProblemError>(assertFailure(result)).problem
+        assertEquals(409, problem.status)
+        assertEquals("DOCUMENT_REQUIRED", problem.error)
+    }
+
+    @Test
     fun `oversized error body is not parsed or retained`() = runTest {
         val secret = "sensitive-body-" + "x".repeat(100)
         val config = NetworkConfig(NetworkEnvironment.Test, "https://api.example.test/", maxErrorBodyBytes = 32)

@@ -15,6 +15,10 @@ fun interface NetworkErrorMapper {
 @Serializable
 private data class DeclinedProblemTransport(val error: String, val reason: String, val message: String)
 
+/** Recebimentos: `{"error":"DOCUMENT_REQUIRED","requestId":"..."}` (409/503 do envelope de setembro). */
+@Serializable
+private data class EnvelopeProblemTransport(val error: String, val requestId: String? = null)
+
 class ApiProblemErrorMapper(
     private val json: Json,
 ) : NetworkErrorMapper {
@@ -22,7 +26,11 @@ class ApiProblemErrorMapper(
         val problem = runCatching { json.decodeFromString(ApiProblem.serializer(), body) }.getOrNull()
         if (problem != null) return NetworkError.ApiProblemError(problem)
         val declined = runCatching { json.decodeFromString(DeclinedProblemTransport.serializer(), body) }.getOrNull()
-            ?: return NetworkError.HttpStatus(status)
+        if (declined == null) {
+            val envelope = runCatching { json.decodeFromString(EnvelopeProblemTransport.serializer(), body) }.getOrNull()
+                ?: return NetworkError.HttpStatus(status)
+            return NetworkError.ApiProblemError(ApiProblem(status = status, error = envelope.error))
+        }
         // `status` vem do transporte, nunca do corpo — essa forma não carrega um `status`
         // próprio, e usar o HTTP real (em vez de inventar um) é o que mantém
         // `problem.status.toDataError()`/`isRetryableFailure` corretos para quem só olha o

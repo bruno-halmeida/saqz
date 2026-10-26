@@ -67,10 +67,12 @@ class KtorGroupReceivablesGateway(private val network: AuthenticatedNetworkClien
     val methods: Set<String>, val fingerprint: String?, val accepted: Boolean)
 @Serializable internal data class AccountTransport(val id: String, val registration: String, val newOperationsEnabled: Boolean)
 @Serializable internal data class ConfigurationTransport(val accountId: String, val groupId: String, val enabled: Boolean,
-    val pixEnabled: Boolean, val cardEnabled: Boolean)
-private fun ConfigurationTransport.domain() = ReceiptConfiguration(accountId, groupId, enabled, pixEnabled, cardEnabled)
+    val pixEnabled: Boolean, val cardEnabled: Boolean, val feePolicy: String? = null, val pixReady: Boolean = false,
+    val openReviews: Int = 0)
+internal fun ConfigurationTransport.domain() = ReceiptConfiguration(accountId, groupId, enabled, pixEnabled, cardEnabled,
+    if (feePolicy == "PASS") FeePolicy.PASS else FeePolicy.ABSORB, pixReady, openReviews.coerceAtLeast(0))
 @Serializable internal data class PermissionTransport(val allowed: Boolean, val reason: String? = null)
-private fun PermissionTransport.domain() = ReceiptPermission(allowed, reason)
+internal fun PermissionTransport.domain() = ReceiptPermission(allowed, reason)
 @Serializable internal data class StatusTransport(val state: ConfigurationTransport, val permissions: Map<String, PermissionTransport>)
 @Serializable internal data class ScheduleTransport(val method: String, val termsVersion: String,
     val providerRate: JsonPrimitive, val providerFixedCents: Long, val commissionRate: JsonPrimitive, val commissionFixedCents: Long,
