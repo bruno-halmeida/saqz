@@ -52,6 +52,7 @@ jogo) e um dono com plano, admin de G1. Para os casos de espera, um jogo lotado;
 | Jogo começou, sem outro jogo, sem resposta | Selo com "AGORA"; etiqueta "Não vai"; sem Confirmar | ☐ | ☐ |
 | Jogo lotado | "Completo" no lugar das vagas abertas | ☐ | ☐ |
 | Acima da lotação (entrada forçada) | Só "N confirmados para M vagas" | ☐ | ☐ |
+| Jogo de 40 vagas | Barra contínua cheia na proporção, sem traços; "N de 40 vão" e as vagas abertas embaixo | ☐ | ☐ |
 | Rascunho (dono) | Não aparece: o grupo mostra o próximo jogo publicado ou "Nenhum jogo marcado por enquanto." | ☐ | ☐ |
 | Responder no jogo e voltar à aba | Etiqueta atualizada sem reabrir o app | ☐ | ☐ |
 | Celular de 360 e fonte grande | Nada cortado; nome do local quebra só no travessão; botões em uma linha | ☐ | ☐ |

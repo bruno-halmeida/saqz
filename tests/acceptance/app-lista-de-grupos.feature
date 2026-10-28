@@ -100,6 +100,13 @@ Funcionalidade: Lista de grupos com foto, próximo jogo, vagas e Confirmar (GER-
       | 18          | 18    | Completo                       |
       | 13          | 12    | 13 confirmados para 12 vagas   |
 
+  @p2 @APP-LG16
+  Cenário: Jogo grande tem a barra contínua
+    Dado que o próximo jogo de G1 tem 30 confirmados para 40 vagas
+    Quando ATLETA abre a aba Grupos
+    Então a barra de vagas de G1 é contínua, cheia em três quartos e sem traços
+    E vê "30 de 40 vão" e "10 vagas abertas"
+
   @p1 @APP-LG12
   Cenário: Jogo que começou dá lugar ao próximo
     Dado que o jogo de G1 começou há 30 minutos e G1 tem outro jogo publicado no sábado
