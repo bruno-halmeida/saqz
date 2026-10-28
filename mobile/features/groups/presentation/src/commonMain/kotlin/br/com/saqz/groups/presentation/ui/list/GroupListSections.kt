@@ -72,6 +72,7 @@ import br.com.saqz.groups.resources.groups_confirm_sheet_title
 import br.com.saqz.groups.resources.groups_confirm_sheet_yes
 import br.com.saqz.groups.resources.groups_empty_create
 import br.com.saqz.groups.resources.groups_empty_join
+import br.com.saqz.groups.resources.groups_empty_owner_body
 import br.com.saqz.groups.resources.groups_empty_owner_title
 import br.com.saqz.groups.resources.groups_first_access_body
 import br.com.saqz.groups.resources.groups_first_access_create
@@ -143,6 +144,10 @@ private val SkeletonTitleWidth = 150.dp
 private val SkeletonMetaWidth = 110.dp
 private val SkeletonMetaHeight = 12.dp
 private const val SKELETON_ROWS = 3
+
+/** Até aqui, um traço por vaga; acima, barra contínua (GER-003). O jogo aceita até 100 vagas. */
+private const val MAX_SLOT_TICKS = 24
+private val NameLine = 22.sp
 
 /** Cabeçalho de 2n. [onCreate] nulo esconde o "+", que é como 2o se desenha. */
 @Composable
@@ -245,7 +250,7 @@ internal fun GroupRow(
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TightGap)) {
                     Text(
                         text = group.name,
-                        style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold, lineHeight = 22.sp),
+                        style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold, lineHeight = NameLine),
                         color = colors.textPrimary,
                     )
                     group.place?.let { GroupPlaceLine(it) }
@@ -452,7 +457,7 @@ internal fun GroupSpots(game: GroupCardGameUi, modifier: Modifier = Modifier) {
             .testTag(GroupListTags.Spots),
         verticalArrangement = Arrangement.spacedBy(SpotsGap),
     ) {
-        if (game.capacity > 0) {
+        if (game.capacity in 1..MAX_SLOT_TICKS) {
             Row(
                 modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
                 horizontalArrangement = Arrangement.spacedBy(SlotGap),
@@ -466,6 +471,27 @@ internal fun GroupSpots(game: GroupCardGameUi, modifier: Modifier = Modifier) {
                                 if (index < game.confirmedCount) colors.primary else colors.border,
                                 RoundedCornerShape(SlotRadius),
                             ),
+                    )
+                }
+            }
+        } else if (game.capacity > MAX_SLOT_TICKS) {
+            // Acima de 24 vagas os traços viravam só vão: trilho contínuo com o preenchimento na proporção (cheio acima da
+            // lotação).
+            val fill = (game.confirmedCount.toFloat() / game.capacity).coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(SlotHeight)
+                    .background(colors.border, RoundedCornerShape(SlotRadius))
+                    .clearAndSetSemantics {}
+                    .testTag(GroupListTags.SpotsTrack),
+            ) {
+                if (fill > 0f) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(fill)
+                            .height(SlotHeight)
+                            .background(colors.primary, RoundedCornerShape(SlotRadius)),
                     )
                 }
             }
@@ -564,7 +590,7 @@ internal fun GroupConfirmSheet(
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TightGap)) {
                     Text(
                         text = group.name,
-                        style = SaqzTheme.typography.subtitle.copy(fontSize = SheetNameSize, lineHeight = 22.sp),
+                        style = SaqzTheme.typography.subtitle.copy(fontSize = SheetNameSize, lineHeight = NameLine),
                         color = colors.textPrimary,
                     )
                     group.place?.let { GroupPlaceLine(it) }
@@ -619,7 +645,11 @@ internal fun GroupListEmpty(
         verticalArrangement = Arrangement.spacedBy(metrics.horizontalPadding),
     ) {
         if (isPlanOwner) {
-            SaqzHeroCard(kicker = null, title = stringResource(Res.string.groups_empty_owner_title)) {
+            SaqzHeroCard(
+                kicker = null,
+                title = stringResource(Res.string.groups_empty_owner_title),
+                meta = stringResource(Res.string.groups_empty_owner_body),
+            ) {
                 SaqzButton(
                     label = stringResource(Res.string.groups_empty_create),
                     onClick = onCreate,

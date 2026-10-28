@@ -174,4 +174,25 @@ class GroupListScreenTest {
 
         onNodeWithText("AGORA", useUnmergedTree = true).assertIsDisplayed()
     }
+
+    @Test
+    fun `a game above 24 spots has a continuous bar and up to 24 one tick per spot`() = runComposeUiTest {
+        val big = card("big", GroupCardAttendance.Going).let {
+            it.copy(nextGame = it.nextGame!!.copy(confirmedCount = 30, capacity = 40))
+        }
+        val state = GroupListState(isLoading = false, groups = listOf(big))
+        setContent { SaqzTheme { GroupListScreen(state = state, onIntent = {}) } }
+
+        onNodeWithTag(GroupListTags.SpotsTrack, useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithText("30 de 40 vão", useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithText("10 vagas abertas", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a game of 18 spots keeps one tick per spot`() = runComposeUiTest {
+        val state = GroupListState(isLoading = false, groups = listOf(card("a", GroupCardAttendance.Going)))
+        setContent { SaqzTheme { GroupListScreen(state = state, onIntent = {}) } }
+
+        onNodeWithTag(GroupListTags.SpotsTrack, useUnmergedTree = true).assertDoesNotExist()
+    }
 }

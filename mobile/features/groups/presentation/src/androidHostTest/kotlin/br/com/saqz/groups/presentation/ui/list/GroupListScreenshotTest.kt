@@ -5,6 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import coil3.ImageLoader
+import coil3.compose.LocalPlatformContext
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
+import org.koin.dsl.module
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Modifier
@@ -35,14 +41,14 @@ class GroupListScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun filled() = capture("group-list-2n-lista-cheia", GroupListSamples.filled)
+    fun filled() = capture("group-list-2n-lista-cheia", GroupListSamples.filled, withPhoto = true)
 
     /** Em andamento sem outro jogo (AGORA, lotado), acima da lotação, na espera e não vai; jogo de 18 vagas. */
     @Test
-    fun states() = capture("group-list-2n-estados", GroupListSamples.states)
+    fun states() = capture("group-list-2n-estados", GroupListSamples.states, withPhoto = true)
 
     @Test
-    fun confirmSheet() = capture("group-list-2n-folha-confirmar", GroupListSamples.confirming)
+    fun confirmSheet() = capture("group-list-2n-folha-confirmar", GroupListSamples.confirming, withPhoto = true)
 
     @Test
     fun confirmSheetOffline() = capture(
@@ -68,8 +74,8 @@ class GroupListScreenshotTest {
     @Test
     fun failure() = capture("group-list-falha-de-carga", GroupListSamples.failed)
 
-    private fun capture(name: String, state: GroupListState, isPlanOwner: Boolean = false, fontScale: Float = 1f) =
-        compose.captureGroupList(name, state, isPlanOwner, fontScale)
+    private fun capture(name: String, state: GroupListState, isPlanOwner: Boolean = false, withPhoto: Boolean = false) =
+        compose.captureGroupList(name, state, isPlanOwner, withPhoto = withPhoto)
 }
 
 // A barra de baixo é do shell: entra só na cena, para o print bater com a célula.
@@ -78,8 +84,30 @@ internal fun ComposeContentTestRule.captureGroupList(
     state: GroupListState,
     isPlanOwner: Boolean = false,
     fontScale: Float = 1f,
+    withPhoto: Boolean = false,
+) {
+    try {
+        captureGroupListScene(name, state, isPlanOwner, fontScale, withPhoto)
+    } finally {
+        if (withPhoto) stopKoin()
+    }
+}
+
+private fun ComposeContentTestRule.captureGroupListScene(
+    name: String,
+    state: GroupListState,
+    isPlanOwner: Boolean,
+    fontScale: Float,
+    withPhoto: Boolean,
 ) {
     setContent {
+        if (withPhoto) {
+            // O `GroupRemotePhotoRoot` pega o loader do Koin: registrado antes da primeira composição da tela.
+            val context = LocalPlatformContext.current
+            remember(context) {
+                groupListPhotoLoader(context).also { loader -> startKoin { modules(module { single<ImageLoader> { loader } }) } }
+            }
+        }
         val density = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { SaqzTheme {
             Column(

@@ -20,7 +20,6 @@
     <string name="groups_confirm_sheet_title">Você vai nesse jogo?</string>
     <string name="groups_confirm_sheet_yes">Vou</string>
     <string name="groups_confirm_sheet_no">Não vou</string>
-    <string name="groups_row_cd">%1$s. %2$s</string>
     <string name="groups_first_access_kicker">CONVITE DO GRUPO</string>
     <string name="groups_first_access_title">Entre no seu grupo</string>
     <string name="groups_first_access_body">Recebeu o link do grupo no WhatsApp? Toque nele ou cole aqui.</string>
@@ -31,6 +30,7 @@
     <string name="groups_invite_accept">Entrar</string>
     <string name="groups_invite_decline">Recusar</string>
     <string name="groups_empty_owner_title">Crie o seu primeiro grupo</string>
+    <string name="groups_empty_owner_body">Seu plano já está ativo. Monte o grupo para marcar os jogos.</string>
     <string name="groups_empty_create">Criar grupo</string>
     <string name="groups_empty_join">Tenho um convite</string>
 

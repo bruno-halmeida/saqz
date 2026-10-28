@@ -37,6 +37,7 @@ internal object GroupListTags {
     const val InviteSheetSubmit = "group-list-invite-sheet-submit"
     const val Badge = "group-list-badge"
     const val Spots = "group-list-spots"
+    const val SpotsTrack = "group-list-spots-track"
     const val ConfirmSheet = "group-list-confirm-sheet"
     const val ConfirmYes = "group-list-confirm-yes"
     const val ConfirmNo = "group-list-confirm-no"
@@ -143,7 +144,8 @@ fun GroupListScreen(
 }
 
 // Dado de cena das previews e das capturas Roborazzi: a linha H do canvas da lista de grupos (gerar.py, board_h_list
-// e board_h_states). O CERET tem 18 vagas, o maior jogo que o app marca, para ver a barra no caso mais cheio de traços.
+// e board_h_states). O CERET tem 18 vagas (traço por vaga); o "Vôlei do clube" tem 40, acima das 24 em que a barra
+// vira contínua. O jogo aceita até 100 vagas (`GameCapacityLimits.Max`).
 internal object GroupListSamples {
     private val ceretGame = GroupCardGameUi(
         gameId = "ceret-qui",
@@ -198,6 +200,7 @@ internal object GroupListSamples {
                 id = "firma",
                 name = "Vôlei da firma",
                 isAdmin = false,
+                photoUrl = "https://saqz.example/firma.png",
                 place = "Sesc Pinheiros — Quadra 1",
                 nextGame = ceretGame.copy(
                     gameId = "firma-sex", weekday = "SEX", day = "30", time = "18h00", confirmedCount = 13, capacity = 12,
@@ -212,6 +215,16 @@ internal object GroupListSamples {
                 nextGame = ceretGame.copy(
                     gameId = "ibira-sab", weekday = "SÁB", day = "31", time = "09h00", confirmedCount = 8, capacity = 8,
                     attendance = GroupCardAttendance.Waitlisted,
+                ),
+            ),
+            GroupCardUi(
+                id = "clube",
+                name = "Vôlei do clube",
+                isAdmin = false,
+                place = "Clube Pinheiros — Ginásio 1",
+                nextGame = ceretGame.copy(
+                    gameId = "clube-dom", weekday = "DOM", day = "01", time = "10h00", confirmedCount = 30, capacity = 40,
+                    attendance = GroupCardAttendance.Going,
                 ),
             ),
             GroupCardUi(
