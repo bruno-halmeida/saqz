@@ -127,7 +127,10 @@ def subconta(state):
         return print("subconta já criada:", state.get("subAccountId"))
     key = master_key()
     stamp = datetime.datetime.now().strftime("%m%d%H%M%S")
-    body = {"name": f"Gestor Teste DEB138 {stamp}", "email": f"sandbox+deb138-{stamp}@saqz.app", "cpfCnpj": cpf(),
+    # Nome sem número nem caractere especial: no sandbox isso deixa o Pix da subconta desligado mesmo com a conta
+    # aprovada ("A sua conta ainda não está totalmente aprovada para utilizar o Pix").
+    letters = "".join("abcdefghij"[int(c)] for c in stamp)
+    body = {"name": f"Gestor Teste {letters.capitalize()}", "email": f"sandbox+deb138-{stamp}@saqz.app", "cpfCnpj": cpf(),
             "birthDate": "1990-05-20", "mobilePhone": "11981234567", "incomeValue": 5000.00,
             "address": "Avenida Paulista", "addressNumber": "1000", "province": "Bela Vista", "postalCode": "01310100"}
     status, acc = call(key, "POST", "/accounts", body, label="criar subconta do gestor")

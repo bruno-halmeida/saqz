@@ -6,6 +6,8 @@
 #   tests/sandbox-asaas/configurar-dev.sh --copiar-chave   # também grava a chave do sandbox em ~/.saqz-multidev/asaas-sandbox.key
 #
 # - Usa a chave do sandbox que o dev já tem (SAQZ_ASAAS_API_KEY no .env do servidor) e para se ela não for de sandbox.
+# - A chave do Asaas vai entre aspas simples: ela começa com "$" e o Compose interpola o env_file, então sem aspas
+#   o backend recebe a chave vazia (o recebimento sobe "ligado" e toda chamada ao Asaas falha).
 # - Nunca imprime chave. Gera as chaves de cifra só se o arquivo ainda não existir: trocar a chave de cifra depois
 #   deixaria ilegível o que já foi cifrado.
 # - O deploy de dev (push na main com mudança em backend/**) sobe o backend lendo esse arquivo.
@@ -32,7 +34,7 @@ SAQZ_RECEIVABLES_LAUNCH_ENABLED=true
 SAQZ_RECEIVABLES_PAYMENTS_ENABLED=true
 SAQZ_RECEIVABLES_BAAS_ENABLED=true
 SAQZ_RECEIVABLES_ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
-SAQZ_RECEIVABLES_ASAAS_PLATFORM_KEY=$key
+SAQZ_RECEIVABLES_ASAAS_PLATFORM_KEY='$key'
 SAQZ_RECEIVABLES_PLATFORM_WALLET_ID=$wallet
 SAQZ_RECEIVABLES_ENCRYPTION_KEY=$(openssl rand -base64 32)
 SAQZ_RECEIVABLES_ENCRYPTION_KEY_ID=dev-2026-10
