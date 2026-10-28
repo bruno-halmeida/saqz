@@ -193,4 +193,14 @@
     <string name="invite_rate_limit">Tente novamente em %1$d segundos</string>
     <string name="invite_unavailable">Nao foi possivel atualizar o convite</string>
     <string name="login_terms">Ao continuar, você concorda com os Termos de uso e a Política de privacidade.</string>
+
+    <!-- DEB-117 — pop-up de atualização do app (FLG-007, textos de 28/10/2026). -->
+    <string name="app_update_required_title">Atualize o Saqz</string>
+    <string name="app_update_required_body">Tem versão nova do app. Para continuar usando, é só atualizar.</string>
+    <string name="app_update_store_app_store">Atualizar na App Store</string>
+    <string name="app_update_store_google_play">Atualizar no Google Play</string>
+    <string name="app_update_recommended_title">Tem versão nova do Saqz</string>
+    <string name="app_update_recommended_body">Atualize para ter as novidades e as correções.</string>
+    <string name="app_update_not_now">Agora não</string>
+    <string name="app_update_update">Atualizar</string>
 </resources>
