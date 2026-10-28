@@ -4,6 +4,8 @@ import br.com.saqz.access.domain.port.NativeAuthPort
 import br.com.saqz.access.domain.port.TokenCallback
 import br.com.saqz.access.domain.port.TokenResult as NativeTokenResult
 import br.com.saqz.access.data.passwordreset.KtorPasswordResetGateway
+import br.com.saqz.access.data.appupdate.KtorAppUpdateGateway
+import br.com.saqz.access.domain.appupdate.AppUpdateGateway
 import br.com.saqz.access.data.appaccess.KtorAppAccessGateway
 import br.com.saqz.access.data.appaccess.KtorOnboardingGateway
 import br.com.saqz.access.data.session.KtorSessionGateway
@@ -68,6 +70,8 @@ internal val accessDataModule = module {
     // NetworkClient cru em vez do autenticado.
     single<PasswordResetGateway> { KtorPasswordResetGateway(get()) }
     single<AppAccessGateway> { KtorAppAccessGateway(get()) }
+    // Anônimo também: o pop-up de atualização vale antes do login (DEB-117).
+    single<AppUpdateGateway> { KtorAppUpdateGateway(get()) }
     single<OnboardingGateway> { KtorOnboardingGateway(get()) }
 }
 

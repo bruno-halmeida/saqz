@@ -9,6 +9,8 @@ import br.com.saqz.access.domain.port.NativeLinkPort
 import br.com.saqz.access.domain.port.NativeProfilePhotoPort
 import br.com.saqz.access.domain.port.NativeSharePort
 import br.com.saqz.access.domain.verification.EmailVerificationGateway
+import br.com.saqz.access.presentation.appupdate.AppUpdateCheck
+import br.com.saqz.access.ui.AppUpdateStore
 import br.com.saqz.composeapp.notifications.PushAttendance
 import br.com.saqz.composeapp.SaqzPlatformDependencies
 import br.com.saqz.composeapp.access.BackendEmailVerificationAuth
@@ -226,6 +228,10 @@ private fun platformBindingsModule(dependencies: SaqzPlatformDependencies) = mod
     single<NativeSharePort> { get<SaqzNativePorts>().access.share }
     single<br.com.saqz.access.domain.port.ClipboardLinkPort> { get<SaqzNativePorts>().access.clipboardLink }
     single<NativeProfilePhotoPort> { get<SaqzNativePorts>().access.profilePhoto }
+    single<br.com.saqz.access.domain.port.AppUpdateMemoryPort> { get<SaqzNativePorts>().access.updateMemory }
+    // Os IDs da loja de produção valem também no build dev.
+    single { if (dependencies.platform == "ios") AppUpdateStore.AppStore else AppUpdateStore.GooglePlay }
+    single { AppUpdateCheck(get(), get(), dependencies.appVersion, get<kotlinx.coroutines.CoroutineScope>()) }
     single<NativeAttendanceSharePort> { get<SaqzNativePorts>().groups.attendanceShare }
     single<GroupPhotoSelectionPort> { get<SaqzNativePorts>().groups.photos.selection }
     single<GroupPhotoEncoderPort> { get<SaqzNativePorts>().groups.photos.encoder }

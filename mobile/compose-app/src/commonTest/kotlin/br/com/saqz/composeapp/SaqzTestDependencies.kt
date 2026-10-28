@@ -121,6 +121,7 @@ internal fun testSaqzPlatformDependencies(
         profilePhoto = TestProfilePhotoPort,
         profilePhotoSelection = TestProfilePhotoPort,
         clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
+        updateMemory = br.com.saqz.access.domain.port.InMemoryAppUpdateMemory(),
     ),
     groups = GroupsRuntimeDependencies(
         attendanceShare = TestAttendanceSharePort,

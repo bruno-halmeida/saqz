@@ -34,6 +34,8 @@ class AccessRuntimeDependencies(
     val profilePhoto: NativeProfilePhotoPort,
     val profilePhotoSelection: ProfilePhotoSelectionPort,
     val clipboardLink: ClipboardLinkPort,
+    /** Última mínima e recomendadas dispensadas do pop-up de atualização (DEB-117). */
+    val updateMemory: br.com.saqz.access.domain.port.AppUpdateMemoryPort,
 )
 
 // Host-owned adapters are explicit constructor requirements, never silent no-op defaults.

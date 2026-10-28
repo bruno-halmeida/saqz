@@ -18,3 +18,23 @@ interface AppUpdateMemoryPort {
 
     fun markRecommendedUpdateDismissed(version: String, done: (Boolean) -> Unit)
 }
+
+/** Memória que some com o processo: para os testes que montam o app inteiro sem aparelho. */
+class InMemoryAppUpdateMemory : AppUpdateMemoryPort {
+    private var minimum: String? = null
+    private val dismissed = mutableSetOf<String>()
+
+    override fun readUpdateMinimum(done: (String?) -> Unit) = done(minimum)
+
+    override fun writeUpdateMinimum(value: String?, done: (Boolean) -> Unit) {
+        minimum = value
+        done(true)
+    }
+
+    override fun isRecommendedUpdateDismissed(version: String, done: (Boolean) -> Unit) = done(version in dismissed)
+
+    override fun markRecommendedUpdateDismissed(version: String, done: (Boolean) -> Unit) {
+        dismissed += version
+        done(true)
+    }
+}

@@ -20,6 +20,10 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.network.NetworkConfig
 import br.com.saqz.network.NetworkEnvironment
 import br.com.saqz.composeapp.notifications.NotificationPromptHost
+import br.com.saqz.composeapp.access.AppUpdateHost
+import br.com.saqz.access.domain.appupdate.AppUpdatePrompt
+import br.com.saqz.access.presentation.appupdate.AppUpdateCheck
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -50,8 +54,19 @@ fun SaqzApp(
                 .fillMaxSize()
                 .background(SaqzTheme.colors.background),
         ) {
-            AccessGate()
-            NotificationPromptHost()
+            // Com a atualização obrigatória aberta, nada por baixo pode ser alcançado pelo
+            // TalkBack/VoiceOver: o toque o scrim já engole, a semântica some aqui.
+            val update = koinInject<AppUpdateCheck>()
+            val prompt by update.prompt.collectAsState()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (prompt == AppUpdatePrompt.Required) Modifier.clearAndSetSemantics {} else Modifier),
+            ) {
+                AccessGate()
+                NotificationPromptHost()
+            }
+            AppUpdateHost(update)
         }
     }
 }

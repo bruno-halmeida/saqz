@@ -328,6 +328,7 @@ private class LifecycleCompositionFactory(
                 profilePhoto = LifecycleProfilePhotoPort,
                 profilePhotoSelection = LifecycleProfilePhotoPort,
                 clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
+                updateMemory = br.com.saqz.access.domain.port.InMemoryAppUpdateMemory(),
             ),
             groups = GroupsRuntimeDependencies(
                 map = br.com.saqz.groups.domain.map.GroupMapPort { _, done -> done.complete(true) },

@@ -174,6 +174,7 @@ class SaqzKoinModulesTest {
                     profilePhoto = FakeProfilePhotoPort,
                     profilePhotoSelection = FakeProfilePhotoPort,
                     clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
+                    updateMemory = br.com.saqz.access.domain.port.InMemoryAppUpdateMemory(),
                 ),
                 groups = GroupsRuntimeDependencies(
                     attendanceShare = FakeAttendanceSharePort,

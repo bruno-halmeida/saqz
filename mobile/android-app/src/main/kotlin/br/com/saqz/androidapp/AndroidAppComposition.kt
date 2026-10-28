@@ -92,6 +92,7 @@ internal object ProductionAndroidAppCompositionFactory : AndroidAppCompositionFa
                     profilePhoto = profilePhoto,
                     profilePhotoSelection = profilePhoto,
                     clipboardLink = br.com.saqz.access.domain.port.ClipboardLinkPort.None,
+                    updateMemory = br.com.saqz.androidapp.access.AndroidAppUpdateMemory(context.applicationContext),
                 ),
                 groups = GroupsRuntimeDependencies(
                     map = br.com.saqz.androidapp.groups.AndroidMapAdapter(context.applicationContext),

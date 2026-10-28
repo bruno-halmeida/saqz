@@ -78,7 +78,8 @@ struct IOSAppComposition {
                 share: share,
                 profilePhoto: profilePhoto,
                 profilePhotoSelection: profilePhoto,
-                clipboardLink: clipboardLink
+                clipboardLink: clipboardLink,
+                updateMemory: IosAppUpdateMemory()
             ),
             groups: GroupsRuntimeDependencies(
                 map: IOSMapAdapter(),
