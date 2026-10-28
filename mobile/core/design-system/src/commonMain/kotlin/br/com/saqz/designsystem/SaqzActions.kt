@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
 
 /**
@@ -118,6 +120,73 @@ fun SaqzDashedAddButton(
 }
 
 private const val DASHED_BORDER_DIVISOR = 4
+
+/**
+ * Linha de atalho com ícone num quadrado tracejado, título azul e uma linha de apoio (primeiro acesso da lista de grupos,
+ * "Criar um grupo" · "Para quem organiza os jogos"). A linha inteira é o toque.
+ */
+@Composable
+fun SaqzDashedRow(
+    icon: ImageVector,
+    label: String,
+    supporting: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    val shape = RoundedCornerShape(metrics.cardRadius)
+    val iconShape = RoundedCornerShape(DASHED_ROW_ICON_RADIUS)
+    val borderColor = colors.border
+    val dash = metrics.subGrid
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colors.surface, shape)
+            .drawBehind {
+                drawRoundRect(
+                    color = borderColor,
+                    cornerRadius = CornerRadius(metrics.cardRadius.toPx()),
+                    style = Stroke(width = 1f),
+                )
+            }
+            .saqzTapTarget(onClickLabel = label, onClick = onClick)
+            .heightIn(min = DASHED_ROW_MIN_HEIGHT)
+            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+        horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(DASHED_ROW_ICON_BOX)
+                .drawBehind {
+                    drawRoundRect(
+                        color = colors.primary,
+                        cornerRadius = CornerRadius(DASHED_ROW_ICON_RADIUS.toPx()),
+                        style = Stroke(
+                            width = metrics.subGrid.toPx() * 3 / 8,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash.toPx(), dash.toPx())),
+                        ),
+                    )
+                }
+                .clip(iconShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            SaqzIcon(icon, tint = colors.primary, size = DASHED_ROW_GLYPH)
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(metrics.subGrid / 2)) {
+            Text(label, style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold), color = colors.primary)
+            Text(supporting, style = SaqzTheme.typography.support, color = colors.textSecondary)
+        }
+    }
+}
+
+// Medidas do `dashed_row` do desenho da lista de grupos (gerar.py): quadrado de 52 com raio 14 e glifo de 22.
+private val DASHED_ROW_ICON_BOX = 52.dp
+private val DASHED_ROW_ICON_RADIUS = 14.dp
+private val DASHED_ROW_GLYPH = 22.dp
+private val DASHED_ROW_MIN_HEIGHT = 76.dp
 
 /**
  * Pílula de um valor já escolhido (ex.: "Terça · 19h30"), com ícone à esquerda. Tocar no corpo chama [onClick]
