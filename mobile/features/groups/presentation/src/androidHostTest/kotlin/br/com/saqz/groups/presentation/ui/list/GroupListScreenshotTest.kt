@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -34,16 +36,38 @@ class GroupListScreenshotTest {
     @Test
     fun filled() = capture("group-list-2n-lista-cheia", GroupListSamples.filled)
 
+    /** Em andamento sem outro jogo (AGORA, lotado), acima da lotação, na espera e não vai; jogo de 18 vagas. */
     @Test
-    fun upcomingGame() = capture(
-        "group-list-proximo-jogo",
-        GroupListSamples.filled.copy(groups = GroupListSamples.filled.groups.take(1).map {
-            it.copy(nextGame = br.com.saqz.groups.presentation.list.GroupCardGameUi("04/08 · 19:30 · 9 de 12", null))
-        }),
+    fun states() = capture("group-list-2n-estados", GroupListSamples.states)
+
+    @Test
+    fun confirmSheet() = capture("group-list-2n-folha-confirmar", GroupListSamples.confirming)
+
+    @Test
+    fun confirmSheetOffline() = capture(
+        "group-list-2n-folha-sem-conexao",
+        GroupListSamples.confirming.copy(responseFailed = true, responseOffline = true),
     )
 
     @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun narrow() = capture("group-list-2n-360", GroupListSamples.filled)
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp")
+    fun narrowStates() = capture("group-list-2n-estados-360", GroupListSamples.states)
+
+    @Test
+    fun largeFont() = capture("group-list-2n-fonte-grande", GroupListSamples.filled, fontScale = 1.6f)
+
+    @Test
+    fun largeFontSheet() = capture("group-list-2n-folha-fonte-grande", GroupListSamples.confirming, fontScale = 1.6f)
+
+    @Test
     fun empty() = capture("group-list-2o-primeiro-acesso", GroupListSamples.empty)
+
+    @Test
+    fun emptyOwner() = capture("group-list-2o-primeiro-acesso-dono", GroupListSamples.empty, isPlanOwner = true)
 
     @Test
     fun emptyInviteSheet() = capture(
@@ -58,17 +82,18 @@ class GroupListScreenshotTest {
     fun failure() = capture("group-list-falha-de-carga", GroupListSamples.failed)
 
     // A barra de baixo é do shell: entra só na cena, para o print bater com a célula.
-    private fun capture(name: String, state: GroupListState) {
+    private fun capture(name: String, state: GroupListState, isPlanOwner: Boolean = false, fontScale: Float = 1f) {
         compose.setContent {
-            SaqzTheme {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { SaqzTheme {
                 Column(
                     modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
                 ) {
-                    GroupListScreen(state = state, onIntent = {}, modifier = Modifier.weight(1f))
+                    GroupListScreen(state = state, onIntent = {}, modifier = Modifier.weight(1f), isPlanOwner = isPlanOwner)
                     SaqzBottomNav(items = GroupListSamples.navItems, activeId = "grupos", onSelect = {})
                 }
-            }
+            } }
         }
-        compose.onRoot().captureRoboImage("screenshots/vul-67/$name.png")
+        compose.onRoot().captureRoboImage("screenshots/deb-145/$name.png")
     }
 }

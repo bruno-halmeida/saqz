@@ -15,10 +15,18 @@ import br.com.saqz.groups.domain.athlete.OwnAthleteProfile
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.FakeAthleteGateway
+import br.com.saqz.groups.presentation.FakeAttendanceGateway
 import br.com.saqz.groups.presentation.FakeGameGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
 import br.com.saqz.groups.presentation.list.GroupListViewModel
+import br.com.saqz.groups.presentation.sampleAttendanceDetail
+import br.com.saqz.groups.presentation.sampleGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
+import br.com.saqz.groups.domain.athlete.AthletePosition
+import br.com.saqz.groups.domain.attendance.PositionSummary
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,7 +36,7 @@ class GroupListRootTest {
     @Test
     fun `the first appearance does not reload on top of the initial load`() = runComposeUiTest {
         val athlete = FakeAthleteGateway()
-        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway())
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway(), attendanceGateway = FakeAttendanceGateway())
 
         setContent {
             SaqzTheme {
@@ -47,7 +55,7 @@ class GroupListRootTest {
             athlete,
             FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
             noPlan,
-            gameGateway = FakeGameGateway(),
+            gameGateway = FakeGameGateway(), attendanceGateway = FakeAttendanceGateway(),
         )
         var onScreen by mutableStateOf(true)
 
@@ -80,7 +88,7 @@ class GroupListRootTest {
     @Test
     fun `every return reloads and not only the first one`() = runComposeUiTest {
         val athlete = FakeAthleteGateway()
-        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway())
+        val viewModel = GroupListViewModel(athlete, FakeGroupGateway(), noPlan, gameGateway = FakeGameGateway(), attendanceGateway = FakeAttendanceGateway())
         var onScreen by mutableStateOf(true)
 
         setContent {
@@ -99,6 +107,40 @@ class GroupListRootTest {
         }
 
         assertEquals(3, athlete.ownProfileCalls)
+    }
+
+    @Test
+    fun `going in a game with positions hands the game to the position picker`() = runComposeUiTest {
+        val attendance = FakeAttendanceGateway(
+            detailResult = SaqzResult.Success(
+                sampleAttendanceDetail().copy(positions = listOf(PositionSummary(AthletePosition.PONTA, 2, 1, 1, 0))),
+            ),
+        )
+        val viewModel = GroupListViewModel(
+            FakeAthleteGateway(ownProfileResult = SaqzResult.Success(membershipProfile())),
+            FakeGroupGateway(readResult = SaqzResult.Success(sampleVersionedGroup())),
+            noPlan,
+            gameGateway = FakeGameGateway(SaqzResult.Success(listOf(sampleGame()))),
+            attendanceGateway = attendance,
+            now = { Instant.parse("2026-08-01T12:00:00Z") },
+        )
+        var picked: Pair<String, String>? = null
+        setContent {
+            SaqzTheme {
+                GroupListRoot(
+                    onOpenGroup = {}, onCreateGroup = {}, onOpenPlans = {},
+                    onPickPosition = { group, game -> picked = group to game },
+                    viewModel = viewModel,
+                )
+            }
+        }
+        waitForIdle()
+        onNodeWithTag(GroupListTags.confirm("group-1"), useUnmergedTree = true).performClick()
+        onNodeWithTag(GroupListTags.ConfirmYes).performClick()
+        waitForIdle()
+
+        assertEquals("group-1" to "game-1", picked)
+        assertEquals(0, attendance.respondCalls)
     }
 
     private fun membershipProfile() = OwnAthleteProfile(
