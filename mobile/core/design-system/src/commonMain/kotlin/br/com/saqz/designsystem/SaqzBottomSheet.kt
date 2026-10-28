@@ -191,7 +191,8 @@ fun SaqzBottomSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 16.dp),
+                            // Sem alça, o título precisa do respiro que ela dava.
+                            .padding(start = 20.dp, end = 20.dp, top = if (dismissible) 4.dp else 24.dp, bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(metrics.horizontalPadding),
                     ) {
                         Column(
