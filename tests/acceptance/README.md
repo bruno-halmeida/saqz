@@ -7,6 +7,7 @@ Catálogo das jornadas principais, com passos reproduzíveis e resultados observ
 
 - [Autenticação: 12 jornadas com caminho principal e variações](../../fluxo-1-autenticacao.md)
 - [Primeiro acesso, Início e perfil pessoal](app-inicio-perfil.feature)
+- [Lista de grupos: foto, próximo jogo, vagas e Confirmar (GER-003, a construir)](app-lista-de-grupos.feature)
 - [Cadastro de grupos e gestão de membros](app-gestao-grupos.feature)
 - [Criação, edição e cancelamento de jogos](app-jogos.feature)
 - [Meu plano, troca e cancelamento pelo app](app-assinaturas.feature)

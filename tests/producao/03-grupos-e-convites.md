@@ -25,7 +25,7 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Conferir**
 - Abre o grupo com "Grupo criado!", "Seus 14 dias grátis começaram. Vamos marcar o primeiro jogo?…" e
   "Marcar primeiro jogo".
-- A aba Grupos mostra um único `QA Vôlei <data>`, com o chip "Administrador".
+- A aba Grupos mostra um único `QA Vôlei <data>`, com a etiqueta "Admin" no canto de cima da foto (a partir da lista nova, GER-003; antes, o chip "Administrador").
 
 ### PROD-GR02 · Detalhe do grupo para quem organiza · P1
 
