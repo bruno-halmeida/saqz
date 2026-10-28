@@ -1,11 +1,11 @@
 package br.com.saqz.groups.presentation.list
 
 import androidx.compose.runtime.Immutable
-import br.com.saqz.groups.model.GroupModality
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.presentation.GroupUiError
 
 /**
- * 2n — lista de grupos. 2o não é tela separada: é [isEmpty], a lista sem grupo e sem convite.
+ * 2n — lista de grupos (GER-003). 2o não é tela separada: é [isEmpty], a lista sem grupo.
  */
 @Immutable
 data class GroupListState(
@@ -16,54 +16,71 @@ data class GroupListState(
     val refreshFailed: Boolean = false,
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
+    /** Já na ordem da tela: pede Confirmar, depois o jogo mais perto, sem jogo no fim ([sortedForList]). */
     val groups: List<GroupCardUi> = emptyList(),
-    val invite: GroupInviteUi? = null,
     /** Folha "Tenho um convite" do 2o: aberta, o texto colado e se o último envio não tinha código. */
     val inviteSheetOpen: Boolean = false,
     val inviteLink: String = "",
     val inviteLinkInvalid: Boolean = false,
+    /** Grupo cujo "Confirmar" abriu a folha com Vou e Não vou; `null` = folha fechada. */
+    val confirmGroupId: String? = null,
+    val responding: Boolean = false,
+    /** A resposta falhou por erro geral: a folha fica aberta com o aviso da Início. */
+    val responseFailed: Boolean = false,
+    /** O organizador está sem plano (grupo congelado): o aviso próprio da Início. */
+    val responsePlanPaused: Boolean = false,
+    /** Sem rede ("Sem conexão. Sua resposta não foi enviada."). */
+    val responseOffline: Boolean = false,
 ) {
-    val isEmpty: Boolean = !isLoading && !loadFailed && groups.isEmpty() && invite == null
+    val isEmpty: Boolean = !isLoading && !loadFailed && groups.isEmpty()
 
-    // O "1" de "3 grupos · 1 pedindo confirmação": derivado da lista, nunca campo próprio.
+    // O "1" de "3 grupos · 1 esperando sua resposta": derivado da lista, nunca campo próprio.
     val awaitingConfirmation: Int = groups.count { it.nextGame?.needsConfirmation == true }
+
+    val confirmGroup: GroupCardUi? = confirmGroupId?.let { id -> groups.firstOrNull { it.id == id } }
 }
 
 @Immutable
 data class GroupCardUi(
     val id: String,
     val name: String,
-    /** "Quadra · Tatuapé · 26 membros" — montado antes de chegar ao estado. */
-    val meta: String,
-    val modality: GroupModality,
     val isAdmin: Boolean,
     val photoUrl: String? = null,
-    /** `null` pinta "Nenhum jogo marcado por enquanto." no lugar da linha do jogo. */
+    /**
+     * A linha de onde: "CERET — Quadra 2" do jogo mostrado ou, sem jogo, a cidade do grupo. `null` some com a linha.
+     */
+    val place: String? = null,
+    /** `null` pinta "Nenhum jogo marcado por enquanto." no lugar do selo e das vagas. */
     val nextGame: GroupCardGameUi? = null,
 )
 
 @Immutable
 data class GroupCardGameUi(
-    /** "Ter, 28/07 · 19h30 · 9 de 12" — data já formatada é String no estado (AGENTS.md §8). */
-    val label: String,
-    val attendance: GroupCardAttendance?,
+    val gameId: String,
+    /** O selo: "QUI", "28" e "19h30" já formatados no fuso do jogo (AGENTS.md §8). */
+    val weekday: String,
+    val day: String,
+    val time: String,
+    /** Em andamento (só quando o grupo não tem outro jogo): o selo diz "AGORA". */
+    val live: Boolean,
+    val confirmedCount: Int,
+    val capacity: Int,
+    /** "13 confirmados para 12 vagas": só acima da lotação, no lugar de "N de M vão" e das vagas abertas. */
+    val overCapacityLabel: String? = null,
+    val attendance: GroupCardAttendance,
+    /** Início do jogo em segundos, para a ordem da lista. */
+    val startsAtEpochSeconds: Long,
 ) {
     val needsConfirmation: Boolean = attendance == GroupCardAttendance.Pending
+    val openSpots: Int = (capacity - confirmedCount).coerceAtLeast(0)
 }
 
 enum class GroupCardAttendance { Pending, Going, Waitlisted, Out }
-
-@Immutable
-data class GroupInviteUi(val id: String, val groupName: String, val invitedBy: String)
 
 sealed interface GroupListIntent {
     data class OpenGroup(val id: String) : GroupListIntent
 
     data object CreateGroup : GroupListIntent
-
-    data class AcceptInvite(val id: String) : GroupListIntent
-
-    data class DeclineInvite(val id: String) : GroupListIntent
 
     data object Retry : GroupListIntent
 
@@ -86,10 +103,18 @@ sealed interface GroupListIntent {
     data object CloseInviteSheet : GroupListInviteSheetIntent
     data class InviteLinkChanged(val value: String) : GroupListInviteSheetIntent
     data object SubmitInviteLink : GroupListInviteSheetIntent
+
+    // "Confirmar" na foto: a folha com Vou e Não vou (GER-003).
+    data class OpenConfirm(val groupId: String) : GroupListConfirmIntent
+    data object CloseConfirm : GroupListConfirmIntent
+    data class Respond(val intent: AttendanceIntent) : GroupListConfirmIntent
 }
 
 /** Os intents da folha "Tenho um convite", agrupados para a ViewModel tratá-los num bloco só. */
 sealed interface GroupListInviteSheetIntent : GroupListIntent
+
+/** Os intents da folha do "Confirmar", pelo mesmo motivo. */
+sealed interface GroupListConfirmIntent : GroupListIntent
 
 sealed interface GroupListEffect {
     data class OpenGroup(val id: String) : GroupListEffect
@@ -106,4 +131,7 @@ sealed interface GroupListEffect {
 
     /** Código lido de um link colado; o fecho entrega ao `GroupInviteCoordinator`, como um deep link. */
     data class AcceptInviteCode(val code: String) : GroupListEffect
+
+    /** "Vou" em jogo com vagas por posição: abre a escolha da posição, como na Início (DEB-107); nada é enviado antes. */
+    data class PickPosition(val groupId: String, val gameId: String) : GroupListEffect
 }

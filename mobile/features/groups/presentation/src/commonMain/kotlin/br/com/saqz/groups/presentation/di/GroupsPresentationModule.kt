@@ -53,7 +53,7 @@ import org.koin.dsl.module
  */
 fun groupsPresentationModule(): Module = module {
     viewModel { params -> ChargeReminderViewModel(params.get(), get(), get()) }
-    viewModel { GroupListViewModel(get(), get(), get(), get()) }
+    viewModel { GroupListViewModel(get(), get(), get(), get(), get()) }
     viewModel { HomeViewModel(get(), get(), get(), get<GroupNowPort>(), getOrNull(), getOrNull(), getOrNull(), getOrNull()) }
     viewModel { FinanceOverviewViewModel(get(), get()) }
     viewModel { params ->

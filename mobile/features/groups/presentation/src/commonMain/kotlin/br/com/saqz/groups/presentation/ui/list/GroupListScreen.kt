@@ -18,11 +18,9 @@ import br.com.saqz.designsystem.SaqzIcons
 import br.com.saqz.designsystem.SaqzNavItem
 import br.com.saqz.designsystem.SaqzPullToRefresh
 import br.com.saqz.designsystem.theme.SaqzTheme
-import br.com.saqz.groups.model.GroupModality
 import br.com.saqz.groups.presentation.list.GroupCardAttendance
 import br.com.saqz.groups.presentation.list.GroupCardGameUi
 import br.com.saqz.groups.presentation.list.GroupCardUi
-import br.com.saqz.groups.presentation.list.GroupInviteUi
 import br.com.saqz.groups.presentation.list.GroupListIntent
 import br.com.saqz.groups.presentation.list.GroupListState
 import br.com.saqz.groups.presentation.ui.RefreshFailedToast
@@ -30,15 +28,24 @@ import br.com.saqz.groups.presentation.ui.invite.InviteLinkSheet
 
 internal object GroupListTags {
     const val Create = "group-list-create"
+    const val Summary = "group-list-summary"
     const val Empty = "group-list-empty"
+    const val EmptyCreate = "group-list-empty-create"
     const val Failure = "group-list-failure"
-    const val InviteAccept = "group-list-invite-accept"
-    const val InviteDecline = "group-list-invite-decline"
     const val EmptyInvite = "group-list-empty-invite"
     const val InviteSheetField = "group-list-invite-sheet-field"
     const val InviteSheetSubmit = "group-list-invite-sheet-submit"
+    const val Badge = "group-list-badge"
+    const val Spots = "group-list-spots"
+    const val ConfirmSheet = "group-list-confirm-sheet"
+    const val ConfirmYes = "group-list-confirm-yes"
+    const val ConfirmNo = "group-list-confirm-no"
+    const val ConfirmError = "group-list-confirm-error"
 
     fun group(id: String) = "group-list-group-$id"
+    fun confirm(id: String) = "group-list-confirm-$id"
+    fun status(id: String) = "group-list-status-$id"
+    fun admin(id: String) = "group-list-admin-$id"
 }
 
 // O rodapé de 20 do export não tem token: a lista respira embaixo da barra do shell.
@@ -91,28 +98,16 @@ fun GroupListScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = metrics.horizontalPadding,
-                        end = metrics.horizontalPadding,
-                        top = metrics.subGrid,
-                        bottom = ListBottomPadding,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
+                    // Faixas de ponta a ponta, sem margem lateral, com 8 do fundo entre um grupo e outro (GER-003).
+                    contentPadding = PaddingValues(top = metrics.subGrid, bottom = ListBottomPadding),
+                    verticalArrangement = Arrangement.spacedBy(metrics.grid),
                 ) {
                     items(state.groups, key = { it.id }) { group ->
-                        GroupCard(
+                        GroupRow(
                             group = group,
-                            onClick = { onIntent(GroupListIntent.OpenGroup(group.id)) },
+                            onOpen = { onIntent(GroupListIntent.OpenGroup(group.id)) },
+                            onConfirm = { onIntent(GroupListIntent.OpenConfirm(group.id)) },
                         )
-                    }
-                    state.invite?.let { invite ->
-                        item(key = invite.id) {
-                            GroupInviteCard(
-                                invite = invite,
-                                onAccept = { onIntent(GroupListIntent.AcceptInvite(invite.id)) },
-                                onDecline = { onIntent(GroupListIntent.DeclineInvite(invite.id)) },
-                            )
-                        }
                     }
                 }
             }
@@ -133,52 +128,107 @@ fun GroupListScreen(
             fieldTag = GroupListTags.InviteSheetField,
             submitTag = GroupListTags.InviteSheetSubmit,
         )
+        GroupConfirmSheet(
+            group = state.confirmGroup,
+            responding = state.responding,
+            errorText = groupResponseErrorText(
+                failed = state.responseFailed,
+                planPaused = state.responsePlanPaused,
+                offline = state.responseOffline,
+            ),
+            onRespond = { onIntent(GroupListIntent.Respond(it)) },
+            onClose = { onIntent(GroupListIntent.CloseConfirm) },
+        )
     }
 }
 
-// Dado de cena das previews e das capturas Roborazzi — os três cartões do 2n são
-// exatamente os do export: admin pedindo confirmação, membro que vai, e o sem jogo.
+// Dado de cena das previews e das capturas Roborazzi: a linha H do canvas da lista de grupos (gerar.py, board_h_list
+// e board_h_states). O CERET tem 18 vagas, o maior jogo que o app marca, para ver a barra no caso mais cheio de traços.
 internal object GroupListSamples {
+    private val ceretGame = GroupCardGameUi(
+        gameId = "ceret-qui",
+        weekday = "QUI",
+        day = "29",
+        time = "19h30",
+        live = false,
+        confirmedCount = 14,
+        capacity = 18,
+        attendance = GroupCardAttendance.Pending,
+        startsAtEpochSeconds = 1,
+    )
+
+    val ceret = GroupCardUi(
+        id = "ceret",
+        name = "Vôlei do CERET",
+        isAdmin = true,
+        photoUrl = "https://saqz.example/ceret.png",
+        place = "CERET — Quadra 2",
+        nextGame = ceretGame,
+    )
+
     val filled = GroupListState(
         isLoading = false,
         groups = listOf(
+            ceret,
             GroupCardUi(
-                id = "ceret",
-                name = "Vôlei do CERET",
-                meta = "Quadra · Tatuapé · 26 membros",
-                modality = GroupModality.COURT_VOLLEYBALL,
-                isAdmin = true,
-                photoUrl = "https://saqz.example/ceret.png",
-                nextGame = GroupCardGameUi(
-                    label = "Ter, 28/07 · 19h30 · 9 de 12",
-                    attendance = GroupCardAttendance.Pending,
+                id = "ibira",
+                name = "Areia do Ibira",
+                isAdmin = false,
+                place = "Parque Ibirapuera — Quadra 3",
+                nextGame = ceretGame.copy(
+                    gameId = "ibira-sab", weekday = "SÁB", day = "31", time = "09h00",
+                    confirmedCount = 6, capacity = 8, attendance = GroupCardAttendance.Going, startsAtEpochSeconds = 2,
+                ),
+            ),
+            GroupCardUi(id = "vila", name = "Futevôlei da Vila", isAdmin = false, place = "Vila Mariana"),
+        ),
+    )
+
+    /** Em andamento sem outro jogo (AGORA, lotado), acima da lotação, na espera e não vai. */
+    val states = GroupListState(
+        isLoading = false,
+        groups = listOf(
+            ceret.copy(
+                nextGame = ceretGame.copy(
+                    weekday = "QUA", day = "28", live = true, confirmedCount = 18,
+                    attendance = GroupCardAttendance.Going,
+                ),
+            ),
+            GroupCardUi(
+                id = "firma",
+                name = "Vôlei da firma",
+                isAdmin = false,
+                place = "Sesc Pinheiros — Quadra 1",
+                nextGame = ceretGame.copy(
+                    gameId = "firma-sex", weekday = "SEX", day = "30", time = "18h00", confirmedCount = 13, capacity = 12,
+                    overCapacityLabel = "13 confirmados para 12 vagas", attendance = GroupCardAttendance.Going,
                 ),
             ),
             GroupCardUi(
                 id = "ibira",
                 name = "Areia do Ibira",
-                meta = "Areia · Ibirapuera · 14 membros",
-                modality = GroupModality.BEACH_VOLLEYBALL,
                 isAdmin = false,
-                nextGame = GroupCardGameUi(
-                    label = "Sáb, 01/08 · 09h00",
-                    attendance = GroupCardAttendance.Going,
+                place = "Parque Ibirapuera — Quadra 3",
+                nextGame = ceretGame.copy(
+                    gameId = "ibira-sab", weekday = "SÁB", day = "31", time = "09h00", confirmedCount = 8, capacity = 8,
+                    attendance = GroupCardAttendance.Waitlisted,
                 ),
             ),
             GroupCardUi(
-                id = "vila",
-                name = "Futevôlei da Vila",
-                meta = "Futevôlei · Vila Mariana · 9 membros",
-                modality = GroupModality.FOOTVOLLEY,
+                id = "terca",
+                name = "Vôlei de terça",
                 isAdmin = false,
+                place = "Clube Atlético Mooca — Ginásio",
+                nextGame = ceretGame.copy(
+                    gameId = "terca-ter", weekday = "TER", day = "03", time = "20h00", confirmedCount = 3, capacity = 12,
+                    attendance = GroupCardAttendance.Out,
+                ),
             ),
         ),
-        invite = GroupInviteUi(
-            id = "convite-firma",
-            groupName = "Vôlei da firma",
-            invitedBy = "Marina Freitas",
-        ),
     )
+
+    /** A folha do "Confirmar" aberta sobre a lista. */
+    val confirming = filled.copy(confirmGroupId = "ceret")
 
     val empty = GroupListState(isLoading = false)
 
@@ -201,9 +251,9 @@ internal object GroupListSamples {
 
 // A barra entra só na cena, para o print bater com a célula do export.
 @Composable
-private fun GroupListShell(state: GroupListState) = SaqzTheme {
+internal fun GroupListShell(state: GroupListState, isPlanOwner: Boolean = false) = SaqzTheme {
     Column(modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background)) {
-        GroupListScreen(state = state, onIntent = {}, modifier = Modifier.weight(1f))
+        GroupListScreen(state = state, onIntent = {}, modifier = Modifier.weight(1f), isPlanOwner = isPlanOwner)
         SaqzBottomNav(items = GroupListSamples.navItems, activeId = "grupos", onSelect = {})
     }
 }
@@ -211,6 +261,18 @@ private fun GroupListShell(state: GroupListState) = SaqzTheme {
 @Preview(name = "2n — lista cheia", widthDp = 390, heightDp = 844)
 @Composable
 private fun GroupListFilledPreview() = GroupListShell(GroupListSamples.filled)
+
+@Preview(name = "2n — estados", widthDp = 390, heightDp = 844)
+@Composable
+private fun GroupListStatesPreview() = GroupListShell(GroupListSamples.states)
+
+@Preview(name = "2n — folha do Confirmar", widthDp = 390, heightDp = 844)
+@Composable
+private fun GroupListConfirmingPreview() = GroupListShell(GroupListSamples.confirming)
+
+@Preview(name = "2o — primeiro acesso do dono", widthDp = 390, heightDp = 844)
+@Composable
+private fun GroupListOwnerEmptyPreview() = GroupListShell(GroupListSamples.empty, isPlanOwner = true)
 
 @Preview(name = "2o — primeiro acesso", widthDp = 390, heightDp = 844)
 @Composable

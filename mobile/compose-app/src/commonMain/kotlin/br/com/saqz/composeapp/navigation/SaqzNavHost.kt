@@ -746,6 +746,10 @@ internal fun SaqzNavHost(
                                 },
                                 isPlanOwner = (state.session as? SessionAccessState.Ready)?.session?.planOwner == true,
                                 onAcceptInviteCode = inviteCoordinator::acceptInvite,
+                                // "Vou" na folha do Confirmar em jogo com posições: a mesma tela da Início, que fecha ao confirmar.
+                                onPickPosition = { groupId, gameId ->
+                                    backStack.add(GroupsRoute.PositionPicker(groupId, gameId, PositionPickerOrigin.Home.routeValue))
+                                },
                             )
                         },
                     )

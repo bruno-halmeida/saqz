@@ -15,7 +15,8 @@ import org.koin.compose.viewmodel.koinViewModel
  * `:compose-app`. [onCreateGroup] é o formulário 2a — o "+" de 2n atalha para ele quando
  * há plano ativo com vaga de grupo; [onOpenPlans] é o Fluxo 8 · Planos, o destino quando
  * não há plano entitulador. [isPlanOwner] muda o vazio do 2o: quem já paga o plano é
- * owner, mesmo sem grupo criado.
+ * owner, mesmo sem grupo criado. [onPickPosition] é a escolha da posição do "Vou" da folha do
+ * Confirmar em jogo com vagas por posição, o mesmo destino da Início.
  */
 @Composable
 fun GroupListRoot(
@@ -24,6 +25,7 @@ fun GroupListRoot(
     onOpenPlans: () -> Unit,
     isPlanOwner: Boolean = false,
     onAcceptInviteCode: (String) -> Unit = {},
+    onPickPosition: (groupId: String, gameId: String) -> Unit = { _, _ -> },
     viewModel: GroupListViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -41,6 +43,7 @@ fun GroupListRoot(
             GroupListEffect.OpenCreateGroup -> onCreateGroup()
             GroupListEffect.OpenPlans -> onOpenPlans()
             is GroupListEffect.AcceptInviteCode -> onAcceptInviteCode(effect.code)
+            is GroupListEffect.PickPosition -> onPickPosition(effect.groupId, effect.gameId)
         }
     }
     GroupListScreen(state = state, onIntent = viewModel::onIntent, isPlanOwner = isPlanOwner)

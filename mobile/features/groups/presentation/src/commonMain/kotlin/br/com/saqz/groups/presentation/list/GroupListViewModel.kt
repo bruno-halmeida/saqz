@@ -1,28 +1,41 @@
 package br.com.saqz.groups.presentation.list
 
 import androidx.lifecycle.viewModelScope
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
+import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.athlete.OwnAthleteMembership
+import br.com.saqz.groups.domain.attendance.AttendanceError
+import br.com.saqz.groups.domain.attendance.AttendanceGateway
+import br.com.saqz.groups.domain.attendance.AttendanceIntent
+import br.com.saqz.groups.domain.attendance.AttendanceStatus
+import br.com.saqz.groups.domain.attendance.SelfAttendanceCommand
 import br.com.saqz.groups.domain.group.Group
 import br.com.saqz.groups.domain.group.GroupCreationEntitlement
 import br.com.saqz.groups.domain.group.GroupGateway
-import br.com.saqz.groups.domain.group.GroupModality
+import br.com.saqz.groups.domain.group.GroupRole
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.home.InviteLinkParser
+import br.com.saqz.groups.presentation.isOffline
+import br.com.saqz.groups.presentation.isPlanPaused
 import br.com.saqz.groups.presentation.photo.groupPhotoUrl
 import br.com.saqz.groups.presentation.toUiError
 import kotlinx.coroutines.launch
 import br.com.saqz.groups.domain.game.GameGateway
 import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 class GroupListViewModel(
     private val athleteGateway: AthleteGateway,
     private val groupGateway: GroupGateway,
     private val entitlement: GroupCreationEntitlement,
     private val gameGateway: GameGateway,
+    private val attendanceGateway: AttendanceGateway,
     private val now: () -> Instant = { Clock.System.now() },
 ) : MviViewModel<GroupListState, GroupListIntent, GroupListEffect>(GroupListState()) {
 
@@ -41,14 +54,96 @@ class GroupListViewModel(
         when (intent) {
             is GroupListIntent.OpenGroup -> emit(GroupListEffect.OpenGroup(intent.id))
             GroupListIntent.CreateGroup -> checkCreateGroup()
-            is GroupListIntent.AcceptInvite -> dismissInvite(intent.id)
-            is GroupListIntent.DeclineInvite -> dismissInvite(intent.id)
             GroupListIntent.Retry -> load()
             GroupListIntent.Refresh -> refreshSilently()
             GroupListIntent.PullRefresh -> pullRefresh()
             GroupListIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             GroupListIntent.Appeared -> if (appeared) refreshSilently() else appeared = true
             is GroupListInviteSheetIntent -> handleInviteSheet(intent)
+            is GroupListConfirmIntent -> handleConfirm(intent)
+        }
+    }
+
+    private fun handleConfirm(intent: GroupListConfirmIntent) {
+        when (intent) {
+            is GroupListIntent.OpenConfirm -> {
+                val game = state.value.groups.firstOrNull { it.id == intent.groupId }?.nextGame
+                if (game?.needsConfirmation != true) return
+                update { it.copy(confirmGroupId = intent.groupId, responseFailed = false, responsePlanPaused = false, responseOffline = false) }
+            }
+            // Com a resposta em voo a folha não fecha: o resultado ainda vai trocar a etiqueta.
+            GroupListIntent.CloseConfirm -> if (!state.value.responding) update { it.copy(confirmGroupId = null) }
+            is GroupListIntent.Respond -> respond(intent.intent)
+        }
+    }
+
+    /**
+     * Vou / Não vou da folha, como o cartão da Início (`HomeViewModel.respond`): "Vou" lê a presença antes e, em jogo com
+     * vagas por posição, abre a escolha da posição sem enviar nada. [GroupListState.responding] liga antes da leitura,
+     * então o segundo toque não manda outra resposta (GER-001).
+     */
+    private fun respond(intent: AttendanceIntent) {
+        val current = state.value
+        if (current.responding) return
+        val group = current.confirmGroup ?: return
+        val game = group.nextGame?.takeIf { it.needsConfirmation } ?: return
+        if (now().epochSeconds >= game.startsAtEpochSeconds) return
+        update { it.copy(responding = true, responseFailed = false, responsePlanPaused = false, responseOffline = false) }
+        viewModelScope.launch {
+            val groupId = GroupId(group.id)
+            if (intent == AttendanceIntent.Confirm) {
+                when (val read = attendanceGateway.read(groupId, game.gameId)) {
+                    is SaqzResult.Failure -> {
+                        showResponseFailure(read.error)
+                        return@launch
+                    }
+                    is SaqzResult.Success -> if (read.value.hasPositions) {
+                        update { it.copy(responding = false, confirmGroupId = null) }
+                        emit(GroupListEffect.PickPosition(group.id, game.gameId))
+                        return@launch
+                    }
+                }
+            }
+            val result = attendanceGateway.respond(
+                groupId,
+                game.gameId,
+                SelfAttendanceCommand(Uuid.random().toString(), intent),
+            )
+            when (result) {
+                is SaqzResult.Failure -> showResponseFailure(result.error)
+                is SaqzResult.Success -> {
+                    SaqzAnalytics.attendanceAnswered("app", intent == AttendanceIntent.Confirm)
+                    val answer = result.value.value.attendance.status.toCardAttendance()
+                    update { state ->
+                        state.copy(
+                            responding = false,
+                            confirmGroupId = null,
+                            groups = state.groups.map { card ->
+                                if (card.id == group.id && card.nextGame?.gameId == game.gameId) {
+                                    card.copy(nextGame = card.nextGame.copy(attendance = answer))
+                                } else {
+                                    card
+                                }
+                            }.sortedForList(),
+                        )
+                    }
+                    load(softRefresh = true)
+                }
+            }
+        }
+    }
+
+    // Os mesmos avisos da Início: sem conexão, grupo congelado (plano do organizador parado) e o erro geral. A folha fica
+    // aberta e a etiqueta continua "Confirmar".
+    private fun showResponseFailure(error: AttendanceError) {
+        val paused = error.isPlanPaused()
+        update {
+            it.copy(
+                responding = false,
+                responseFailed = !paused,
+                responsePlanPaused = paused,
+                responseOffline = error.isOffline(),
+            )
         }
     }
 
@@ -144,13 +239,15 @@ class GroupListViewModel(
                             }
                         }
                         if (generation != loadGeneration) return@launch
+                        val shown = games.shownGame(currentTime)?.first
                         loadedCards += group.toCard(membership).copy(
-                            nextGame = games.nextGroupCardGame(group.role, currentTime),
+                            place = shown?.placeLabel() ?: group.profile?.city?.trim()?.takeIf(String::isNotEmpty),
+                            nextGame = games.nextGroupCardGame(currentTime),
                         )
                     }
                     if (generation != loadGeneration) return@launch
                     update {
-                        it.copy(isLoading = false, loadFailed = false, error = null, groups = loadedCards)
+                        it.copy(isLoading = false, loadFailed = false, error = null, groups = loadedCards.sortedForList())
                     }
                 }
             }
@@ -164,34 +261,17 @@ class GroupListViewModel(
         if (generation != loadGeneration) return
         update { it.copy(isLoading = false, loadFailed = true, error = error) }
     }
-
-    private fun dismissInvite(id: String) {
-        if (state.value.invite?.id != id) return
-        update { it.copy(invite = null) }
-    }
 }
 
 private fun Group.toCard(membership: OwnAthleteMembership) = GroupCardUi(
     id = id.value,
     name = name,
-    meta = listOfNotNull(
-        profile?.modality?.label(),
-        profile?.city?.takeIf(String::isNotBlank),
-    ).ifEmpty { listOf("Grupo") }.joinToString(" · "),
-    modality = profile?.modality?.toPresentation() ?: br.com.saqz.groups.model.GroupModality.COURT_VOLLEYBALL,
-    isAdmin = membership.role != br.com.saqz.groups.domain.group.GroupRole.ATHLETE,
+    isAdmin = membership.role != GroupRole.ATHLETE,
     photoUrl = groupPhotoUrl(id.value, version),
-    nextGame = null,
 )
 
-private fun GroupModality.label(): String = when (this) {
-    GroupModality.COURT_VOLLEYBALL -> "Quadra"
-    GroupModality.BEACH_VOLLEYBALL -> "Areia"
-    GroupModality.FOOTVOLLEY -> "Futevôlei"
-}
-
-private fun GroupModality.toPresentation() = when (this) {
-    GroupModality.COURT_VOLLEYBALL -> br.com.saqz.groups.model.GroupModality.COURT_VOLLEYBALL
-    GroupModality.BEACH_VOLLEYBALL -> br.com.saqz.groups.model.GroupModality.BEACH_VOLLEYBALL
-    GroupModality.FOOTVOLLEY -> br.com.saqz.groups.model.GroupModality.FOOTVOLLEY
+private fun AttendanceStatus.toCardAttendance(): GroupCardAttendance = when (this) {
+    AttendanceStatus.Confirmed -> GroupCardAttendance.Going
+    AttendanceStatus.Waitlisted -> GroupCardAttendance.Waitlisted
+    AttendanceStatus.Declined -> GroupCardAttendance.Out
 }
