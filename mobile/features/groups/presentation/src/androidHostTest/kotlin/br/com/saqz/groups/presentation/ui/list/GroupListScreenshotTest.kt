@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import br.com.saqz.designsystem.SaqzBottomNav
@@ -50,20 +51,6 @@ class GroupListScreenshotTest {
     )
 
     @Test
-    @Config(qualifiers = "w360dp-h800dp")
-    fun narrow() = capture("group-list-2n-360", GroupListSamples.filled)
-
-    @Test
-    @Config(qualifiers = "w360dp-h800dp")
-    fun narrowStates() = capture("group-list-2n-estados-360", GroupListSamples.states)
-
-    @Test
-    fun largeFont() = capture("group-list-2n-fonte-grande", GroupListSamples.filled, fontScale = 1.6f)
-
-    @Test
-    fun largeFontSheet() = capture("group-list-2n-folha-fonte-grande", GroupListSamples.confirming, fontScale = 1.6f)
-
-    @Test
     fun empty() = capture("group-list-2o-primeiro-acesso", GroupListSamples.empty)
 
     @Test
@@ -81,19 +68,27 @@ class GroupListScreenshotTest {
     @Test
     fun failure() = capture("group-list-falha-de-carga", GroupListSamples.failed)
 
-    // A barra de baixo é do shell: entra só na cena, para o print bater com a célula.
-    private fun capture(name: String, state: GroupListState, isPlanOwner: Boolean = false, fontScale: Float = 1f) {
-        compose.setContent {
-            val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { SaqzTheme {
-                Column(
-                    modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
-                ) {
-                    GroupListScreen(state = state, onIntent = {}, modifier = Modifier.weight(1f), isPlanOwner = isPlanOwner)
-                    SaqzBottomNav(items = GroupListSamples.navItems, activeId = "grupos", onSelect = {})
-                }
-            } }
-        }
-        compose.onRoot().captureRoboImage("screenshots/deb-145/$name.png")
+    private fun capture(name: String, state: GroupListState, isPlanOwner: Boolean = false, fontScale: Float = 1f) =
+        compose.captureGroupList(name, state, isPlanOwner, fontScale)
+}
+
+// A barra de baixo é do shell: entra só na cena, para o print bater com a célula.
+internal fun ComposeContentTestRule.captureGroupList(
+    name: String,
+    state: GroupListState,
+    isPlanOwner: Boolean = false,
+    fontScale: Float = 1f,
+) {
+    setContent {
+        val density = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) { SaqzTheme {
+            Column(
+                modifier = Modifier.fillMaxSize().background(SaqzTheme.colors.background),
+            ) {
+                GroupListScreen(state = state, onIntent = {}, modifier = Modifier.weight(1f), isPlanOwner = isPlanOwner)
+                SaqzBottomNav(items = GroupListSamples.navItems, activeId = "grupos", onSelect = {})
+            }
+        } }
     }
+    onRoot().captureRoboImage("screenshots/deb-145/$name.png")
 }

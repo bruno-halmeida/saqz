@@ -106,7 +106,7 @@ class GroupListScreenTest {
     }
 
     @Test
-    fun `spots read as going of total and open spots, or full`() = runComposeUiTest {
+    fun `spots read as going of total and open spots - or full`() = runComposeUiTest {
         val full = card("f", GroupCardAttendance.Going).let { it.copy(nextGame = it.nextGame!!.copy(confirmedCount = 18)) }
         val state = GroupListState(isLoading = false, groups = listOf(card("a", GroupCardAttendance.Going), full))
         setContent { SaqzTheme { GroupListScreen(state = state, onIntent = {}) } }

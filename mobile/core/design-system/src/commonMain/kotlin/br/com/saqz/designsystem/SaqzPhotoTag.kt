@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,8 +54,8 @@ fun SaqzPhotoTag(
         Text(
             text = text,
             style = SaqzTheme.typography.caption.copy(
-                fontSize = if (compact) PHOTO_TAG_SMALL_TEXT else PHOTO_TAG_TEXT,
-                lineHeight = if (compact) PHOTO_TAG_SMALL_LINE else PHOTO_TAG_LINE,
+                fontSize = (if (compact) PHOTO_TAG_SMALL_TEXT else PHOTO_TAG_TEXT) * photoTextScale(),
+                lineHeight = (if (compact) PHOTO_TAG_SMALL_LINE else PHOTO_TAG_LINE) * photoTextScale(),
                 fontWeight = FontWeight.Bold,
             ),
             color = color,
@@ -95,7 +96,9 @@ fun SaqzPhotoButton(
         ) {
             Text(
                 text = label,
-                style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+                style = SaqzTheme.typography.caption.let {
+                    it.copy(fontWeight = FontWeight.Bold, fontSize = it.fontSize * photoTextScale())
+                },
                 color = colors.onPrimary,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -104,6 +107,17 @@ fun SaqzPhotoButton(
         }
     }
 }
+
+/**
+ * A foto tem 112 dp: com a fonte do sistema acima de 1,3x a etiqueta não cabe na largura. O texto cresce até 1,3x e para.
+ */
+@Composable
+private fun photoTextScale(): Float {
+    val scale = LocalDensity.current.fontScale
+    return if (scale > PHOTO_MAX_FONT_SCALE) PHOTO_MAX_FONT_SCALE / scale else 1f
+}
+
+private const val PHOTO_MAX_FONT_SCALE = 1.3f
 
 // Medidas do desenho da lista de grupos (gerar.py, h_admin_tag e h_photo_status): fora da escala do fluxo 10.
 private const val PHOTO_TAG_ALPHA = 0.7f

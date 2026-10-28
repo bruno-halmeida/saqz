@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +28,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import ColorFilter
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -392,9 +394,11 @@ internal fun GroupPlaceLine(place: String, modifier: Modifier = Modifier) {
 internal fun GroupCalendarBadge(game: GroupCardGameUi, modifier: Modifier = Modifier) {
     val colors = SaqzTheme.colors
     val shape = RoundedCornerShape(BadgeRadius)
+    // Selo de 29 dp fixos: o texto não cresce com a fonte do sistema (quebrava "19h/30"); dia e hora seguem no leitor de tela.
+    val unscale = 1f / LocalDensity.current.fontScale
     Column(
         modifier = modifier
-            .widthIn(min = BadgeWidth)
+            .width(BadgeWidth)
             .clip(shape)
             .background(colors.surface, shape)
             .border(1.dp, colors.border, shape)
@@ -404,8 +408,8 @@ internal fun GroupCalendarBadge(game: GroupCardGameUi, modifier: Modifier = Modi
         Text(
             text = if (game.live) stringResource(Res.string.groups_game_live) else game.weekday,
             style = SaqzTheme.typography.caption.copy(
-                fontSize = BadgeWeekdaySize,
-                lineHeight = BadgeWeekdayLine,
+                fontSize = BadgeWeekdaySize * unscale,
+                lineHeight = BadgeWeekdayLine * unscale,
                 fontWeight = FontWeight.Bold,
             ),
             color = if (game.live) colors.accent else colors.onPrimary,
@@ -414,15 +418,15 @@ internal fun GroupCalendarBadge(game: GroupCardGameUi, modifier: Modifier = Modi
         )
         Text(
             text = game.day,
-            style = SaqzTheme.typography.display.copy(fontSize = BadgeDaySize, lineHeight = BadgeDayLine),
+            style = SaqzTheme.typography.display.copy(fontSize = BadgeDaySize * unscale, lineHeight = BadgeDayLine * unscale),
             color = colors.textPrimary,
             modifier = Modifier.padding(top = TightGap),
         )
         Text(
             text = game.time,
             style = SaqzTheme.typography.caption.copy(
-                fontSize = BadgeTimeSize,
-                lineHeight = BadgeTimeLine,
+                fontSize = BadgeTimeSize * unscale,
+                lineHeight = BadgeTimeLine * unscale,
                 fontWeight = FontWeight.SemiBold,
             ),
             color = colors.textPrimary,
@@ -519,7 +523,29 @@ internal fun GroupConfirmSheet(
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    SaqzBottomSheet(open = group != null, onClose = onClose, modifier = modifier) {
+    // Vou e Não vou no rodapé da folha: fica sempre à vista e o resumo do jogo rola por dentro se não couber.
+    SaqzBottomSheet(
+        open = group != null,
+        onClose = onClose,
+        modifier = modifier,
+        splitFooter = {
+            SaqzButton(
+                label = stringResource(Res.string.groups_confirm_sheet_yes),
+                onClick = { onRespond(AttendanceIntent.Confirm) },
+                enabled = !responding,
+                fullWidth = true,
+                modifier = Modifier.weight(1f).testTag(GroupListTags.ConfirmYes),
+            )
+            SaqzButton(
+                label = stringResource(Res.string.groups_confirm_sheet_no),
+                onClick = { onRespond(AttendanceIntent.Decline) },
+                variant = SaqzButtonVariant.Secondary,
+                enabled = !responding,
+                fullWidth = true,
+                modifier = Modifier.weight(1f).testTag(GroupListTags.ConfirmNo),
+            )
+        },
+    ) {
         val game = group?.nextGame ?: return@SaqzBottomSheet
         Column(
             modifier = Modifier.fillMaxWidth().testTag(GroupListTags.ConfirmSheet),
@@ -529,11 +555,11 @@ internal fun GroupConfirmSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(metrics.blockGap),
             ) {
-                GroupRemotePhotoRoot(
-                    photoUrl = group.photoUrl,
-                    modifier = Modifier.size(SheetPhoto).clip(RoundedCornerShape(SheetPhotoRadius)),
-                ) {
-                    GroupInitialsTile(name = group.name, modifier = Modifier.fillMaxSize(), textSize = SheetNameSize)
+                // O fallback da foto ocupa o que o pai der: o Box fixa os 48x48 para foto e iniciais.
+                Box(Modifier.size(SheetPhoto).clip(RoundedCornerShape(SheetPhotoRadius))) {
+                    GroupRemotePhotoRoot(photoUrl = group.photoUrl, modifier = Modifier.fillMaxSize()) {
+                        GroupInitialsTile(name = group.name, modifier = Modifier.fillMaxSize(), textSize = SheetNameSize)
+                    }
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TightGap)) {
                     Text(
@@ -558,23 +584,6 @@ internal fun GroupConfirmSheet(
                     style = SaqzTheme.typography.support,
                     color = colors.errorForeground,
                     modifier = Modifier.testTag(GroupListTags.ConfirmError),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(metrics.grid)) {
-                SaqzButton(
-                    label = stringResource(Res.string.groups_confirm_sheet_yes),
-                    onClick = { onRespond(AttendanceIntent.Confirm) },
-                    enabled = !responding,
-                    fullWidth = true,
-                    modifier = Modifier.weight(1f).testTag(GroupListTags.ConfirmYes),
-                )
-                SaqzButton(
-                    label = stringResource(Res.string.groups_confirm_sheet_no),
-                    onClick = { onRespond(AttendanceIntent.Decline) },
-                    variant = SaqzButtonVariant.Secondary,
-                    enabled = !responding,
-                    fullWidth = true,
-                    modifier = Modifier.weight(1f).testTag(GroupListTags.ConfirmNo),
                 )
             }
         }

@@ -67,7 +67,7 @@ class GroupListNextGameTest {
         assertNull(listOf(running().copy(durationMinutes = 5)).nextGroupCardGame(now))
     }
 
-    @Test fun `draft never shows, not even to owner or admin`() = runTest {
+    @Test fun `draft never shows - not even to owner or admin`() = runTest {
         val draft = sampleGame().copy(id = "draft", status = GameStatus.Draft, startsAt = "2026-08-02T22:30:00Z")
         assertNull(listOf(draft).nextGroupCardGame(now))
         val published = sampleGame().copy(id = "published")
@@ -92,7 +92,7 @@ class GroupListNextGameTest {
         assertEquals(GroupCardAttendance.Pending, attendance(null))
     }
 
-    @Test fun `confirm stays until the start, also after the deadline`() = runTest {
+    @Test fun `confirm stays until the start - also after the deadline`() = runTest {
         val late = listOf(sampleGame().copy(confirmationDeadline = "2026-07-31T12:00:00Z")).nextGroupCardGame(now)!!
         assertEquals(GroupCardAttendance.Pending, late.attendance)
         assertTrue(late.needsConfirmation)
@@ -106,7 +106,7 @@ class GroupListNextGameTest {
         assertEquals(GroupCardAttendance.Going, going.attendance)
     }
 
-    @Test fun `place is the venue with the court, or only the venue`() {
+    @Test fun `place is the venue with the court - or only the venue`() {
         val game = sampleGame().copy(venue = GameVenue(name = "CERET", address = "Rua", court = "Quadra 2"))
         assertEquals("CERET — Quadra 2", game.placeLabel())
         assertEquals("CERET", game.copy(venue = game.venue.copy(court = null)).placeLabel())
@@ -114,7 +114,7 @@ class GroupListNextGameTest {
         assertNull(game.copy(venue = game.venue.copy(name = "")).placeLabel())
     }
 
-    @Test fun `spots open, full and above capacity`() = runTest {
+    @Test fun `spots open - full and above capacity`() = runTest {
         suspend fun spots(confirmed: Int, capacity: Int) =
             listOf(sampleGame().copy(confirmedCount = confirmed, capacity = capacity)).nextGroupCardGame(now)!!
         val open = spots(14, 18)

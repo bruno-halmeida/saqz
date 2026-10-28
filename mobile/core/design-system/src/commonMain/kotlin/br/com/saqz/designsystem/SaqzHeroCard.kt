@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
@@ -66,19 +67,23 @@ fun SaqzHeroCard(
     val metrics = SaqzTheme.metrics
     val tap = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Box(modifier = modifier.fillMaxWidth().clip(shape).background(colors.primary, shape).then(tap)) {
-        // Marca d'água antes do conteúdo: quem vem depois desenha por cima dela.
-        Image(
-            painter = painterResource(Res.drawable.saqz_volleyball),
-            contentDescription = null,
-            colorFilter = ColorFilter.tint(colors.onPrimary),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                // De borda a borda a bola desce até o topo do azul, como no desenho da tela do jogo.
-                .offset(x = HERO_BALL_OFFSET_X, y = if (shape == RectangleShape) 0.dp else HERO_BALL_OFFSET_Y)
-                .size(HERO_BALL_SIZE)
-                .alpha(HERO_BALL_ALPHA)
-                .clearAndSetSemantics {},
-        )
+        // Marca d'água antes do conteúdo: quem vem depois desenha por cima dela. Dentro de um Box do tamanho do cartão
+        // para a bola de 210 não ditar a altura: com conteúdo curto (só título e botão) ela deixava um vão embaixo.
+        Box(Modifier.matchParentSize()) {
+            Image(
+                painter = painterResource(Res.drawable.saqz_volleyball),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(colors.onPrimary),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    // De borda a borda a bola desce até o topo do azul, como no desenho da tela do jogo.
+                    .offset(x = HERO_BALL_OFFSET_X, y = if (shape == RectangleShape) 0.dp else HERO_BALL_OFFSET_Y)
+                    .wrapContentSize(Alignment.TopEnd, unbounded = true)
+                    .size(HERO_BALL_SIZE)
+                    .alpha(HERO_BALL_ALPHA)
+                    .clearAndSetSemantics {},
+            )
+        }
         Column(Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(

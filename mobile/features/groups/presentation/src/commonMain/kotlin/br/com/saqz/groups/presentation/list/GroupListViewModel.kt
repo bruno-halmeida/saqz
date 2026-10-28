@@ -69,7 +69,14 @@ class GroupListViewModel(
             is GroupListIntent.OpenConfirm -> {
                 val game = state.value.groups.firstOrNull { it.id == intent.groupId }?.nextGame
                 if (game?.needsConfirmation != true) return
-                update { it.copy(confirmGroupId = intent.groupId, responseFailed = false, responsePlanPaused = false, responseOffline = false) }
+                update {
+                    it.copy(
+                        confirmGroupId = intent.groupId,
+                        responseFailed = false,
+                        responsePlanPaused = false,
+                        responseOffline = false,
+                    )
+                }
             }
             // Com a resposta em voo a folha não fecha: o resultado ainda vai trocar a etiqueta.
             GroupListIntent.CloseConfirm -> if (!state.value.responding) update { it.copy(confirmGroupId = null) }

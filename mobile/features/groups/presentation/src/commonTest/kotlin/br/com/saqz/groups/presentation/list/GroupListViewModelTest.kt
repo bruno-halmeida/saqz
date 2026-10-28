@@ -355,7 +355,7 @@ class GroupListViewModelTest {
     )
 
     @Test
-    fun `order puts confirm first, then the nearest game, no game last, ties by name`() {
+    fun `order puts confirm first - then the nearest game - no game last - ties by name`() {
         val sorted = listOf(
             card("Zeta sem jogo", null),
             card("Beta vai depois", GroupCardAttendance.Going, startsAt = 300),
@@ -423,7 +423,7 @@ class GroupListViewModelTest {
     }
 
     @Test
-    fun `going closes the sheet, swaps the tag and reloads under it`() = runTest {
+    fun `going closes the sheet - swaps the tag and reloads under it`() = runTest {
         val attendance = FakeAttendanceGateway()
         val games = FakeGameGateway(SaqzResult.Success(listOf(sampleGame())))
         val viewModel = confirmList(attendance, games)
