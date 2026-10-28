@@ -67,3 +67,7 @@ selfIdentity.plist
 
 # Lock do `npx skills`; as skills que ele instala em .agents/ já ficam fora do git.
 skills-lock.json
+
+# Saídas dos geradores de canvas (design/<tela>/gerar.py): o gerador recria tudo, então não vão ao GitHub.
+design/*/previa/
+design/*/project/
