@@ -94,16 +94,19 @@ Use a flag do chat como cobaia. Volte ao estado de F1 no fim do bloco.
 
 ## F5 · Atualização do app (FLG-007)
 
+Vale só para build com o pop-up (1.0.15 em diante, DEB-117). Desde 28/10/2026 é um pop-up que não fecha, não mais tela cheia.
+
 | # | Aparelho | Faça | Espere | Banco | iOS | Android |
 | --- | --- | --- | --- | --- | --- | --- |
-| F5.1 [CRÍTICO] | ATL | R-VERSOES: mínima da plataforma de ATL = versão do build + 1; mandar o app para o fundo e voltar | Tela cheia ⟨texto do app⟩ com um botão; o resto do app não abre | — | ☐ | ☐ |
-| F5.2 | ATL | Tocar no botão | Abre a loja da plataforma (Play Store no emulador com Play; App Store no simulador pode não abrir: anotar) | — | ☐ | ☐ |
+| F5.1 [CRÍTICO] | ATL | R-VERSOES: mínima da plataforma de ATL = versão do build + 1; mandar o app para o fundo e voltar | Pop-up que não fecha: `Atualize o Saqz`, `Tem versão nova do app. Para continuar usando, é só atualizar.` e um botão, `Atualizar no Google Play` (Android) ou `Atualizar na App Store` (iOS). Sem alça e sem X; tocar fora e o voltar do Android não fecham; o app por baixo não responde | — | ☐ | ☐ |
+| F5.2 | ATL | Tocar no botão | Abre a loja da plataforma na página do Saqz (Play Store no emulador com Play; App Store no simulador pode não abrir: anotar). Voltar ao app sem atualizar: o pop-up continua | — | ☐ | ☐ |
 | F5.3 | ORG | Na outra plataforma, sem mínima | Abre normal | — | ☐ | ☐ |
-| F5.4 [CRÍTICO] | ORG | Mínima da plataforma de ORG acima, com ORG no meio de "Marcar jogo" | Nada na hora; termina a ação; a tela aparece na próxima volta ao app | — | ☐ | ☐ |
-| F5.5 | ATL | Mínima de volta ao normal; recomendada = versão + 1; voltar ao app | Aviso que dá para fechar; fechar; voltar de novo: não aparece | — | ☐ | ☐ |
-| F5.6 | ATL | "Sair da conta" com a mínima acima | A tela de bloqueio aparece antes do login | — | ☐ | ☐ |
+| F5.4 [CRÍTICO] | ORG | Mínima da plataforma de ORG acima, com ORG no meio de "Marcar jogo" | Nada na hora; termina a ação; o pop-up aparece na próxima volta ao app | — | ☐ | ☐ |
+| F5.5 | ATL | Mínima de volta ao normal; recomendada = versão + 1; voltar ao app | Pop-up `Tem versão nova do Saqz` · `Atualize para ter as novidades e as correções.` com X, `Agora não` e `Atualizar`; tocar em `Agora não`; voltar de novo: não aparece. Recomendada = versão + 2 e voltar: aparece mais uma vez | — | ☐ | ☐ |
+| F5.6 | ATL | "Sair da conta" com a mínima acima | O pop-up que não fecha aparece também na tela de entrada | — | ☐ | ☐ |
 | F5.7 | TST | App recém-instalado, modo avião, primeira abertura com a mínima acima | Não bloqueia | — | ☐ | ☐ |
 | F5.8 | terminal | Zerar mínima e recomendada | Todos abrem normal | — | ☐ | ☐ |
+| F5.9 | ATL | Mínima e recomendada acima da versão do build; voltar ao app | Só o pop-up que não fecha | — | ☐ | ☐ |
 
 ## F6 · Tela de dev (FLG-009)
 
