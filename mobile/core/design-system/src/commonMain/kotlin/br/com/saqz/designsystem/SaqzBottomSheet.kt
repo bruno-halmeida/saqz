@@ -41,6 +41,7 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -70,6 +71,10 @@ import org.jetbrains.compose.resources.stringResource
  * A sombra é `--shadow-sheet`: 12dp para CIMA, e é ela que faz o painel parecer subindo
  * da borda de baixo em vez de flutuando sobre ela. Cai sobre o scrim, então é discreta de
  * propósito — no export também é.
+ *
+ * [dismissible] `false` é a folha que não fecha (atualização obrigatória, DEB-117): sem alça e sem X,
+ * o toque no scrim não fecha mas continua engolido (nada por baixo responde) e o voltar do Android /
+ * gesto do iOS é consumido sem fazer nada. [onClose] nunca é chamado. O padrão `true` é o de sempre.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -82,6 +87,7 @@ fun SaqzBottomSheet(
     footer: (@Composable () -> Unit)? = null,
     splitFooter: (@Composable RowScope.() -> Unit)? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
+    dismissible: Boolean = true,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
@@ -106,7 +112,9 @@ fun SaqzBottomSheet(
     // back agir na tela de baixo, com o sheet ainda aberto. `enabled = open` é o que
     // impede o componente fechado de engolir o back da tela inteira; e por estar dentro
     // do sheet, este handler é mais interno que o da tela hospedeira e consome primeiro.
-    BackHandler(enabled = open, onBack = onClose)
+    // Sem [dismissible] o back continua consumido aqui, só que sem efeito: deixá-lo passar faria
+    // a tela de baixo voltar por trás da folha que não fecha.
+    BackHandler(enabled = open, onBack = { if (dismissible) onClose() })
 
     // clipToBounds: durante o slide o painel existe fora da tela e nada dele pode
     // pintar por cima do que está acima da sobreposição.
@@ -116,15 +124,29 @@ fun SaqzBottomSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(colors.scrim)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClickLabel = closeLabel,
-                        role = Role.Button,
-                        onClick = onClose,
-                    )
-                    // Sem nome, o scrim é um clicável mudo para o TalkBack.
-                    .semantics { contentDescription = closeLabel },
+                    .then(
+                        if (dismissible) {
+                            Modifier
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClickLabel = closeLabel,
+                                    role = Role.Button,
+                                    onClick = onClose,
+                                )
+                                // Sem nome, o scrim é um clicável mudo para o TalkBack.
+                                .semantics { contentDescription = closeLabel }
+                        } else {
+                            // Engole o toque sem fechar: o que está por baixo não pode responder.
+                            Modifier
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) awaitPointerEvent().changes.forEach { it.consume() }
+                                    }
+                                }
+                                .clearAndSetSemantics {}
+                        },
+                    ),
             )
         }
         AnimatedVisibility(
@@ -146,7 +168,7 @@ fun SaqzBottomSheet(
                 // `.saqz-sheet__handle-area{min-height:36px;place-items:center}` com a
                 // `.saqz-sheet__handle{width:42px;height:5px;border-radius:var(--radius-pill)}`.
                 // É a única affordance visível de que o painel é dispensável.
-                Box(
+                if (dismissible) Box(
                     modifier = Modifier.fillMaxWidth().height(36.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -193,12 +215,14 @@ fun SaqzBottomSheet(
                         }
                         // Círculo ice de 44 com o X navy — e a única saída que o TalkBack
                         // encontra varrendo o cabeçalho. Mesmo rótulo do scrim, de propósito.
-                        SaqzIconButton(
-                            onClick = onClose,
-                            contentDescription = closeLabel,
-                            soft = true,
-                        ) {
-                            SaqzIcon(SaqzIcons.Close, size = 20.dp)
+                        if (dismissible) {
+                            SaqzIconButton(
+                                onClick = onClose,
+                                contentDescription = closeLabel,
+                                soft = true,
+                            ) {
+                                SaqzIcon(SaqzIcons.Close, size = 20.dp)
+                            }
                         }
                     }
                     // Sem conteúdo, o rodapé traz a única divisória: o texto fica logo acima dos botões.
