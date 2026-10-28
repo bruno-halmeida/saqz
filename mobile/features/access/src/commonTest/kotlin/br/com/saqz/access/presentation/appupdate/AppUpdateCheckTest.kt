@@ -97,7 +97,7 @@ class AppUpdateCheckTest {
         assertEquals(AppUpdatePrompt.None, check.prompt.value)
     }
 
-    @Test fun `an old check's answer is discarded`() = runTest {
+    @Test fun `the answer of an old check is discarded`() = runTest {
         val check = check()
         check.check()
         check.check()

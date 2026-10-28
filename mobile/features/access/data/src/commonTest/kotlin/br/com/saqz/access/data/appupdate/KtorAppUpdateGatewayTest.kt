@@ -23,7 +23,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class KtorAppUpdateGatewayTest {
-    @Test fun `reads minimum and recommended from the full features response, anonymously`() = runTest {
+    @Test fun `reads minimum and recommended from the full features response anonymously`() = runTest {
         var seen: HttpRequestData? = null
         val gateway = gateway { request ->
             seen = request

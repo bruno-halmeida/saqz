@@ -18,7 +18,7 @@ class AppUpdateTest {
         listOf("", "1.0", "1.0.0.1", "1.0.x", "v1.0.0", "1.0.0-dev").forEach { assertNull(AppVersionNumber.parse(it), it) }
     }
 
-    @Test fun `below the minimum is required, with the minimum compared numerically`() {
+    @Test fun `below the minimum is required with the minimum compared numerically`() {
         assertEquals(AppUpdatePrompt.Required, decideAppUpdate("1.0.9", "1.0.10", null, nothingDismissed))
     }
 
