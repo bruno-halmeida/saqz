@@ -26,6 +26,8 @@ class GroupPhotoRuntimeDependencies(
     val previews: GroupPhotoPreviewPort,
 )
 
+// Host-owned adapters are explicit constructor requirements, never silent no-op defaults.
+@Suppress("LongParameterList")
 class AccessRuntimeDependencies(
     val auth: NativeAuthPort,
     val links: NativeLinkPort,

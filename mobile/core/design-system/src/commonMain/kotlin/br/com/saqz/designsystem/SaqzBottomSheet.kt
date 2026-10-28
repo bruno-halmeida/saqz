@@ -86,8 +86,8 @@ fun SaqzBottomSheet(
     description: String? = null,
     footer: (@Composable () -> Unit)? = null,
     splitFooter: (@Composable RowScope.() -> Unit)? = null,
-    content: (@Composable ColumnScope.() -> Unit)? = null,
     dismissible: Boolean = true,
+    content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
