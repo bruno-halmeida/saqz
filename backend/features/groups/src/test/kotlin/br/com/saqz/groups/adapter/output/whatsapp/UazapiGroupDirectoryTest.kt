@@ -93,6 +93,21 @@ class UazapiGroupDirectoryTest {
     }
 
     @Test
+    fun `a 401 or 403 is the instance token, never NotInGroup or InvalidInvite`() {
+        for (status in listOf(401, 403)) {
+            val server = Server()
+            server.on("/group/info") { status to "{\"error\":\"Invalid token\"}" }
+            server.on("/group/inviteInfo") { status to "{\"error\":\"Invalid token\"}" }
+            try {
+                assertFailsWith<DirectoryError.Unavailable>("HTTP $status") { directory(server).groupInfo(GROUP_JID) }
+                assertFailsWith<DirectoryError.Unavailable>("HTTP $status") { directory(server).inviteInfo("abc") }
+            } finally {
+                server.close()
+            }
+        }
+    }
+
+    @Test
     fun `inviteInfo maps a transient 5xx without the missing-group payload to Unavailable`() {
         val server = Server()
         server.on("/group/inviteInfo") { 503 to "{\"error\":\"upstream down\"}" }

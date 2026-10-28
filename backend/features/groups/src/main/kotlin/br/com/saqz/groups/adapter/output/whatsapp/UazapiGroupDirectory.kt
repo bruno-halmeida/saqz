@@ -124,16 +124,23 @@ class UazapiGroupDirectory(private val client: UazapiClient) : WhatsAppGroupDire
 
     private fun inviteFailure(error: UazapiApiException): DirectoryError = when {
         missingGroup(error) -> DirectoryError.NotInGroup
+        instanceAuthFailure(error) -> DirectoryError.Unavailable(detail(error))
         error.statusCode() in 400..499 -> DirectoryError.InvalidInvite
         else -> DirectoryError.Unavailable(detail(error))
     }
 
-    private fun groupFailure(error: UazapiApiException): DirectoryError =
-        if (missingGroup(error) || error.statusCode() in 400..499) {
-            DirectoryError.NotInGroup
-        } else {
-            DirectoryError.Unavailable(detail(error))
-        }
+    private fun groupFailure(error: UazapiApiException): DirectoryError = when {
+        missingGroup(error) -> DirectoryError.NotInGroup
+        instanceAuthFailure(error) -> DirectoryError.Unavailable(detail(error))
+        error.statusCode() in 400..499 -> DirectoryError.NotInGroup
+        else -> DirectoryError.Unavailable(detail(error))
+    }
+
+    /**
+     * 401/403 é o token da instância (instância trocada na Uazapi sem trocar o token no backend), não o
+     * grupo: tratar como "saiu do grupo" quebrava o vínculo de todo grupo que tentasse enviar.
+     */
+    private fun instanceAuthFailure(error: UazapiApiException) = error.statusCode() == 401 || error.statusCode() == 403
 
     private fun detail(error: UazapiApiException) =
         "HTTP ${error.statusCode()}: ${error.responseBody() ?: error.message ?: "unknown"}"

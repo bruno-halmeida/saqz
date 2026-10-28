@@ -136,7 +136,7 @@ class UazapiGroupNotificationSenderTest {
                 exchange.sendResponseHeaders(status, 2)
                 exchange.responseBody.use { it.write("{}".toByteArray()) }
             }
-            val expected = if (status == 408 || status >= 500) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
+            val expected = if (status in setOf(401, 403, 408) || status >= 500) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
             client(server).use {
                 assertEquals(expected, UazapiGroupNotificationSender(it).send(groupJid, UUID.randomUUID(), text, emptyList()), "HTTP $status")
             }

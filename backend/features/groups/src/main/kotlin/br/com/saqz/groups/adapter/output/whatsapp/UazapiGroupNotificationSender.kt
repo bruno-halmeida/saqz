@@ -63,7 +63,7 @@ class UazapiGroupNotificationSender(
     } catch (error: RateLimitException) {
         WhatsAppDelivery.Retry((error.retryAfterSeconds() ?: 60).coerceAtLeast(60))
     } catch (error: UazapiApiException) {
-        if (error.statusCode() >= 500 || error.statusCode() == 408) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
+        if (error.statusCode() >= 500 || error.statusCode() in RETRYABLE_4XX) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
     } catch (_: UazapiConnectionException) {
         WhatsAppDelivery.Retry()
     }

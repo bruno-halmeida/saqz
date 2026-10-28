@@ -29,9 +29,12 @@ class UazapiNotificationSender(private val client: UazapiClient) : NotificationW
         } catch (error: RateLimitException) {
             WhatsAppDelivery.Retry((error.retryAfterSeconds() ?: 60).coerceAtLeast(60))
         } catch (error: UazapiApiException) {
-            if (error.statusCode() >= 500 || error.statusCode() == 408) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
+            if (error.statusCode() >= 500 || error.statusCode() in RETRYABLE_4XX) WhatsAppDelivery.Retry() else WhatsAppDelivery.Failed
         } catch (_: UazapiConnectionException) {
             WhatsAppDelivery.Retry()
         }
     }
 }
+
+/** 408 e 401/403 (token da instância errado ou trocado) tentam de novo: a mensagem sai quando o token é corrigido. */
+internal val RETRYABLE_4XX = setOf(401, 403, 408)
