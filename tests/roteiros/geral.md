@@ -47,10 +47,12 @@ jogo) e um dono com plano, admin de G1. Para os casos de espera, um jogo lotado;
 | Confirmar em grupo congelado | Mesmo aviso da Início; nada muda | ☐ | ☐ |
 | Tocar Vou duas vezes rápido | Uma resposta só (conferir no jogo) | ☐ | ☐ |
 | Depois do prazo, antes do início, sem resposta | Confirmar continua; Vou segue a regra de depois do prazo | ☐ | ☐ |
-| Jogo em andamento | Selo com "AGORA"; sem Confirmar | ☐ | ☐ |
+| Jogo começou e o grupo tem outro jogo marcado | A lista já mostra o jogo seguinte | ☐ | ☐ |
+| Jogo começou, sem outro jogo, respondeu Vou | Selo com "AGORA"; etiqueta "Você vai" | ☐ | ☐ |
+| Jogo começou, sem outro jogo, sem resposta | Selo com "AGORA"; etiqueta "Não vai"; sem Confirmar | ☐ | ☐ |
 | Jogo lotado | "Completo" no lugar das vagas abertas | ☐ | ☐ |
 | Acima da lotação (entrada forçada) | Só "N confirmados para M vagas" | ☐ | ☐ |
-| Rascunho (dono) | Selo e vagas; etiqueta "Rascunho"; sem Confirmar; o atleta não vê | ☐ | ☐ |
+| Rascunho (dono) | Não aparece: o grupo mostra o próximo jogo publicado ou "Nenhum jogo marcado por enquanto." | ☐ | ☐ |
 | Responder no jogo e voltar à aba | Etiqueta atualizada sem reabrir o app | ☐ | ☐ |
 | Celular de 360 e fonte grande | Nada cortado; nome do local quebra só no travessão; botões em uma linha | ☐ | ☐ |
 | Primeiro acesso, atleta | "Entre no seu grupo" e "Colar o convite"; "Criar um grupo" tracejado | ☐ | ☐ |

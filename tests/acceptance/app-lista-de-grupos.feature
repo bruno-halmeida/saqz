@@ -101,14 +101,25 @@ Funcionalidade: Lista de grupos com foto, próximo jogo, vagas e Confirmar (GER-
       | 13          | 12    | 13 confirmados para 12 vagas   |
 
   @p1 @APP-LG12
-  Cenário: Jogo em andamento e rascunho
-    Dado que o jogo de G1 começou há 30 minutos e G2 tem um rascunho criado por DONO
-    Quando DONO abre a aba Grupos
-    Então o selo de G1 mostra "AGORA" e não há "Confirmar"
-    E G2 mostra a etiqueta "Rascunho", sem "Confirmar"
-    E ATLETA não vê o rascunho de G2
+  Cenário: Jogo que começou dá lugar ao próximo
+    Dado que o jogo de G1 começou há 30 minutos e G1 tem outro jogo publicado no sábado
+    Quando ATLETA abre a aba Grupos
+    Então G1 mostra o jogo de sábado
 
   @p1 @APP-LG13
+  Cenário: Jogo em andamento sem outro marcado
+    Dado que o jogo de G1 começou há 30 minutos, G1 não tem outro jogo e ATLETA não respondeu
+    Quando ATLETA abre a aba Grupos
+    Então o selo de G1 mostra "AGORA"
+    E a etiqueta de G1 é "Não vai", sem "Confirmar"
+
+  @p1 @APP-LG14
+  Cenário: Rascunho não aparece na lista
+    Dado que G2 tem só um rascunho criado por DONO
+    Quando DONO abre a aba Grupos
+    Então G2 mostra "Nenhum jogo marcado por enquanto."
+
+  @p1 @APP-LG15
   Esquema do Cenário: Primeiro acesso sem grupo
     Dado que <quem> está autenticado e não participa de grupos
     Quando abre a aba Grupos
