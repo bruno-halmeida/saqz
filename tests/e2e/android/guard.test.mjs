@@ -6,10 +6,10 @@ import { emulatorSerial, localUrl, requireFreePort, verifyReport, selectScenario
 test('ENV: explicit scenario selection has exact classes/counts and rejects unknown or empty names', () => {
   assert.deepEqual(selectScenarios('finance'), [{ name: 'finance', testClass: 'MonthlyGenerationE2eTest', count: 1 }]);
   const all = selectScenarios();
-  assert.deepEqual(all.map(item => item.name), ['access', 'leave', 'attendance', 'attendance-order', 'attendance-guest', 'communication', 'finance',
+  assert.deepEqual(all.map(item => item.name), ['access', 'leave', 'attendance', 'attendance-order', 'attendance-guest', 'attendance-list', 'communication', 'finance',
     'notification-settings', 'reminders', 'sports-profile', 'member-privacy', 'monthly-history',
     'payments', 'charge-lifecycle', 'settlement', 'past-games-no-show']);
-  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 17);
+  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 18);
   for (const [name, testClass] of [['notification-settings', 'NotificationsE2eTest'],
     ['reminders', 'ReminderE2eTest'],
     ['sports-profile', 'SportsProfileE2eTest'], ['member-privacy', 'MemberPrivacyE2eTest'], ['monthly-history', 'MonthlyHistoryE2eTest'],

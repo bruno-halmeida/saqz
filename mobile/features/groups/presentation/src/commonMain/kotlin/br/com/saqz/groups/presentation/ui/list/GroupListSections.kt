@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -483,8 +484,8 @@ internal fun GroupSpots(game: GroupCardGameUi, modifier: Modifier = Modifier) {
                     .fillMaxWidth()
                     .height(SlotHeight)
                     .background(colors.border, RoundedCornerShape(SlotRadius))
-                    .clearAndSetSemantics {}
-                    .testTag(GroupListTags.SpotsTrack),
+                    // Decorativo para o leitor (o texto embaixo diz as vagas); só a tag fica, para os testes.
+                    .clearAndSetSemantics { testTag = GroupListTags.SpotsTrack },
             ) {
                 if (fill > 0f) {
                     Box(
