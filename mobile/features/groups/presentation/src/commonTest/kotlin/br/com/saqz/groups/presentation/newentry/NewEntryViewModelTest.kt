@@ -52,14 +52,19 @@ class NewEntryViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun `defaults to today and exposes only the four allowed categories`() {
+    fun `defaults to today and each direction has its own categories without racha`() {
         val viewModel = viewModel()
 
         assertEquals("2026-08-04", viewModel.state.value.date)
         assertEquals(
-            setOf(NewEntryCategory.Court, NewEntryCategory.Material, NewEntryCategory.Racha, NewEntryCategory.Other),
-            NewEntryCategory.entries.toSet(),
+            listOf(NewEntryCategory.Court, NewEntryCategory.Material, NewEntryCategory.Referee, NewEntryCategory.Other),
+            NewEntryCategory.forDirection(NewEntryDirection.Out),
         )
+        assertEquals(
+            listOf(NewEntryCategory.Sponsorship, NewEntryCategory.Sale, NewEntryCategory.Other),
+            NewEntryCategory.forDirection(NewEntryDirection.In),
+        )
+        assertFalse(NewEntryCategory.entries.any { it.name == "Racha" })
         assertFalse(NewEntryCategory.entries.any { it.name.contains("MENSAL", ignoreCase = true) })
     }
 
@@ -121,29 +126,65 @@ class NewEntryViewModelTest {
     }
 
     @Test
-    fun `other without custom category shows field validation and does not save`() = runTest(dispatcher) {
+    fun `other saves without a custom category`() = runTest(dispatcher) {
         val gateway = FakeOrganizerGateway()
         val viewModel = viewModel(gateway = gateway)
         viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
         viewModel.onIntent(NewEntryIntent.DescriptionChanged("Compra de bolas"))
-        viewModel.onIntent(NewEntryIntent.Save)
-
-        assertEquals(br.com.saqz.groups.presentation.GroupUiError.Validation, viewModel.state.value.error)
-        assertEquals(0, gateway.createCalls)
-    }
-
-    @Test
-    fun `other with custom category saves the custom category`() = runTest(dispatcher) {
-        val gateway = FakeOrganizerGateway()
-        val viewModel = viewModel(gateway = gateway)
-        viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
-        viewModel.onIntent(NewEntryIntent.DescriptionChanged("Compra de bolas"))
-        viewModel.onIntent(NewEntryIntent.CustomCategoryChanged("Água"))
         viewModel.onIntent(NewEntryIntent.Save)
 
         assertEquals(NewEntryEffect.Saved, viewModel.effects.first())
         assertEquals(ExpenseCategory.Other, gateway.lastCommand?.category)
-        assertEquals("Água", gateway.lastCommand?.customCategory)
+        assertEquals(null, gateway.lastCommand?.customCategory)
+    }
+
+    @Test
+    fun `income saves sponsorship and sale as income categories`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway()
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.SelectDirection(NewEntryDirection.In))
+        viewModel.onIntent(NewEntryIntent.AmountChanged("120,00"))
+        viewModel.onIntent(NewEntryIntent.DescriptionChanged("Venda de camisas"))
+        viewModel.onIntent(NewEntryIntent.SelectCategory(NewEntryCategory.Sale))
+        viewModel.onIntent(NewEntryIntent.Save)
+
+        assertEquals(NewEntryEffect.Saved, viewModel.effects.first())
+        assertEquals(ExpenseCategory.Sale, gateway.lastCommand?.category)
+        assertEquals(br.com.saqz.groups.domain.finance.FinanceDirection.In, gateway.lastCommand?.direction)
+    }
+
+    @Test
+    fun `switching to expense moves an income category to court and a referee expense saves as referee`() =
+        runTest(dispatcher) {
+            val gateway = FakeOrganizerGateway()
+            val viewModel = viewModel(gateway = gateway)
+            viewModel.onIntent(NewEntryIntent.SelectCategory(NewEntryCategory.Sponsorship))
+            viewModel.onIntent(NewEntryIntent.SelectDirection(NewEntryDirection.Out))
+            assertEquals(NewEntryCategory.Court, viewModel.state.value.category)
+
+            viewModel.onIntent(NewEntryIntent.SelectCategory(NewEntryCategory.Referee))
+            viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
+            viewModel.onIntent(NewEntryIntent.DescriptionChanged("Árbitro"))
+            viewModel.onIntent(NewEntryIntent.Save)
+
+            assertEquals(ExpenseCategory.Referee, gateway.lastCommand?.category)
+        }
+
+    @Test
+    fun `a date picked in the calendar goes to the command and closes the picker`() = runTest(dispatcher) {
+        val gateway = FakeOrganizerGateway()
+        val viewModel = viewModel(gateway = gateway)
+        viewModel.onIntent(NewEntryIntent.SelectDirection(NewEntryDirection.Out))
+        viewModel.onIntent(NewEntryIntent.OpenDatePicker)
+        assertTrue(viewModel.state.value.datePickerOpen)
+        viewModel.onIntent(NewEntryIntent.DateChanged("2026-07-28"))
+        assertFalse(viewModel.state.value.datePickerOpen)
+        assertEquals("2026-08-04", viewModel.state.value.today)
+        viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(16_000L))
+        viewModel.onIntent(NewEntryIntent.DescriptionChanged("Quadra"))
+        viewModel.onIntent(NewEntryIntent.Save)
+
+        assertEquals("2026-07-28", gateway.lastCommand?.expenseDate)
     }
 
     @Test
@@ -156,6 +197,7 @@ class NewEntryViewModelTest {
         val viewModel = viewModel(gateway = gateway)
         viewModel.onIntent(NewEntryIntent.SelectAmountShortcut(8_000L))
         viewModel.onIntent(NewEntryIntent.DescriptionChanged("Aluguel da quadra"))
+        viewModel.onIntent(NewEntryIntent.SelectDirection(NewEntryDirection.Out))
         viewModel.onIntent(NewEntryIntent.SelectCategory(NewEntryCategory.Court))
 
         viewModel.onIntent(NewEntryIntent.Save)

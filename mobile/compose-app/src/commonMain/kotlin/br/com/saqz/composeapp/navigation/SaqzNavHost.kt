@@ -897,6 +897,7 @@ internal fun SaqzNavHost(
                         onBack = pop,
                         prefill = route.prefill,
                         expenseId = route.expenseId,
+                        out = route.out,
                         onEffect = { effect ->
                             when (effect) {
                                 NewEntryEffect.Saved -> {

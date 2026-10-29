@@ -18,6 +18,8 @@ fun NewEntryRoot(
     onEffect: (NewEntryEffect) -> Unit,
     prefill: NewEntryPrefill? = null,
     expenseId: String? = null,
+    /** DEB-148: `true` abre a Saída; senão a Entrada. */
+    out: Boolean = false,
     viewModel: NewEntryViewModel = koinViewModel(
         key = "new-entry/$groupId/${expenseId.orEmpty()}",
         parameters = { parametersOf(groupId) },
@@ -32,6 +34,11 @@ fun NewEntryRoot(
     LaunchedEffect(viewModel, prefill, prefillDescription) {
         if (prefill != null && prefillDescription != null) {
             viewModel.onIntent(NewEntryIntent.ApplyPrefill(prefill, prefillDescription))
+        }
+    }
+    LaunchedEffect(viewModel, out) {
+        if (expenseId == null && prefill == null) {
+            viewModel.onIntent(NewEntryIntent.SelectDirection(if (out) NewEntryDirection.Out else NewEntryDirection.In))
         }
     }
     LaunchedEffect(viewModel, expenseId) {

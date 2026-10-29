@@ -42,8 +42,16 @@ class NewEntryViewModel(
         when (intent) {
             is NewEntryIntent.SelectDirection -> {
                 savedState[KEY_DIRECTION] = intent.direction.name
-                update { it.copy(direction = intent.direction, error = null) }
+                update {
+                    // A categoria de um sentido não vale no outro: volta para a primeira do sentido novo.
+                    val valid = NewEntryCategory.forDirection(intent.direction)
+                    val category = if (it.category in valid) it.category else valid.first()
+                    savedState[KEY_CATEGORY] = category.name
+                    it.copy(direction = intent.direction, category = category, error = null)
+                }
             }
+            NewEntryIntent.OpenDatePicker -> if (!state.value.editing) update { it.copy(datePickerOpen = true) }
+            NewEntryIntent.DismissDatePicker -> update { it.copy(datePickerOpen = false) }
             is NewEntryIntent.AmountChanged -> updateAmount(intent.value)
             is NewEntryIntent.SelectAmountShortcut -> {
                 val value = formatEntryCents(intent.cents)
@@ -170,7 +178,7 @@ class NewEntryViewModel(
     private fun updateDate(value: String) {
         val iso = parseEntryDate(value) ?: value
         savedState[KEY_DATE] = iso
-        update { it.copy(date = iso, error = null) }
+        update { it.copy(date = iso, error = null, datePickerOpen = false) }
     }
 
     private fun save() {
@@ -182,10 +190,8 @@ class NewEntryViewModel(
             return
         }
         val amountCents = parseEntryCents(current.amountText)
-        val customCategory = current.customCategory.trim()
         val amountInvalid = amountCents == null || amountCents <= 0L
-        val categoryInvalid = current.category == NewEntryCategory.Other &&
-            !isValidCustomCategory(customCategory)
+        val categoryInvalid = current.category !in NewEntryCategory.forDirection(current.direction)
         if (
             amountInvalid ||
             current.description.isBlank() ||
@@ -207,7 +213,6 @@ class NewEntryViewModel(
                         amountCents = amountCents,
                         expenseDate = current.date,
                         category = current.category.toExpenseCategory(),
-                        customCategory = customCategory.takeIf { current.category == NewEntryCategory.Other },
                         direction = current.direction.toFinanceDirection(),
                     ),
                 )
@@ -228,7 +233,9 @@ class NewEntryViewModel(
     private fun NewEntryCategory.toExpenseCategory(): ExpenseCategory = when (this) {
         NewEntryCategory.Court -> ExpenseCategory.Venue
         NewEntryCategory.Material -> ExpenseCategory.Equipment
-        NewEntryCategory.Racha -> ExpenseCategory.Racha
+        NewEntryCategory.Referee -> ExpenseCategory.Referee
+        NewEntryCategory.Sponsorship -> ExpenseCategory.Sponsorship
+        NewEntryCategory.Sale -> ExpenseCategory.Sale
         NewEntryCategory.Other -> ExpenseCategory.Other
     }
 

@@ -57,4 +57,17 @@
     <string name="cash_opening_unanswered">Não informado</string>
     <string name="statement_month_in">entrou %1$s</string>
     <string name="statement_month_out">saiu %1$s</string>
+    <string name="entry_in_title">Nova entrada</string>
+    <string name="entry_out_title">Nova saída</string>
+    <string name="entry_in_save">Salvar entrada</string>
+    <string name="entry_out_save">Salvar saída</string>
+    <string name="entry_category_referee">Árbitro</string>
+    <string name="entry_category_sponsorship">Patrocínio</string>
+    <string name="entry_category_sale">Venda</string>
+    <string name="entry_date_today">Hoje · %1$s</string>
+    <string name="entry_date_hint">Toque para escolher outro dia.</string>
+    <string name="entry_date_pick_title">Data do lançamento</string>
+    <string name="entry_date_pick_save">Usar esta data</string>
+    <string name="entry_description_in_hint">Ex.: venda de camisas</string>
+    <string name="entry_description_out_hint">Ex.: quadra de terça</string>
 </resources>

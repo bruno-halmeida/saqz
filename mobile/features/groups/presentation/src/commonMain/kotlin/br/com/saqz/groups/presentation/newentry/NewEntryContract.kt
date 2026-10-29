@@ -10,12 +10,29 @@ enum class NewEntryDirection {
     Out,
 }
 
+/**
+ * DEB-148: a Saída tem Quadra, Material, Árbitro e Outros; a Entrada, Patrocínio, Venda e Outros. Racha entra em
+ * Outros (o extrato continua mostrando as saídas antigas de Racha).
+ */
 enum class NewEntryCategory {
     Court,
     Material,
-    Racha,
+    Referee,
+    Sponsorship,
+    Sale,
     Other,
+    ;
+
+    companion object {
+        fun forDirection(direction: NewEntryDirection): List<NewEntryCategory> = when (direction) {
+            NewEntryDirection.Out -> listOf(Court, Material, Referee, Other)
+            NewEntryDirection.In -> listOf(Sponsorship, Sale, Other)
+        }
+    }
 }
+
+/** Atalhos de valor da Saída: R$ 80, 120 e 160. A Entrada não tem atalhos. */
+internal val ExpenseShortcuts = listOf(8_000L, 12_000L, 16_000L)
 
 @Serializable
 sealed interface NewEntryPrefill {
@@ -37,6 +54,9 @@ data class NewEntryState(
     val editing: Boolean = false,
     val isLoadingEntry: Boolean = false,
     val entryLoadFailed: Boolean = false,
+    val datePickerOpen: Boolean = false,
+    /** Hoje no fuso do aparelho: a data vem com hoje e o apoio diz "Hoje · terça, 27/10". */
+    val today: String = date,
 )
 
 sealed interface NewEntryIntent {
@@ -47,6 +67,8 @@ sealed interface NewEntryIntent {
     data class SelectCategory(val category: NewEntryCategory) : NewEntryIntent
     data class CustomCategoryChanged(val value: String) : NewEntryIntent
     data class DateChanged(val value: String) : NewEntryIntent
+    data object OpenDatePicker : NewEntryIntent
+    data object DismissDatePicker : NewEntryIntent
     data class ApplyPrefill(val prefill: NewEntryPrefill, val description: String) : NewEntryIntent
     /** Abre o lançamento [expenseId] para correção; chamado de novo, só refaz a leitura da versão. */
     data class LoadEdit(val expenseId: String) : NewEntryIntent

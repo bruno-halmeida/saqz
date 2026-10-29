@@ -13,23 +13,46 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class NewEntryScreenTest {
     @Test
-    fun `other category shows custom field validation`() = runComposeUiTest {
+    fun `expense has the amount shortcuts four equal categories and the date that opens the calendar`() =
+        runComposeUiTest {
+            val intents = mutableListOf<NewEntryIntent>()
+            setContent {
+                SaqzTheme {
+                    NewEntryScreen(
+                        state = NewEntryState(
+                            date = "2026-10-27",
+                            direction = NewEntryDirection.Out,
+                            category = NewEntryCategory.Court,
+                        ),
+                        onBack = {},
+                        onIntent = intents::add,
+                    )
+                }
+            }
+
+            onNodeWithText("Nova saída").assertExists()
+            onNodeWithTag(NewEntryTags.Shortcuts).assertExists()
+            onNodeWithText("Árbitro").assertExists()
+            onNodeWithText("Hoje · terça, 27/10").assertExists()
+            onNodeWithText("R$\u00A0120").performClick()
+            onNodeWithTag(NewEntryTags.Date).performClick()
+
+            assertEquals(listOf(NewEntryIntent.SelectAmountShortcut(12_000L), NewEntryIntent.OpenDatePicker), intents)
+        }
+
+    @Test
+    fun `income has sponsorship sale and others and no shortcuts`() = runComposeUiTest {
         setContent {
             SaqzTheme {
-                NewEntryScreen(
-                    state = NewEntryState(
-                        date = "2026-08-04",
-                        category = NewEntryCategory.Other,
-                        error = GroupUiError.Validation,
-                    ),
-                    onBack = {},
-                    onIntent = {},
-                )
+                NewEntryScreen(state = NewEntryState(date = "2026-10-26"), onBack = {}, onIntent = {})
             }
         }
 
-        onNodeWithText("O que é?").assertExists()
-        onNodeWithText("Informe o que é (2 a 40 caracteres).").assertExists()
+        onNodeWithText("Nova entrada").assertExists()
+        onNodeWithText("Patrocínio").assertExists()
+        onNodeWithText("Venda").assertExists()
+        onNodeWithTag(NewEntryTags.Shortcuts).assertDoesNotExist()
+        onNodeWithText("Salvar entrada").assertExists()
     }
 
     @Test
@@ -53,7 +76,6 @@ class NewEntryScreenTest {
         onNodeWithText("Corrigir lançamento").assertExists()
         onNodeWithText("Valor").assertExists()
         onNodeWithText("Descrição").assertExists()
-        onNodeWithText("Tipo").assertDoesNotExist()
         onNodeWithText("Categoria").assertDoesNotExist()
         onNodeWithText("Data").assertDoesNotExist()
         onNodeWithText("R$ 80").assertDoesNotExist()
