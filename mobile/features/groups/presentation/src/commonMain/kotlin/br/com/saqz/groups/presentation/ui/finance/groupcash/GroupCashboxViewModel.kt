@@ -493,11 +493,9 @@ class GroupCashboxViewModel(
             }
             val date = currentDate(group.timeZone.id)
             val monthKey = date.monthKey()
-            // ponytail: o mês inteiro numa página; paginar se um grupo passar de ~200 lançamentos no mês.
-            val statementResult = statementGateway.statement(
-                GroupId(groupId),
-                FinanceStatementQuery(month = monthKey, limit = MONTH_PAGE),
-            )
+            // O servidor aceita no máximo 100 por página: as listas do mês seguem o `hasMore` até MONTH_PAGES páginas.
+            // ponytail: mês com mais de 500 lançamentos mostra só os 500 primeiros; o placar vem do `summary` e fecha.
+            val statementResult = monthStatement(monthKey)
             if (generation != loadGeneration) return@launch
             val chargesResult = organizerFinanceGateway.charges(GroupId(groupId))
             if (generation != loadGeneration) return@launch
@@ -697,6 +695,27 @@ class GroupCashboxViewModel(
         )
     }
 
+    private suspend fun monthStatement(monthKey: String): SaqzResult<FinanceStatementPage, FinanceError> {
+        var page = when (
+            val first = statementGateway.statement(GroupId(groupId), FinanceStatementQuery(month = monthKey, limit = MONTH_PAGE))
+        ) {
+            is SaqzResult.Failure -> return first
+            is SaqzResult.Success -> first.value
+        }
+        var items = page.items
+        var pages = 1
+        while (page.hasMore && pages < MONTH_PAGES) {
+            val next = statementGateway.statement(
+                GroupId(groupId),
+                FinanceStatementQuery(month = monthKey, limit = MONTH_PAGE, offset = items.size),
+            )
+            page = (next as? SaqzResult.Success)?.value ?: break
+            items = items + page.items
+            pages++
+        }
+        return SaqzResult.Success(page.copy(items = items))
+    }
+
     private fun FinanceStatementItem.toLedger(): LedgerUi {
         val out = direction == FinanceDirection.Out
         return LedgerUi(
@@ -737,7 +756,7 @@ class GroupCashboxViewModel(
         cashMeta = when {
             kind == ChargeKind.Monthly ->
                 "${if (isOverdue) "Venceu" else "Vence"} ${formatDate(dueDate)} · ${formatBrlShort(amountCents)}"
-            guestDisplayName != null -> "Convite · $guestDisplayName · ${formatBrlShort(amountCents)}"
+            guestDisplayName != null -> "Convidou $guestDisplayName · ${formatBrlShort(amountCents)}"
             else -> "${weekdayDayMonth(dueDate)} · ${formatBrlShort(amountCents)}"
         },
         referenceLabel = when (kind) {
@@ -854,7 +873,8 @@ class GroupCashboxViewModel(
     }
 
     private companion object {
-        const val MONTH_PAGE = 200
+        const val MONTH_PAGE = 100
+        const val MONTH_PAGES = 5
         const val MAX_OPENING_CENTS = 99_999_999L
         val MONTH_NAMES = listOf(
             "janeiro", "fevereiro", "março", "abril", "maio", "junho",

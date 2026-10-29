@@ -1054,6 +1054,43 @@ class GroupCashboxViewModelTest {
 
     private fun formatShort(cents: Long) = br.com.saqz.groups.presentation.ui.finance.formatBrlShort(cents)
 
+    @Test
+    fun `month lists follow has more in pages of at most 100 and the score stays from the summary`() = runTest {
+        val queries = mutableListOf<FinanceStatementQuery>()
+        fun item(id: String) = FinanceStatementItem(id, "EXPENSE", FinanceDirection.Out, "Quadra", "VENUE", null,
+            "2026-08-18T22:00:00Z", -16_000L)
+        val gateway = object : FinanceStatementGateway {
+            override suspend fun statement(groupId: GroupId, query: FinanceStatementQuery): SaqzResult<FinanceStatementPage, FinanceError> {
+                queries += query
+                val base = statement(0L, 32_000L, 0L, 0L)
+                return SaqzResult.Success(
+                    if (query.offset == 0) base.copy(items = listOf(item("e1")), hasMore = true)
+                    else base.copy(items = listOf(item("e2")), offset = query.offset, hasMore = false),
+                )
+            }
+        }
+        val state = viewModel(statement = gateway).state.value
+
+        assertTrue(queries.all { it.limit <= 100 })
+        assertEquals(listOf(0, 1), queries.map { it.offset })
+        assertEquals(listOf("e1", "e2"), state.monthOut.map { it.id })
+        assertEquals("R$\u00A0320", state.monthOutLabel)
+    }
+
+    @Test
+    fun `host of a guest reads who was invited`() = runTest {
+        val guest = Charge(
+            id = "g", groupId = GroupId("group-1"), memberId = "member-camila", kind = ChargeKind.Game, gameId = "x",
+            amountCents = 2_000L, dueDate = "2026-08-25", status = ChargeStatus.Pending, version = 1L, audit = emptyList(),
+            guestDisplayName = "Júlia",
+        )
+        val state = viewModel(
+            organizer = FakeOrganizerFinanceGateway(chargesResult = SaqzResult.Success(ChargeList(listOf(guest)))),
+        ).state.value
+
+        assertEquals("Convidou Júlia · R$\u00A020", state.debtors.single().cashMeta)
+    }
+
     private fun viewModel(
         group: FakeGroupGateway = FakeGroupGateway(
             readResult = SaqzResult.Success(
@@ -1076,7 +1113,7 @@ class GroupCashboxViewModelTest {
                 ),
             ),
         ),
-        statement: FakeStatementGateway = FakeStatementGateway(SaqzResult.Success(statement(7_000L, 2_500L, 4_500L, 14_000L))),
+        statement: FinanceStatementGateway = FakeStatementGateway(SaqzResult.Success(statement(7_000L, 2_500L, 4_500L, 14_000L))),
         organizer: FakeOrganizerFinanceGateway = FakeOrganizerFinanceGateway(),
         cashbox: FakeCashboxGateway = FakeCashboxGateway(),
     ) = GroupCashboxViewModel(
