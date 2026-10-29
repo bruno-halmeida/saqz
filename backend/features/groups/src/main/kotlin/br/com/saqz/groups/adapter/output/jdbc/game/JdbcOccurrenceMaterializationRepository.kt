@@ -105,6 +105,7 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
         setObject(19, value.status.name, Types.OTHER)
         setTimestamp(20, Timestamp.from(value.createdAt))
         setTimestamp(21, Timestamp.from(value.createdAt))
+        setBoolean(22, slot.noGameFee)
     }
 
     private companion object {
@@ -123,9 +124,9 @@ class JdbcOccurrenceMaterializationRepository(private val dataSource: DataSource
                 id, group_id, series_id, series_revision_id, slot_key, title,
                 local_date, local_time, zone_id, starts_at, duration_minutes,
                 confirmation_deadline, venue_id, venue_name, venue_address,
-                venue_court, capacity, game_fee_cents, status, created_at, updated_at
+                venue_court, capacity, game_fee_cents, status, created_at, updated_at, no_game_fee
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             ON CONFLICT (series_id, local_date, slot_key) DO NOTHING
         """

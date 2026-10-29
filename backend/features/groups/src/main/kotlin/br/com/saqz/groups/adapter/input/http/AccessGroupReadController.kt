@@ -85,6 +85,10 @@ data class GroupFinanceDefaultsReadResponse(
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy,
+    /** "Sem diária" do grupo (DEB-146). */
+    val defaultNoGameFee: Boolean = false,
+    /** Valor vazio e sem marca: o cartão azul do gestor (DEB-146). */
+    val gameFeeUndefined: Boolean = false,
 )
 
 data class GroupGameConfigReadResponse(
@@ -94,6 +98,8 @@ data class GroupGameConfigReadResponse(
     val attendanceUpdatesMode: AttendanceUpdatesMode,
     // Sempre false (DEB-040): os apps 1.0.4–1.0.6 ainda leem o campo.
     val autoConfirmEnabled: Boolean,
+    /** Vaga só com pagamento antecipado (DEB-150). */
+    val advancePaymentRequired: Boolean = false,
 )
 
 class GroupNotFoundException : RuntimeException()
@@ -149,6 +155,7 @@ fun GroupView.toResponse() = GroupReadResponse(
         promotionMode = gameConfig?.promotionMode ?: PromotionMode.FIFO,
         attendanceUpdatesMode = gameConfig?.attendanceUpdatesMode ?: AttendanceUpdatesMode.SCHEDULED,
         autoConfirmEnabled = false,
+        advancePaymentRequired = gameConfig?.advancePaymentRequired ?: false,
     ),
     entryRequiresApproval = entryRequiresApproval,
 )
@@ -177,4 +184,8 @@ private fun GroupRegularSlotReadModel.toResponse() =
     GroupRegularSlotReadResponse(id, weekday, startTime, durationMinutes)
 
 private fun GroupFinanceDefaultsReadModel.toResponse() =
-    GroupFinanceDefaultsReadResponse(defaultGameFeeCents, monthlyFeeCents, monthlyDueDay, monthlyLateJoinPolicy)
+    GroupFinanceDefaultsReadResponse(
+        defaultGameFeeCents, monthlyFeeCents, monthlyDueDay, monthlyLateJoinPolicy,
+        defaultNoGameFee = defaultNoGameFee,
+        gameFeeUndefined = defaultGameFeeCents == null && !defaultNoGameFee,
+    )

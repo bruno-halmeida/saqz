@@ -62,6 +62,9 @@ data class UpdateGroupProfileRequest @JsonCreator constructor(
     @JsonProperty("defaultCapacity") val defaultCapacity: Int? = null,
     @JsonProperty("defaultConfirmationLeadMinutes") val defaultConfirmationLeadMinutes: Int? = null,
     @JsonProperty("defaultGameFeeCents") val defaultGameFeeCents: Long? = null,
+    // DEB-146 e DEB-150: ausente = `false` ao criar e "não muda" ao atualizar (app antigo segue funcionando).
+    @JsonProperty("defaultNoGameFee") val defaultNoGameFee: Boolean? = null,
+    @JsonProperty("advancePaymentRequired") val advancePaymentRequired: Boolean? = null,
     @JsonProperty("monthlyFeeCents") val monthlyFeeCents: Long? = null,
     @JsonProperty("monthlyDueDay") val monthlyDueDay: Int? = null,
     @JsonProperty("mensalistaPriority") val mensalistaPriority: Boolean? = null,
@@ -213,6 +216,8 @@ private fun UpdateGroupProfileRequest.toInput() = UpdateGroupProfileInput(
         promotionMode = promotionMode,
         pixKey = pixKey,
         pixLabel = pixLabel,
+        defaultNoGameFee = defaultNoGameFee,
+        advancePaymentRequired = advancePaymentRequired,
     ),
     defaultVenueId = defaultVenue?.id,
     regularSlotIds = regularSlots.orEmpty().map { it.id },

@@ -38,7 +38,7 @@ class JdbcSeriesBoundaryRepository(
         if (limit != null && moved != null && moved.startsAt >= limit) return@transaction SeriesBoundaryResult.AfterPlanEnd(limit)
         val updated = connection.prepareStatement(if (command.action == SeriesBoundaryAction.CANCEL) CANCEL_ONE else EDIT_ONE).use { statement ->
             if (command.action == SeriesBoundaryAction.EDIT) statement.bindSnapshot(requireNotNull(command.replacement), 1)
-            val offset = if (command.action == SeriesBoundaryAction.EDIT) 16 else 1
+            val offset = if (command.action == SeriesBoundaryAction.EDIT) 17 else 1
             statement.setObject(offset, command.groupId)
             statement.setObject(offset + 1, command.gameId)
             statement.setLong(offset + 2, command.expectedVersion)
@@ -83,11 +83,11 @@ class JdbcSeriesBoundaryRepository(
             val occurrence = value.occurrence
             val updated = connection.prepareStatement(REGENERATE).use { statement ->
                 statement.bindRegenerated(value)
-                statement.setObject(16, command.groupId)
-                statement.setObject(17, command.successorRule.seriesId)
-                statement.setObject(18, occurrence.localDate)
-                statement.setObject(19, occurrence.slot.slotKey)
-                statement.setTimestamp(20, Timestamp.from(command.now))
+                statement.setObject(17, command.groupId)
+                statement.setObject(18, command.successorRule.seriesId)
+                statement.setObject(19, occurrence.localDate)
+                statement.setObject(20, occurrence.slot.slotKey)
+                statement.setTimestamp(21, Timestamp.from(command.now))
                 statement.executeUpdate()
             }
             if (updated == 0 && occurrence.startsAt < command.insertUntil &&
@@ -183,7 +183,7 @@ class JdbcSeriesBoundaryRepository(
             statement.setObject(1, command.successorRule.revisionId); statement.setObject(2, command.groupId); statement.setObject(3, slot.slotKey)
             statement.setString(4, slot.title); statement.setInt(5, slot.weekday.value); statement.setObject(6, slot.localTime); statement.setInt(7, slot.durationMinutes)
             statement.setObject(8, slot.venue.venueId); statement.setString(9, slot.venue.name); statement.setString(10, slot.venue.address); statement.setString(11, slot.venue.court)
-            statement.setInt(12, slot.capacity); statement.setInt(13, slot.confirmationLeadMinutes); statement.setObject(14, slot.gameFeeCents)
+            statement.setInt(12, slot.capacity); statement.setInt(13, slot.confirmationLeadMinutes); statement.setObject(14, slot.gameFeeCents); statement.setBoolean(15, slot.noGameFee)
             statement.executeUpdate()
         }
     }
@@ -192,7 +192,7 @@ class JdbcSeriesBoundaryRepository(
         setString(start, snapshot.title); setObject(start + 1, snapshot.localDate); setObject(start + 2, snapshot.localTime); setString(start + 3, snapshot.zoneId.value)
         setTimestamp(start + 4, Timestamp.from(snapshot.startsAt)); setInt(start + 5, snapshot.durationMinutes); setTimestamp(start + 6, Timestamp.from(snapshot.confirmationDeadline))
         setObject(start + 7, snapshot.venue.venueId); setString(start + 8, snapshot.venue.name); setString(start + 9, snapshot.venue.address); setString(start + 10, snapshot.venue.court)
-        setInt(start + 11, snapshot.capacity); setObject(start + 12, snapshot.gameFeeCents, Types.BIGINT); setString(start + 13, snapshot.notes); setBoolean(start + 14, true)
+        setInt(start + 11, snapshot.capacity); setObject(start + 12, snapshot.gameFeeCents, Types.BIGINT); setString(start + 13, snapshot.notes); setBoolean(start + 14, true); setBoolean(start + 15, snapshot.noGameFee)
     }
 
     private fun PreparedStatement.bindRegenerated(value: MaterializedGameOccurrence) {
@@ -201,7 +201,7 @@ class JdbcSeriesBoundaryRepository(
         setString(5, occurrence.zoneId.value); setTimestamp(6, Timestamp.from(occurrence.startsAt)); setInt(7, slot.durationMinutes)
         setTimestamp(8, Timestamp.from(occurrence.confirmationDeadline)); setObject(9, slot.venue.venueId); setString(10, slot.venue.name)
         setString(11, slot.venue.address); setString(12, slot.venue.court); setInt(13, slot.capacity); setObject(14, slot.gameFeeCents, Types.BIGINT)
-        setTimestamp(15, Timestamp.from(value.createdAt))
+        setTimestamp(15, Timestamp.from(value.createdAt)); setBoolean(16, slot.noGameFee)
     }
 
     private fun PreparedStatement.bindInserted(value: MaterializedGameOccurrence) {
@@ -210,7 +210,7 @@ class JdbcSeriesBoundaryRepository(
         setString(6, slot.title); setObject(7, occurrence.localDate); setObject(8, occurrence.localTime); setString(9, occurrence.zoneId.value)
         setTimestamp(10, Timestamp.from(occurrence.startsAt)); setInt(11, slot.durationMinutes); setTimestamp(12, Timestamp.from(occurrence.confirmationDeadline))
         setObject(13, slot.venue.venueId); setString(14, slot.venue.name); setString(15, slot.venue.address); setString(16, slot.venue.court)
-        setInt(17, slot.capacity); setObject(18, slot.gameFeeCents, Types.BIGINT); setTimestamp(19, Timestamp.from(value.createdAt)); setTimestamp(20, Timestamp.from(value.createdAt))
+        setInt(17, slot.capacity); setObject(18, slot.gameFeeCents, Types.BIGINT); setTimestamp(19, Timestamp.from(value.createdAt)); setTimestamp(20, Timestamp.from(value.createdAt)); setBoolean(21, slot.noGameFee)
     }
 
     private fun <T> transaction(block: (Connection) -> T): T = dataSource.connection.use { connection ->
@@ -230,14 +230,14 @@ class JdbcSeriesBoundaryRepository(
     private companion object {
         const val LOCK_GAME = "SELECT version, local_date, status, detached_from_series, starts_at FROM games WHERE group_id = ? AND id = ? AND series_id IS NOT NULL FOR UPDATE"
         const val LOCK_REVISION = "SELECT version, local_start_date, local_end_date FROM game_series WHERE group_id = ? AND id = ? FOR UPDATE"
-        const val EDIT_ONE = """UPDATE games SET title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, notes=?, detached_from_series=?, version=version+1, updated_at=now() WHERE group_id=? AND id=? AND version=?"""
+        const val EDIT_ONE = """UPDATE games SET title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, notes=?, detached_from_series=?, no_game_fee=?, version=version+1, updated_at=now() WHERE group_id=? AND id=? AND version=?"""
         const val CANCEL_ONE = "UPDATE games SET status='CANCELLED', detached_from_series=true, version=version+1, updated_at=now() WHERE group_id=? AND id=? AND version=?"
         const val INSERT_SUCCESSOR = """INSERT INTO game_series (id,lineage_id,group_id,previous_revision_id,revision_number,zone_id,local_start_date,local_end_date,active_through_date,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,now(),now())"""
-        const val INSERT_SLOT = """INSERT INTO game_series_slots (series_revision_id,group_id,slot_key,title,weekday,local_time,duration_minutes,venue_id,venue_name,venue_address,venue_court,capacity,confirmation_lead_minutes,game_fee_cents,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,now())"""
+        const val INSERT_SLOT = """INSERT INTO game_series_slots (series_revision_id,group_id,slot_key,title,weekday,local_time,duration_minutes,venue_id,venue_name,venue_address,venue_court,capacity,confirmation_lead_minutes,game_fee_cents,created_at,no_game_fee) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,now(),?)"""
         const val CLOSE_REVISION = "UPDATE game_series SET active_through_date=?, version=version+1, updated_at=now() WHERE id=? AND version=?"
-        const val REGENERATE = """UPDATE games SET series_revision_id=?, title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, detached_from_series=false, version=version+1, updated_at=? WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status <> 'COMPLETED' AND starts_at > ?"""
+        const val REGENERATE = """UPDATE games SET series_revision_id=?, title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, detached_from_series=false, version=version+1, updated_at=?, no_game_fee=? WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status <> 'COMPLETED' AND starts_at > ?"""
         // DEB-102 (V177): em grupo com posições, o gatilho de games copia as vagas por posição para o jogo e força capacity = soma delas; sem posições não muda nada.
-        const val INSERT_OCCURRENCE = """INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',?,?)"""
+        const val INSERT_OCCURRENCE = """INSERT INTO games (id,group_id,series_id,series_revision_id,slot_key,title,local_date,local_time,zone_id,starts_at,duration_minutes,confirmation_deadline,venue_id,venue_name,venue_address,venue_court,capacity,game_fee_cents,status,created_at,updated_at,no_game_fee) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',?,?,?)"""
         const val OCCURRENCE_EXISTS = "SELECT 1 FROM games WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=?"
         const val SELECT_FUTURE_IDENTITIES = "SELECT local_date,slot_key FROM games WHERE group_id=? AND series_id=? AND local_date>=? AND status<>'COMPLETED' AND starts_at > ?"
         const val CANCEL_IDENTITY = "UPDATE games SET status='CANCELLED', version=version+1, updated_at=now() WHERE group_id=? AND series_id=? AND local_date=? AND slot_key=? AND status<>'COMPLETED' AND starts_at > ?"

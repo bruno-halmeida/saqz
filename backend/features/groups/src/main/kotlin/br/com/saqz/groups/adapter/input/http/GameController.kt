@@ -49,6 +49,8 @@ data class GameWriteRequest @JsonCreator constructor(
     @JsonProperty("gameFeeCents") val gameFeeCents: Long? = null,
     @JsonProperty("useDefaultGameFee") val useDefaultGameFee: Boolean? = true,
     @JsonProperty("notes") val notes: String? = null,
+    /** "Sem diária" (DEB-146). Ausente com valor vazio (app antigo) = padrão do grupo; junto com valor = 400. */
+    @JsonProperty("noGameFee") val noGameFee: Boolean? = null,
 )
 
 data class GameVenueResponse(val venueId: UUID?, val name: String, val address: String, val court: String?)
@@ -62,6 +64,10 @@ data class GameResponse(
     val ownAttendance: AttendanceEntryResponse? = null,
     /** Campo novo e opcional (DEB-109): vagas por posição do jogo, só na listagem; nulo em jogo sem posições. */
     val positions: List<PositionSummaryResponse>? = null,
+    /** "Sem diária" (DEB-146); o app antigo lê `gameFeeCents` vazio como sem valor, como sempre. */
+    val noGameFee: Boolean = false,
+    /** Opção do grupo na hora da leitura (DEB-150): a tela do jogo mostra a caixa de pagamento. */
+    val advancePaymentRequired: Boolean = false,
 )
 
 class GameNotFoundException : RuntimeException()
@@ -84,6 +90,7 @@ class GameController(
     @PostMapping("/api/groups/{groupId}/games")
     fun create(@AuthenticationPrincipal identity: RequestIdentity, @PathVariable groupId: String, @RequestBody request: GameWriteRequest): ResponseEntity<GameResponse> {
         val parsedGroup = uuid(groupId); val gameId = request.requestId ?: invalid("requestId", "is required")
+        if (request.noGameFee == true && request.gameFeeCents != null) invalid("noGameFee", "must be false when gameFeeCents is present")
         return command(createGame.execute(actors.resolve(identity), parsedGroup, gameId, request.toCreate()), HttpStatus.CREATED)
     }
 
@@ -154,9 +161,10 @@ class GameController(
 }
 
 // DEB-051: os apps das lojas ainda enviam `notes`; o recado não existe mais, então é aceito e ignorado (nem gravado nem devolvido).
-private fun GameWriteRequest.toCreate() = CreateGameInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, if (useDefaultGameFee != false) NullableGameFeeOverride.UseDefault else NullableGameFeeOverride.Value(gameFeeCents), null)
-private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, gameFeeCents, null)
+// DEB-146: `useDefaultGameFee` não decide mais nada; sem valor e sem marca o jogo leva o padrão do grupo.
+private fun GameWriteRequest.toCreate() = CreateGameInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, NullableGameFeeOverride.of(gameFeeCents, noGameFee), null)
+private fun GameWriteRequest.toDraft() = GameDraftInput(title, venue?.toInput(), localDate, localTime, zoneId, startsAt, durationMinutes, capacity, confirmationDeadline, gameFeeCents, null, noGameFee == true)
 private fun GameVenueRequest.toInput() = GameVenueInput(venueId, name, address, court)
 private fun br.com.saqz.groups.domain.game.Game.toView() = GameView(this, 0, snapshot.capacity, 0)
-private fun GameView.toResponse(): GameResponse { val s = game.snapshot; return GameResponse(game.id, game.groupId, s.title, GameVenueResponse(s.venue.venueId,s.venue.name,s.venue.address,s.venue.court),s.localDate,s.localTime,s.zoneId.value,s.startsAt,s.durationMinutes,s.capacity,s.confirmationDeadline,s.gameFeeCents,null,game.status.name,game.version,confirmedCount,availableSpots,waitlistCount,game.financeReviewRequired) }
+private fun GameView.toResponse(): GameResponse { val s = game.snapshot; return GameResponse(game.id, game.groupId, s.title, GameVenueResponse(s.venue.venueId,s.venue.name,s.venue.address,s.venue.court),s.localDate,s.localTime,s.zoneId.value,s.startsAt,s.durationMinutes,s.capacity,s.confirmationDeadline,s.gameFeeCents,null,game.status.name,game.version,confirmedCount,availableSpots,waitlistCount,game.financeReviewRequired,noGameFee=s.noGameFee,advancePaymentRequired=game.advancePaymentRequired) }
 private fun AttendanceRecord.toEntryResponse() = AttendanceEntryResponse(memberId, status.name, waitlistPosition ?: waitlistSequence, version, position?.name, forced)

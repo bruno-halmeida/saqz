@@ -70,6 +70,8 @@ class JdbcGroupReadRepository(
                 ELSE NULL
             END AS monthly_due_day,
             groups.monthly_late_join_policy,
+            groups.default_no_game_fee,
+            groups.advance_payment_required,
             groups.mensalista_priority,
             groups.promotion_mode,
             groups.attendance_updates_mode,
@@ -138,6 +140,7 @@ class JdbcGroupReadRepository(
                 mensalistaPriority = first.mensalistaPriority,
                 promotionMode = first.promotionMode,
                 attendanceUpdatesMode = first.attendanceUpdatesMode,
+                advancePaymentRequired = first.advancePaymentRequired,
             ),
         )
     }
@@ -182,7 +185,9 @@ class JdbcGroupReadRepository(
             monthlyFeeCents = getNullableLong("monthly_fee_cents"),
             monthlyDueDay = getNullableInt("monthly_due_day"),
             monthlyLateJoinPolicy = MonthlyLateJoinPolicy.valueOf(getString("monthly_late_join_policy")),
+            defaultNoGameFee = getBoolean("default_no_game_fee"),
         ),
+        advancePaymentRequired = getBoolean("advance_payment_required"),
         mensalistaPriority = getBoolean("mensalista_priority"),
         promotionMode = PromotionMode.valueOf(getString("promotion_mode")),
         attendanceUpdatesMode = AttendanceUpdatesMode.valueOf(getString("attendance_updates_mode")),
@@ -225,6 +230,7 @@ class JdbcGroupReadRepository(
         val mensalistaPriority: Boolean,
         val promotionMode: PromotionMode,
         val attendanceUpdatesMode: AttendanceUpdatesMode,
+        val advancePaymentRequired: Boolean,
         val pixKey: String?,
         val pixLabel: String?,
     )

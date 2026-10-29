@@ -57,7 +57,22 @@ interface WeeklySeriesRepository {
      * PUBLICADO. Rascunho avulso é do gestor e segue só pulado; jogo de outra série também.
      */
     fun adoptableStartsAt(groupId: UUID, lineageId: UUID, after: Instant): Set<Instant> = emptySet()
+    /** Valor por jogo do grupo e a marca "Sem diária" (DEB-146); nulo sem grupo. */
+    fun gameFeeDefault(groupId: UUID): GameFeeDefault? = null
 }
+
+data class GameFeeDefault(val gameFeeCents: Long?, val noGameFee: Boolean)
+
+/**
+ * Horário sem valor e sem marca (app antigo, DEB-146) leva o padrão do grupo, como o jogo avulso;
+ * sem padrão, segue não definido.
+ */
+fun WeeklySeriesRule.withGroupFee(default: GameFeeDefault?): WeeklySeriesRule = if (default == null) this else copy(
+    slots = slots.map { slot ->
+        if (slot.gameFeeCents != null || slot.noGameFee) slot
+        else slot.copy(gameFeeCents = default.gameFeeCents, noGameFee = default.gameFeeCents == null && default.noGameFee)
+    },
+)
 
 class WeeklySeriesService(
     private val repository: WeeklySeriesRepository,
@@ -71,9 +86,12 @@ class WeeklySeriesService(
         GroupRole.ATHLETE -> WeeklySeriesResult.Forbidden
         GroupRole.OWNER, GroupRole.ADMIN -> null
     }
-    fun create(actor: UUID, rule: WeeklySeriesRule): WeeklySeriesResult {
-        val role = repository.role(actor, rule.groupId) ?: return WeeklySeriesResult.NotFound
+    fun withGroupFee(rule: WeeklySeriesRule): WeeklySeriesRule = rule.withGroupFee(repository.gameFeeDefault(rule.groupId))
+
+    fun create(actor: UUID, requested: WeeklySeriesRule): WeeklySeriesResult {
+        val role = repository.role(actor, requested.groupId) ?: return WeeklySeriesResult.NotFound
         if (role !in setOf(GroupRole.OWNER, GroupRole.ADMIN)) return WeeklySeriesResult.Forbidden
+        val rule = withGroupFee(requested)
         writeAccess.requireWrite(rule.groupId)
         val resolved = when (val result = WeeklyRecurrenceResolver.resolve(rule, rule.localStartDate)) {
             is WeeklyRecurrenceResult.Invalid -> return WeeklySeriesResult.Invalid(result.errors)

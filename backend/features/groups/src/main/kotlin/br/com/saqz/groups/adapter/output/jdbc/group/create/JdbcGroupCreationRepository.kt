@@ -134,7 +134,7 @@ class JdbcGroupCreationRepository(
             default_capacity, default_confirmation_lead_minutes, default_game_fee_cents,
             monthly_fee_cents, monthly_due_day,
             mensalista_priority, promotion_mode,
-            pix_key, pix_label,
+            pix_key, pix_label, default_no_game_fee, advance_payment_required,
             created_at, updated_at
         ) VALUES (
             :id, :ownerUserId, :creationKey, :name, :timeZone, 1,
@@ -144,7 +144,7 @@ class JdbcGroupCreationRepository(
             :monthlyFeeCents, :monthlyDueDay,
             COALESCE(CAST(:mensalistaPriority AS boolean), true),
             COALESCE(:promotionMode, 'FIFO'::public.promotion_mode),
-            :pixKey, :pixLabel,
+            :pixKey, :pixLabel, :defaultNoGameFee, :advancePaymentRequired,
             now(), now()
         )
         ON CONFLICT (owner_user_id, creation_key) DO NOTHING
@@ -198,6 +198,9 @@ class JdbcGroupCreationRepository(
             // Na criação não existe "manter valor atual": vazio e ausente significam o mesmo (sem Pix).
             .param("pixKey", profile.pixKey?.ifEmpty { null })
             .param("pixLabel", profile.pixLabel?.ifEmpty { null })
+            // Ausente ao criar = `false` (DEB-146, DEB-150); o validador já recusou a marca junto com valor.
+            .param("defaultNoGameFee", profile.defaultNoGameFee == true && profile.defaultGameFeeCents == null)
+            .param("advancePaymentRequired", profile.advancePaymentRequired == true)
     }
 
     private fun ResultSet.toStoredGroup() = StoredGroup(

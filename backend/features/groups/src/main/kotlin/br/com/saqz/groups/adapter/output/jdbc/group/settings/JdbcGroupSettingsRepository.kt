@@ -60,6 +60,10 @@ class JdbcGroupSettingsRepository(
     // DEB-102: em grupo com posições o total é a soma delas, então o `defaultCapacity` enviado não vale (o SQL abaixo o mantém).
     private fun updateProfile(command: UpdateGroupSettingsCommand): SettingsWriteResult {
         val profile = requireNotNull(command.profile)
+        // Antes do UPDATE, na mesma transação: o grupo deixa de estar "não definido" (DEB-146)?
+        val wasUndefined = jdbc.sql(
+            "SELECT default_game_fee_cents IS NULL AND NOT default_no_game_fee FROM access_groups WHERE id = :groupId AND deleted_at IS NULL FOR UPDATE",
+        ).param("groupId", command.groupId).query(Boolean::class.java).optional().orElse(false)
         val (updated, currentVenueId) = jdbc.sql(
             """
             UPDATE access_groups
@@ -78,6 +82,12 @@ class JdbcGroupSettingsRepository(
                     THEN default_capacity ELSE CAST(:defaultCapacity AS integer) END,
                 default_confirmation_lead_minutes = :defaultConfirmationLeadMinutes,
                 default_game_fee_cents = :defaultGameFeeCents,
+                -- Valor grava a marca `false`; sem valor, ausente mantém (app antigo não apaga o "Sem diária").
+                default_no_game_fee = CASE WHEN CAST(:defaultGameFeeCents AS bigint) IS NOT NULL THEN false
+                    ELSE COALESCE(CAST(:defaultNoGameFee AS boolean), default_no_game_fee) END,
+                -- Ordem de chegada desliga o pagamento antecipado na mesma gravação (DEB-150).
+                advance_payment_required = CASE WHEN COALESCE(:promotionMode, promotion_mode) = 'FIFO' THEN false
+                    ELSE COALESCE(CAST(:advancePaymentRequired AS boolean), advance_payment_required) END,
                 monthly_fee_cents = :monthlyFeeCents,
                 monthly_due_day = :monthlyDueDay,
                 mensalista_priority = COALESCE(CAST(:mensalistaPriority AS boolean), mensalista_priority),
@@ -120,6 +130,8 @@ class JdbcGroupSettingsRepository(
             .param("promotionMode", profile.promotionMode?.name, Types.OTHER)
             .param("pixKey", profile.pixKey)
             .param("pixLabel", profile.pixLabel)
+            .param("defaultNoGameFee", profile.defaultNoGameFee)
+            .param("advancePaymentRequired", profile.advancePaymentRequired)
             .param("entryRequiresApproval", command.entryRequiresApproval)
             .param("monthlyLateJoinPolicy", command.monthlyLateJoinPolicy?.name)
             .param("attendanceUpdatesMode", command.attendanceUpdatesMode?.name)
@@ -197,7 +209,39 @@ class JdbcGroupSettingsRepository(
                 .update()
         }
 
+        if (wasUndefined && (profile.defaultGameFeeCents != null || profile.defaultNoGameFee == true)) {
+            propagateGameFee(command.groupId)
+        }
+
         return SettingsWriteResult.Updated(updated)
+    }
+
+    /**
+     * O grupo deixou de estar "não definido" (DEB-146, JOGO-008): os horários da série e os jogos que não começaram
+     * e seguem sem valor e sem marca passam a ter o valor ou a marca do grupo. Nenhuma diária nasce aqui: quem já
+     * confirmou vai para a revisão da diária retroativa (FIN-016).
+     */
+    private fun propagateGameFee(groupId: UUID) {
+        jdbc.sql(
+            """
+            UPDATE game_series_slots s
+            SET game_fee_cents = g.default_game_fee_cents, no_game_fee = g.default_no_game_fee
+            FROM access_groups g
+            WHERE g.id = :groupId AND s.group_id = g.id
+              AND s.game_fee_cents IS NULL AND NOT s.no_game_fee
+            """.trimIndent(),
+        ).param("groupId", groupId).update()
+        jdbc.sql(
+            """
+            UPDATE games x
+            SET game_fee_cents = g.default_game_fee_cents, no_game_fee = g.default_no_game_fee,
+                version = x.version + 1, updated_at = now()
+            FROM access_groups g
+            WHERE g.id = :groupId AND x.group_id = g.id
+              AND x.status IN ('DRAFT', 'PUBLISHED') AND x.starts_at > now()
+              AND x.game_fee_cents IS NULL AND NOT x.no_game_fee
+            """.trimIndent(),
+        ).param("groupId", groupId).update()
     }
 
     private fun ResultSet.toStoredSettings() = StoredGroupSettings(

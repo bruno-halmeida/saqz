@@ -26,6 +26,8 @@ data class WeeklySlotRequest @JsonCreator constructor(
     @JsonProperty("venue") val venue: GameVenueRequest?, @JsonProperty("capacity") val capacity: Int?,
     @JsonProperty("confirmationLeadMinutes") val confirmationLeadMinutes: Int?, @JsonProperty("gameFeeCents") val gameFeeCents: Long? = null,
     @JsonProperty("title") val title: String?,
+    /** "Sem diária" (DEB-146): mesmas regras do jogo. */
+    @JsonProperty("noGameFee") val noGameFee: Boolean? = null,
 )
 data class WeeklySeriesWriteRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?, @JsonProperty("revisionId") val revisionId: UUID?,
@@ -39,7 +41,7 @@ data class SeriesBoundaryRequest @JsonCreator constructor(
     @JsonProperty("successor") val successor: WeeklySeriesWriteRequest? = null,
     @JsonProperty("replacement") val replacement: GameWriteRequest? = null,
 )
-data class WeeklySlotResponse(val slotKey:UUID,val weekday:DayOfWeek,val localTime:LocalTime,val durationMinutes:Int,val venue:GameVenueResponse,val capacity:Int,val confirmationLeadMinutes:Int,val gameFeeCents:Long?,val title:String)
+data class WeeklySlotResponse(val slotKey:UUID,val weekday:DayOfWeek,val localTime:LocalTime,val durationMinutes:Int,val venue:GameVenueResponse,val capacity:Int,val confirmationLeadMinutes:Int,val gameFeeCents:Long?,val title:String,val noGameFee:Boolean=false)
 data class SeriesOccurrenceResponse(val id:UUID,val localDate:LocalDate,val localTime:LocalTime,val startsAt:java.time.Instant,val status:String,val version:Long)
 data class WeeklySeriesResponse(val id:UUID,val revisionId:UUID,val revisionNumber:Int,val zoneId:String,val localStartDate:LocalDate,val localEndDate:LocalDate?,val activeThroughDate:LocalDate?,val slots:List<WeeklySlotResponse>,val occurrences:List<SeriesOccurrenceResponse>,val version:Long)
 
@@ -71,7 +73,7 @@ class WeeklySeriesController(private val actors:VerifiedGroupActorResolver,priva
             }
             SeriesBoundaryScope.THIS_AND_FUTURE->{
                 val boundary=request.boundary?:invalid("boundary","is required");val current=request.currentRevisionId?:invalid("currentRevisionId","is required")
-                val successor=request.successor?:invalid("successor","is required");val rule=successor.rule(group,lineage)
+                val successor=request.successor?:invalid("successor","is required");val rule=series.withGroupFee(successor.rule(group,lineage))
                 boundaries.thisAndFuture(group,current,expected,rule,expected.toInt()+1,boundary,action)
             }
         }
@@ -85,7 +87,7 @@ class WeeklySeriesController(private val actors:VerifiedGroupActorResolver,priva
 }
 private fun WeeklySeriesWriteRequest.rule(group:UUID,lineage:UUID=requestId?:throw InvalidGroupRequestException(mapOf("requestId" to listOf("is required")))):WeeklySeriesRule{
     val revision=revisionId?:throw InvalidGroupRequestException(mapOf("revisionId" to listOf("is required")));val zone=zoneId?:"";val start=localStartDate?:throw InvalidGroupRequestException(mapOf("localStartDate" to listOf("is required")))
-    return WeeklySeriesRule(group,lineage,revision,zone,start,localEndDate,slots=slots.orEmpty().mapIndexed{i,s->WeeklySlotRule(s.slotKey?:throw InvalidGroupRequestException(mapOf("slots[$i].slotKey" to listOf("is required"))),s.weekday?:throw InvalidGroupRequestException(mapOf("slots[$i].weekday" to listOf("is required"))),s.localTime?:throw InvalidGroupRequestException(mapOf("slots[$i].localTime" to listOf("is required"))),s.durationMinutes?:0,s.venue?.let{GameVenueSnapshot(it.venueId,it.name.orEmpty(),it.address.orEmpty(),it.court)}?:GameVenueSnapshot(null,"","",null),s.capacity?:0,s.confirmationLeadMinutes?:-1,s.gameFeeCents,s.title.orEmpty())})
+    return WeeklySeriesRule(group,lineage,revision,zone,start,localEndDate,slots=slots.orEmpty().mapIndexed{i,s->WeeklySlotRule(s.slotKey?:throw InvalidGroupRequestException(mapOf("slots[$i].slotKey" to listOf("is required"))),s.weekday?:throw InvalidGroupRequestException(mapOf("slots[$i].weekday" to listOf("is required"))),s.localTime?:throw InvalidGroupRequestException(mapOf("slots[$i].localTime" to listOf("is required"))),s.durationMinutes?:0,s.venue?.let{GameVenueSnapshot(it.venueId,it.name.orEmpty(),it.address.orEmpty(),it.court)}?:GameVenueSnapshot(null,"","",null),s.capacity?:0,s.confirmationLeadMinutes?:-1,s.gameFeeCents,s.title.orEmpty(),s.noGameFee==true)})
 }
-private fun GameWriteRequest.snapshot()=when(val v=GameDraftValidator.validate(br.com.saqz.groups.domain.game.GameDraftInput(title,venue?.let{GameVenueInput(it.venueId,it.name,it.address,it.court)},localDate,localTime,zoneId,startsAt,durationMinutes,capacity,confirmationDeadline,gameFeeCents,null))){is GameDraftValidation.Valid->v.snapshot;is GameDraftValidation.Invalid->throw InvalidGroupRequestException(v.errors.groupBy({it.field},{it.message}))}
-private fun WeeklySeriesView.response()=WeeklySeriesResponse(rule.seriesId,rule.revisionId,revisionNumber,rule.zoneId,rule.localStartDate,rule.localEndDate,rule.activeThroughDate,rule.slots.map{WeeklySlotResponse(it.slotKey,it.weekday,it.localTime,it.durationMinutes,GameVenueResponse(it.venue.venueId,it.venue.name,it.venue.address,it.venue.court),it.capacity,it.confirmationLeadMinutes,it.gameFeeCents,it.title)},occurrences.map{SeriesOccurrenceResponse(it.id,it.localDate,it.localTime,it.startsAt,it.status.name,it.version)},version)
+private fun GameWriteRequest.snapshot()=when(val v=GameDraftValidator.validate(br.com.saqz.groups.domain.game.GameDraftInput(title,venue?.let{GameVenueInput(it.venueId,it.name,it.address,it.court)},localDate,localTime,zoneId,startsAt,durationMinutes,capacity,confirmationDeadline,gameFeeCents,null,noGameFee==true))){is GameDraftValidation.Valid->v.snapshot;is GameDraftValidation.Invalid->throw InvalidGroupRequestException(v.errors.groupBy({it.field},{it.message}))}
+private fun WeeklySeriesView.response()=WeeklySeriesResponse(rule.seriesId,rule.revisionId,revisionNumber,rule.zoneId,rule.localStartDate,rule.localEndDate,rule.activeThroughDate,rule.slots.map{WeeklySlotResponse(it.slotKey,it.weekday,it.localTime,it.durationMinutes,GameVenueResponse(it.venue.venueId,it.venue.name,it.venue.address,it.venue.court),it.capacity,it.confirmationLeadMinutes,it.gameFeeCents,it.title,it.noGameFee)},occurrences.map{SeriesOccurrenceResponse(it.id,it.localDate,it.localTime,it.startsAt,it.status.name,it.version)},version)

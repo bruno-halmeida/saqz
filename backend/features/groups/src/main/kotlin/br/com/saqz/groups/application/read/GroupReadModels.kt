@@ -83,12 +83,14 @@ data class GroupFinanceDefaultsReadModel(
     val monthlyFeeCents: Long?,
     val monthlyDueDay: Int?,
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy = MonthlyLateJoinPolicy.GROUP_DUE_DATE,
+    val defaultNoGameFee: Boolean = false,
 )
 
 data class GroupGameConfigReadModel(
     val mensalistaPriority: Boolean,
     val promotionMode: PromotionMode,
     val attendanceUpdatesMode: AttendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED,
+    val advancePaymentRequired: Boolean = false,
 )
 
 sealed interface GetGroupResult {

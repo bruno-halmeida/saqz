@@ -63,6 +63,10 @@ data class ValidGroupProfileDefaults(
     val promotionMode: PromotionMode?,
     val pixKey: String?,
     val pixLabel: String?,
+    /** "Sem diária" do grupo (DEB-146). Nulo = ausente: criar grava `false`, atualizar não muda. */
+    val defaultNoGameFee: Boolean? = null,
+    /** Vaga só com pagamento antecipado (DEB-150). Nulo = ausente: criar grava `false`, atualizar não muda. */
+    val advancePaymentRequired: Boolean? = null,
 )
 
 data class ValidGroupVenue(
@@ -98,6 +102,8 @@ data class GroupProfileDefaultsInput(
     val promotionMode: PromotionMode? = null,
     val pixKey: String? = null,
     val pixLabel: String? = null,
+    val defaultNoGameFee: Boolean? = null,
+    val advancePaymentRequired: Boolean? = null,
 )
 
 data class GroupVenueInput(
@@ -119,6 +125,8 @@ sealed interface GroupProfileDefaultsValidation {
 }
 
 object GroupProfileDefaultsValidator {
+    const val ADVANCE_PAYMENT_NEEDS_MANUAL = "requires promotionMode MANUAL"
+
     fun validate(input: GroupProfileDefaultsInput): GroupProfileDefaultsValidation {
         val errors = mutableListOf<GroupValidationError>()
         val name = requiredText(input.name, "name", 2, 80, errors)
@@ -145,6 +153,13 @@ object GroupProfileDefaultsValidator {
         validateMoney(input.defaultGameFeeCents, "defaultGameFeeCents", errors)
         validateMoney(input.monthlyFeeCents, "monthlyFeeCents", errors)
         validateMonthly(input.monthlyFeeCents, input.monthlyDueDay, errors)
+        if (input.defaultNoGameFee == true && input.defaultGameFeeCents != null) {
+            errors += GroupValidationError("defaultNoGameFee", "must be false when defaultGameFeeCents is present")
+        }
+        // Sem modo no pedido vale o atual (atualizar) ou a Ordem de chegada (criar); o serviço confere o atual.
+        if (input.advancePaymentRequired == true && input.promotionMode == PromotionMode.FIFO) {
+            errors += GroupValidationError("advancePaymentRequired", ADVANCE_PAYMENT_NEEDS_MANUAL)
+        }
 
         return if (errors.isNotEmpty()) {
             GroupProfileDefaultsValidation.Invalid(errors)
@@ -172,6 +187,8 @@ object GroupProfileDefaultsValidator {
                     promotionMode = input.promotionMode,
                     pixKey = pixKey,
                     pixLabel = pixLabel,
+                    defaultNoGameFee = input.defaultNoGameFee,
+                    advancePaymentRequired = input.advancePaymentRequired,
                 ),
             )
         }

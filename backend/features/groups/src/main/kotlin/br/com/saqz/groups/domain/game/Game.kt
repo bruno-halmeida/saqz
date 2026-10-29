@@ -44,6 +44,8 @@ data class GameDraftInput(
     val confirmationDeadline: Instant?,
     val gameFeeCents: Long? = null,
     val notes: String? = null,
+    /** "Sem diária" (DEB-146): escolha explícita, só com [gameFeeCents] vazio. */
+    val noGameFee: Boolean = false,
 )
 
 data class GameVenueSnapshot(
@@ -65,6 +67,8 @@ data class GameSnapshot(
     val confirmationDeadline: Instant,
     val gameFeeCents: Long?,
     val notes: String?,
+    /** "Sem diária" (DEB-146). Vazio sem a marca é "não definido": só app antigo e grupo legado produzem. */
+    val noGameFee: Boolean = false,
 )
 
 sealed interface GameDraftValidation {
@@ -99,6 +103,9 @@ object GameDraftValidator {
         if (input.gameFeeCents != null && input.gameFeeCents !in 1..99_999_999) {
             errors += GameValidationError("gameFeeCents", "must be between 1 and 99999999 cents")
         }
+        if (input.noGameFee && input.gameFeeCents != null) {
+            errors += GameValidationError("noGameFee", "must be false when gameFeeCents is present")
+        }
         val notes = optionalText(input.notes, "notes", 2, 500, errors)
 
         return if (errors.isNotEmpty()) GameDraftValidation.Invalid(errors) else GameDraftValidation.Valid(
@@ -114,6 +121,7 @@ object GameDraftValidator {
                 confirmationDeadline = input.confirmationDeadline!!,
                 gameFeeCents = input.gameFeeCents,
                 notes = notes,
+                noGameFee = input.noGameFee,
             ),
         )
     }
@@ -195,11 +203,27 @@ data class GroupGameDefaults(
     val gameFeeCents: Long? = null,
     val mensalistaPriority: Boolean = true,
     val promotionMode: PromotionMode = PromotionMode.FIFO,
+    val noGameFee: Boolean = false,
+    val advancePaymentRequired: Boolean = false,
 )
 
 sealed interface NullableGameFeeOverride {
     data object UseDefault : NullableGameFeeOverride
     data class Value(val cents: Long?) : NullableGameFeeOverride
+    /** "Sem diária" explícito (DEB-146). */
+    data object NoFee : NullableGameFeeOverride
+
+    companion object {
+        /**
+         * O pedido sem valor e sem marca (app antigo) leva o padrão do grupo; `useDefaultGameFee` deixou de
+         * importar (DEB-146). Os dois juntos chegam ao validador, que recusa em `noGameFee`.
+         */
+        fun of(gameFeeCents: Long?, noGameFee: Boolean?): NullableGameFeeOverride = when {
+            gameFeeCents != null -> Value(gameFeeCents)
+            noGameFee == true -> NoFee
+            else -> UseDefault
+        }
+    }
 }
 
 data class CreateGameInput(
@@ -235,8 +259,14 @@ object GameDefaultSnapshotFactory {
             gameFeeCents = when (val fee = input.gameFee) {
                 NullableGameFeeOverride.UseDefault -> defaults.gameFeeCents
                 is NullableGameFeeOverride.Value -> fee.cents
+                NullableGameFeeOverride.NoFee -> null
             },
             notes = input.notes,
+            noGameFee = when (input.gameFee) {
+                NullableGameFeeOverride.UseDefault -> defaults.noGameFee && defaults.gameFeeCents == null
+                is NullableGameFeeOverride.Value -> false
+                NullableGameFeeOverride.NoFee -> true
+            },
         )
     }
 }
@@ -251,6 +281,8 @@ data class Game(
     val financeReviewRequired: Boolean = false,
     /** Linhagem da série semanal que gerou o jogo; nulo no jogo avulso. */
     val seriesId: UUID? = null,
+    /** Opção do grupo na hora da leitura (DEB-150, PROM-010); não é gravada no jogo. */
+    val advancePaymentRequired: Boolean = false,
 )
 
 object GameLifecyclePolicy {

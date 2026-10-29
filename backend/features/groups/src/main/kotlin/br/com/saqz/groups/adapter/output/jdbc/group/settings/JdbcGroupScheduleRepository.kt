@@ -28,7 +28,7 @@ class JdbcGroupScheduleRepository(dataSource: DataSource) : GroupScheduleReposit
                 ScheduleSeriesSlot(DayOfWeek.of(row.getInt("weekday")), row.getTime("start_time").toLocalTime(), row.getInt("duration_minutes"))
             }.list()
         return jdbc.sql("""
-            SELECT g.name, g.time_zone, g.schedule_paused, g.default_game_fee_cents,
+            SELECT g.name, g.time_zone, g.schedule_paused, g.default_game_fee_cents, g.default_no_game_fee,
                 COALESCE(g.default_capacity, 12) AS capacity,
                 COALESCE(g.default_confirmation_lead_minutes, 360) AS lead,
                 v.id AS venue_id, v.name AS venue_name, v.address AS venue_address, v.court AS venue_court
@@ -47,6 +47,7 @@ class JdbcGroupScheduleRepository(dataSource: DataSource) : GroupScheduleReposit
                 confirmationLeadMinutes = row.getInt("lead"),
                 gameFeeCents = row.getObject("default_game_fee_cents")?.let { (it as Number).toLong() },
                 slots = slots,
+                noGameFee = row.getBoolean("default_no_game_fee"),
             )
         }.optional().orElse(null)
     }

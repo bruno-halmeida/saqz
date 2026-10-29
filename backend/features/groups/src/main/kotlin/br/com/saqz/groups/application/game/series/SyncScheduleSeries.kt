@@ -31,6 +31,8 @@ data class ScheduleSeriesDefaults(
     val confirmationLeadMinutes: Int,
     val gameFeeCents: Long?,
     val slots: List<ScheduleSeriesSlot>,
+    /** "Sem diária" do grupo (DEB-146): o horário regular e os jogos dele copiam a marca. */
+    val noGameFee: Boolean = false,
 )
 interface ScheduleSeriesDefaultsRepository {
     fun seriesDefaults(groupId: UUID): ScheduleSeriesDefaults?
@@ -95,6 +97,7 @@ class SyncScheduleSeries(
                 confirmationLeadMinutes = group.confirmationLeadMinutes,
                 gameFeeCents = group.gameFeeCents,
                 title = group.title,
+                noGameFee = group.gameFeeCents == null && group.noGameFee,
             )
         }
         when {

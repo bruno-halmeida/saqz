@@ -48,6 +48,8 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                     gameFeeCents = rs.getObject("default_game_fee_cents", java.lang.Long::class.java)?.toLong(),
                     mensalistaPriority = rs.getBoolean("mensalista_priority"),
                     promotionMode = PromotionMode.valueOf(rs.getString("promotion_mode")),
+                    noGameFee = rs.getBoolean("default_no_game_fee"),
+                    advancePaymentRequired = rs.getBoolean("advance_payment_required"),
                 ),
             )
         }
@@ -154,6 +156,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             .param("venueCourt", snapshot.venue.court, Types.VARCHAR)
             .param("capacity", snapshot.capacity)
             .param("gameFeeCents", snapshot.gameFeeCents, Types.BIGINT)
+            .param("noGameFee", snapshot.noGameFee)
             .param("notes", snapshot.notes, Types.VARCHAR)
             .param("status", game.status.name, Types.OTHER)
             .param("detachedFromSeries", game.detachedFromSeries)
@@ -179,12 +182,14 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             confirmationDeadline = rs.getTimestamp("confirmation_deadline").toInstant(),
             gameFeeCents = rs.getObject("game_fee_cents", java.lang.Long::class.java)?.toLong(),
             notes = rs.getString("notes"),
+            noGameFee = rs.getBoolean("no_game_fee"),
         ),
         status = GameStatus.valueOf(rs.getString("status")),
         version = rs.getLong("version"),
         detachedFromSeries = rs.getBoolean("detached_from_series"),
         financeReviewRequired = rs.getBoolean("finance_review_required"),
         seriesId = rs.getObject("series_id", UUID::class.java),
+        advancePaymentRequired = rs.getBoolean("advance_payment_required"),
     )
 
     private companion object {
@@ -199,8 +204,8 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
 
         const val CREATION_CONTEXT = """
             SELECT g.name, g.default_venue_id, g.default_capacity,
-                   g.default_confirmation_lead_minutes, g.default_game_fee_cents,
-                   g.mensalista_priority, g.promotion_mode,
+                   g.default_confirmation_lead_minutes, g.default_game_fee_cents, g.default_no_game_fee,
+                   g.mensalista_priority, g.promotion_mode, g.advance_payment_required,
                    v.name AS venue_name, v.address AS venue_address, v.court AS venue_court,
                    COALESCE((SELECT s.duration_minutes FROM group_regular_slots s
                     WHERE s.group_id = g.id ORDER BY s.position, s.weekday, s.start_time LIMIT 1), g.default_duration_minutes) AS default_duration,
@@ -218,12 +223,12 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             INSERT INTO games (
                 id, group_id, title, local_date, local_time, zone_id, starts_at,
                 duration_minutes, confirmation_deadline, venue_id, venue_name,
-                venue_address, venue_court, capacity, game_fee_cents, notes,
+                venue_address, venue_court, capacity, game_fee_cents, notes, no_game_fee,
                 status, detached_from_series, created_at, updated_at
             ) SELECT
                 :id, :groupId, :title, :localDate, :localTime, :zoneId, :startsAt,
                 :durationMinutes, :confirmationDeadline, :venueId, :venueName,
-                :venueAddress, :venueCourt, :capacity, :gameFeeCents, :notes,
+                :venueAddress, :venueCourt, :capacity, :gameFeeCents, :notes, :noGameFee,
                 :status, :detachedFromSeries, now(), now()
             FROM access_groups
             WHERE id = :groupId AND deleted_at IS NULL
@@ -257,7 +262,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                 zone_id = :zoneId, starts_at = :startsAt, duration_minutes = :durationMinutes,
                 confirmation_deadline = :confirmationDeadline, venue_id = :venueId,
                 venue_name = :venueName, venue_address = :venueAddress, venue_court = :venueCourt,
-                capacity = :capacity, game_fee_cents = :gameFeeCents, notes = :notes,
+                capacity = :capacity, game_fee_cents = :gameFeeCents, notes = :notes, no_game_fee = :noGameFee,
                 status = :status, detached_from_series = :detachedFromSeries,
                 version = version + 1, updated_at = now()
             WHERE id = :id
@@ -274,7 +279,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
                    g.starts_at, g.duration_minutes, g.confirmation_deadline, g.venue_id,
                    g.venue_name, g.venue_address, g.venue_court, g.capacity,
                    g.game_fee_cents, g.notes, g.status, g.version, g.detached_from_series,
-                   g.finance_review_required, g.series_id
+                   g.finance_review_required, g.series_id, g.no_game_fee, groups.advance_payment_required
             FROM games g
             JOIN access_groups groups ON groups.id = g.group_id AND groups.deleted_at IS NULL
         """

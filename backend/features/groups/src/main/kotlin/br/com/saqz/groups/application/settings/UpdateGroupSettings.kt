@@ -13,6 +13,8 @@ import br.com.saqz.groups.domain.GroupAction
 import br.com.saqz.groups.domain.IanaTimeZone
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidation
 import br.com.saqz.groups.domain.group.GroupProfileDefaultsValidator
+import br.com.saqz.groups.domain.group.GroupValidationError
+import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.util.UUID
 
@@ -68,6 +70,13 @@ class UpdateGroupSettings(
                 return@inTransaction UpdateGroupSettingsResult.AccessForbidden
             }
             val validProfile = (profileValidation as GroupProfileDefaultsValidation.Valid).value
+            // A opção vale só com Escolha manual no resultado (DEB-150); ir para Ordem de chegada desliga no repositório.
+            val resultingMode = validProfile.promotionMode ?: current.gameConfig?.promotionMode ?: PromotionMode.FIFO
+            if (validProfile.advancePaymentRequired == true && resultingMode != PromotionMode.MANUAL) {
+                return@inTransaction UpdateGroupSettingsResult.InvalidProfile(
+                    listOf(GroupValidationError("advancePaymentRequired", GroupProfileDefaultsValidator.ADVANCE_PAYMENT_NEEDS_MANUAL)),
+                )
+            }
             when (
                 val write = settingsRepository.update(
                     UpdateGroupSettingsCommand(

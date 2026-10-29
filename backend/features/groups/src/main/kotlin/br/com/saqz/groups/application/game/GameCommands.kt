@@ -119,7 +119,9 @@ class CreateGame(
                     ?: horizon.limitFor(groupId, validation.snapshot.startsAt)
                     ?: repository.recurringConflict(groupId, validation.snapshot.startsAt, validation.snapshot.durationMinutes, excludingGameId = null)
                     ?.let(GameCommandResult::ScheduleConflict)
-                    ?: repository.create(Game(gameId, groupId, validation.snapshot)).toResult()
+                    ?: repository.create(
+                        Game(gameId, groupId, validation.snapshot, advancePaymentRequired = context.defaults.advancePaymentRequired),
+                    ).toResult()
             }
         }
 }
@@ -133,6 +135,8 @@ class EditGame(
     private val scheduleNotice: GameScheduleChangeNotice = GameScheduleChangeNotice { _, _, _ -> },
     private val horizon: GameCreationHorizon = GameCreationHorizon.Unlimited,
 ) {
+    internal fun groupDefaults(actor: UUID, groupId: UUID): GroupGameDefaults? = repository.creationContext(actor, groupId)?.defaults
+
     /** Desfaz a transação inteira quando o ajuste de vagas recusa depois de o resto já ter sido gravado. */
     private class Rollback(val result: GameCommandResult) : RuntimeException(null, null, false, false)
 
@@ -165,7 +169,7 @@ class EditGame(
             return GameCommandResult.InvalidTransition(context.game.status, GameMutation.EDIT)
         }
         // O recado saiu do produto (DEB-051): a coluna fica como está, sem passar pelo que o app enviar.
-        val snapshot = when (val validation = GameDraftValidator.validate(input.copy(notes = context.game.snapshot.notes))) {
+        val snapshot = when (val validation = GameDraftValidator.validate(withFee(actor, groupId, context.game, input).copy(notes = context.game.snapshot.notes))) {
             is GameDraftValidation.Invalid -> return GameCommandResult.Invalid(validation.errors)
             is GameDraftValidation.Valid -> validation.snapshot
         }
@@ -207,6 +211,16 @@ class EditGame(
             GameWriteResult.NotFound -> GameCommandResult.GameNotFound
         }
     }
+}
+
+/**
+ * Sem valor e sem marca (app antigo, DEB-146): o jogo Sem diária continua Sem diária; o resto leva o padrão
+ * do grupo (valor ou marca; sem padrão, segue não definido).
+ */
+private fun EditGame.withFee(actor: UUID, groupId: UUID, game: Game, input: GameDraftInput): GameDraftInput = when {
+    input.gameFeeCents != null || input.noGameFee -> input
+    game.snapshot.noGameFee -> input.copy(noGameFee = true)
+    else -> groupDefaults(actor, groupId)?.let { input.copy(gameFeeCents = it.gameFeeCents, noGameFee = it.gameFeeCents == null && it.noGameFee) } ?: input
 }
 
 /** Dia, hora ou local: o que quem já respondeu precisa saber. Vagas, valor e recado não entram. */

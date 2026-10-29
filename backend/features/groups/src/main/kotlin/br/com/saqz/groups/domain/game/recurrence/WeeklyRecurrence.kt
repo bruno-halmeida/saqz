@@ -22,6 +22,8 @@ data class WeeklySlotRule(
     val confirmationLeadMinutes: Int,
     val gameFeeCents: Long? = null,
     val title: String,
+    /** "Sem diária" (DEB-146): os jogos que o horário cria copiam valor e marca. */
+    val noGameFee: Boolean = false,
 )
 
 data class WeeklySeriesRule(
@@ -133,6 +135,7 @@ object WeeklyRecurrenceResolver {
             if (slot.capacity !in minCapacity..GameCapacity.MAX) add(RecurrenceValidationError("slots[$index].capacity", "must be between $minCapacity and ${GameCapacity.MAX}"))
             if (slot.confirmationLeadMinutes !in 0..10080) add(RecurrenceValidationError("slots[$index].confirmationLeadMinutes", "must be between 0 and 10080"))
             if (slot.gameFeeCents != null && slot.gameFeeCents !in 1..99_999_999) add(RecurrenceValidationError("slots[$index].gameFeeCents", "must be between 1 and 99999999"))
+            if (slot.noGameFee && slot.gameFeeCents != null) add(RecurrenceValidationError("slots[$index].noGameFee", "must be false when gameFeeCents is present"))
         }
     }
 

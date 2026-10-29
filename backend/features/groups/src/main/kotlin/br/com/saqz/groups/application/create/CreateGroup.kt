@@ -46,6 +46,10 @@ class CreateGroup(
             if (profileValidation is GroupProfileDefaultsValidation.Valid &&
                 profileValidation.value.regularSlots.isNotEmpty() && profileValidation.value.defaultVenue == null
             ) add(GroupValidationError("defaultVenue", "is required when regularSlots are set"))
+            // Criar sem modo é Ordem de chegada: a opção do pagamento antecipado só existe na Escolha manual (DEB-150).
+            if (profile.advancePaymentRequired == true && profile.promotionMode == null) {
+                add(GroupValidationError("advancePaymentRequired", GroupProfileDefaultsValidator.ADVANCE_PAYMENT_NEEDS_MANUAL))
+            }
         }
         if (errors.isNotEmpty()) return CreateGroupResult.Invalid(errors)
 
