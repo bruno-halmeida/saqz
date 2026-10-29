@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
 
+import br.com.saqz.groups.resources.advance_payment_org_footer
 import br.com.saqz.groups.presentation.photo.MemberPhoto
 import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
@@ -270,6 +271,11 @@ internal fun GameWaitingList(state: GameDetailState, onIntent: (GameDetailIntent
     } else {
         state.waitlist.forEachIndexed { index, person -> WaitingRow(state, person, index, index > 0, onIntent) }
     }
+    if (state.receivePaymentFailed) {
+        Box(Modifier.padding(start = NoteStart, end = SaqzTheme.metrics.horizontalPadding, top = 8.dp)) {
+            WaitlistPaymentFailure(state)
+        }
+    }
     if (state.promotionFailed) {
         Text(
             text = stringResource(Res.string.game_waitlist_promotion_failed),
@@ -282,6 +288,8 @@ internal fun GameWaitingList(state: GameDetailState, onIntent: (GameDetailIntent
         text = stringResource(
             when {
                 state.header?.gameStarted == true -> Res.string.game_waitlist_reason_started
+                // PROM-010: com a linha do pagamento, a nota explica o Recebi.
+                state.isAdmin && state.waitlist.any { it.payment != null } -> Res.string.advance_payment_org_footer
                 state.promotionMode == PromotionMode.MANUAL && state.isAdmin -> Res.string.game_waitlist_note_organizer
                 state.promotionMode == PromotionMode.MANUAL -> Res.string.game_waitlist_reason_manual
                 else -> Res.string.game_waitlist_note_fifo
@@ -302,6 +310,32 @@ private fun WaitingRow(
     val reason = stringResource(Res.string.game_waitlist_promotion_reason)
     val section = state.positions.firstOrNull { it.position == person.athletePosition }
     val force = state.canForce(person)
+    val payment = person.payment
+    // PROM-010: com a linha do pagamento, o Colocar desce para ela (junto do Recebi) e a fileira fica só com o nome.
+    if (payment != null) {
+        Column {
+            PersonRow(
+                id = person.id,
+                name = person.name,
+                meta = personMeta(state, person.athletePosition, person.isMensalista, person.guest, confirmed = false),
+                number = stringResource(Res.string.game_queue_ordinal, queue),
+                isYou = person.isYou,
+                guest = person.guest != null,
+                divider = divider,
+                hasActions = person.canRemove || person.guest?.canRemove == true || force,
+                onIntent = onIntent,
+                photo = person.photo,
+            )
+            WaitlistPaymentLine(
+                state = state,
+                person = person,
+                payment = payment,
+                onIntent = onIntent,
+                modifier = Modifier.padding(start = NoteStart, end = SaqzTheme.metrics.horizontalPadding, bottom = SaqzTheme.metrics.grid),
+            )
+        }
+        return
+    }
     PersonRow(
         id = person.id,
         name = person.name,

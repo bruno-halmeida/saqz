@@ -149,4 +149,5 @@ private fun org.koin.core.scope.Scope.gameDetailViewModel(params: org.koin.core.
     pastGames = getOrNull(),
     whatsApp = getOrNull(),
     whatsAppAvailability = getOrNull(),
+    athleteFinance = getOrNull(),
 )

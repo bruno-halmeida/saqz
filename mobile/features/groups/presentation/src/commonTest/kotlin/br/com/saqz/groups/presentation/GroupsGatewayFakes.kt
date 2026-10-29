@@ -534,12 +534,19 @@ class FakeOrganizerFinanceGateway(
     override suspend fun generateMonthly(groupId: GroupId, command: MonthlyChargeCommand) =
         error("not used in this screen")
 
+    /** PROM-010: o Recebi da espera; `null` = a tela não usa. */
+    var updateStatusResult: SaqzResult<VersionedCharge, FinanceError>? = null
+    val statusCalls = mutableListOf<Triple<String, FinanceVersionToken, ChargeStatusCommand>>()
+
     override suspend fun updateChargeStatus(
         groupId: GroupId,
         chargeId: String,
         version: FinanceVersionToken,
         command: ChargeStatusCommand,
-    ) = error("not used in this screen") as SaqzResult<VersionedCharge, FinanceError>
+    ): SaqzResult<VersionedCharge, FinanceError> {
+        statusCalls += Triple(chargeId, version, command)
+        return updateStatusResult ?: error("not used in this screen")
+    }
 
     override suspend fun resolveChargeReview(groupId: GroupId, chargeId: String, version: FinanceVersionToken) =
         error("not used in this screen") as SaqzResult<VersionedCharge, FinanceError>

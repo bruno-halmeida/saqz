@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +28,8 @@ fun GameDetailRoot(
     onPickPosition: () -> Unit = {},
     /** "Histórico de respostas" do ⋯ (JOGO-012), com o subtítulo da barra. */
     onOpenHistory: (String) -> Unit = {},
+    /** PROM-010: o Pagar do avulso na espera (recebimento pelo app ativo), com o grupo. */
+    onPay: (groupId: String, groupName: String) -> Unit = { _, _ -> },
     mapPort: GroupMapPort = koinInject(),
     viewModel: GameDetailViewModel = koinViewModel(
         key = "game-detail/$groupId/$gameId",
@@ -33,6 +37,7 @@ fun GameDetailRoot(
     ),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val clipboard = LocalClipboardManager.current
     // Volta à tela (aba, filha, primeiro plano): recarga por baixo; a ViewModel ignora com carga em voo.
     RefreshWhenVisible { viewModel.onIntent(GameDetailIntent.Refresh) }
     ObserveAsEvents(viewModel.effects) { effect ->
@@ -42,6 +47,9 @@ fun GameDetailRoot(
             GameDetailEffect.Cancelled -> onCancel()
             GameDetailEffect.PickPosition -> onPickPosition()
             is GameDetailEffect.OpenHistory -> onOpenHistory(effect.subtitle)
+            // Copiar o Pix é área de transferência, não destino (como no grupo).
+            is GameDetailEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
+            is GameDetailEffect.OpenPayment -> onPay(effect.groupId, effect.groupName)
             // O mesmo caminho do "Ver no mapa" do grupo: falhar deixa o aviso colado na linha da quadra.
             is GameDetailEffect.OpenMap -> mapPort.open(venueMapUrl(effect.address)) { opened ->
                 if (!opened) viewModel.onIntent(GameDetailIntent.MapOpenFailed)

@@ -1400,6 +1400,8 @@ internal fun SaqzNavHost(
                         onOpenHistory = { subtitle ->
                             backStack.add(GroupsRoute.AttendanceHistory(route.groupId, route.gameId, subtitle))
                         },
+                        // PROM-010: o mesmo Pagar do grupo (Minhas cobranças).
+                        onPay = { groupId, groupName -> backStack.add(AthleteChargesRoute(groupId, groupName)) },
                     )
                 }
             },

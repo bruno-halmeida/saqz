@@ -163,6 +163,7 @@ internal fun GameDetailScreen(
         state.personActionsId?.let { GamePersonActionsSheet(state, it, onIntent) }
         if (state.cancelDialogOpen) GameDetailCancelSheet(state, onIntent)
         if (state.capacitySheetOpen) GameWaitlistCapacitySheet(state, onIntent)
+        if (state.advancePlaceRowId != null) AdvancePlaceSheet(state, onIntent)
         if (state.guest.sheetOpen) GameGuestAddSheet(state.guest, onIntent, positions = state.positions)
         state.positionPicker?.let { GamePositionPickerSheet(it, onIntent) }
         state.guest.removal?.let { GameGuestRemoveSheet(state.guest, it, onIntent) }

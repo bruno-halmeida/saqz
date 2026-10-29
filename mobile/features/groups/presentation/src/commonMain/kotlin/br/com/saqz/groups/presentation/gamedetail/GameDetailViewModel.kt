@@ -1,4 +1,5 @@
 package br.com.saqz.groups.presentation.gamedetail
+import br.com.saqz.groups.domain.attendance.WaitlistCharge
 import br.com.saqz.groups.presentation.ui.components.formatBrlShort
 import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
@@ -99,6 +100,8 @@ class GameDetailViewModel(
     /** Vínculo com o grupo do WhatsApp: ativo, o "Avisar" não some; sem as portas, vale só o pendente. */
     private val whatsApp: GroupWhatsAppGateway? = null,
     private val whatsAppAvailability: WhatsAppAvailability? = null,
+    /** PROM-010: a diária do avulso na espera (pagamento antecipado); sem a porta, a caixa mostra só o valor do jogo. */
+    private val athleteFinance: br.com.saqz.groups.domain.finance.AthleteFinanceGateway? = null,
 ) : MviViewModel<GameDetailState, GameDetailIntent, GameDetailEffect>(GameDetailState()) {
     private var loadGeneration = 0
     private var promotionGeneration = 0
@@ -125,6 +128,11 @@ class GameDetailViewModel(
     private var confirmationDeadline: Instant? = null
     private var startsAt: Instant? = null
     private var gameZoneId: String? = null
+    /** PROM-010: o grupo pede pagamento antecipado (valor do jogo na leitura) e o jogo tem valor. */
+    private var advancePayment = false
+    private var groupPixKey: String? = null
+    private var lastGame: Game? = null
+    private var groupReceivablesActive = false
     /** Início do rascunho que o servidor recusou publicar por cair além do fim do plano; outro início na recarga limpa o aviso. */
     private var publishRefusedStart: Instant? = null
     private var groupPromotionMode: PromotionMode = PromotionMode.FIFO
@@ -189,7 +197,17 @@ class GameDetailViewModel(
             }
             GameDetailIntent.ConfirmCancel -> cancel()
             GameDetailIntent.Publish -> publish()
-            is GameDetailIntent.Promote -> promote(intent.memberId, intent.reason, intent.guestSeq)
+            is GameDetailIntent.Promote -> promote(intent.memberId, intent.reason, intent.guestSeq, intent.markPaid)
+            is GameDetailIntent.ReceiveWaitlistPayment -> receiveWaitlistPayment(intent.rowId)
+            is GameDetailIntent.OpenAdvancePlace -> if (state.value.waitlist.any { it.id == intent.rowId && it.payment?.paid == false }) {
+                update { it.copy(advancePlaceRowId = intent.rowId) }
+            }
+            GameDetailIntent.DismissAdvancePlace -> update { it.copy(advancePlaceRowId = null) }
+            is GameDetailIntent.ConfirmAdvancePlace -> confirmAdvancePlace(intent.markPaid, intent.reason)
+            GameDetailIntent.CopyGroupPix -> state.value.advancePayment?.pixKey?.let { emit(GameDetailEffect.CopyPix(it)) }
+            GameDetailIntent.PayAdvance -> if (state.value.advancePayment?.payInApp == true) {
+                emit(GameDetailEffect.OpenPayment(groupId, groupName.orEmpty()))
+            }
             GameDetailIntent.OpenCapacitySheet -> openCapacitySheet()
             is GameDetailIntent.UpdateCapacity -> update {
                 it.copy(capacityDraft = intent.value.coerceIn(MIN_CAPACITY, MAX_CAPACITY), capacityFailed = false)
@@ -397,6 +415,8 @@ class GameDetailViewModel(
                         is SaqzResult.Failure -> showFailure(generation, groupResult.error.toUiError(), softRefresh)
                         is SaqzResult.Success -> {
                             groupName = groupResult.value.group.name
+                            groupPixKey = groupResult.value.group.profile?.pixKey?.takeIf(String::isNotBlank)
+                            groupReceivablesActive = groupResult.value.group.receivablesActive
                             if (groupResult.value.group.role != GroupRole.ATHLETE) loadWhatsApp(generation)
                             loadAttendance(
                                 generation,
@@ -442,10 +462,11 @@ class GameDetailViewModel(
      */
     private val GameDetailState.busy: Boolean
         get() {
-            val writing = cancelling || publishing || savingCapacity || promotingMemberId != null || response.responding
+            val writing = cancelling || publishing || savingCapacity || promotingMemberId != null || response.responding ||
+                receivingPaymentId != null
             val interacting = cancelDialogOpen || capacitySheetOpen || guest.sheetOpen || guest.removal != null ||
                 organizer.removal != null || organizer.placeOpen || positionPicker != null || gameMenuOpen ||
-                personActionsId != null
+                personActionsId != null || advancePlaceRowId != null
             return writing || interacting || guest.adding || guest.removing || organizer.removing || organizer.placing ||
                 reminder.sending || noShow.sendingId != null
         }
@@ -489,6 +510,8 @@ class GameDetailViewModel(
                 confirmationDeadline = runCatching { Instant.parse(game.confirmationDeadline) }.getOrNull()
                 startsAt = runCatching { Instant.parse(game.startsAt) }.getOrNull()
                 gameZoneId = game.zoneId
+                advancePayment = game.advancePaymentRequired && game.gameFeeCents != null
+                lastGame = game
                 val header = game.toHeader()
                 val open = header.confirmationOpen
                 val tone = header.statusTone
@@ -532,6 +555,7 @@ class GameDetailViewModel(
                     )
                 }
                 responseRetry.reset()
+                loadAdvancePayment(generation, game, detail.ownAttendance?.status)
             }
         }
     }
@@ -540,7 +564,53 @@ class GameDetailViewModel(
     private fun GameDetailState.canPromoteNow() =
         header?.statusTone == GameDetailStatusTone.Published && header.gameStarted.not()
 
-    private fun promote(memberId: String, reason: String, guestSeq: Int) {
+    /** A folha de "ainda não pagou": fecha e coloca, com ou sem a baixa da diária. */
+    private fun confirmAdvancePlace(markPaid: Boolean, reason: String) {
+        val rowId = state.value.advancePlaceRowId ?: return
+        val person = state.value.waitlist.firstOrNull { it.id == rowId }
+        update { it.copy(advancePlaceRowId = null) }
+        if (person == null) return
+        val hostId = person.guest?.hostId ?: person.id
+        promote(hostId, reason, person.guest?.guestSeq ?: 0, markPaid)
+    }
+
+    /**
+     * Recebi na espera (PROM-010): a rota de status de sempre com a `version` do `charge`. Um toque por vez (GER-001);
+     * conflito (outro gestor, outra aba) ou falha recarrega a espera.
+     */
+    private fun receiveWaitlistPayment(rowId: String) {
+        val current = state.value
+        val payment = current.waitlist.firstOrNull { it.id == rowId }?.payment ?: return
+        val finance = organizerFinance ?: return
+        if (!current.isAdmin || payment.paid || current.receivingPaymentId != null) return
+        val loadAtStart = loadGeneration
+        update { it.copy(receivingPaymentId = rowId, receivePaymentFailed = false) }
+        viewModelScope.launch {
+            val result = finance.updateChargeStatus(
+                GroupId(groupId),
+                payment.chargeId,
+                br.com.saqz.groups.domain.finance.FinanceVersionToken("\"${payment.version}\""),
+                br.com.saqz.groups.domain.finance.ChargeStatusCommand(br.com.saqz.groups.domain.finance.ChargeStatus.Paid),
+            )
+            if (loadAtStart != loadGeneration) return@launch
+            val conflict = result is SaqzResult.Failure &&
+                result.error == br.com.saqz.groups.domain.finance.FinanceError.Conflict
+            update {
+                it.copy(
+                    receivingPaymentId = null,
+                    receivePaymentFailed = result is SaqzResult.Failure && !conflict,
+                    waitlist = if (result is SaqzResult.Success) {
+                        it.waitlist.map { row ->
+                            if (row.id == rowId) row.copy(payment = row.payment?.copy(paid = true)) else row
+                        }
+                    } else it.waitlist,
+                )
+            }
+            refreshRoster(Operation.Promotion, promotionGeneration, loadAtStart)
+        }
+    }
+
+    private fun promote(memberId: String, reason: String, guestSeq: Int, markPaid: Boolean = false) {
         val current = state.value
         if (
             !current.isAdmin ||
@@ -572,7 +642,11 @@ class GameDetailViewModel(
             val result = attendanceGateway.promote(
                 GroupId(groupId),
                 gameId,
-                AttendancePromotionCommand(Uuid.random().toString(), memberId, reason, guestSeq),
+                AttendancePromotionCommand(
+                    Uuid.random().toString(), memberId, reason, guestSeq,
+                    markPaid = markPaid,
+                    paidMethod = br.com.saqz.groups.domain.finance.PaidMethod.Pix.takeIf { markPaid },
+                ),
             )
             if (!isCurrent(Operation.Promotion, generation, loadAtStart)) return@launch
             when (result) {
@@ -710,6 +784,10 @@ class GameDetailViewModel(
                             declinedRoster = roster.declined?.map { member -> member.toDeclined(byId[member.memberId]) },
                             response = it.response.reconcile(roster, it.mensalistaPriority),
                         )
+                    }
+                    // PROM-010: o Vou do avulso foi para a espera (ou saiu dela): a caixa de pagar acompanha.
+                    if (operation == Operation.Response) {
+                        lastGame?.let { game -> loadAdvancePayment(loadAtStart, game, state.value.response.status) }
                     }
                 }
             }
@@ -1129,7 +1207,42 @@ class GameDetailViewModel(
         canRemove = canRemoveMember(isAdmin, tone),
         isYou = !isGuest && memberId == selfId,
         photo = rosterPhoto(),
+        payment = charge?.takeIf { isAdmin && advancePayment }?.toPayment(hostDisplayName.takeIf { isGuest }),
     )
+
+    private fun WaitlistCharge.toPayment(hostName: String?): WaitlistPaymentUi? = when (status) {
+        br.com.saqz.groups.domain.finance.ChargeStatus.Pending ->
+            WaitlistPaymentUi(formatBrlShort(amountCents), paid = false, chargeId = id, version = version, hostName = hostName)
+        br.com.saqz.groups.domain.finance.ChargeStatus.Paid ->
+            WaitlistPaymentUi(formatBrlShort(amountCents), paid = true, chargeId = id, version = version, hostName = hostName)
+        else -> null
+    }
+
+    /**
+     * PROM-010: o avulso na espera de grupo com pagamento antecipado vê a caixa de pagar. A diária vem de Minhas
+     * cobranças (a nascida no Vou); sem ela, a caixa mostra o valor do jogo como pendente.
+     */
+    private fun loadAdvancePayment(generation: Int, game: Game, status: AttendanceStatus?) {
+        val fee = game.gameFeeCents
+        if (!advancePayment || fee == null || status != AttendanceStatus.Waitlisted ||
+            membershipType != AthleteMembershipType.AVULSO
+        ) {
+            update { it.copy(advancePayment = null) }
+            return
+        }
+        val pending = AdvancePaymentUi(formatBrlShort(fee), paid = false, pixKey = groupPixKey, payInApp = groupReceivablesActive)
+        update { it.copy(advancePayment = it.advancePayment ?: pending) }
+        val gateway = athleteFinance ?: return
+        viewModelScope.launch {
+            val charges = (gateway.ownCharges(GroupId(groupId)) as? SaqzResult.Success)?.value ?: return@launch
+            if (generation != loadGeneration) return@launch
+            val own = charges.charges.firstOrNull { it.gameId == gameId && it.guestDisplayName == null }
+            val paid = own?.status == br.com.saqz.groups.domain.finance.ChargeStatus.Paid
+            update {
+                it.copy(advancePayment = pending.copy(amount = formatBrlShort(own?.amountCents ?: fee), paid = paid))
+            }
+        }
+    }
 
     /** Quem não vai: só nome, posição e vínculo; ninguém mexe nessa lista. */
     private fun AttendanceRosterMember.toDeclined(athlete: AthleteRosterEntry?) = GameDetailConfirmedUi(

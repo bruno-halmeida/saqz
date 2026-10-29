@@ -346,6 +346,8 @@ private fun ColumnScope.GamePublishedBlock(
             ),
             tags = GameDetailHeroAttendanceTags,
         )
+        // PROM-010: o avulso na espera de grupo com pagamento antecipado vê quanto pagar e como.
+        state.advancePayment?.let { HeroAdvancePayment(it, onIntent) }
     }
     if (state.showsFeeNote && state.feeNoteAmount == null && header.canRespond) HeroFeeNote(GameDetailTags.FeeNote)
     if (state.canNotify) GameNotifyPanel(state, onIntent)

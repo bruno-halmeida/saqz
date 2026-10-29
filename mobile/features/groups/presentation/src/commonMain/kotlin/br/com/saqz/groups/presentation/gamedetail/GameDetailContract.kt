@@ -64,6 +64,13 @@ data class GameDetailState(
     val whatsAppGroupActive: Boolean = false,
     /** Avulso em jogo com taxa e respostas abertas: a nota da cobrança, como no grupo. */
     val showsFeeNote: Boolean = false,
+    /** PROM-010: a caixa de pagamento do avulso na espera; `null` fora dela. */
+    val advancePayment: AdvancePaymentUi? = null,
+    /** Linha da espera com o Recebi em voo: trava o toque duplo (GER-001). */
+    val receivingPaymentId: String? = null,
+    val receivePaymentFailed: Boolean = false,
+    /** Linha cujo Colocar abriu a folha de "ainda não pagou" (PROM-010). */
+    val advancePlaceRowId: String? = null,
     /** A diária já formatada ("R$ 20") para a linha antes do Vou (DEB-146); nula sem valor ou para quem não é avulso. */
     val feeNoteAmount: String? = null,
     /** Menu ⋯ da barra (dono/admin). */
@@ -323,6 +330,33 @@ data class GameDetailWaitlistUi(
     val isYou: Boolean = false,
     /** Foto de perfil (MEM-006); convidado nunca tem. */
     val photo: MemberPhoto? = null,
+    /** PROM-010: a linha do pagamento na espera do gestor (pagamento antecipado); `null` sem diária ou para o atleta. */
+    val payment: WaitlistPaymentUi? = null,
+)
+
+/**
+ * PROM-010 (prancha Antecipado-espera): "Pagou R$ 20" (verde) ou "Falta pagar R$ 20" com Recebi; convidado diz o
+ * nome do anfitrião, que é quem paga. [chargeId] e [version] vão no Recebi (rota de status, `If-Match`).
+ */
+@Immutable
+data class WaitlistPaymentUi(
+    val amount: String,
+    val paid: Boolean,
+    val chargeId: String,
+    val version: Long,
+    val hostName: String? = null,
+)
+
+/**
+ * PROM-010 (prancha Antecipado-avulso): o avulso na espera de grupo com pagamento antecipado. Pendente mostra
+ * "Pague R$ 20 para entrar" com Copiar o Pix do grupo ([pixKey]) ou, com recebimento pelo app, o Pagar.
+ */
+@Immutable
+data class AdvancePaymentUi(
+    val amount: String,
+    val paid: Boolean,
+    val pixKey: String? = null,
+    val payInApp: Boolean = false,
 )
 
 /** Por que "Tirar"/"Colocar" não deu certo: o jogo fechou para mudanças, ou uma falha qualquer (tentar de novo). */
@@ -459,7 +493,25 @@ sealed interface GameDetailIntent {
     data object ConfirmCancel : GameDetailIntent
     data object DismissCancel : GameDetailIntent
     data object Publish : GameDetailIntent
-    data class Promote(val memberId: String, val reason: String, val guestSeq: Int = 0) : GameDetailIntent
+    data class Promote(
+        val memberId: String,
+        val reason: String,
+        val guestSeq: Int = 0,
+        /** PROM-010 "Colocar, já pagou": dá baixa na diária na mesma transação. */
+        val markPaid: Boolean = false,
+    ) : GameDetailIntent
+
+    /** PROM-010: Recebi na linha da espera (pagamento antecipado). */
+    data class ReceiveWaitlistPayment(val rowId: String) : GameDetailIntent
+
+    /** PROM-010: Colocar quem não pagou abre a folha; as duas saídas mandam [Promote] com o `markPaid` certo. */
+    data class OpenAdvancePlace(val rowId: String) : GameDetailIntent
+    data object DismissAdvancePlace : GameDetailIntent
+    data class ConfirmAdvancePlace(val markPaid: Boolean, val reason: String) : GameDetailIntent
+
+    /** PROM-010: o avulso na espera copia o Pix do grupo ou abre o Pagar. */
+    data object CopyGroupPix : GameDetailIntent
+    data object PayAdvance : GameDetailIntent
     data object OpenCapacitySheet : GameDetailIntent
     data class UpdateCapacity(val value: Int) : GameDetailIntent
     data object SaveCapacity : GameDetailIntent
@@ -517,4 +569,10 @@ sealed interface GameDetailEffect {
 
     /** "Histórico de respostas" (JOGO-012): "Jogo de quinta, 22/10 · 20h00" vai para a barra da tela. */
     data class OpenHistory(val subtitle: String) : GameDetailEffect
+
+    /** PROM-010: Copiar o Pix do grupo (área de transferência, morre na Root). */
+    data class CopyPix(val key: String) : GameDetailEffect
+
+    /** PROM-010: o Pagar que já existe (recebimento pelo app ativo). */
+    data class OpenPayment(val groupId: String, val groupName: String) : GameDetailEffect
 }
