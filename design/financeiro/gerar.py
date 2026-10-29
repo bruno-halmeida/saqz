@@ -991,9 +991,9 @@ def board_espera_org(with_sheet=False):
         inner += sheet([
             f'<div style="display: flex; flex-direction: column; gap: 4px;"><h2 style="margin: 0; font-size: 20px; '
             f'line-height: 26px; font-weight: 700; color: {NAVY};">Rafa ainda não pagou</h2>'
-            f'{support("Diária de R$ 20. Como você quer colocar o Rafa?")}</div>',
+            f'{support("Diária de R$ 20. Como você quer colocar Rafa?")}</div>',
             f'<div style="display: flex; flex-direction: column; gap: 8px;">'
-            f'{btn("Colocar, ele já pagou", "primary", "lg", full=True)}'
+            f'{btn("Colocar, já pagou", "primary", "lg", full=True)}'
             f'{support("Marca os R$ 20 como recebidos.", center=True)}</div>',
             f'<div style="display: flex; flex-direction: column; gap: 8px;">'
             f'{btn("Colocar e cobrar depois", "secondary", "lg", full=True)}'

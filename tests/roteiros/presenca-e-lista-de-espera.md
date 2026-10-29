@@ -265,7 +265,7 @@ _Decidida em 28 e 29/10/2026 (DEB-150, pagamento antecipado): rodar só depois d
 | Caso | Resultado | iOS | Android |
 | --- | --- | --- | --- |
 | Pagamento antecipado ligado, espera do organizador | Cada pessoa com "Pagou R$ 20" ou "Falta pagar R$ 20" | ☐ | ☐ |
-| Colocar quem não pagou | Folha "Colocar, ele já pagou" ou "Colocar e cobrar depois" (PROM-010) | ☐ | ☐ |
+| Colocar quem não pagou | Folha "Colocar, já pagou" ou "Colocar e cobrar depois" (PROM-010) | ☐ | ☐ |
 
 ## PROM-005 · O job do prazo [MULTI]
 
@@ -335,7 +335,7 @@ _Decidida em 28 e 29/10/2026 (DEB-150, pagamento antecipado): rodar só depois d
 | Jogo Sem diária | Escolha manual comum, sem aviso nem diária | ☐ | ☐ |
 | Organizador marca Recebi na espera | Linha vira "Pagou R$ 20"; entra no caixa | ☐ | ☐ |
 | Colocar quem pagou | Confirmado, sem segunda diária | ☐ | ☐ |
-| Colocar quem não pagou, "Colocar, ele já pagou" | Diária recebida e pessoa confirmada | ☐ | ☐ |
+| Colocar quem não pagou, "Colocar, já pagou" | Diária recebida e pessoa confirmada | ☐ | ☐ |
 | Colocar quem não pagou, "Colocar e cobrar depois" | Pessoa confirmada; diária pendente | ☐ | ☐ |
 | Avulso diz "Não vou" depois de pagar | Diária recebida continua; acerto mostra "Desistiu" | ☐ | ☐ |
 | Avulso fica na espera até o início | Diária continua como estava; acerto mostra "Não liberado" | ☐ | ☐ |
