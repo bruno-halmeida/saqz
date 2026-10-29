@@ -44,6 +44,7 @@ class JdbcChargeTransactionRepository(dataSource:DataSource, private val electro
         if(updated==1)event(find(charge.id)!!,ChargeStatus.PENDING,ChargeStatus.PAID,actorId,at)
         return find(charge.id)?:charge
     }
+    override fun findGameCharge(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int):Charge?=findGame(groupId,gameId,memberId,guestSeq)
     override fun billsGameCharge(groupId:UUID,memberId:UUID,guestSeq:Int):Boolean{
         if(guestSeq>0)return true
         return jdbc.sql("SELECT membership_type FROM group_memberships WHERE group_id=:group AND user_id=:member").param("group",groupId).param("member",memberId).query(String::class.java).optional().orElse(null)!="MENSALISTA"

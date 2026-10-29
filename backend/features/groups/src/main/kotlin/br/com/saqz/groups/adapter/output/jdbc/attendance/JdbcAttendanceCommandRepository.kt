@@ -1,5 +1,8 @@
 package br.com.saqz.groups.adapter.output.jdbc.attendance
 
+import br.com.saqz.groups.domain.finance.charge.PaidMethod
+import br.com.saqz.groups.application.attendance.RosterCharge
+
 import br.com.saqz.groups.application.attendance.*
 import br.com.saqz.groups.application.finance.charge.*
 import br.com.saqz.groups.domain.AthleteMembershipType
@@ -424,6 +427,9 @@ class JdbcAttendanceCommandRepository(
                     rs.position("position"),
                     rs.getBoolean("forced"),
                     rs.getBoolean("no_show"),
+                    rs.getObject("charge_id", UUID::class.java)?.let { id ->
+                        RosterCharge(id, rs.getString("charge_status"), rs.getLong("charge_amount_cents"), rs.getLong("charge_version"))
+                    },
                 )
             }
             .list()
@@ -482,10 +488,11 @@ class JdbcAttendanceCommandRepository(
         val position: AthletePosition?,
         val forced: Boolean,
         val noShow: Boolean,
+        val charge: RosterCharge?,
     ) {
         fun member(position: Long? = waitlistSequence) = AttendanceRosterMember(
             requireNotNull(memberId), requireNotNull(displayName), position, guestSeq, hostDisplayName,
-            this.position, forced, noShow,
+            this.position, forced, noShow, charge,
         )
     }
 
@@ -530,6 +537,7 @@ class JdbcAttendanceCommandRepository(
             position = current?.position,
             profilePosition = rs.position("profile_position"),
             profileSecondaryPosition = rs.position("profile_secondary_position"),
+            advancePaymentRequired = rs.getBoolean("advance_payment_required"),
         )
     }
 
@@ -537,7 +545,7 @@ class JdbcAttendanceCommandRepository(
         const val AGGREGATE = """
             SELECT g.id,g.group_id,g.status AS game_status,g.confirmation_deadline,g.starts_at,g.capacity,
                    g.game_fee_cents,g.local_date,target.user_id AS target_user_id,target.membership_type,
-                   ag.mensalista_priority,ag.promotion_mode,
+                   ag.mensalista_priority,ag.promotion_mode,ag.advance_payment_required,
                    :actor::uuid AS actor_id,
                    CASE WHEN ag.owner_user_id=:actor THEN 'OWNER' ELSE actor.role::text END AS actor_role,
                    a.status AS attendance_status,a.waitlist_sequence,a.responded_at,
@@ -746,13 +754,18 @@ class JdbcAttendanceCommandRepository(
                    -- PRES-016: a falta só vai para dono e admin; para os outros a pessoa segue em "Jogaram".
                    (a.no_show_marked_at IS NOT NULL
                        AND (ag.owner_user_id=:actor OR member.role::text IN ('OWNER','ADMIN'))) AS no_show,
-                   CASE WHEN a.guest_seq>0 THEN ${PersonNameSql.member("a.group_id", "a.member_user_id")} END AS host_display_name
+                   CASE WHEN a.guest_seq>0 THEN ${PersonNameSql.member("a.group_id", "a.member_user_id")} END AS host_display_name,
+                   ch.id AS charge_id,ch.status::text AS charge_status,ch.amount_cents AS charge_amount_cents,ch.version AS charge_version
             FROM games g
             JOIN access_groups ag ON ag.id=g.group_id AND ag.deleted_at IS NULL
             LEFT JOIN group_memberships member ON member.group_id=g.group_id AND member.user_id=:actor
             LEFT JOIN game_attendance a ON a.game_id=g.id AND a.group_id=g.group_id
                 AND a.status IN ('CONFIRMED','WAITLISTED')
             LEFT JOIN group_memberships m ON m.group_id=a.group_id AND m.user_id=a.member_user_id
+            -- PROM-010: a diária de quem espera, só para dono e admin ("Pagou R$ 20" / "Falta pagar R$ 20").
+            LEFT JOIN group_charges ch ON ch.kind='GAME' AND ch.group_id=g.group_id AND ch.game_id=g.id
+                AND ch.member_user_id=a.member_user_id AND ch.guest_seq=a.guest_seq AND a.status='WAITLISTED'
+                AND (ag.owner_user_id=:actor OR member.role::text IN ('OWNER','ADMIN'))
             WHERE g.group_id=:group AND g.id=:game
               AND (ag.owner_user_id=:actor OR member.user_id IS NOT NULL)
             ORDER BY CASE
@@ -781,7 +794,15 @@ class AttendanceChargeAdapter(private val charges: ChargeTransactions) : Attenda
     override fun guestRemoved(aggregate: AttendanceAggregate, actorId: UUID) =
         charges.cancelGuest(aggregate.groupId, aggregate.gameId, aggregate.memberId, aggregate.guestSeq, actorId)
 
-    private fun charge(aggregate: AttendanceAggregate, actorId: UUID, outcome: AttendanceBillingOutcome) {
+    override fun waitlisted(aggregate: AttendanceAggregate, actorId: UUID) {
+        if (aggregate.advancePaymentRequired) charge(aggregate, actorId, AttendanceBillingOutcome.WAITLISTED, advancePayment = true)
+    }
+
+    override fun settle(aggregate: AttendanceAggregate, method: PaidMethod, actorId: UUID) {
+        charges.settleGame(aggregate.groupId, aggregate.gameId, aggregate.memberId, aggregate.guestSeq, method, actorId)
+    }
+
+    private fun charge(aggregate: AttendanceAggregate, actorId: UUID, outcome: AttendanceBillingOutcome, advancePayment: Boolean = false) {
         charges.attendance(
             GameChargeInput(
                 aggregate.groupId,
@@ -791,6 +812,7 @@ class AttendanceChargeAdapter(private val charges: ChargeTransactions) : Attenda
                 aggregate.gameDate,
                 outcome,
                 guestSeq = aggregate.guestSeq,
+                advancePayment = advancePayment,
             ),
             actorId,
         )

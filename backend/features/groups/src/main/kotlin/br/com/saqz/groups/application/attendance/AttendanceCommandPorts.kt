@@ -6,6 +6,7 @@ import br.com.saqz.groups.domain.AthleteMembershipType
 import br.com.saqz.groups.domain.GroupRole
 import br.com.saqz.groups.domain.game.GameStatus
 import br.com.saqz.groups.domain.group.PromotionMode
+import br.com.saqz.groups.domain.finance.charge.PaidMethod
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -36,6 +37,8 @@ data class AttendanceAggregate(
     val position: AthletePosition? = null,
     val profilePosition: AthletePosition? = null,
     val profileSecondaryPosition: AthletePosition? = null,
+    /** Vaga só com pagamento antecipado (DEB-150): a diária nasce também no "Vou" que cai na espera. */
+    val advancePaymentRequired: Boolean = false,
 )
 
 data class AttendanceRecord(
@@ -120,6 +123,10 @@ fun interface AttendanceChargePort {
     fun confirmed(aggregate: AttendanceAggregate, actorId: UUID)
     fun promoted(aggregate: AttendanceAggregate, actorId: UUID) = confirmed(aggregate, actorId)
     fun guestRemoved(aggregate: AttendanceAggregate, actorId: UUID) {}
+    /** Entrou na espera (PROM-010): com o pagamento antecipado ligado, a diária nasce já aqui. */
+    fun waitlisted(aggregate: AttendanceAggregate, actorId: UUID) {}
+    /** "Colocar, já pagou" (PROM-010): baixa na diária do jogo, na transação da promoção; recebida fica como está. */
+    fun settle(aggregate: AttendanceAggregate, method: PaidMethod, actorId: UUID) {}
 }
 
 data class CapacityAggregate(
@@ -179,7 +186,11 @@ data class AttendanceRosterMember(
     val forced: Boolean = false,
     /** Marcado como falta no jogo encerrado (PRES-016); só vem verdadeiro para dono e admin. */
     val noShow: Boolean = false,
+    /** Diária de quem espera (PROM-010); só para dono e admin, nula sem diária daquele jogo. */
+    val charge: RosterCharge? = null,
 )
+
+data class RosterCharge(val id: UUID, val status: String, val amountCents: Long, val version: Long)
 
 /**
  * [waitlisted] traz a posição na fila de cada um: com posições é a vez na fila da própria posição (DEB-102);

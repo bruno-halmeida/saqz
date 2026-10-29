@@ -1,5 +1,7 @@
 package br.com.saqz.groups.adapter.input.http
 
+import br.com.saqz.groups.domain.finance.charge.PaidMethod
+
 import br.com.saqz.groups.application.photo.MemberPhotoDirectory
 import br.com.saqz.groups.application.photo.NoMemberPhotos
 import br.com.saqz.groups.application.photo.tagsOf
@@ -40,6 +42,9 @@ data class AttendancePromotionRequest @JsonCreator constructor(
     @JsonProperty("memberId") val memberId: UUID?,
     @JsonProperty("reason") val reason: String?,
     @JsonProperty("guestSeq") val guestSeq: Int? = null,
+    // PROM-010, aditivo: "Colocar, já pagou" dá baixa na diária na mesma transação (PIX se o meio faltar).
+    @JsonProperty("markPaid") val markPaid: Boolean? = null,
+    @JsonProperty("paidMethod") val paidMethod: String? = null,
 )
 data class CapacityRequest @JsonCreator constructor(
     @JsonProperty("requestId") val requestId: UUID?,
@@ -94,7 +99,10 @@ data class AttendanceRosterMemberResponse(
     val photoTag: String? = null,
     /** PRES-016: confirmou e não apareceu. Só dono e admin recebem verdadeiro; campo novo, apps antigos ignoram. */
     val noShow: Boolean = false,
+    /** PROM-010: a diária de quem espera, só para dono e admin; nula sem diária e sempre nula para o atleta. */
+    val charge: RosterChargeResponse? = null,
 )
+data class RosterChargeResponse(val id: UUID, val status: String, val amountCents: Long, val version: Long)
 data class AttendanceRosterResponse(
     val confirmed: List<AttendanceRosterMemberResponse>,
     val waitlisted: List<AttendanceRosterMemberResponse>,
@@ -205,9 +213,15 @@ class AttendanceController(
     ): ResponseEntity<AttendanceMutationResponse> {
         val member = required(request.memberId, "memberId")
         val requestId = required(request.requestId, "requestId")
+        val method = request.paidMethod?.let {
+            runCatching { PaidMethod.valueOf(it) }.getOrNull() ?: throw InvalidGroupRequestException(mapOf("paidMethod" to listOf("is invalid")))
+        }
         val actor = actors.resolve(identity)
         return mutation(
-            responses.promote(actor, uuid(groupId), uuid(gameId), member, requestId, request.reason, guestSeq = request.guestSeq ?: 0),
+            responses.promote(
+                actor, uuid(groupId), uuid(gameId), member, requestId, request.reason, guestSeq = request.guestSeq ?: 0,
+                markPaid = request.markPaid == true, paidMethod = method,
+            ),
             actor, uuid(groupId), uuid(gameId),
         )
     }
@@ -335,6 +349,7 @@ private fun AttendanceRosterMember.response(tags: Map<UUID, String>) = Attendanc
     memberId, displayName, waitlistPosition, guestSeq, hostDisplayName, position?.name, forced,
     photoTag = tags[memberId].takeIf { guestSeq == 0 },
     noShow = noShow,
+    charge = charge?.let { RosterChargeResponse(it.id, it.status, it.amountCents, it.version) },
 )
 private fun AttendanceRoster.response(tags: Map<UUID, String>) = AttendanceRosterResponse(
     confirmed.map { it.response(tags) }, waitlisted.map { it.response(tags) }, positions.summary(), declined.map { it.response(tags) },

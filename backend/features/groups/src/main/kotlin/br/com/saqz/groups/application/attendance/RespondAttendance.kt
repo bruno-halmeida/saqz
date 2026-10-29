@@ -1,5 +1,7 @@
 package br.com.saqz.groups.application.attendance
 
+import br.com.saqz.groups.domain.finance.charge.PaidMethod
+
 import br.com.saqz.groups.application.communication.FirstConfirmationNotice
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.AthletePosition
@@ -93,6 +95,9 @@ class RespondAttendance(
         requestId: UUID,
         reason: String?,
         guestSeq: Int = 0,
+        /** "Colocar, já pagou" (PROM-010): promove e dá baixa na diária na mesma transação. */
+        markPaid: Boolean = false,
+        paidMethod: PaidMethod? = null,
     ): AttendanceCommandResult = transaction.inTransaction {
         repository.findPromotionReplay(groupId, gameId, actorId, requestId)?.let {
             return@inTransaction it.result()
@@ -130,7 +135,11 @@ class RespondAttendance(
                 scoped.current?.takeIf { result.reason == AttendanceDenial.NOT_WAITLISTED && it.status == AttendanceStatus.CONFIRMED }
                     ?.let { AttendanceCommandResult.Success(it) }
                     ?: AttendanceCommandResult.Denied(result.reason)
-            is AttendancePromotionResult.Success -> result.result()
+            is AttendancePromotionResult.Success -> {
+                // A diária já existe (do "Vou") ou acabou de nascer na promoção; sem valor ou mensalista, não há o que baixar.
+                if (markPaid) charges.settle(scoped, paidMethod ?: PaidMethod.PIX, actorId)
+                result.result()
+            }
         }
     }
 
@@ -184,6 +193,10 @@ class RespondAttendance(
             firstConfirmation.confirmed(aggregate.groupId, aggregate.gameId, aggregate.memberId, event.id)
         }
         if (decision.createGameCharge) charges.confirmed(aggregate, aggregate.actorId)
+        // Pagamento antecipado (DEB-150): quem entra na espera já ganha a diária; quem já esperava, não.
+        if (decision.newStatus == AttendanceStatus.WAITLISTED && decision.oldStatus != AttendanceStatus.WAITLISTED) {
+            charges.waitlisted(aggregate, aggregate.actorId)
+        }
         val leaving = decision.newStatus == AttendanceStatus.DECLINED
         val wasConfirmed = decision.oldStatus == AttendanceStatus.CONFIRMED
         if (leaving && wasConfirmed && aggregate.guestSeq > 0) charges.guestRemoved(aggregate, aggregate.actorId)
