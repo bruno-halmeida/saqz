@@ -38,6 +38,12 @@ class JdbcChargeTransactionRepository(dataSource:DataSource, private val electro
         jdbc.sql("UPDATE group_charges SET status='CANCELLED',changed_by_user_id=:actor,version=version+1,updated_at=:now WHERE id=:id").param("actor",actorId).param("now",Timestamp.from(now)).param("id",id).update()
         event(find(id)!!,ChargeStatus.PENDING,ChargeStatus.CANCELLED,actorId,now)
     }
+    override fun settleGameCharge(charge:Charge,method:PaidMethod,actorId:UUID,at:Instant):Charge{
+        val updated=jdbc.sql("UPDATE group_charges SET status='PAID',paid_method=:method,changed_by_user_id=:actor,version=version+1,updated_at=now() WHERE id=:id AND status='PENDING' AND electronic_order_id IS NULL AND settled_by IS NULL").param("method",method.name,Types.OTHER).param("actor",actorId).param("id",charge.id).update()
+        // O evento PAID leva a data do recebimento: é por ela que a diária entra no caixa e no extrato.
+        if(updated==1)event(find(charge.id)!!,ChargeStatus.PENDING,ChargeStatus.PAID,actorId,at)
+        return find(charge.id)?:charge
+    }
     override fun billsGameCharge(groupId:UUID,memberId:UUID,guestSeq:Int):Boolean{
         if(guestSeq>0)return true
         return jdbc.sql("SELECT membership_type FROM group_memberships WHERE group_id=:group AND user_id=:member").param("group",groupId).param("member",memberId).query(String::class.java).optional().orElse(null)!="MENSALISTA"

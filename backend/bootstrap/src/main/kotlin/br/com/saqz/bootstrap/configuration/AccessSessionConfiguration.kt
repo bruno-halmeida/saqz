@@ -1057,6 +1057,13 @@ class AccessSessionConfiguration {
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)
+    // Diária retroativa (DEB-147, FIN-016).
+    @Bean fun unchargedReview(transaction: JdbcTransactionRunner, dataSource: DataSource, charges: ChargeTransactions, lookup: JdbcChargeManagementRepository) =
+        br.com.saqz.groups.application.finance.uncharged.UnchargedReview(
+            transaction, br.com.saqz.groups.adapter.output.jdbc.finance.JdbcUnchargedRepository(dataSource), charges, lookup, Instant::now,
+        )
+    @Bean fun unchargedController(actor: VerifiedGroupActorResolver, review: br.com.saqz.groups.application.finance.uncharged.UnchargedReview) =
+        br.com.saqz.groups.adapter.input.http.UnchargedController(actor, review)
     @Bean fun expenseRepository(dataSource: DataSource) = JdbcExpenseRepository(dataSource)
     @Bean fun expenseService(transaction: JdbcTransactionRunner, repository: JdbcExpenseRepository) = ExpenseService(transaction, repository, java.util.UUID::randomUUID, Instant::now)
     @Bean fun expenseController(actor: VerifiedGroupActorResolver, expenses: ExpenseService, charges: ChargeManagement) = ExpenseController(actor, expenses, charges)

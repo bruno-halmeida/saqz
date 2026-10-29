@@ -2,6 +2,7 @@ package br.com.saqz.groups.application.finance.charge
 
 import br.com.saqz.groups.application.create.TransactionRunner
 import br.com.saqz.groups.domain.finance.charge.Charge
+import br.com.saqz.groups.domain.finance.charge.PaidMethod
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -22,6 +23,8 @@ interface ChargeTransactionRepository{
     fun members(groupId:UUID):GroupMembers?
     fun createMonthlyCharge(command:MonthlyGenerationCommand,memberId:UUID,now:Instant):Charge
     fun cancelGuestCharge(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int,actorId:UUID,now:Instant){}
+    /** Dá baixa manual numa diária pendente (Recebi na mesma transação); a recebida, dispensada ou paga pelo app volta como está. */
+    fun settleGameCharge(charge:Charge,method:PaidMethod,actorId:UUID,at:Instant):Charge=charge
 }
 class ChargeTransactions(private val transaction:TransactionRunner,private val repository:ChargeTransactionRepository,private val now:()->Instant,private val writeAccess:GroupWriteAccess){
     constructor(transaction:TransactionRunner,repository:ChargeTransactionRepository,now:()->Instant):this(transaction,repository,now,GroupWriteAccess.Unrestricted)
@@ -30,6 +33,19 @@ class ChargeTransactions(private val transaction:TransactionRunner,private val r
         if(input.outcome !in setOf(AttendanceBillingOutcome.CONFIRMED,AttendanceBillingOutcome.PROMOTED)||input.gameFeeCents==null)return@inTransaction null
         if(!repository.billsGameCharge(input.groupId,input.memberId,input.guestSeq))return@inTransaction null
         repository.createGameCharge(input,actorId,now())
+    }
+    /**
+     * Diária retroativa (FIN-016): a mesma inserção de sempre (uma por pessoa e jogo, valor do atleta com recebimento
+     * ativo), sem conferir presença nem vínculo, que quem chama já conferiu. Com [paid], nasce recebida em [paidAt].
+     */
+    fun retroactive(input:GameChargeInput,actorId:UUID,paid:PaidMethod?,paidAt:Instant):Charge=transaction.inTransaction{
+        writeAccess.requireWrite(input.groupId)
+        val charge=repository.createGameCharge(input,actorId,now())
+        if(paid==null)charge else repository.settleGameCharge(charge,paid,actorId,paidAt)
+    }
+    /** Pagamento antecipado (PROM-010): dá baixa na diária existente do jogo (Colocar, já pagou), na transação de quem chama. */
+    fun settle(charge:Charge,method:PaidMethod,actorId:UUID):Charge=transaction.inTransaction{
+        writeAccess.requireWrite(charge.groupId);repository.settleGameCharge(charge,method,actorId,now())
     }
     fun cancelGame(groupId:UUID,gameId:UUID,actorId:UUID)=transaction.inTransaction{writeAccess.requireWrite(groupId);repository.reconcileGameCancellation(groupId,gameId,actorId,now())}
     fun cancelGuest(groupId:UUID,gameId:UUID,memberId:UUID,guestSeq:Int,actorId:UUID)=transaction.inTransaction{
