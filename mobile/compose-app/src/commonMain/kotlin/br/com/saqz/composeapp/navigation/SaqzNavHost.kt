@@ -933,6 +933,9 @@ internal fun SaqzNavHost(
                             backStack.add(FinanceRoute.NewEntry(groupId, NewEntryPrefill.GameCourt(localDate)))
                         },
                         onOpenCashbox = { groupId -> backStack.add(FinanceRoute.GroupCashbox(groupId)) },
+                        onOpenUnchargedReview = { groupId, gameId ->
+                            backStack.add(FinanceRoute.UnchargedReview(groupId, gameId))
+                        },
                     )
                 }
                 entry<SubscriptionsRoute.MyPlan> {

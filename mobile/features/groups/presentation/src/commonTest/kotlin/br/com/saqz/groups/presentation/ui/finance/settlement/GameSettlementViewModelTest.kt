@@ -1,5 +1,9 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
+import br.com.saqz.groups.presentation.FakeCashboxGateway
+import br.com.saqz.groups.port.GroupNowPort
+import kotlin.time.Instant
+
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
@@ -241,6 +245,8 @@ class GameSettlementViewModelTest {
                 rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-host"))),
             ),
             organizerFinanceGateway = finance,
+            cashboxGateway = FakeCashboxGateway(),
+            now = GroupNowPort { Instant.parse("2026-08-20T12:00:00Z") },
         )
 
         val diarists = viewModel.state.value.diarists
@@ -280,6 +286,8 @@ class GameSettlementViewModelTest {
                 rosterResult = SaqzResult.Success(listOf(sampleRosterEntry("member-host"))),
             ),
             organizerFinanceGateway = finance,
+            cashboxGateway = FakeCashboxGateway(),
+            now = GroupNowPort { Instant.parse("2026-08-20T12:00:00Z") },
         )
 
         assertEquals(1, viewModel.state.value.monthlyMemberCount)
@@ -853,6 +861,102 @@ class GameSettlementViewModelTest {
 
     private fun reviewCharges() = charges().map { if (it.id == "game-paid") it.copy(reviewRequired = true) else it }
 
+    @Test
+    fun `header has the weekday date the time and venue and the completed kicker`() = runTest {
+        val state = viewModel(SettlementFinanceGateway(charges(), expenses())).state.value
+
+        assertEquals("Terça, 04/08", state.header?.title)
+        assertEquals("19h30 · CERET — Quadra 2", state.header?.meta)
+        assertTrue(state.header?.completed == true)
+    }
+
+    @Test
+    fun `waitlisted diary is not released after the start and waiting before it`() = runTest {
+        val waitlisted = charges().map { if (it.id == "game-pending") it.copy(waitlisted = true) else it }
+        val after = viewModel(SettlementFinanceGateway(waitlisted, expenses())).state.value
+        val before = viewModel(
+            SettlementFinanceGateway(waitlisted, expenses()),
+            clock = GroupNowPort { Instant.parse("2020-01-01T00:00:00Z") },
+        ).state.value
+
+        assertEquals(NotPlayedReason.NotReleased, after.notPlayed.single().notPlayed)
+        assertEquals(NotPlayedReason.Waiting, before.notPlayed.single().notPlayed)
+        assertEquals(listOf("game-paid"), after.played.map { it.chargeId })
+        assertTrue(after.notPlayed.single().waivable)
+        assertEquals(0L, after.playedPendingCents)
+        assertTrue(after.playedDebtors.isEmpty())
+    }
+
+    @Test
+    fun `withdrew diary goes to not played as withdrew`() = runTest {
+        val state = viewModel(SettlementFinanceGateway(withdrewCharges(), expenses())).state.value
+
+        assertEquals(NotPlayedReason.Withdrew, state.notPlayed.single().notPlayed)
+        assertEquals(1, state.playedChargeCount)
+        assertEquals(1, state.playedPaidCount)
+    }
+
+    @Test
+    fun `uncharged people become the section with skip and no show and count only who is still to decide`() = runTest {
+        val cashbox = FakeCashboxGateway(
+            unchargedResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.finance.UnchargedList(
+                    gameId = "game-1",
+                    suggestedAmountCents = 2_000L,
+                    people = listOf(
+                        uncharged("caio", "Caio Lima"),
+                        uncharged("julia", "Júlia Rocha", guestSeq = 1, host = "Bia Souza"),
+                        uncharged("marcos", "Marcos Lima", noShow = true),
+                        uncharged("rafa", "Rafa Nunes", leftGroup = true, skip = true),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = viewModel(SettlementFinanceGateway(charges(), expenses()), cashbox = cashbox)
+        val state = viewModel.state.value
+
+        assertEquals(3, state.unchargedPending)
+        assertEquals(
+            listOf("Avulso", "Convite de Bia Souza", "Avulso", "Avulso · saiu do grupo"),
+            state.uncharged.map { it.meta },
+        )
+        assertTrue(state.uncharged[3].skipped)
+        assertTrue(state.uncharged[2].noShow)
+
+        viewModel.onIntent(GameSettlementIntent.ReviewUncharged)
+        assertEquals(GameSettlementEffect.OpenUnchargedReview("group-1", "game-1"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `without uncharged people there is nothing to review`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(charges(), expenses()))
+
+        assertEquals(0, viewModel.state.value.unchargedPending)
+        viewModel.onIntent(GameSettlementIntent.ReviewUncharged)
+        viewModel.onIntent(GameSettlementIntent.OpenCourtExpense)
+        assertEquals(GameSettlementEffect.OpenNewEntry("group-1", "2026-08-04"), viewModel.effects.first())
+    }
+
+    private fun uncharged(
+        id: String,
+        name: String,
+        guestSeq: Int = 0,
+        host: String? = null,
+        noShow: Boolean = false,
+        leftGroup: Boolean = false,
+        skip: Boolean = false,
+    ) = br.com.saqz.groups.domain.finance.UnchargedPerson(
+        memberId = id,
+        guestSeq = guestSeq,
+        displayName = name,
+        hostDisplayName = host,
+        kind = if (host != null) br.com.saqz.groups.domain.finance.UnchargedKind.Guest
+        else br.com.saqz.groups.domain.finance.UnchargedKind.Avulso,
+        noShow = noShow,
+        leftGroup = leftGroup,
+        decision = if (skip) br.com.saqz.groups.domain.finance.UnchargedDecision.Skip else null,
+    )
+
     private fun viewModel(
         finance: SettlementFinanceGateway,
         group: br.com.saqz.groups.domain.group.Group = sampleGroup(
@@ -863,6 +967,8 @@ class GameSettlementViewModelTest {
             venue = br.com.saqz.groups.domain.game.GameVenue("venue", "CERET", "Rua", "Quadra 2"),
         ),
         pedroNoShow: Boolean = false,
+        cashbox: FakeCashboxGateway = FakeCashboxGateway(),
+        clock: GroupNowPort = GroupNowPort { Instant.parse("2026-08-20T12:00:00Z") },
     ) = GameSettlementViewModel(
         groupId = "group-1",
         gameId = "game-1",
@@ -894,6 +1000,8 @@ class GameSettlementViewModelTest {
             ),
         ),
         organizerFinanceGateway = finance,
+        cashboxGateway = cashbox,
+        now = clock,
     )
 
     /** Pedro confirmou, não apareceu e a diária dele segue pendente (PRES-016). */

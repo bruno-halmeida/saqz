@@ -15,7 +15,15 @@ import br.com.saqz.groups.domain.athlete.AthleteRosterFilter
 import br.com.saqz.groups.domain.attendance.AttendanceError
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
+import br.com.saqz.groups.domain.finance.CashboxGateway
 import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.domain.finance.UnchargedKind
+import br.com.saqz.groups.domain.finance.UnchargedList
+import br.com.saqz.groups.domain.finance.UnchargedDecision
+import br.com.saqz.groups.domain.game.GameStatus
+import br.com.saqz.groups.port.GroupNowPort
+import br.com.saqz.groups.presentation.ui.finance.formatBrlShort
+import br.com.saqz.groups.presentation.ui.finance.weekdayDayMonth
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.ChargeStatusCommand
@@ -45,6 +53,8 @@ class GameSettlementViewModel(
     private val attendanceGateway: AttendanceGateway,
     private val athleteGateway: AthleteGateway,
     private val organizerFinanceGateway: OrganizerFinanceGateway,
+    private val cashboxGateway: CashboxGateway,
+    private val now: GroupNowPort,
 ) : MviViewModel<GameSettlementState, GameSettlementIntent, GameSettlementEffect>(GameSettlementState()) {
 
     private var loadGeneration = 0L
@@ -89,6 +99,16 @@ class GameSettlementViewModel(
             }
             GameSettlementIntent.EndSettlement -> endSettlement()
             GameSettlementIntent.OpenCashbox -> emit(GameSettlementEffect.OpenCashbox(groupId))
+            GameSettlementIntent.ReviewUncharged -> if (!state.value.isLoading && state.value.uncharged.isNotEmpty()) {
+                emit(GameSettlementEffect.OpenUnchargedReview(groupId, gameId))
+            }
+            is GameSettlementIntent.OpenMenu -> if (
+                !state.value.isLoading && state.value.updatingChargeId == null &&
+                state.value.diarists.any { it.chargeId == intent.chargeId }
+            ) {
+                update { it.copy(menuChargeId = intent.chargeId) }
+            }
+            GameSettlementIntent.DismissMenu -> update { it.copy(menuChargeId = null) }
         }
     }
 
@@ -363,7 +383,7 @@ class GameSettlementViewModel(
 
     private fun GameSettlementState.interacting() =
         chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || cancelSheetChargeId != null ||
-            reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
+            reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null || menuChargeId != null
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -410,6 +430,9 @@ class GameSettlementViewModel(
             val charges = requestOrFail(generation, softRefresh, { organizerFinanceGateway.charges(GroupId(groupId)) }) {
                 it.toSettlementUiError()
             }?.charges ?: return@launch
+            // A seção "Sem cobrança" não derruba o acerto: sem ela, o resto aparece.
+            val uncharged = (cashboxGateway.uncharged(GroupId(groupId), gameId) as? SaqzResult.Success)?.value
+            if (generation != loadGeneration) return@launch
             // Por baixo, uma folha aberta depois do pedido não pode ser fechada pela troca do estado.
             if (softRefresh && state.value.interacting()) return@launch
             updateIfCurrent(generation) {
@@ -420,6 +443,7 @@ class GameSettlementViewModel(
                     roster = roster,
                     athletes = athletes,
                     charges = charges,
+                    uncharged = uncharged,
                     pix = group.profile?.let { profile ->
                         profile.pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { key ->
                             PixUi(key, profile.pixLabel)
@@ -554,9 +578,11 @@ class GameSettlementViewModel(
         athletes: List<AthleteRosterEntry>,
         charges: List<Charge>,
         pix: PixUi?,
+        uncharged: UnchargedList? = null,
     ): GameSettlementState {
         val athleteById = athletes.associateBy(AthleteRosterEntry::userId)
         val names = roster.confirmed.filterNot { it.isGuest }.associate { it.memberId to it.displayName }
+        val started = runCatching { Instant.parse(game.startsAt) <= now.now() }.getOrDefault(true)
         val gameCharges = charges
             .filter { it.kind == ChargeKind.Game && it.gameId == game.id && it.status != ChargeStatus.Cancelled }
             .map { charge ->
@@ -566,7 +592,7 @@ class GameSettlementViewModel(
                 } else {
                     memberPhoto(groupId, charge.memberId, athleteById[charge.memberId]?.photoTag)
                 }
-                charge.toDiarist(memberName).copy(photo = photo)
+                charge.toDiarist(memberName, started).copy(photo = photo)
             }
         val paid = gameCharges.filter { it.status == ChargeStatus.Paid }
         val pending = gameCharges.filter { it.status == ChargeStatus.Pending }
@@ -596,7 +622,32 @@ class GameSettlementViewModel(
                 venue = listOfNotNull(game.venue.name, game.venue.court).joinToString(" — "),
                 // PRES-016: quem faltou não jogou.
                 playersCount = roster.confirmed.count { !it.noShow },
+                title = weekdayDayMonth(game.localDate),
+                meta = listOfNotNull(
+                    (localDateTime ?: fallbackDateTime)?.let {
+                        "${it.hour}h" + if (it.minute == 0) "" else it.minute.toString().padStart(2, '0')
+                    },
+                    listOfNotNull(game.venue.name, game.venue.court).joinToString(" — ").ifEmpty { null },
+                ).joinToString(" · "),
+                completed = game.status == GameStatus.Completed,
             ),
+            uncharged = uncharged?.people.orEmpty().map { person ->
+                UnchargedRowUi(
+                    key = "${person.memberId}/${person.guestSeq}",
+                    name = person.displayName,
+                    meta = listOfNotNull(
+                        if (person.kind == UnchargedKind.Guest) {
+                            person.hostDisplayName?.let { "Convite de $it" } ?: "Convite"
+                        } else {
+                            "Avulso"
+                        },
+                        "saiu do grupo".takeIf { person.leftGroup },
+                    ).joinToString(" · "),
+                    noShow = person.noShow,
+                    skipped = person.decision == UnchargedDecision.Skip,
+                )
+            },
+            gameHadNoFee = game.gameFeeCents == null,
             monthlyMemberCount = monthlyMemberCount,
             paidDiaristCount = paid.size,
             totalDiaristCount = gameCharges.size,
@@ -613,9 +664,24 @@ class GameSettlementViewModel(
     }
 
     /** [memberName] é de quem PAGA. Cobrança de convidado mostra o convidado e diz quem paga. */
-    private fun Charge.toDiarist(memberName: String): GameSettlementDiaristUi {
+    private fun Charge.toDiarist(memberName: String, started: Boolean): GameSettlementDiaristUi {
         val guest = guestDisplayName
+        val method = when {
+            settledByApp && appMethod == br.com.saqz.groups.domain.finance.AppPaymentMethod.Card -> "pelo app · cartão"
+            settledByApp -> "pelo app · Pix"
+            status != ChargeStatus.Paid -> null
+            paidMethod == PaidMethod.Cash -> "Dinheiro"
+            paidMethod == PaidMethod.Other -> "Outro"
+            else -> "Pix"
+        }
         return GameSettlementDiaristUi(
+            notPlayed = when {
+                waitlisted -> if (started) NotPlayedReason.NotReleased else NotPlayedReason.Waiting
+                withdrew -> NotPlayedReason.Withdrew
+                else -> null
+            },
+            cashMeta = listOfNotNull(if (guest != null) "Convite · paga $memberName" else "Avulso", method)
+                .joinToString(" · "),
             chargeId = id,
             memberId = memberId,
             name = guest ?: memberName,

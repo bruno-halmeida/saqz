@@ -1,8 +1,5 @@
 package br.com.saqz.groups.presentation.ui.finance.settlement
 
-import br.com.saqz.groups.presentation.photo.avatarSlot
-import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,87 +14,57 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
-import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.designsystem.SaqzAvatar
+import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
 import br.com.saqz.designsystem.SaqzButtonSize
 import br.com.saqz.designsystem.SaqzButtonVariant
-import br.com.saqz.designsystem.SaqzCard
-import br.com.saqz.designsystem.SaqzCardTone
 import br.com.saqz.designsystem.SaqzChipTone
-import br.com.saqz.designsystem.SaqzDivider
-import br.com.saqz.designsystem.SaqzEmptyState
-import br.com.saqz.designsystem.SaqzProgressBar
-import br.com.saqz.designsystem.SaqzSectionHeader
+import br.com.saqz.designsystem.SaqzHeroCard
+import br.com.saqz.designsystem.SaqzIcon
+import br.com.saqz.designsystem.SaqzIconButton
+import br.com.saqz.designsystem.SaqzIcons
+import br.com.saqz.designsystem.SaqzScoreTab
+import br.com.saqz.designsystem.SaqzScoreTabs
+import br.com.saqz.designsystem.SaqzSheetAction
 import br.com.saqz.designsystem.SaqzSpinner
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.finance.AppPaymentMethod
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.presentation.photo.avatarSlot
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.finance.CashGroupHeader
+import br.com.saqz.groups.presentation.ui.finance.CashIconTile
+import br.com.saqz.groups.presentation.ui.finance.CashListRow
+import br.com.saqz.groups.presentation.ui.finance.CashPendingStrip
+import br.com.saqz.groups.presentation.ui.finance.CashRowText
+import br.com.saqz.groups.presentation.ui.finance.CashTileTone
+import br.com.saqz.groups.presentation.ui.finance.formatBrlShort
 import br.com.saqz.groups.presentation.ui.finance.sheets.CancelChargeSheet
+import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeReminderState
 import br.com.saqz.groups.presentation.ui.finance.sheets.ChargeSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReceiptSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.ReviewSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.UndoSheet
 import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
-import br.com.saqz.groups.domain.finance.ChargeStatus
-import br.com.saqz.groups.domain.finance.PaidMethod
-import br.com.saqz.groups.resources.Res
-import br.com.saqz.groups.resources.game_settlement_charge_missing
-import br.com.saqz.groups.resources.game_settlement_court_expense_description
-import br.com.saqz.groups.resources.game_settlement_debt_note
-import br.com.saqz.groups.resources.game_settlement_diarist_meta
-import br.com.saqz.groups.resources.game_settlement_diarists_empty
-import br.com.saqz.groups.resources.game_settlement_end
-import br.com.saqz.groups.resources.game_settlement_undo_action
-import br.com.saqz.groups.resources.game_settlement_undo_failure
-import br.com.saqz.groups.resources.game_settlement_end_helper
-import br.com.saqz.groups.resources.game_settlement_ended
-import br.com.saqz.groups.resources.game_settlement_header
-import br.com.saqz.groups.resources.game_settlement_monthly_members
-import br.com.saqz.groups.resources.game_settlement_monthly_members_body
-import br.com.saqz.groups.resources.game_settlement_note
-import br.com.saqz.groups.resources.game_settlement_players
-import br.com.saqz.groups.resources.game_settlement_progress
-import br.com.saqz.groups.resources.game_settlement_receipt
-import br.com.saqz.groups.resources.game_settlement_receipt_failure
-import br.com.saqz.groups.resources.game_settlement_review_action
-import br.com.saqz.groups.resources.game_settlement_review_failure
-import br.com.saqz.groups.resources.game_settlement_review_status
-import br.com.saqz.groups.resources.game_settlement_received_status
-import br.com.saqz.groups.resources.paid_via_app_card
-import br.com.saqz.groups.resources.paid_via_app_pix
-import br.com.saqz.groups.domain.finance.AppPaymentMethod
-import br.com.saqz.groups.resources.game_settlement_summary_pending
-import br.com.saqz.groups.resources.game_settlement_summary
-import br.com.saqz.groups.resources.game_settlement_summary_diarists_one
-import br.com.saqz.groups.resources.game_settlement_summary_diarists_other
-import br.com.saqz.groups.resources.game_settlement_title
-import br.com.saqz.groups.resources.game_settlement_view_cashbox
-import br.com.saqz.groups.resources.game_settlement_cancel_action
-import br.com.saqz.groups.resources.game_settlement_cancel_failure
-import br.com.saqz.groups.resources.game_settlement_waive
-import br.com.saqz.groups.resources.game_settlement_waive_failure
-import br.com.saqz.groups.resources.game_settlement_waived_status
-import br.com.saqz.groups.resources.game_settlement_withdrew_status
-import br.com.saqz.groups.resources.game_settlement_no_show_status
-import org.jetbrains.compose.resources.pluralStringResource
+import br.com.saqz.groups.resources.*
 import org.jetbrains.compose.resources.stringResource
 
 internal object GameSettlementTags {
     const val Screen = "game-settlement"
     const val Header = "game-settlement-header"
-    const val Progress = "game-settlement-progress"
     const val Monthly = "game-settlement-monthly"
     const val Diarists = "game-settlement-diarists"
-    const val Summary = "game-settlement-summary"
+    const val Uncharged = "game-settlement-uncharged"
+    const val UnchargedStrip = "game-settlement-uncharged-strip"
+    const val UnchargedReview = "game-settlement-uncharged-review"
+    const val NotPlayed = "game-settlement-not-played"
     const val CourtExpense = "game-settlement-court-expense"
     const val ChargeMissing = "game-settlement-charge-missing"
-    const val End = "game-settlement-end"
-    const val Cashbox = "game-settlement-cashbox"
     const val Failure = "game-settlement-failure"
     const val WaiveFailure = "game-settlement-waive-failure"
     const val CancelFailure = "game-settlement-cancel-failure"
@@ -105,15 +72,18 @@ internal object GameSettlementTags {
     const val UndoFailure = "game-settlement-undo-failure"
 
     fun receipt(chargeId: String) = "game-settlement-receipt-$chargeId"
+    fun more(chargeId: String) = "game-settlement-more-$chargeId"
     fun waive(chargeId: String) = "game-settlement-waive-$chargeId"
     fun cancel(chargeId: String) = "game-settlement-cancel-$chargeId"
     fun withdrew(chargeId: String) = "game-settlement-withdrew-$chargeId"
     fun noShow(chargeId: String) = "game-settlement-no-show-$chargeId"
+    fun notPlayed(chargeId: String) = "game-settlement-not-played-$chargeId"
     fun review(chargeId: String) = "game-settlement-review-$chargeId"
     fun reviewAction(chargeId: String) = "game-settlement-review-action-$chargeId"
     fun undo(chargeId: String) = "game-settlement-undo-$chargeId"
     fun paid(chargeId: String) = "game-settlement-paid-$chargeId"
     fun charge(chargeId: String) = "game-settlement-charge-$chargeId"
+    fun uncharged(key: String) = "game-settlement-uncharged-$key"
 }
 
 @Composable
@@ -130,8 +100,11 @@ internal fun GameSettlementScreen(
     val cancelDebtor = state.debtors.firstOrNull { it.chargeId == state.cancelSheetChargeId }
     val reviewDiarist = state.diarists.firstOrNull { it.chargeId == state.reviewSheetChargeId }
     val undoDiarist = state.diarists.firstOrNull { it.chargeId == state.undoSheetChargeId }
-    val chargeDebtors = state.debtors.filter {
-        state.chargeSheetChargeId == null || it.chargeId == state.chargeSheetChargeId
+    // "Cobrar os N que faltam" é de quem jogou; quem não jogou é decisão do gestor.
+    val chargeDebtors = if (state.chargeSheetChargeId == null) {
+        state.playedDebtors
+    } else {
+        state.debtors.filter { it.chargeId == state.chargeSheetChargeId }
     }
     Box(modifier.fillMaxSize().background(SaqzTheme.colors.background).testTag(GameSettlementTags.Screen)) {
         Column(Modifier.fillMaxSize()) {
@@ -148,6 +121,7 @@ internal fun GameSettlementScreen(
                 else -> LoadedContent(state, onIntent)
             }
         }
+        DiaryMenuSheet(state, onIntent)
         ChargeSheet(
             open = state.chargeSheetOpen,
             debtors = chargeDebtors,
@@ -205,350 +179,377 @@ internal fun GameSettlementScreen(
 @Composable
 private fun LoadedContent(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
-    val canCharge = state.debtors.isNotEmpty()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
-        verticalArrangement = Arrangement.spacedBy(metrics.blockGap * 2),
-    ) {
-        SettlementHeader(state)
-        if (!state.isSummary) ProgressSection(state)
-        MonthlySection(state)
-        if (state.isSummary) SummarySection(state) else CourtExpenseSection(onIntent)
-        DiaristsSection(state, onIntent)
-        Text(
-            text = stringResource(Res.string.game_settlement_note),
-            style = SaqzTheme.typography.support,
-            color = SaqzTheme.colors.textSecondary,
-        )
-        if (state.pendingDiaristCount > 0) {
-            Text(
-                text = stringResource(Res.string.game_settlement_debt_note),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.warningForeground,
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        SettlementHero(state, onIntent)
+        Failures(state)
+        if (state.played.isNotEmpty()) DiariesSection(state, onIntent)
+        if (state.monthlyMemberCount > 0) {
+            CashGroupHeader(
+                title = stringResource(Res.string.settle_monthly_header),
+                trailing = stringResource(Res.string.settle_monthly_count, state.monthlyMemberCount),
+                modifier = Modifier.testTag(GameSettlementTags.Monthly),
             )
         }
-        if (state.operationFailed) {
-            Text(
-                text = stringResource(Res.string.game_settlement_receipt_failure),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
-            )
-        }
-        if (state.waiveFailed) {
-            Text(
-                text = stringResource(Res.string.game_settlement_waive_failure),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
-                modifier = Modifier.testTag(GameSettlementTags.WaiveFailure),
-            )
-        }
-        if (state.cancelFailed) {
-            Text(
-                text = stringResource(Res.string.game_settlement_cancel_failure),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
-                modifier = Modifier.testTag(GameSettlementTags.CancelFailure),
-            )
-        }
-        if (state.reviewFailed) {
-            Text(
-                text = stringResource(Res.string.game_settlement_review_failure),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
-                modifier = Modifier.testTag(GameSettlementTags.ReviewFailure),
-            )
-        }
-        if (state.undoFailed) {
-            Text(
-                text = stringResource(Res.string.game_settlement_undo_failure),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.errorForeground,
-                modifier = Modifier.testTag(GameSettlementTags.UndoFailure),
-            )
-        }
-        SaqzButton(
-            label = stringResource(Res.string.game_settlement_charge_missing),
-            onClick = { onIntent(GameSettlementIntent.ChargeMissing) },
-            variant = SaqzButtonVariant.Secondary,
-            fullWidth = true,
-            enabled = canCharge,
-            modifier = Modifier.testTag(GameSettlementTags.ChargeMissing),
-        )
-        SaqzButton(
-            label = stringResource(Res.string.game_settlement_end),
-            onClick = { onIntent(GameSettlementIntent.EndSettlement) },
-            fullWidth = true,
-            enabled = state.isSummary,
-            modifier = Modifier.testTag(GameSettlementTags.End),
-        )
-        if (!state.isSummary) {
-            Text(
-                text = stringResource(Res.string.game_settlement_end_helper),
-                style = SaqzTheme.typography.support,
-                color = SaqzTheme.colors.textSecondary,
-            )
-        } else {
+        if (state.uncharged.isNotEmpty()) UnchargedSection(state, onIntent)
+        if (state.notPlayed.isNotEmpty()) NotPlayedSection(state, onIntent)
+        CashGroupHeader(title = stringResource(Res.string.settle_exits_header))
+        CashListRow(first = true, modifier = Modifier.testTag(GameSettlementTags.CourtExpense)) {
+            CashIconTile(SaqzIcons.CreditCard, CashTileTone.Out)
+            CashRowText(stringResource(Res.string.settle_court), stringResource(Res.string.settle_court_hint))
             SaqzButton(
-                label = stringResource(Res.string.game_settlement_view_cashbox),
-                onClick = { onIntent(GameSettlementIntent.OpenCashbox) },
+                label = stringResource(Res.string.settle_court_action),
+                onClick = { onIntent(GameSettlementIntent.OpenCourtExpense) },
+                variant = SaqzButtonVariant.Secondary,
+                size = SaqzButtonSize.Sm,
+            )
+        }
+        val pendingPlayed = state.playedDebtors.size
+        if (pendingPlayed > 0) {
+            SaqzButton(
+                label = stringResource(Res.string.settle_charge_all, pendingPlayed),
+                onClick = { onIntent(GameSettlementIntent.ChargeMissing) },
                 fullWidth = true,
-                modifier = Modifier.testTag(GameSettlementTags.Cashbox),
+                leadingContent = { SaqzIcon(SaqzIcons.Megaphone, tint = it) },
+                modifier = Modifier
+                    .padding(metrics.horizontalPadding)
+                    .testTag(GameSettlementTags.ChargeMissing),
             )
         }
     }
 }
 
 @Composable
-private fun SettlementHeader(state: GameSettlementState) {
+private fun SettlementHero(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
     val header = state.header ?: return
-    Column(
+    val decide = state.playedPendingCents == 0L && state.notPlayed.any { it.status == ChargeStatus.Pending }
+    SaqzHeroCard(
+        kicker = stringResource(if (header.completed) Res.string.settle_kicker_completed else Res.string.settle_kicker_open),
+        kickerMuted = header.completed,
+        title = header.title,
+        meta = header.meta,
+        shape = RectangleShape,
         modifier = Modifier.testTag(GameSettlementTags.Header),
-        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
-    ) {
-        Text(
-            text = stringResource(if (state.isSummary) Res.string.game_settlement_ended else Res.string.game_settlement_header),
-            style = SaqzTheme.typography.eyebrow,
-            color = if (state.isSummary) SaqzTheme.colors.success else SaqzTheme.colors.textSecondary,
-        )
-        Text(text = header.dateTime, style = SaqzTheme.typography.title, color = SaqzTheme.colors.textPrimary)
-        Text(text = header.venue, style = SaqzTheme.typography.body, color = SaqzTheme.colors.textPrimary)
-        Text(
-            text = pluralStringResource(
-                Res.plurals.game_settlement_players,
-                header.playersCount,
-                header.playersCount,
-            ),
-            style = SaqzTheme.typography.support,
-            color = SaqzTheme.colors.textSecondary,
-        )
-    }
-}
-
-@Composable
-private fun ProgressSection(state: GameSettlementState) = SaqzCard(
-    modifier = Modifier.testTag(GameSettlementTags.Progress),
-    tone = SaqzCardTone.Soft,
-) {
-    Text(
-        text = pluralStringResource(
-            Res.plurals.game_settlement_progress,
-            state.totalDiaristCount,
-            state.paidDiaristCount,
-            state.totalDiaristCount,
-            formatBrl(state.pendingDiaristCents),
-        ),
-        style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-        color = SaqzTheme.colors.textPrimary,
-    )
-    SaqzProgressBar(value = state.progress)
-}
-
-@Composable
-private fun MonthlySection(state: GameSettlementState) = SaqzCard(
-    modifier = Modifier.testTag(GameSettlementTags.Monthly),
-) {
-    SaqzSectionHeader(title = pluralStringResource(
-        Res.plurals.game_settlement_monthly_members,
-        state.monthlyMemberCount,
-        state.monthlyMemberCount,
-    ))
-    Text(
-        text = stringResource(Res.string.game_settlement_monthly_members_body),
-        style = SaqzTheme.typography.support,
-        color = SaqzTheme.colors.textSecondary,
-    )
-}
-
-@Composable
-private fun SummarySection(state: GameSettlementState) = SaqzCard(
-    modifier = Modifier.testTag(GameSettlementTags.Summary),
-) {
-    SaqzSectionHeader(title = stringResource(Res.string.game_settlement_summary))
-    SummaryLine(
-        label = if (state.totalDiaristCount == 1) {
-            stringResource(Res.string.game_settlement_summary_diarists_one, formatBrl(state.unitDiaristCents))
-        } else {
-            stringResource(
-                Res.string.game_settlement_summary_diarists_other,
-                state.totalDiaristCount,
-                formatBrl(state.unitDiaristCents),
+        footer = {
+            SaqzScoreTabs(
+                tabs = listOf(
+                    SaqzScoreTab(header.playersCount.toString(), stringResource(Res.string.settle_tab_played)),
+                    if (state.playedChargeCount > 0) {
+                        SaqzScoreTab(
+                            state.playedPaidCount.toString(),
+                            stringResource(Res.string.settle_tab_paid),
+                            suffix = "/${state.playedChargeCount}",
+                        )
+                    } else {
+                        SaqzScoreTab("0", stringResource(Res.string.settle_tab_charges))
+                    },
+                    if (decide) {
+                        SaqzScoreTab(
+                            state.notPlayed.count { it.status == ChargeStatus.Pending }.toString(),
+                            stringResource(Res.string.settle_tab_decide),
+                        )
+                    } else {
+                        SaqzScoreTab(formatBrlShort(state.playedPendingCents), stringResource(Res.string.settle_tab_due))
+                    },
+                ),
+                selectedIndex = -1,
+                onSelect = {},
             )
         },
-        value = formatBrl(state.receivedDiaristCents),
-    )
-    SummaryLine(
-        label = stringResource(Res.string.game_settlement_summary_pending),
-        value = formatBrl(state.pendingDiaristCents),
-    )
-}
-
-@Composable
-private fun SummaryLine(label: String, value: String, valueColor: Color = SaqzTheme.colors.textPrimary) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
     ) {
-        Text(label, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary, modifier = Modifier.weight(1f))
-        Text(value, style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold), color = valueColor)
-    }
-}
-
-@Composable
-private fun CourtExpenseSection(
-    onIntent: (GameSettlementIntent) -> Unit,
-) = SaqzCard(modifier = Modifier.testTag(GameSettlementTags.CourtExpense)) {
-    SaqzButton(
-        label = stringResource(Res.string.game_settlement_court_expense_description),
-        onClick = { onIntent(GameSettlementIntent.OpenCourtExpense) },
-        variant = SaqzButtonVariant.Secondary,
-        fullWidth = true,
-    )
-}
-
-@Composable
-private fun DiaristsSection(
-    state: GameSettlementState,
-    onIntent: (GameSettlementIntent) -> Unit,
-) = Column(
-    modifier = Modifier.testTag(GameSettlementTags.Diarists),
-    verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
-) {
-    SaqzSectionHeader(title = stringResource(Res.string.game_settlement_diarist_meta))
-    if (state.diarists.isEmpty()) {
-        SaqzEmptyState(
-            title = stringResource(Res.string.game_settlement_diarists_empty),
-            description = null,
-            icon = br.com.saqz.designsystem.SaqzIcons.Users,
-        )
-    } else {
-        SaqzCard(padded = false) {
-            state.diarists.forEachIndexed { index, diarist ->
-                DiaristRow(diarist, onIntent)
-                if (index < state.diarists.lastIndex) SaqzDivider()
-            }
+        val pending = state.unchargedPending
+        if (pending > 0) {
+            CashPendingStrip(
+                title = if (pending == 1) {
+                    stringResource(Res.string.settle_uncharged_title_one)
+                } else {
+                    stringResource(Res.string.settle_uncharged_title, pending)
+                },
+                subtitle = stringResource(
+                    if (state.gameHadNoFee) Res.string.settle_uncharged_no_fee else Res.string.settle_uncharged_late_fee,
+                ),
+                action = stringResource(Res.string.settle_review),
+                onAction = { onIntent(GameSettlementIntent.ReviewUncharged) },
+                modifier = Modifier.testTag(GameSettlementTags.UnchargedStrip),
+                actionTag = GameSettlementTags.UnchargedReview,
+            )
         }
     }
 }
 
 @Composable
-private fun DiaristRow(
-    diarist: GameSettlementDiaristUi,
-    onIntent: (GameSettlementIntent) -> Unit,
-) {
-    val paid = diarist.status == ChargeStatus.Paid
-    val background = if (paid) SaqzTheme.colors.success.copy(alpha = 0.08f) else Color.Transparent
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(background)
-            .padding(horizontal = SaqzTheme.metrics.horizontalPadding, vertical = SaqzTheme.metrics.blockGap),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
+private fun Failures(state: GameSettlementState) {
+    val failures = listOfNotNull(
+        (Res.string.game_settlement_receipt_failure to null).takeIf { state.operationFailed },
+        (Res.string.game_settlement_waive_failure to GameSettlementTags.WaiveFailure).takeIf { state.waiveFailed },
+        (Res.string.game_settlement_cancel_failure to GameSettlementTags.CancelFailure).takeIf { state.cancelFailed },
+        (Res.string.game_settlement_review_failure to GameSettlementTags.ReviewFailure).takeIf { state.reviewFailed },
+        (Res.string.game_settlement_undo_failure to GameSettlementTags.UndoFailure).takeIf { state.undoFailed },
+    )
+    if (failures.isEmpty()) return
+    Column(
+        Modifier.fillMaxWidth().padding(SaqzTheme.metrics.horizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+    ) {
+        failures.forEach { (text, tag) ->
+            Text(
+                text = stringResource(text),
+                style = SaqzTheme.typography.support,
+                color = SaqzTheme.colors.errorForeground,
+                modifier = tag?.let { Modifier.testTag(it) } ?: Modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DiariesSection(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
+    val unit = state.played.map { it.amountCents }.distinct().singleOrNull()
+    Column(Modifier.fillMaxWidth().testTag(GameSettlementTags.Diarists)) {
+        CashGroupHeader(
+            title = unit?.let { stringResource(Res.string.settle_diaries_header, formatBrlShort(it)) }
+                ?: stringResource(Res.string.settle_diaries_header_plain),
+            trailing = stringResource(Res.string.settle_paid_count, state.playedPaidCount, state.playedChargeCount),
+        )
+        state.played.forEachIndexed { index, diarist -> DiaryRow(diarist, first = index == 0, onIntent = onIntent) }
+    }
+}
+
+@Composable
+private fun DiaryRow(diarist: GameSettlementDiaristUi, first: Boolean, onIntent: (GameSettlementIntent) -> Unit) =
+    CashListRow(
+        first = first,
+        below = if (diarist.withdrew || diarist.noShow || diarist.reviewRequired) {
+            {
+                Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
+                    if (diarist.noShow) {
+                        SaqzStatusChip(
+                            text = stringResource(Res.string.game_settlement_no_show_status),
+                            tone = SaqzChipTone.Warning,
+                            modifier = Modifier.testTag(GameSettlementTags.noShow(diarist.chargeId)),
+                        )
+                    }
+                    if (diarist.reviewRequired) {
+                        SaqzStatusChip(
+                            text = stringResource(Res.string.game_settlement_review_status),
+                            tone = SaqzChipTone.Warning,
+                            modifier = Modifier.testTag(GameSettlementTags.review(diarist.chargeId)),
+                        )
+                        SaqzButton(
+                            label = stringResource(Res.string.game_settlement_review_action),
+                            onClick = { onIntent(GameSettlementIntent.OpenReview(diarist.chargeId)) },
+                            variant = SaqzButtonVariant.Secondary,
+                            size = SaqzButtonSize.Sm,
+                            enabled = !diarist.isUpdating,
+                            modifier = Modifier.testTag(GameSettlementTags.reviewAction(diarist.chargeId)),
+                        )
+                    }
+                }
+            }
+        } else null,
     ) {
         SaqzAvatar(name = diarist.name, photo = diarist.photo.avatarSlot(diarist.name))
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
-            Text(
-                text = diarist.name,
-                style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-                color = SaqzTheme.colors.textPrimary,
-            )
-            Text(text = diarist.meta, style = SaqzTheme.typography.caption, color = SaqzTheme.colors.textSecondary)
-            Text(text = diarist.amountLabel, style = SaqzTheme.typography.support, color = SaqzTheme.colors.textPrimary)
-            if (diarist.withdrew) {
-                SaqzStatusChip(
-                    text = stringResource(Res.string.game_settlement_withdrew_status),
-                    tone = SaqzChipTone.Warning,
-                    modifier = Modifier.testTag(GameSettlementTags.withdrew(diarist.chargeId)),
-                )
-            }
-            if (diarist.noShow) {
-                SaqzStatusChip(
-                    text = stringResource(Res.string.game_settlement_no_show_status),
-                    tone = SaqzChipTone.Warning,
-                    modifier = Modifier.testTag(GameSettlementTags.noShow(diarist.chargeId)),
-                )
-            }
-            if (diarist.reviewRequired) {
-                SaqzStatusChip(
-                    text = stringResource(Res.string.game_settlement_review_status),
-                    tone = SaqzChipTone.Warning,
-                    modifier = Modifier.testTag(GameSettlementTags.review(diarist.chargeId)),
-                )
-                SaqzButton(
-                    label = stringResource(Res.string.game_settlement_review_action),
-                    onClick = { onIntent(GameSettlementIntent.OpenReview(diarist.chargeId)) },
-                    variant = SaqzButtonVariant.Secondary,
-                    size = SaqzButtonSize.Sm,
-                    enabled = !diarist.isUpdating,
-                    modifier = Modifier.testTag(GameSettlementTags.reviewAction(diarist.chargeId)),
-                )
-            }
-        }
+        CashRowText(diarist.name, diarist.cashMeta)
         when (diarist.status) {
-            ChargeStatus.Pending -> Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+            ChargeStatus.Pending -> {
                 SaqzButton(
                     label = stringResource(Res.string.game_settlement_receipt),
                     onClick = { onIntent(GameSettlementIntent.OpenReceipt(diarist.chargeId)) },
+                    variant = SaqzButtonVariant.Secondary,
                     size = SaqzButtonSize.Sm,
                     loading = diarist.isUpdating,
                     enabled = !diarist.isUpdating,
                     modifier = Modifier.testTag(GameSettlementTags.receipt(diarist.chargeId)),
                 )
-                if (diarist.waivable) {
-                    SaqzButton(
-                        label = stringResource(Res.string.game_settlement_waive),
-                        onClick = { onIntent(GameSettlementIntent.OpenWaive(diarist.chargeId)) },
-                        variant = SaqzButtonVariant.Secondary,
-                        size = SaqzButtonSize.Sm,
-                        enabled = !diarist.isUpdating,
-                        modifier = Modifier.testTag(GameSettlementTags.waive(diarist.chargeId)),
-                    )
-                }
-                SaqzButton(
-                    label = stringResource(Res.string.game_settlement_cancel_action),
-                    onClick = { onIntent(GameSettlementIntent.OpenCancel(diarist.chargeId)) },
-                    variant = SaqzButtonVariant.Secondary,
-                    size = SaqzButtonSize.Sm,
-                    enabled = !diarist.isUpdating,
-                    modifier = Modifier.testTag(GameSettlementTags.cancel(diarist.chargeId)),
-                )
+                MoreButton(diarist, onIntent)
             }
-            ChargeStatus.Paid, ChargeStatus.Waived -> Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
-            ) {
-                if (diarist.status == ChargeStatus.Paid) {
-                    SaqzStatusChip(
-                        text = when (diarist.appMethod) {
-                            AppPaymentMethod.Pix -> stringResource(Res.string.paid_via_app_pix)
-                            AppPaymentMethod.Card -> stringResource(Res.string.paid_via_app_card)
-                            null -> stringResource(Res.string.game_settlement_received_status)
-                        },
-                        tone = SaqzChipTone.Success,
-                        modifier = Modifier.testTag(GameSettlementTags.paid(diarist.chargeId)),
-                    )
-                } else {
-                    SaqzStatusChip(
-                        text = stringResource(Res.string.game_settlement_waived_status),
-                        tone = SaqzChipTone.Neutral,
-                    )
-                }
-                if (diarist.canUndo) {
-                    SaqzButton(
-                        label = stringResource(Res.string.game_settlement_undo_action),
-                        onClick = { onIntent(GameSettlementIntent.OpenUndo(diarist.chargeId)) },
-                        variant = SaqzButtonVariant.Secondary,
-                        size = SaqzButtonSize.Sm,
-                        loading = diarist.isUpdating,
-                        enabled = !diarist.isUpdating,
-                        modifier = Modifier.testTag(GameSettlementTags.undo(diarist.chargeId)),
-                    )
-                }
+            ChargeStatus.Paid -> {
+                SaqzStatusChip(
+                    text = when (diarist.appMethod) {
+                        AppPaymentMethod.Pix -> stringResource(Res.string.paid_via_app_pix)
+                        AppPaymentMethod.Card -> stringResource(Res.string.paid_via_app_card)
+                        null -> stringResource(Res.string.game_settlement_received_status)
+                    },
+                    tone = SaqzChipTone.Success,
+                    dot = true,
+                    modifier = Modifier.testTag(GameSettlementTags.paid(diarist.chargeId)),
+                )
+                if (diarist.canUndo) MoreButton(diarist, onIntent)
+            }
+            ChargeStatus.Waived -> {
+                SaqzStatusChip(text = stringResource(Res.string.settle_waived_chip), tone = SaqzChipTone.Neutral)
+                if (diarist.canUndo) MoreButton(diarist, onIntent)
             }
             ChargeStatus.Cancelled -> Unit
+        }
+    }
+
+@Composable
+private fun MoreButton(diarist: GameSettlementDiaristUi, onIntent: (GameSettlementIntent) -> Unit) = SaqzIconButton(
+    onClick = { onIntent(GameSettlementIntent.OpenMenu(diarist.chargeId)) },
+    contentDescription = stringResource(Res.string.settle_more, diarist.name),
+    enabled = !diarist.isUpdating,
+    modifier = Modifier.testTag(GameSettlementTags.more(diarist.chargeId)),
+) { SaqzIcon(SaqzIcons.MoreVertical, tint = SaqzTheme.colors.textSecondary) }
+
+/** O ⋮ de uma diária: pendente tem Cobrar, Dispensar (desistiu, faltou ou não jogou) e Cancelar; baixada, Desfazer. */
+@Composable
+private fun DiaryMenuSheet(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
+    val diarist = state.diarists.firstOrNull { it.chargeId == state.menuChargeId }
+    SaqzBottomSheet(
+        open = diarist != null,
+        onClose = { onIntent(GameSettlementIntent.DismissMenu) },
+        title = diarist?.name,
+        description = diarist?.cashMeta,
+    ) {
+        if (diarist == null) return@SaqzBottomSheet
+        val dismiss = { onIntent(GameSettlementIntent.DismissMenu) }
+        if (diarist.status == ChargeStatus.Pending) {
+            SaqzSheetAction(
+                icon = SaqzIcons.Megaphone,
+                label = stringResource(Res.string.settle_menu_charge),
+                onClick = { dismiss(); onIntent(GameSettlementIntent.ChargeIndividual(diarist.chargeId)) },
+                divider = false,
+                modifier = Modifier.testTag(GameSettlementTags.charge(diarist.chargeId)),
+            )
+            if (diarist.waivable) {
+                SaqzSheetAction(
+                    icon = SaqzIcons.Ban,
+                    label = stringResource(Res.string.game_settlement_waive),
+                    onClick = { dismiss(); onIntent(GameSettlementIntent.OpenWaive(diarist.chargeId)) },
+                    modifier = Modifier.testTag(GameSettlementTags.waive(diarist.chargeId)),
+                )
+            }
+            SaqzSheetAction(
+                icon = SaqzIcons.CircleX,
+                label = stringResource(Res.string.game_settlement_cancel_action),
+                onClick = { dismiss(); onIntent(GameSettlementIntent.OpenCancel(diarist.chargeId)) },
+                destructive = true,
+                modifier = Modifier.testTag(GameSettlementTags.cancel(diarist.chargeId)),
+            )
+        } else if (diarist.canUndo) {
+            SaqzSheetAction(
+                icon = SaqzIcons.History,
+                label = stringResource(Res.string.settle_menu_undo),
+                onClick = { dismiss(); onIntent(GameSettlementIntent.OpenUndo(diarist.chargeId)) },
+                divider = false,
+                modifier = Modifier.testTag(GameSettlementTags.undo(diarist.chargeId)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun UnchargedSection(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag(GameSettlementTags.Uncharged)) {
+        CashGroupHeader(
+            title = stringResource(Res.string.settle_uncharged_header),
+            trailing = stringResource(Res.string.settle_uncharged_count, state.uncharged.size),
+        )
+        state.uncharged.forEachIndexed { index, row ->
+            CashListRow(first = index == 0, modifier = Modifier.testTag(GameSettlementTags.uncharged(row.key))) {
+                SaqzAvatar(name = row.name)
+                CashRowText(row.name, row.meta, muted = row.noShow)
+                when {
+                    row.skipped -> SaqzStatusChip(stringResource(Res.string.settle_uncharged_skip_chip), tone = SaqzChipTone.Neutral)
+                    row.noShow -> SaqzStatusChip(stringResource(Res.string.settle_no_show_chip), tone = SaqzChipTone.Warning)
+                    else -> SaqzStatusChip(stringResource(Res.string.settle_uncharged_chip), tone = SaqzChipTone.Neutral)
+                }
+            }
+        }
+        // Todos decididos: a faixa some, mas quem ficou em Não cobrar pode ser reaberto.
+        if (state.unchargedPending == 0) {
+            SaqzButton(
+                label = stringResource(Res.string.settle_reopen),
+                onClick = { onIntent(GameSettlementIntent.ReviewUncharged) },
+                variant = SaqzButtonVariant.Ghost,
+                fullWidth = true,
+                modifier = Modifier.padding(horizontal = SaqzTheme.metrics.horizontalPadding),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotPlayedSection(state: GameSettlementState, onIntent: (GameSettlementIntent) -> Unit) {
+    Column(Modifier.fillMaxWidth().testTag(GameSettlementTags.NotPlayed)) {
+        CashGroupHeader(
+            title = stringResource(Res.string.settle_not_played_header),
+            trailing = stringResource(Res.string.settle_not_played_hint),
+        )
+        state.notPlayed.forEachIndexed { index, diarist ->
+            val pending = diarist.status == ChargeStatus.Pending
+            CashListRow(
+                first = index == 0,
+                below = {
+                    Row(
+                        modifier = Modifier.padding(start = SaqzTheme.metrics.grid * 6),
+                        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+                    ) {
+                        if (pending) {
+                            SaqzButton(
+                                label = stringResource(Res.string.game_settlement_receipt),
+                                onClick = { onIntent(GameSettlementIntent.OpenReceipt(diarist.chargeId)) },
+                                variant = SaqzButtonVariant.Secondary,
+                                size = SaqzButtonSize.Sm,
+                                loading = diarist.isUpdating,
+                                modifier = Modifier.testTag(GameSettlementTags.receipt(diarist.chargeId)),
+                            )
+                            SaqzButton(
+                                label = stringResource(Res.string.game_settlement_waive),
+                                onClick = { onIntent(GameSettlementIntent.OpenWaive(diarist.chargeId)) },
+                                variant = SaqzButtonVariant.Ghost,
+                                size = SaqzButtonSize.Sm,
+                                enabled = !diarist.isUpdating,
+                                modifier = Modifier.testTag(GameSettlementTags.waive(diarist.chargeId)),
+                            )
+                            SaqzButton(
+                                label = stringResource(Res.string.game_settlement_cancel_action),
+                                onClick = { onIntent(GameSettlementIntent.OpenCancel(diarist.chargeId)) },
+                                variant = SaqzButtonVariant.Ghost,
+                                size = SaqzButtonSize.Sm,
+                                contentColor = SaqzTheme.colors.errorForeground,
+                                enabled = !diarist.isUpdating,
+                                modifier = Modifier.testTag(GameSettlementTags.cancel(diarist.chargeId)),
+                            )
+                        } else if (diarist.canUndo) {
+                            SaqzButton(
+                                label = stringResource(Res.string.settle_undo_receipt),
+                                onClick = { onIntent(GameSettlementIntent.OpenUndo(diarist.chargeId)) },
+                                variant = SaqzButtonVariant.Ghost,
+                                size = SaqzButtonSize.Sm,
+                                enabled = !diarist.isUpdating,
+                                modifier = Modifier.testTag(GameSettlementTags.undo(diarist.chargeId)),
+                            )
+                        }
+                    }
+                },
+            ) {
+                SaqzAvatar(name = diarist.name, photo = diarist.photo.avatarSlot(diarist.name))
+                val amount = formatBrlShort(diarist.amountCents)
+                CashRowText(
+                    title = diarist.name,
+                    subtitle = when (diarist.status) {
+                        ChargeStatus.Paid -> listOfNotNull(
+                            stringResource(Res.string.settle_paid_amount, amount),
+                            diarist.cashMeta.substringAfter(" · ", "").ifEmpty { null },
+                        ).joinToString(" · ")
+                        ChargeStatus.Waived -> stringResource(Res.string.settle_waived_chip)
+                        else -> stringResource(Res.string.settle_due_amount, amount)
+                    },
+                    muted = diarist.notPlayed == NotPlayedReason.Withdrew,
+                )
+                SaqzStatusChip(
+                    text = stringResource(
+                        when (diarist.notPlayed) {
+                            NotPlayedReason.Waiting -> Res.string.settle_waiting_chip
+                            NotPlayedReason.NotReleased -> Res.string.settle_not_released_chip
+                            else -> Res.string.settle_withdrew_chip
+                        },
+                    ),
+                    tone = if (diarist.notPlayed == NotPlayedReason.Withdrew) SaqzChipTone.Neutral else SaqzChipTone.Warning,
+                    modifier = Modifier.testTag(GameSettlementTags.notPlayed(diarist.chargeId)),
+                )
+            }
         }
     }
 }

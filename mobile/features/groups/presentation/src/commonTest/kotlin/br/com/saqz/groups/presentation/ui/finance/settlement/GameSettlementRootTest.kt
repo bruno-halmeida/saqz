@@ -63,6 +63,8 @@ class GameSettlementRootTest {
         val viewModel = GameSettlementViewModel(
             "selected-group", "game-1", FakeGameGateway(), FakeGroupGateway(),
             FakeAttendanceGateway(), FakeAthleteGateway(), finance,
+            br.com.saqz.groups.presentation.FakeCashboxGateway(),
+            br.com.saqz.groups.port.GroupNowPort { kotlin.time.Instant.parse("2026-08-20T12:00:00Z") },
         )
         val navigation = mutableListOf<String>()
         setContent {
@@ -88,6 +90,8 @@ class GameSettlementRootTest {
         val viewModel = GameSettlementViewModel(
             "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(),
             FakeAttendanceGateway(), FakeAthleteGateway(), finance,
+            br.com.saqz.groups.presentation.FakeCashboxGateway(),
+            br.com.saqz.groups.port.GroupNowPort { kotlin.time.Instant.parse("2026-08-20T12:00:00Z") },
         )
         val navigation = mutableListOf<String>()
         var mutations = 0
@@ -146,6 +150,8 @@ class GameSettlementRootTest {
             attendanceGateway = FakeAttendanceGateway(),
             athleteGateway = FakeAthleteGateway(),
             organizerFinanceGateway = settlementFinance,
+            cashboxGateway = br.com.saqz.groups.presentation.FakeCashboxGateway(),
+            now = br.com.saqz.groups.port.GroupNowPort { kotlin.time.Instant.parse("2026-08-20T12:00:00Z") },
         )
         val detailsViewModel = GroupDetailsViewModel(
             departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },

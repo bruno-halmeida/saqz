@@ -89,7 +89,7 @@ fun groupsPresentationModule(): Module = module {
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>(), get()) }
     viewModel {
         params ->
-        GameSettlementViewModel(params.get(), params.get(), get(), get(), get(), get(), get())
+        GameSettlementViewModel(params.get(), params.get(), get(), get(), get(), get(), get(), get(), get<GroupNowPort>())
     }
     // Uma lista de bloqueados para o app inteiro: o bloqueio feito no perfil some com o aviso na thread.
     singleOf(::BlockedPeopleRepository)

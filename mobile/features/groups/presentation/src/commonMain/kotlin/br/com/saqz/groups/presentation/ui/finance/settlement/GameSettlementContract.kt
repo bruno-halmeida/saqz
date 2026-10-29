@@ -41,7 +41,24 @@ data class GameSettlementState(
     val reviewFailed: Boolean = false,
     val undoSheetChargeId: String? = null,
     val undoFailed: Boolean = false,
+    /** FIN-016: quem jogou sem diária neste jogo (a decidir e "Não cobrar"). */
+    val uncharged: List<UnchargedRowUi> = emptyList(),
+    /** O jogo não tinha valor por jogo: a faixa diz isso. */
+    val gameHadNoFee: Boolean = false,
+    /** O ⋮ de uma diária: Cobrar, Dispensar, Cancelar ou Desfazer. */
+    val menuChargeId: String? = null,
 ) {
+    /** Quem jogou (FIN-007): fora quem ficou na espera e quem desistiu, que vão para "Não jogaram". */
+    val played: List<GameSettlementDiaristUi> get() = diarists.filter { it.notPlayed == null }
+    val notPlayed: List<GameSettlementDiaristUi> get() = diarists.filter { it.notPlayed != null }
+    val playedPaidCount: Int get() = played.count { it.status == ChargeStatus.Paid }
+    val playedChargeCount: Int get() = played.count { it.status == ChargeStatus.Paid || it.status == ChargeStatus.Pending }
+    val playedPendingCents: Long get() = played.filter { it.status == ChargeStatus.Pending }.sumOf { it.amountCents }
+    val playedDebtors: List<DebtorUi> get() = debtors.filter { debtor -> played.any { it.chargeId == debtor.chargeId } }
+
+    /** Quantos ainda estão a decidir na revisão: é o número da faixa. */
+    val unchargedPending: Int get() = uncharged.count { !it.skipped }
+
     val isSummary: Boolean
         get() = !isLoading && !loadFailed && updatingChargeId == null && pendingDiaristCount == 0
 }
@@ -51,6 +68,24 @@ data class GameSettlementHeaderUi(
     val dateTime: String,
     val venue: String,
     val playersCount: Int,
+    /** "Terça, 27/10". */
+    val title: String = dateTime,
+    /** "19h30 · CERET — Quadra 2". */
+    val meta: String = venue,
+    val completed: Boolean = false,
+)
+
+/** Por que uma diária ficou em "Não jogaram": na espera antes do início, não liberado depois, ou desistiu. */
+enum class NotPlayedReason { Waiting, NotReleased, Withdrew }
+
+/** Uma pessoa da seção "Sem cobrança" (FIN-016). */
+@Immutable
+data class UnchargedRowUi(
+    val key: String,
+    val name: String,
+    val meta: String,
+    val noShow: Boolean,
+    val skipped: Boolean,
 )
 
 @Immutable
@@ -77,9 +112,13 @@ data class GameSettlementDiaristUi(
     val photo: MemberPhoto? = null,
     /** FIN-014: recebida pelo app, separada do "você marcou". */
     val appMethod: br.com.saqz.groups.domain.finance.AppPaymentMethod? = null,
+    /** DEB-150: na espera ou desistiu; `null` = jogou. */
+    val notPlayed: NotPlayedReason? = null,
+    /** "Avulso · Pix", "Convite · paga Bia". */
+    val cashMeta: String = meta,
 ) {
-    /** Quem desistiu ou faltou: a diária pendente pode ser dispensada. */
-    val waivable: Boolean get() = (withdrew || noShow) && status == ChargeStatus.Pending
+    /** Quem desistiu, faltou ou não foi liberado: a diária pendente pode ser dispensada. */
+    val waivable: Boolean get() = (withdrew || noShow || notPlayed != null) && status == ChargeStatus.Pending
 }
 
 sealed interface GameSettlementIntent {
@@ -111,12 +150,16 @@ sealed interface GameSettlementIntent {
     data object OpenCourtExpense : GameSettlementIntent
     data object EndSettlement : GameSettlementIntent
     data object OpenCashbox : GameSettlementIntent
+    data object ReviewUncharged : GameSettlementIntent
+    data class OpenMenu(val chargeId: String) : GameSettlementIntent
+    data object DismissMenu : GameSettlementIntent
 }
 
 sealed interface GameSettlementEffect {
     data object Closed : GameSettlementEffect
     data class OpenNewEntry(val groupId: String, val localDate: String) : GameSettlementEffect
     data class OpenCashbox(val groupId: String) : GameSettlementEffect
+    data class OpenUnchargedReview(val groupId: String, val gameId: String) : GameSettlementEffect
     data class CopyPix(val key: String) : GameSettlementEffect
     data object MutationSucceeded : GameSettlementEffect
 }

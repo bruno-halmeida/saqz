@@ -22,114 +22,127 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GameSettlementScreenTest {
     @Test
-    fun `load failure replaces settlement actions with retry`() = runComposeUiTest {
+    fun `load failure replaces the settlement with retry`() = runComposeUiTest {
         setScreen(summaryState.copy(loadFailed = true), {})
         onNodeWithTag(GameSettlementTags.Failure).assertExists()
-        onNodeWithTag(GameSettlementTags.End).assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.Summary).assertDoesNotExist()
-        onNodeWithText("ENCERRADO").assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.Diarists).assertDoesNotExist()
     }
 
     @Test
-    fun `confirmed summary exposes an enabled end action`() = runComposeUiTest {
-        val intents = mutableListOf<GameSettlementIntent>()
-        setScreen(summaryState, intents::add)
-
-        onNodeWithTag(GameSettlementTags.End).performScrollTo().assertIsEnabled().performClick()
-
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.EndSettlement), intents)
-    }
-
-    @Test
-    fun `last optimistic receipt does not announce a closed settlement`() = runComposeUiTest {
-        setScreen(summaryState.copy(updatingChargeId = "paid-2"), {})
-
-        onNodeWithText("ENCERRADO").assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.Summary).assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.End).performScrollTo().assertIsNotEnabled()
-    }
-
-    @Test
-    fun `5g shows progress monthly coverage manual copy and enabled charge`() = runComposeUiTest {
+    fun `blue header with played paid and due then diaries monthly line exits and charge footer`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         setScreen(progressState, intents::add)
 
         onNodeWithText("JOGO ENCERRADO").assertExists()
-        onNodeWithText("2 de 6 avulsos acertaram · faltam R$\u00A080,00").assertExists()
-        onNodeWithText("3 mensalistas").assertExists()
-        onNodeWithText("Já estão cobertos pela mensalidade.").assertExists()
-        onNodeWithText("Toque em 'Recebi' quando o Pix ou o dinheiro chegar. Nada é cobrado automaticamente.").assertExists()
-        onNodeWithTag(GameSettlementTags.ChargeMissing).assertIsEnabled()
-        onNodeWithTag(GameSettlementTags.End).assertIsNotEnabled()
-        onNodeWithText("Custo do jogo").assertDoesNotExist()
-        onNodeWithText("Registrar aluguel da quadra").performScrollTo().performClick()
-        waitForIdle()
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenCourtExpense), intents)
-        intents.clear()
-
+        onNodeWithText("Terça, 04/08").assertExists()
+        onNodeWithText("19h30 · CERET — Quadra 2").assertExists()
+        onNodeWithText("Jogaram").assertExists()
+        onNodeWithText("Pagaram").assertExists()
+        onNodeWithText("/2").assertExists()
+        onNodeWithText("Diárias · R$\u00A070").assertExists()
+        onNodeWithText("1 de 2 pagaram").assertExists()
+        onNodeWithText("3 · cobertos pela mensalidade").performScrollTo().assertExists()
+        onNodeWithText("Lançar").performScrollTo().performClick()
         onNodeWithTag(GameSettlementTags.ChargeMissing).performScrollTo().performClick()
-        waitForIdle()
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.ChargeMissing), intents)
+        onNodeWithTag(GameSettlementTags.receipt("pending-1")).performScrollTo().performClick()
+        onNodeWithTag(GameSettlementTags.more("pending-1")).performClick()
+
+        assertEquals(
+            listOf(
+                GameSettlementIntent.OpenCourtExpense,
+                GameSettlementIntent.ChargeMissing,
+                GameSettlementIntent.OpenReceipt("pending-1"),
+                GameSettlementIntent.OpenMenu("pending-1"),
+            ),
+            intents,
+        )
     }
 
     @Test
-    fun `5i shows derived summary with received and pending only and group cashbox action`() = runComposeUiTest {
+    fun `uncharged section shows the strip the tags and opens the review`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
-        setScreen(summaryState, intents::add)
+        setScreen(
+            progressState.copy(
+                gameHadNoFee = true,
+                uncharged = listOf(
+                    UnchargedRowUi("caio/0", "Caio Lima", "Avulso", noShow = false, skipped = false),
+                    UnchargedRowUi("marcos/0", "Marcos Lima", "Avulso", noShow = true, skipped = false),
+                    UnchargedRowUi("rafa/0", "Rafa Nunes", "Avulso · saiu do grupo", noShow = false, skipped = true),
+                ),
+            ),
+            intents::add,
+        )
 
-        onNodeWithText("ENCERRADO").assertExists()
-        onNodeWithTag(GameSettlementTags.Summary).assertExists()
-        onNodeWithText("2 avulsos", substring = true).assertExists()
-        onAllNodesWithText("R$\u00A07.000,00", substring = true).assertCountEquals(2)
-        onNodeWithText("Falta receber").assertExists()
-        onNodeWithText("R$\u00A00,00").assertExists()
-        onNodeWithText("Custo do jogo").assertDoesNotExist()
-        onNodeWithText("Resultado").assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.CourtExpense).assertDoesNotExist()
-        onAllNodesWithText("Recebido").assertCountEquals(2)
-        onNodeWithTag(GameSettlementTags.Cashbox).performScrollTo().performClick()
+        onNodeWithText("2 jogaram sem cobrança").assertExists()
+        onNodeWithText("O jogo não tinha valor por jogo").assertExists()
+        onNodeWithText("Sem diária").performScrollTo().assertExists()
+        onNodeWithText("Faltou").assertExists()
+        onNodeWithText("Não cobrar").assertExists()
+        onNodeWithTag(GameSettlementTags.UnchargedReview).performClick()
 
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenCashbox), intents)
+        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.ReviewUncharged), intents)
     }
 
     @Test
-    fun `withdrawn diarist shows the withdrew tag and a waive action beside received`() = runComposeUiTest {
+    fun `not played section says waiting not released and withdrew with paid and due lines`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
-        setScreen(withdrewState, intents::add)
+        setScreen(
+            progressState.copy(
+                diarists = progressState.diarists + listOf(
+                    diarist("rafa", "Rafa Nunes", ChargeStatus.Paid).copy(
+                        notPlayed = NotPlayedReason.NotReleased, canUndo = true, cashMeta = "Avulso · Pix",
+                    ),
+                    diarist("marcos", "Marcos Lima", ChargeStatus.Pending).copy(notPlayed = NotPlayedReason.Withdrew),
+                ),
+                debtors = progressState.debtors + debtor("marcos", "Marcos Lima"),
+            ),
+            intents::add,
+        )
 
-        onNodeWithTag(GameSettlementTags.withdrew("pending-1")).performScrollTo().assertExists()
+        onNodeWithTag(GameSettlementTags.NotPlayed).performScrollTo().assertExists()
+        onNodeWithText("Não liberado").assertExists()
         onNodeWithText("Desistiu").assertExists()
-        onNodeWithTag(GameSettlementTags.receipt("pending-1")).assertExists()
-        onNodeWithTag(GameSettlementTags.waive("pending-1")).performScrollTo().assertIsEnabled().performClick()
+        onNodeWithText("Pagou R$\u00A070 · Pix").assertExists()
+        onNodeWithText("Falta pagar R$\u00A070").assertExists()
+        onNodeWithText("Cobrar os 1 que faltam").performScrollTo().assertExists()
+        onNodeWithTag(GameSettlementTags.waive("marcos")).performScrollTo().performClick()
+        onNodeWithTag(GameSettlementTags.undo("rafa")).performScrollTo().performClick()
 
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenWaive("pending-1")), intents)
+        assertEquals(
+            listOf<GameSettlementIntent>(GameSettlementIntent.OpenWaive("marcos"), GameSettlementIntent.OpenUndo("rafa")),
+            intents,
+        )
     }
 
     @Test
-    fun `no-show diarist shows Faltou and the waive action PRES-016`() = runComposeUiTest {
+    fun `no-show diarist shows Faltou and the menu offers waive PRES-016`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         val noShowState = progressState.copy(
             debtors = listOf(debtor("pending-1", "Ana").copy(noShow = true)),
             diarists = progressState.diarists.map { if (it.chargeId == "pending-1") it.copy(noShow = true) else it },
+            menuChargeId = "pending-1",
         )
         setScreen(noShowState, intents::add)
 
-        onNodeWithTag(GameSettlementTags.noShow("pending-1")).performScrollTo().assertExists()
-        onNodeWithText("Faltou").assertExists()
-        onNodeWithTag(GameSettlementTags.withdrew("pending-1")).assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.waive("pending-1")).performScrollTo().assertIsEnabled().performClick()
+        onNodeWithTag(GameSettlementTags.noShow("pending-1")).assertExists()
+        onNodeWithTag(GameSettlementTags.waive("pending-1")).assertIsEnabled().performClick()
 
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenWaive("pending-1")), intents)
+        assertEquals(
+            listOf(GameSettlementIntent.DismissMenu, GameSettlementIntent.OpenWaive("pending-1")),
+            intents,
+        )
     }
 
     @Test
-    fun `diarist who did not withdraw has neither the tag nor the waive action`() = runComposeUiTest {
-        setScreen(progressState, {})
+    fun `menu of a diarist who did not withdraw has charge and cancel but no waive`() = runComposeUiTest {
+        val intents = mutableListOf<GameSettlementIntent>()
+        setScreen(progressState.copy(menuChargeId = "pending-1"), intents::add)
 
-        onNodeWithTag(GameSettlementTags.receipt("pending-1")).performScrollTo().assertExists()
         onNodeWithTag(GameSettlementTags.waive("pending-1")).assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.withdrew("pending-1")).assertDoesNotExist()
-        onNodeWithText("Desistiu").assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.charge("pending-1")).assertExists()
+        onNodeWithTag(GameSettlementTags.cancel("pending-1")).performClick()
+
+        assertEquals(listOf(GameSettlementIntent.DismissMenu, GameSettlementIntent.OpenCancel("pending-1")), intents)
     }
 
     @Test
@@ -150,17 +163,6 @@ class GameSettlementScreenTest {
 
         onNodeWithText("Não foi possível dispensar a cobrança. Tente novamente.").performScrollTo().assertExists()
         onNodeWithText("Não foi possível registrar o recebimento. Tente novamente.").assertDoesNotExist()
-    }
-
-    @Test
-    fun `every pending diarist has a cancel action even without having withdrawn`() = runComposeUiTest {
-        val intents = mutableListOf<GameSettlementIntent>()
-        setScreen(progressState, intents::add)
-
-        onNodeWithTag(GameSettlementTags.withdrew("pending-1")).assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.cancel("pending-1")).performScrollTo().assertIsEnabled().performClick()
-
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenCancel("pending-1")), intents)
     }
 
     @Test
@@ -219,16 +221,15 @@ class GameSettlementScreenTest {
     }
 
     @Test
-    fun `received and waived charges offer undo and pending or locked ones do not`() = runComposeUiTest {
+    fun `received and waived charges offer undo in the menu and electronic ones have no menu`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
-        setScreen(undoState, intents::add)
+        setScreen(undoState.copy(menuChargeId = "paid-1"), intents::add)
 
-        onNodeWithTag(GameSettlementTags.undo("paid-1")).performScrollTo().assertIsEnabled().performClick()
-        onNodeWithTag(GameSettlementTags.undo("waived-1")).assertExists()
-        onNodeWithTag(GameSettlementTags.undo("paid-electronic")).assertDoesNotExist()
-        onNodeWithTag(GameSettlementTags.undo("pending-1")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.more("waived-1")).performScrollTo().assertExists()
+        onNodeWithTag(GameSettlementTags.more("paid-electronic")).assertDoesNotExist()
+        onNodeWithTag(GameSettlementTags.undo("paid-1")).performClick()
 
-        assertEquals(listOf<GameSettlementIntent>(GameSettlementIntent.OpenUndo("paid-1")), intents)
+        assertEquals(listOf(GameSettlementIntent.DismissMenu, GameSettlementIntent.OpenUndo("paid-1")), intents)
     }
 
     @Test
@@ -295,7 +296,10 @@ class GameSettlementScreenTest {
     }
 
     private companion object {
-        val header = GameSettlementHeaderUi("04/08/2026 · 19:30", "CERET — Quadra 2", 8)
+        val header = GameSettlementHeaderUi(
+            "04/08/2026 · 19:30", "CERET — Quadra 2", 8,
+            title = "Terça, 04/08", meta = "19h30 · CERET — Quadra 2", completed = true,
+        )
         val progressState = GameSettlementState(
             isLoading = false,
             groupName = "Vôlei do CERET",
