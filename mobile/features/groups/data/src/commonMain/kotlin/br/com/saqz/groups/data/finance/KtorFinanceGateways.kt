@@ -57,6 +57,8 @@ internal data class ChargeTransport(
     val payableCents: Long? = null,
     val settledBy: String? = null,
     val appMethod: String? = null,
+    /** DEB-150: só na lista do gestor; ausente no servidor antigo. */
+    val waitlisted: Boolean = false,
 )
 
 @Serializable
@@ -157,6 +159,7 @@ private data class FinanceStatementSummaryTransport(
     val totalOutCents: Long,
     val periodBalanceCents: Long,
     val accumulatedBalanceCents: Long,
+    val openingBalanceCents: Long? = null,
 )
 
 @Serializable
@@ -365,7 +368,7 @@ class KtorOrganizerFinanceGateway(
     }.toVersionedExpenseResult()
 }
 
-private fun String?.safety() =
+internal fun String?.safety() =
     if (isNullOrBlank()) RetrySafety.Never else RetrySafety.IdempotentWrite
 
 private fun MonthlyChargeCommand.toRequest() = MonthlyChargeRequest(
@@ -431,7 +434,7 @@ private fun NetworkResult<ExpenseTransport>.toVersionedExpenseResult() = when (t
         ?: invalidResponse()
 }
 
-private inline fun <T, R> NetworkResult<T>.mapFinance(mapper: (T) -> R): SaqzResult<R, FinanceError> =
+internal inline fun <T, R> NetworkResult<T>.mapFinance(mapper: (T) -> R): SaqzResult<R, FinanceError> =
     when (this) {
         is NetworkResult.Failure -> SaqzResult.Failure(error.toFinanceError())
         is NetworkResult.Success -> SaqzResult.Success(mapper(value))
@@ -449,7 +452,7 @@ private fun ChargeListTransport.toDomain() = ChargeList(
     },
 )
 
-private fun ChargeTransport.toDomain() = Charge(
+internal fun ChargeTransport.toDomain() = Charge(
     id, GroupId(groupId), memberId, kind.toDomain(), gameId, month, amountCents,
     dueDate, status.toDomain(), reviewRequired, version, events.map(ChargeAuditTransport::toDomain),
     paidMethod.toPaidMethod(),
@@ -460,6 +463,7 @@ private fun ChargeTransport.toDomain() = Charge(
     payableCents = payableCents,
     settledByApp = settledBy == "APP",
     appMethod = appMethod.toAppMethod().takeIf { settledBy == "APP" },
+    waitlisted = waitlisted,
 )
 
 private fun String?.toAppMethod(): AppPaymentMethod? = when (this) {
@@ -509,6 +513,7 @@ private fun FinanceStatementSummaryTransport.toDomain() = FinanceStatementSummar
     totalOutCents = totalOutCents,
     periodBalanceCents = periodBalanceCents,
     accumulatedBalanceCents = accumulatedBalanceCents,
+    openingBalanceCents = openingBalanceCents,
 )
 
 private fun FinanceOverviewTransport.toDomain() = FinanceOverview(
@@ -580,6 +585,8 @@ private fun String.toExpenseCategory() = when (uppercase()) {
     "EQUIPMENT" -> ExpenseCategory.Equipment
     "REFEREE" -> ExpenseCategory.Referee
     "RACHA" -> ExpenseCategory.Racha
+    "SPONSORSHIP" -> ExpenseCategory.Sponsorship
+    "SALE" -> ExpenseCategory.Sale
     else -> ExpenseCategory.Other
 }
 
@@ -589,6 +596,8 @@ private fun ExpenseCategory.toTransport() = when (this) {
     ExpenseCategory.Referee -> "REFEREE"
     ExpenseCategory.Other -> "OTHER"
     ExpenseCategory.Racha -> "RACHA"
+    ExpenseCategory.Sponsorship -> "SPONSORSHIP"
+    ExpenseCategory.Sale -> "SALE"
 }
 
 private fun FinanceDirection.toTransport() = when (this) {
@@ -596,7 +605,7 @@ private fun FinanceDirection.toTransport() = when (this) {
     FinanceDirection.Out -> "OUT"
 }
 
-private fun PaidMethod.toTransport() = when (this) {
+internal fun PaidMethod.toTransport() = when (this) {
     PaidMethod.Pix -> "PIX"
     PaidMethod.Cash -> "CASH"
     PaidMethod.Other -> "OTHER"

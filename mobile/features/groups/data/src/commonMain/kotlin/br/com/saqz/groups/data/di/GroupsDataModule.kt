@@ -4,6 +4,7 @@ import br.com.saqz.groups.data.athlete.KtorAthleteGateway
 import br.com.saqz.groups.data.attendance.KtorAttendanceGateway
 import br.com.saqz.groups.data.attendance.share.KtorAttendanceSharingGateway
 import br.com.saqz.groups.data.finance.KtorAthleteFinanceGateway
+import br.com.saqz.groups.data.finance.KtorCashboxGateway
 import br.com.saqz.groups.data.finance.KtorFinanceOverviewGateway
 import br.com.saqz.groups.data.finance.KtorFinanceStatementGateway
 import br.com.saqz.groups.data.finance.KtorGroupReportGateway
@@ -19,6 +20,7 @@ import br.com.saqz.groups.domain.athlete.AthleteGateway
 import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.share.AttendanceSharingGateway
 import br.com.saqz.groups.domain.finance.AthleteFinanceGateway
+import br.com.saqz.groups.domain.finance.CashboxGateway
 import br.com.saqz.groups.domain.finance.FinanceOverviewGateway
 import br.com.saqz.groups.domain.finance.FinanceStatementGateway
 import br.com.saqz.groups.domain.finance.OrganizerFinanceGateway
@@ -78,6 +80,7 @@ fun groupsDataModule(): Module = module {
     single<ModerationGateway> { KtorModerationGateway(get()) }
     single<AthleteFinanceGateway> { KtorAthleteFinanceGateway(get()) }
     single<OrganizerFinanceGateway> { KtorOrganizerFinanceGateway(get()) }
+    single<CashboxGateway> { KtorCashboxGateway(get()) }
     single<FinanceStatementGateway> { KtorFinanceStatementGateway(get()) }
     single<GroupReportGateway> { KtorGroupReportGateway(get()) }
     single<FinanceOverviewGateway> { KtorFinanceOverviewGateway(get()) }

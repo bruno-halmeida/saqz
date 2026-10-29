@@ -36,6 +36,10 @@ enum class ExpenseCategory {
     Referee,
     Other,
     Racha,
+    /** Só entrada (FIN-006). */
+    Sponsorship,
+    /** Só entrada (FIN-006). */
+    Sale,
 }
 
 enum class FinanceDirection {
@@ -92,6 +96,8 @@ data class Charge(
     /** FIN-014: quitada pelo app (`settledBy=APP`), com o meio em [appMethod]. Não se desfaz à mão. */
     val settledByApp: Boolean = false,
     val appMethod: AppPaymentMethod? = null,
+    /** DEB-150: a pessoa da diária está na espera do jogo ("Na espera" antes do início, "Não liberado" depois). */
+    val waitlisted: Boolean = false,
 ) {
     /** Cobrança cuja baixa veio de pagamento eletrônico: o "Desfazer" não aparece. */
     val settledElectronically: Boolean get() = electronicOrder || settledByApp
@@ -198,7 +204,10 @@ data class FinanceStatementSummary(
     val totalInCents: Long,
     val totalOutCents: Long,
     val periodBalanceCents: Long,
+    /** Já soma [openingBalanceCents] (FIN-006). */
     val accumulatedBalanceCents: Long,
+    /** `null` no servidor antigo ou quando ninguém respondeu o saldo inicial. */
+    val openingBalanceCents: Long? = null,
 )
 
 data class FinanceStatementPage(
