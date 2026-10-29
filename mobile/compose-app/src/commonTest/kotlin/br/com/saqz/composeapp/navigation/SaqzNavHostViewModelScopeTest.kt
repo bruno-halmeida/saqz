@@ -358,7 +358,10 @@ class SaqzNavHostViewModelScopeTest {
             backStack.add(FinanceRoute.GroupCashbox("grupo-mensal"))
             waitForIdle()
             assertEquals(1, finance.reads)
-            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            // Caixa novo (DEB-148): "Criar cobranças do mês" fica no ⋯ do caixa.
+            onNodeWithTag("group-cashbox-menu").performClick()
+            waitForIdle()
+            onNodeWithTag("group-cashbox-generate-monthly").performClick()
             waitForIdle()
             assertEquals(FinanceRoute.MonthlyGeneration("grupo-mensal"), backStack.last())
             onNodeWithText("agosto de 2026").assertExists()
@@ -410,7 +413,10 @@ class SaqzNavHostViewModelScopeTest {
             awaitText(AnaBanner)
             backStack.add(FinanceRoute.GroupCashbox("grupo-mensal"))
             waitForIdle()
-            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            // Caixa novo (DEB-148): "Criar cobranças do mês" fica no ⋯ do caixa.
+            onNodeWithTag("group-cashbox-menu").performClick()
+            waitForIdle()
+            onNodeWithTag("group-cashbox-generate-monthly").performClick()
             onNodeWithTag("monthly-generation-member-ana").performScrollTo().performClick()
             onNodeWithTag("monthly-generation-review").performScrollTo().performClick()
             onNodeWithTag("monthly-generation-confirm").performScrollTo().performClick()
@@ -447,13 +453,19 @@ class SaqzNavHostViewModelScopeTest {
                 ) { NavHostUnderTest(mutableStateOf(ready(ana)), backStack) }
             }
             waitForIdle()
-            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            // Caixa novo (DEB-148): "Criar cobranças do mês" fica no ⋯ do caixa.
+            onNodeWithTag("group-cashbox-menu").performClick()
+            waitForIdle()
+            onNodeWithTag("group-cashbox-generate-monthly").performClick()
             waitForIdle()
             runOnIdle { input.pressBack() }
             waitForIdle()
             assertEquals(FinanceRoute.GroupCashbox("grupo-mensal"), backStack.last())
             assertTrue(finance.commands.isEmpty())
-            onNodeWithTag("group-cashbox-generate-monthly").performScrollTo().performClick()
+            // Caixa novo (DEB-148): "Criar cobranças do mês" fica no ⋯ do caixa.
+            onNodeWithTag("group-cashbox-menu").performClick()
+            waitForIdle()
+            onNodeWithTag("group-cashbox-generate-monthly").performClick()
             onNodeWithTag("monthly-generation-member-ana").performScrollTo().performClick()
             onNodeWithTag("monthly-generation-review").performScrollTo().performClick()
             onNodeWithTag("monthly-generation-confirm").performScrollTo().performClick()
