@@ -53,6 +53,7 @@ import org.koin.dsl.module
  * globais. O estado é skeleton para as leituras remotas, e cada ViewModel remove-o quando
  * a resposta chega. Conteúdo de amostra pertence apenas às previews e às capturas.
  */
+@Suppress("LongMethod")
 fun groupsPresentationModule(): Module = module {
     viewModel { params -> ChargeReminderViewModel(params.get(), get(), get()) }
     viewModel { GroupListViewModel(get(), get(), get(), get(), get()) }

@@ -559,8 +559,6 @@ class GroupCashboxViewModel(
                 is SaqzResult.Success -> {
                     update { it.copy(updatingChargeId = null, operationFailed = false) }
                     emit(GroupCashboxEffect.MutationSucceeded)
-                    // O recebido entra no Entrou do mês e no extrato: recarrega por baixo para o placar fechar.
-                    load(softRefresh = true)
                 }
                 is SaqzResult.Failure -> update {
                     previous.copy(operationFailed = true, updatingChargeId = null, receiptSheetChargeId = null)
@@ -651,7 +649,7 @@ class GroupCashboxViewModel(
         fun Charge.photo() = if (guestDisplayName != null) null else memberPhotos[memberId]
         val debtors = pending
             .map { it.toDebtor(memberNames[it.memberId] ?: "Membro", it.dueDate < date.toString()).copy(photo = it.photo()) }
-            .sortedWith(compareBy({ it.month == null }, { it.dueDate }, { it.name }))
+            .sortedBy { it.dueLabel }
         val balanceCents = statement.summary.accumulatedBalanceCents
         val receivedCents = paidMonthly.sumOf { it.amountCents }
         val expensesCents = statement.summary.totalOutCents
@@ -689,6 +687,7 @@ class GroupCashboxViewModel(
             monthIn = statement.items.filter { it.direction == FinanceDirection.In }.map { it.toLedger() },
             monthOut = statement.items.filter { it.direction == FinanceDirection.Out }.map { it.toLedger() },
             monthInLabel = formatBrlShort(statement.summary.totalInCents),
+            monthInCents = statement.summary.totalInCents,
             monthOutLabel = formatBrlShort(kotlin.math.abs(statement.summary.totalOutCents)),
             dueLabel = formatBrlShort(debtors.sumOf { it.amountCents }),
             openingBalanceCents = opening?.amountCents ?: statement.summary.openingBalanceCents,
@@ -782,6 +781,9 @@ class GroupCashboxViewModel(
         val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
         return copy(
             dueLabel = formatBrlShort(remainingDebtors.sumOf { it.amountCents }),
+            // O recebido entra no Entrou do mês: saldo, placar e extrato fecham juntos.
+            monthInCents = monthInCents + debtor.amountCents,
+            monthInLabel = formatBrlShort(monthInCents + debtor.amountCents),
             balanceCents = balanceCents + debtor.amountCents,
             balanceLabel = formatBrl(balanceCents + debtor.amountCents),
             receivedCents = nextReceived,

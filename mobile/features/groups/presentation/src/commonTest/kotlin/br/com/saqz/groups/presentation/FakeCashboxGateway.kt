@@ -41,8 +41,11 @@ class FakeCashboxGateway(
     override suspend fun saveOpeningBalance(groupId: GroupId, version: FinanceVersionToken, amountCents: Long) =
         run {
             saves += version to amountCents
-            saveDeferred?.await() ?: saveResult
+            val result = saveDeferred?.await() ?: saveResult
                 ?: SaqzResult.Success(OpeningBalance(amountCents, FinanceVersionToken("\"${saves.size + 1}\"")))
+            // O servidor guarda o que foi salvo: a próxima leitura devolve o valor novo.
+            if (result is SaqzResult.Success) openingResult = result
+            result
         }
 
     override suspend fun unchargedSummary(groupId: GroupId): SaqzResult<UnchargedSummary, FinanceError> {

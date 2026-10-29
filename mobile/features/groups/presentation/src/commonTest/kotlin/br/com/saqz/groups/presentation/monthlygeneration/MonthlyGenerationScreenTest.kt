@@ -157,6 +157,7 @@ class MonthlyGenerationScreenTest {
         val cashbox = GroupCashboxViewModel(
             "selected-group", FakeGroupGateway(), FakeGroupMembershipGateway(), FakeFinanceStatementGateway(), gateway,
             GroupNowPort { Instant.parse("2026-08-12T12:00:00Z") },
+            br.com.saqz.groups.presentation.FakeCashboxGateway(),
         )
         var opened: String? = null
         setContent {
@@ -166,7 +167,8 @@ class MonthlyGenerationScreenTest {
                 )
             }
         }
-        onNodeWithTag(GroupCashboxTags.GenerateMonthly).performScrollTo().performClick()
+        onNodeWithTag(GroupCashboxTags.Menu).performClick()
+        onNodeWithTag(GroupCashboxTags.GenerateMonthly).performClick()
         waitForIdle()
         assertEquals("selected-group", opened)
         assertTrue(gateway.commands.isEmpty())

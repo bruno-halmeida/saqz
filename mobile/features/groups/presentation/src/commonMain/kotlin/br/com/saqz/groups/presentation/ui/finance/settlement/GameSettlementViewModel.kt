@@ -44,7 +44,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
-@Suppress("LargeClass")
+@Suppress("LargeClass", "LongParameterList")
 class GameSettlementViewModel(
     private val groupId: String,
     private val gameId: String,
@@ -569,7 +569,7 @@ class GameSettlementViewModel(
         )
     }
 
-    @Suppress("LongParameterList")
+    @Suppress("LongParameterList", "LongMethod")
     private fun toState(
         game: br.com.saqz.groups.domain.game.Game,
         groupName: String,
@@ -664,6 +664,7 @@ class GameSettlementViewModel(
     }
 
     /** [memberName] é de quem PAGA. Cobrança de convidado mostra o convidado e diz quem paga. */
+    @Suppress("CyclomaticComplexMethod")
     private fun Charge.toDiarist(memberName: String, started: Boolean): GameSettlementDiaristUi {
         val guest = guestDisplayName
         val method = when {

@@ -54,6 +54,7 @@ import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
 import br.com.saqz.groups.resources.*
 import org.jetbrains.compose.resources.stringResource
 
+@Suppress("TooManyFunctions")
 internal object GameSettlementTags {
     const val Screen = "game-settlement"
     const val Header = "game-settlement-header"

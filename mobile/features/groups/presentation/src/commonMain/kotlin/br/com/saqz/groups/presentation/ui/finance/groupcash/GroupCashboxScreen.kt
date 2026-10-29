@@ -59,6 +59,7 @@ import br.com.saqz.groups.presentation.ui.finance.sheets.WaiveSheet
 import br.com.saqz.groups.resources.*
 import org.jetbrains.compose.resources.stringResource
 
+@Suppress("TooManyFunctions")
 internal object GroupCashboxTags {
     const val Screen = "group-cashbox"
     const val ChargeMissing = "group-cashbox-charge-missing"
@@ -427,7 +428,7 @@ private fun OpeningQuestion(state: GroupCashboxState, onIntent: (GroupCashboxInt
 }
 
 @Composable
-private fun OpeningField(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit, showLabel: Boolean) {
+private fun OpeningField(state: GroupCashboxState, onIntent: (GroupCashboxIntent) -> Unit, showLabel: Boolean) = Column {
     CashMoneyField(
         value = state.openingInput,
         onValueChange = { onIntent(GroupCashboxIntent.OpeningInputChanged(it)) },

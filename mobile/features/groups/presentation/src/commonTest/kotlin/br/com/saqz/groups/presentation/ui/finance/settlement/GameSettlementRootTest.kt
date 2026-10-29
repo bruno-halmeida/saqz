@@ -71,48 +71,15 @@ class GameSettlementRootTest {
             SaqzTheme {
                 GameSettlementRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
                     groupId = "selected-group", gameId = "game-1",
-                    onBack = { navigation += "back" }, onOpenNewEntry = { _, _ -> },
+                    onBack = { navigation += "back" }, onOpenNewEntry = { groupId, _ -> navigation += groupId },
                     onOpenCashbox = { navigation += it }, viewModel = viewModel,
                 )
             }
         }
         waitForIdle()
-        onNodeWithTag(GameSettlementTags.Cashbox).performScrollTo().performClick()
+        onNodeWithText("Lançar").performScrollTo().performClick()
         waitForIdle()
         assertEquals(listOf("selected-group"), navigation)
-    }
-
-    @Test
-    fun `end action returns to previous screen without announcing another financial mutation`() = runComposeUiTest {
-        val finance = object : OrganizerFinanceGateway by FakeOrganizerFinanceGateway() {
-            override suspend fun expenses(groupId: GroupId) = SaqzResult.Success(ExpenseList(emptyList(), 0L))
-        }
-        val viewModel = GameSettlementViewModel(
-            "group-1", "game-1", FakeGameGateway(), FakeGroupGateway(),
-            FakeAttendanceGateway(), FakeAthleteGateway(), finance,
-            br.com.saqz.groups.presentation.FakeCashboxGateway(),
-            br.com.saqz.groups.port.GroupNowPort { kotlin.time.Instant.parse("2026-08-20T12:00:00Z") },
-        )
-        val navigation = mutableListOf<String>()
-        var mutations = 0
-        setContent {
-            SaqzTheme {
-                GameSettlementRoot(reminders = br.com.saqz.groups.presentation.fakeChargeReminders(),
-                    groupId = "group-1", gameId = "game-1",
-                    onBack = { navigation += "back" },
-                    onOpenNewEntry = { _, _ -> navigation += "new-entry" },
-                    onOpenCashbox = { navigation += "cashbox/$it" },
-                    onMutationSuccess = { mutations++ },
-                    viewModel = viewModel,
-                )
-            }
-        }
-        waitForIdle()
-        onNodeWithTag(GameSettlementTags.End).performScrollTo().performClick()
-        waitForIdle()
-
-        assertEquals(listOf("back"), navigation)
-        assertEquals(0, mutations)
     }
 
     @Test

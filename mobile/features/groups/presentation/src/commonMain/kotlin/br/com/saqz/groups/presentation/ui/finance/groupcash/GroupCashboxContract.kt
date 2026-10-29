@@ -57,6 +57,7 @@ data class GroupCashboxState(
     val monthIn: List<LedgerUi> = emptyList(),
     val monthOut: List<LedgerUi> = emptyList(),
     val monthInLabel: String = "",
+    val monthInCents: Long = 0L,
     val monthOutLabel: String = "",
     val dueLabel: String = "",
     /** `null`: ninguém respondeu o saldo inicial (ou o servidor não tem o campo). */

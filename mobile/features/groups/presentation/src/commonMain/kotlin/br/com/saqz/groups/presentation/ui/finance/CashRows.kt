@@ -31,7 +31,7 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 
 /** Faixa cinza-clara de borda a borda que abre um grupo da lista: "Mensalidades de outubro · 9 de 12 pagaram". */
 @Composable
-internal fun CashGroupHeader(title: String, trailing: String? = null, modifier: Modifier = Modifier) {
+internal fun CashGroupHeader(title: String, modifier: Modifier = Modifier, trailing: String? = null) {
     val metrics = SaqzTheme.metrics
     Row(
         modifier = modifier

@@ -40,6 +40,7 @@ class StatementViewModel(
     private var loadInFlight = false
     private var loadedOnce = false
 
+    @Suppress("CyclomaticComplexMethod")
     override fun handleIntent(intent: StatementIntent) {
         when (intent) {
             StatementIntent.Retry -> load(reset = true)
