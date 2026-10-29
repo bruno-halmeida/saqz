@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E50000000000000000000013 /* ReceivablesOffE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000014 /* ReceivablesOffE2eTest.swift */; };
+		E50000000000000000000011 /* GroupPixE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000012 /* GroupPixE2eTest.swift */; };
+		E50000000000000000000009 /* UnchargedReviewE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000010 /* UnchargedReviewE2eTest.swift */; };
+		E50000000000000000000007 /* GameFeeE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000008 /* GameFeeE2eTest.swift */; };
+		E50000000000000000000005 /* CashboxE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000006 /* CashboxE2eTest.swift */; };
 		E50000000000000000000003 /* GroupListConfirmE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000004 /* GroupListConfirmE2eTest.swift */; };
 		E50000000000000000000001 /* E2ESupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000002 /* E2ESupport.swift */; };
 		A10000000000000000000001 /* SaqzIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* SaqzIOSApp.swift */; };
@@ -94,6 +99,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E50000000000000000000014 /* ReceivablesOffE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceivablesOffE2eTest.swift; sourceTree = "<group>"; };
+		E50000000000000000000012 /* GroupPixE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPixE2eTest.swift; sourceTree = "<group>"; };
+		E50000000000000000000010 /* UnchargedReviewE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnchargedReviewE2eTest.swift; sourceTree = "<group>"; };
+		E50000000000000000000008 /* GameFeeE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameFeeE2eTest.swift; sourceTree = "<group>"; };
+		E50000000000000000000006 /* CashboxE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CashboxE2eTest.swift; sourceTree = "<group>"; };
 		E50000000000000000000004 /* GroupListConfirmE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListConfirmE2eTest.swift; sourceTree = "<group>"; };
 		E50000000000000000000002 /* E2ESupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ESupport.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* SaqzIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSApp.swift; sourceTree = "<group>"; };
@@ -224,6 +234,11 @@
 				A1000000000000000000001C /* AccessibilityUITests.swift */,
 				A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */,
 				B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */,
+				E50000000000000000000014 /* ReceivablesOffE2eTest.swift */,
+				E50000000000000000000012 /* GroupPixE2eTest.swift */,
+				E50000000000000000000010 /* UnchargedReviewE2eTest.swift */,
+				E50000000000000000000008 /* GameFeeE2eTest.swift */,
+				E50000000000000000000006 /* CashboxE2eTest.swift */,
 				E50000000000000000000004 /* GroupListConfirmE2eTest.swift */,
 				E50000000000000000000002 /* E2ESupport.swift */,
 			);
@@ -545,6 +560,11 @@
 				B60000000000000000000003 /* IOSGroupPhotoLifecycleUITests.swift in Sources */,
 				E50000000000000000000001 /* E2ESupport.swift in Sources */,
 				E50000000000000000000003 /* GroupListConfirmE2eTest.swift in Sources */,
+				E50000000000000000000005 /* CashboxE2eTest.swift in Sources */,
+				E50000000000000000000007 /* GameFeeE2eTest.swift in Sources */,
+				E50000000000000000000009 /* UnchargedReviewE2eTest.swift in Sources */,
+				E50000000000000000000011 /* GroupPixE2eTest.swift in Sources */,
+				E50000000000000000000013 /* ReceivablesOffE2eTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

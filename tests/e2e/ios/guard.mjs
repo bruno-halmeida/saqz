@@ -3,11 +3,20 @@ import path from 'node:path';
 // Mesmos nomes de cenário do Android (tests/e2e/android/guard.mjs): a fixture de cada um vem de lá.
 const scenarios = {
   'attendance-list': ['GroupListConfirmE2eTest', 1],
+  'game-fee': ['GameFeeE2eTest', 1],
+  cashbox: ['CashboxE2eTest', 1],
+  'uncharged-review': ['UnchargedReviewE2eTest', 1],
+  'group-pix': ['GroupPixE2eTest', 1],
+  'receivables-off': ['ReceivablesOffE2eTest', 1],
 };
 
+/** `--scenario a` ou `--scenario a,b`; sem a opção, todos, na ordem do registro. */
 export function selectScenarios(name) {
-  if (name !== undefined && !Object.hasOwn(scenarios, name)) throw new Error(`Unknown E2E scenario: ${name}`);
-  return Object.entries(scenarios).filter(([key]) => name === undefined || key === name)
+  const names = name === undefined ? undefined : name.split(',');
+  for (const each of names ?? []) {
+    if (!Object.hasOwn(scenarios, each)) throw new Error(`Unknown E2E scenario: ${each}`);
+  }
+  return Object.entries(scenarios).filter(([key]) => names === undefined || names.includes(key))
     .map(([key, [testClass, count]]) => ({ name: key, testClass, count }));
 }
 

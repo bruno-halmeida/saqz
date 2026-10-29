@@ -62,19 +62,33 @@ class InstalledE2E: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ OR value == %@", text, text)).firstMatch
     }
 
+    /**
+     * Espera o identificador e, se não aparecer, rola procurando: no iOS a lista do Compose só põe no accessibility o
+     * que está composto, então item abaixo da dobra não existe até a rolagem chegar nele.
+     */
     @discardableResult
     func waitTag(_ tag: String, timeout: TimeInterval = timeout, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let found = element(tag)
-        if !found.waitForExistence(timeout: timeout) {
+        if !seek(found, timeout: timeout) {
             XCTFail("Não apareceu o identificador \(tag)", file: file, line: line)
         }
         return found
     }
 
+    /** Espera um pouco parado; depois rola para baixo e, se preciso, de volta para cima, conferindo a cada passo. */
+    func seek(_ target: XCUIElement, timeout: TimeInterval = timeout) -> Bool {
+        if target.waitForExistence(timeout: min(timeout, 4)) { return true }
+        for up in [true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false] {
+            up ? app.swipeUp(velocity: .slow) : app.swipeDown(velocity: .slow)
+            if target.waitForExistence(timeout: 0.7) { return true }
+        }
+        return target.waitForExistence(timeout: max(timeout - 4, 1))
+    }
+
     @discardableResult
     func waitText(_ text: String, timeout: TimeInterval = timeout, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let found = textElement(text)
-        if !found.waitForExistence(timeout: timeout) {
+        if !seek(found, timeout: timeout) {
             XCTFail("Não apareceu o texto \"\(text)\"", file: file, line: line)
         }
         return found
@@ -84,6 +98,76 @@ class InstalledE2E: XCTestCase {
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: element(tag))
         if XCTWaiter.wait(for: [gone], timeout: timeout) != .completed {
             XCTFail("Continuou na tela: \(tag)", file: file, line: line)
+        }
+    }
+
+    /** Texto que contém [text] (a tela usa espaço inseparável em "R$ 20"; compare sem ele). */
+    @discardableResult
+    func waitContains(_ text: String, timeout: TimeInterval = timeout, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        let found = containing(text)
+        if !seek(found, timeout: timeout) {
+            XCTFail("Não apareceu texto contendo \"\(text)\"", file: file, line: line)
+        }
+        return found
+    }
+
+    func containing(_ text: String, in scope: XCUIElement? = nil) -> XCUIElement {
+        let normalized = text.replacingOccurrences(of: "\u{00A0}", with: " ")
+        let variants = [normalized, normalized.replacingOccurrences(of: "R$ ", with: "R$\u{00A0}")]
+        let predicate = NSCompoundPredicate(orPredicateWithSubpredicates: variants.map {
+            NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", $0, $0)
+        })
+        return (scope ?? app).descendants(matching: .any).matching(predicate).firstMatch
+    }
+
+    func waitTextGone(_ text: String, timeout: TimeInterval = timeout, file: StaticString = #filePath, line: UInt = #line) {
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: containing(text))
+        if XCTWaiter.wait(for: [gone], timeout: timeout) != .completed {
+            XCTFail("Continuou na tela o texto \"\(text)\"", file: file, line: line)
+        }
+    }
+
+    /** Espera a condição (consulta à API, em geral) virar verdadeira. */
+    func eventually(_ label: String, timeout: TimeInterval = timeout, file: StaticString = #filePath, line: UInt = #line,
+                    _ condition: () -> Bool) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        XCTFail("Não aconteceu: \(label)", file: file, line: line)
+    }
+
+    /**
+     * Opção [label] do segmentado/grupo com o identificador [tag]. No iOS as opções vêm como irmãs do contêiner
+     * identificado, não filhas: vale a que está dentro do retângulo dele.
+     */
+    func option(_ tag: String, _ label: String) -> XCUIElement {
+        let container = waitTag(tag)
+        let area = container.frame.insetBy(dx: -8, dy: -8)
+        let candidates = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", label))
+        for index in 0..<candidates.count {
+            let candidate = candidates.element(boundBy: index)
+            if candidate.exists && candidate.identifier != tag && area.contains(CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)) {
+                return candidate
+            }
+        }
+        return containing(label, in: container)
+    }
+
+    func tapOption(_ tag: String, _ label: String, file: StaticString = #filePath, line: UInt = #line) {
+        let target = option(tag, label)
+        XCTAssertTrue(target.waitForExistence(timeout: Self.timeout), "Sem a opção \(label) em \(tag)", file: file, line: line)
+        reveal(target)
+        target.tap()
+    }
+
+    /** Volta até a aba do shell (o editor pode deixar mais de uma tela empilhada sobre o grupo). */
+    func backToShell(max: Int = 4) {
+        for _ in 0..<max {
+            if exists("saqz-shell-content") && !exists("group-details") && !exists("game-detail") { return }
+            back()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
         }
     }
 
@@ -115,21 +199,37 @@ class InstalledE2E: XCTestCase {
     }
 
     /**
-     * Substitui o conteúdo do campo. O campo do Compose aparece como "Other" com o identificador e só ganha foco
-     * depois do toque: espera o teclado e digita no app, não no elemento.
+     * Substitui o conteúdo do campo. No iOS o identificador fica num "Other" e o campo editável (TextView/TextField,
+     * com o valor) vem como irmão dentro do mesmo retângulo: é nele que se toca, e o valor dele diz o que apagar.
      */
     func type(_ tag: String, _ text: String, file: StaticString = #filePath, line: UInt = #line) {
-        let field = waitTag(tag, file: file, line: line)
-        reveal(field)
+        let container = waitTag(tag, file: file, line: line)
+        reveal(container)
+        let field = editable(in: container)
         field.tap()
         if !app.keyboards.firstMatch.waitForExistence(timeout: 5) {
             field.tap()
             XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "Teclado não abriu em \(tag)", file: file, line: line)
         }
-        if let current = field.value as? String, !current.isEmpty, current != field.placeholderValue {
-            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        // Campo já preenchido (o login guarda o último e-mail): cursor no fim e apaga, conferindo até esvaziar.
+        for _ in 0..<3 {
+            let current = (field.value as? String).map { $0 == field.placeholderValue ? 0 : $0.count } ?? 0
+            if current == 0 { break }
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
+            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current + 8))
         }
         app.typeText(text)
+    }
+
+    private func editable(in container: XCUIElement) -> XCUIElement {
+        let area = container.frame.insetBy(dx: -4, dy: -4)
+        for query in [app.textViews, app.textFields, app.secureTextFields] {
+            for index in 0..<query.count {
+                let candidate = query.element(boundBy: index)
+                if candidate.exists && area.contains(CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)) { return candidate }
+            }
+        }
+        return container
     }
 
     /** Voltar do app (seta da barra); sem ela, o gesto de borda do iOS. */
@@ -171,6 +271,9 @@ class InstalledE2E: XCTestCase {
         type("login-password", string(fixture["password"]))
         tap("login-submit")
         waitTag("saqz-shell-content", timeout: 30)
+        // Como o Android confere o uid: o Perfil mostra o nome que a fixture deu a esta conta.
+        tab("Perfil")
+        waitContains("E2E \(scenarioName)-\(role)")
     }
 
     func logout() {
@@ -206,6 +309,10 @@ class InstalledE2E: XCTestCase {
         let (code, json) = http(Self.apiBaseURL + path, method: method, body: body, token: token, headers: headers)
         XCTAssertEqual(code, status, "\(method) \(path)", file: file, line: line)
         return json as? [String: Any] ?? [:]
+    }
+
+    func apiArray(_ role: String, _ path: String, key: String, file: StaticString = #filePath, line: UInt = #line) -> [[String: Any]] {
+        api(role, path, file: file, line: line)[key] as? [[String: Any]] ?? []
     }
 
     func apiList(_ role: String, _ path: String, file: StaticString = #filePath, line: UInt = #line) -> [[String: Any]] {

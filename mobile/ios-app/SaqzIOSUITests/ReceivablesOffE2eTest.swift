@@ -1,0 +1,47 @@
+import UIKit
+import XCTest
+
+/**
+ * DEB-141/142/149 com o recebimento pelo app desligado (padrão do stack e da produção): o gestor não vê oferta nem tela
+ * de recebimento no grupo, no caixa e no editar grupo (só a chave Pix); o atleta com cobrança copia o Pix do grupo e
+ * não tem "Pagar". Igual ao ReceivablesOffE2eTest do Android.
+ */
+final class ReceivablesOffE2eTest: InstalledE2E {
+    override var scenarioName: String { "receivables-off" }
+    private let receivingTags = ["group-receiving", "group-receiving-offer", "cashbox-wallet", "cashbox-review", "group-fee-preview"]
+
+    func testOrganizerSeesNoInAppReceivingAndAthleteCopiesTheGroupPix() {
+        login("owner")
+        openGroup()
+        waitTag("group-details-people")
+        assertNoReceiving()
+        shot("gestor-grupo-sem-recebimento")
+        tap("group-details-cashbox")
+        waitTag("group-cashbox-hero")
+        assertNoReceiving()
+        shot("gestor-caixa-sem-recebimento")
+        back()
+        waitGone("group-cashbox")
+        tap("group-details-edit-group")
+        waitTag("group-setup-submit")
+        reveal(waitTag("group-setup-pix-key"))
+        assertNoReceiving()
+        shot("gestor-editar-grupo-so-chave-pix")
+        backToShell()
+        logout()
+
+        login("athlete")
+        openGroup()
+        reveal(waitTag("group-details-own-charge-\(string(data["charge"]))"))
+        XCTAssertFalse(exists("group-details-own-charges-pay"))
+        XCTAssertFalse(app.buttons["Pagar"].exists)
+        UIPasteboard.general.string = ""
+        tap("group-details-own-charges-pix-copy")
+        eventually("chave na área de transferência") { UIPasteboard.general.string == string(data["pixKey"]) }
+        shot("atleta-copia-pix-sem-pagar")
+    }
+
+    private func assertNoReceiving() {
+        for tag in receivingTags { XCTAssertFalse(exists(tag), "Recebimento pelo app à vista: \(tag)") }
+    }
+}

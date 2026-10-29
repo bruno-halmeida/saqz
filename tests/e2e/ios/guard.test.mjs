@@ -5,7 +5,8 @@ import { selectScenarios, simulatorUdid, verifySummary, shotFileName } from './g
 test('ENV: escolha explícita de cenário com classe e contagem exatas; nome desconhecido ou vazio é erro', () => {
   assert.deepEqual(selectScenarios('attendance-list'), [{ name: 'attendance-list', testClass: 'GroupListConfirmE2eTest', count: 1 }]);
   assert.ok(selectScenarios().length >= 1);
-  for (const input of ['', 'missing', '__proto__']) assert.throws(() => selectScenarios(input), /Unknown E2E scenario/);
+  assert.deepEqual(selectScenarios('cashbox,game-fee').map(item => item.name), ['game-fee', 'cashbox']);
+  for (const input of ['', 'missing', '__proto__', 'cashbox,']) assert.throws(() => selectScenarios(input), /Unknown E2E scenario/);
 });
 
 test('ENV: só um UDID de simulador explícito', () => {
