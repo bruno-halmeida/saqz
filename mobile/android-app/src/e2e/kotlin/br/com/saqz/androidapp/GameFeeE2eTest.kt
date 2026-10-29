@@ -3,16 +3,11 @@ package br.com.saqz.androidapp
 import androidx.compose.ui.test.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.json.JSONArray
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.util.UUID
 
 /**
  * JOGO-008 (roteiro 13, V1–V10): o cartão "Defina o valor por jogo" só para o dono; o editor de jogo não salva sem
@@ -71,7 +66,7 @@ internal class GameFeeE2eTest : InstalledE2e("game-fee") {
         shot("grupo-sem-cartao")
 
         // J2 com R$ 20 (precondição pela API: o valor no editor já foi coberto acima).
-        val withFee = publishGame("22:00", 2000)
+        val withFee = publishGame(data.getString("tomorrow"), "22:00", 2000, "Quadra J2")
         backToShell()
         logout()
 
@@ -140,19 +135,4 @@ internal class GameFeeE2eTest : InstalledE2e("game-fee") {
     private fun games(): JSONArray = JSONArray(apiRaw("owner", gamesPath))
 
     private fun ownCharges(): JSONArray = api("athlete", "/api/groups/$group/charges/me").getJSONArray("charges")
-
-    private fun publishGame(time: String, fee: Long): String {
-        val date = LocalDate.parse(data.getString("tomorrow"))
-        val starts = date.atTime(time.take(2).toInt(), 0).atZone(ZoneId.of("America/Sao_Paulo")).toInstant()
-        val created = api("owner", gamesPath, "POST", JSONObject()
-            .put("requestId", UUID.randomUUID().toString()).put("title", "Quadra J2")
-            .put("venue", JSONObject().put("name", "Quadra J2").put("address", "Rua Teste 100"))
-            .put("localDate", date.toString()).put("localTime", time).put("zoneId", "America/Sao_Paulo")
-            .put("startsAt", starts.toString()).put("durationMinutes", 90).put("capacity", 6)
-            .put("confirmationDeadline", starts.minusSeconds(7200).toString())
-            .put("gameFeeCents", fee).put("useDefaultGameFee", false), status = 201)
-        val id = created.getString("id")
-        api("owner", "$gamesPath/$id/publish", "POST", headers = mapOf("If-Match" to "\"${created.getLong("version")}\""))
-        return id.also { check(Instant.now().isBefore(starts)) }
-    }
 }

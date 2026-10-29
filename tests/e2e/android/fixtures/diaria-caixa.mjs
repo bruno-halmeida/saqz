@@ -95,9 +95,17 @@ async function uncharged(ctx) {
   const mensal = await member(ctx, 'mensal', 'MENSALISTA');
   const j1 = await game(ctx, { noGameFee: true });
   for (const person of [athlete, other, mensal]) await confirm(ctx, j1.id, person);
+  // Convidado sempre entra pela espera (VUL-239): o gestor coloca a Bia, como no jogo de verdade.
   const bia = await guest(ctx, j1.id, mensal, 'Bia');
-  assert.equal(bia.status, 'CONFIRMED');
+  assert.equal(bia.status, 'WAITLISTED');
   const path = `${api}/api/groups/${group}/games/${j1.id}`;
+  // "Colocar" é da Escolha manual: o grupo passa a ela só para colocar a Bia e volta à Ordem de chegada.
+  await sql(`UPDATE access_groups SET promotion_mode='MANUAL' WHERE id='${group}';`);
+  await request(`${path}/attendance/promote`, 'POST',
+    { requestId: randomUUID(), memberId: mensal.id, guestSeq: bia.guestSeq, reason: 'Precondicao E2E' }, owner.token);
+  await sql(`UPDATE access_groups SET promotion_mode='FIFO' WHERE id='${group}';`);
+  const roster = await request(`${path}/attendance/roster`, 'GET', undefined, owner.token);
+  assert.equal(roster.confirmed.length, 4);
   let current = await request(path, 'GET', undefined, owner.token);
   const { useDefaultGameFee, noGameFee, ...body } = j1.body;
   const edited = await request(path, 'PUT', { ...body, requestId: randomUUID(), gameFeeCents: 2000, noGameFee: false },

@@ -238,6 +238,22 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         ui.waitUntil(20_000) { ui.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty() }
     }
 
+    /** Jogo publicado pelo dono (precondição pela API): `date` AAAA-MM-DD e `time` HH:MM em São Paulo, 6 vagas. */
+    protected fun publishGame(date: String, time: String, fee: Long?, venue: String): String {
+        val starts = java.time.LocalDate.parse(date).atTime(java.time.LocalTime.parse(time))
+            .atZone(java.time.ZoneId.of("America/Sao_Paulo")).toInstant()
+        val body = JSONObject().put("requestId", java.util.UUID.randomUUID().toString()).put("title", venue)
+            .put("venue", JSONObject().put("name", venue).put("address", "Rua Teste 100"))
+            .put("localDate", date).put("localTime", time).put("zoneId", "America/Sao_Paulo")
+            .put("startsAt", starts.toString()).put("durationMinutes", 90).put("capacity", 6)
+            .put("confirmationDeadline", starts.minusSeconds(7200).toString())
+        fee?.let { body.put("gameFeeCents", it).put("useDefaultGameFee", false) }
+        val created = api("owner", "/api/groups/$group/games", "POST", body, status = 201)
+        val id = created.getString("id")
+        api("owner", "/api/groups/$group/games/$id/publish", "POST", headers = mapOf("If-Match" to "\"${created.getLong("version")}\""))
+        return id
+    }
+
     protected fun membershipIds(role: String): Set<String> {
         val memberships = api(role, "/api/session", "PUT").getJSONArray("memberships")
         return (0 until memberships.length()).map { memberships.getJSONObject(it).getString("groupId") }.toSet()
