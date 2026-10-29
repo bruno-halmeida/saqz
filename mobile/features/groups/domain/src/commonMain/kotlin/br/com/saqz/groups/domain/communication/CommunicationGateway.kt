@@ -25,6 +25,8 @@ data class CommunicationMessage(
     val recipientCount: Int = 0,
     /** Foto de perfil do autor (MEM-006); nulo sem foto ou bloqueado por quem lê. */
     val photoTag: String? = null,
+    /** O que o aviso de sistema quer dizer (ex.: `GAME_FEE_UNDEFINED`, DEB-146); nulo nos outros e no servidor antigo. */
+    val eventKind: String? = null,
 )
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)
 data class InAppNotification(val sequence: Long, val message: CommunicationMessage, val read: Boolean)

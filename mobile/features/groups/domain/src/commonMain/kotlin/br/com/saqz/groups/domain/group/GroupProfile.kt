@@ -64,6 +64,8 @@ data class GroupGameConfig(
     val promotionMode: PromotionMode = PromotionMode.FIFO,
     /** Backend antigo não manda o campo: vale o de sempre, por horário. */
     val attendanceUpdatesMode: AttendanceUpdatesMode = AttendanceUpdatesMode.SCHEDULED,
+    /** DEB-150: vaga do avulso só com pagamento antecipado; só vale na Escolha manual. */
+    val advancePaymentRequired: Boolean = false,
 )
 
 data class GroupFinanceDefaults(
@@ -72,6 +74,10 @@ data class GroupFinanceDefaults(
     val monthlyDueDay: Int?,
     /** Nulo quando o backend não manda o campo (versão antiga): a tela esconde o seletor. */
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
+    /** DEB-146: "Sem diária" escolhido de propósito. */
+    val defaultNoGameFee: Boolean = false,
+    /** DEB-146: sem valor e sem a marca; é o que mostra o cartão do grupo ao gestor. */
+    val gameFeeUndefined: Boolean = false,
 )
 
 data class Group(
@@ -128,6 +134,10 @@ data class GroupSetupForm(
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
     /** Nulo = não enviar (o backend mantém o que já tem). Só o dono troca. */
     val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
+    /** DEB-146: `true` = Sem diária (sem [defaultGameFeeCents]); `null` = não enviar. */
+    val defaultNoGameFee: Boolean? = null,
+    /** DEB-150: `null` = não enviar (o backend mantém). */
+    val advancePaymentRequired: Boolean? = null,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

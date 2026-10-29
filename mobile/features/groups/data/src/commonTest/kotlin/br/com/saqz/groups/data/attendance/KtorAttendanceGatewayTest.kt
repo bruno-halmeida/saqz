@@ -34,6 +34,8 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
+import br.com.saqz.groups.domain.finance.ChargeStatus
+import br.com.saqz.groups.domain.finance.PaidMethod
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
@@ -172,6 +174,42 @@ class KtorAttendanceGatewayTest {
         }.removeGuest(GROUP, GAME, "host-1", 2)
 
         assertEquals(SaqzResult.Success(Unit), result)
+    }
+
+    @Test
+    fun `roster maps the waitlist charge and drops an unknown status (DEB-150)`() = runTest {
+        val json = """{"confirmed":[],"waitlisted":[
+            {"memberId":"m-1","displayName":"Rafa","waitlistPosition":1,"charge":{"id":"c-1","status":"PENDING","amountCents":2000,"version":3}},
+            {"memberId":"m-2","displayName":"Bia","waitlistPosition":2,"charge":{"id":"c-2","status":"PAID","amountCents":2000,"version":4}},
+            {"memberId":"m-3","displayName":"Caio","waitlistPosition":3,"charge":null},
+            {"memberId":"m-4","displayName":"Duda","waitlistPosition":4,"charge":{"id":"c-4","status":"REFUNDED","amountCents":2000,"version":1}},
+            {"memberId":"m-5","displayName":"Edu","waitlistPosition":5}
+        ]}"""
+        val result = gateway { respond(json, headers = jsonHeaders()) }.roster(GROUP, GAME)
+
+        val roster = assertIs<SaqzResult.Success<*>>(result).value as br.com.saqz.groups.domain.attendance.AttendanceRoster
+        assertEquals(
+            br.com.saqz.groups.domain.attendance.WaitlistCharge("c-1", ChargeStatus.Pending, 2000, 3),
+            roster.waitlisted[0].charge,
+        )
+        assertEquals(ChargeStatus.Paid, roster.waitlisted[1].charge?.status)
+        assertEquals(listOf(null, null, null), roster.waitlisted.drop(2).map { it.charge })
+    }
+
+    @Test
+    fun `promote sends markPaid and the method only for Colocar, já pagou (DEB-150)`() = runTest {
+        gateway { request ->
+            val body = request.bodyJson()
+            assertEquals(true, body["markPaid"]?.jsonPrimitive?.boolean)
+            assertEquals("CASH", body["paidMethod"]?.jsonPrimitive?.content)
+            mutationResponse()
+        }.promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member-2", "Escolha do organizador", markPaid = true, paidMethod = PaidMethod.Cash))
+        gateway { request ->
+            val body = request.bodyJson()
+            assertTrue("markPaid" !in body || body["markPaid"] is kotlinx.serialization.json.JsonNull)
+            assertTrue("paidMethod" !in body || body["paidMethod"] is kotlinx.serialization.json.JsonNull)
+            mutationResponse()
+        }.promote(GROUP, GAME, AttendancePromotionCommand(KEY, "member-2", "Escolha do organizador", paidMethod = PaidMethod.Cash))
     }
 
     @Test

@@ -84,6 +84,9 @@ internal data class GroupFinanceDefaultsDto(
     val monthlyDueDay: Int? = null,
     // String e não enum: um valor novo do backend não pode derrubar a leitura do grupo.
     val monthlyLateJoinPolicy: String? = null,
+    /** DEB-146: aditivos; ausentes no servidor antigo. */
+    val defaultNoGameFee: Boolean = false,
+    val gameFeeUndefined: Boolean = false,
 )
 
 @Serializable
@@ -92,6 +95,8 @@ internal data class GroupGameConfigDto(
     val promotionMode: PromotionModeDto = PromotionModeDto.FIFO,
     // String e não enum: um valor novo do backend não pode derrubar a leitura do grupo.
     val attendanceUpdatesMode: String? = null,
+    /** DEB-150: aditivo; ausente no servidor antigo. */
+    val advancePaymentRequired: Boolean = false,
 )
 
 @Serializable
@@ -166,6 +171,8 @@ private data class CompleteGroupRequestDto(
     val attendanceUpdatesMode: String? = null,
     val pixKey: String? = null,
     val pixLabel: String? = null,
+    val defaultNoGameFee: Boolean? = null,
+    val advancePaymentRequired: Boolean? = null,
 )
 
 class KtorGroupGateway(
@@ -284,6 +291,8 @@ private fun GroupDto.toDomain(): Group? {
                 it.monthlyFeeCents,
                 it.monthlyDueDay,
                 it.monthlyLateJoinPolicy?.let { name -> MonthlyLateJoinPolicy.entries.firstOrNull { it.name == name } },
+                defaultNoGameFee = it.defaultNoGameFee,
+                gameFeeUndefined = it.gameFeeUndefined,
             )
         },
         gameConfig = GroupGameConfig(
@@ -291,6 +300,7 @@ private fun GroupDto.toDomain(): Group? {
             promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
             attendanceUpdatesMode = AttendanceUpdatesMode.entries.firstOrNull { it.name == gameConfig.attendanceUpdatesMode }
                 ?: AttendanceUpdatesMode.SCHEDULED,
+            advancePaymentRequired = gameConfig.advancePaymentRequired,
         ),
         entryRequiresApproval = entryRequiresApproval,
         hasPastGames = hasPastGames == true,
@@ -357,6 +367,8 @@ private fun GroupSetupForm.toRequest(requestId: String? = null, timeZone: String
         attendanceUpdatesMode = form.attendanceUpdatesMode?.name,
         pixKey = form.pixKey,
         pixLabel = form.pixLabel,
+        defaultNoGameFee = form.defaultNoGameFee,
+        advancePaymentRequired = form.advancePaymentRequired,
     )
 }
 

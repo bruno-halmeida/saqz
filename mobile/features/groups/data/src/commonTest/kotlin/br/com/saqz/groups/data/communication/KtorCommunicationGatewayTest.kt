@@ -107,6 +107,14 @@ class KtorCommunicationGatewayTest {
         )
         assertEquals("game-1", inbox.items[1].message.gameId)
     }
+    @Test fun inboxMapsTheEventKindOfTheGameFeeNoticeAndOldServersLeaveItNull() = runTest {
+        val notice = """{"sequence":5,"message":${
+            message.replace("\"channel\":\"NOTICE\"", "\"channel\":\"FIRST_MEMBER\",\"eventKind\":\"GAME_FEE_UNDEFINED\"")
+        },"read":false}"""
+        val old = """{"sequence":4,"message":${message.replace("\"channel\":\"NOTICE\"", "\"channel\":\"FIRST_MEMBER\"")},"read":false}"""
+        val inbox = gateway { respond("""{"items":[$notice,$old],"nextCursor":null}""", headers = jsonHeaders) }.inbox().success()
+        assertEquals(listOf("GAME_FEE_UNDEFINED", null), inbox.items.map { it.message.eventKind })
+    }
     @Test fun inboxMapsTheAutoConfirmationNotice() = runTest {
         val item = """{"sequence":5,"message":${
             message.replace("\"channel\":\"NOTICE\"", "\"channel\":\"AUTO_CONFIRMATION\"")

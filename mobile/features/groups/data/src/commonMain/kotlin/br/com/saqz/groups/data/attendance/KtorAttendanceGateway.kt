@@ -15,6 +15,8 @@ import br.com.saqz.groups.domain.attendance.AttendanceGateway
 import br.com.saqz.groups.domain.attendance.AttendanceIntent
 import br.com.saqz.groups.domain.attendance.AttendanceMutation
 import br.com.saqz.groups.domain.attendance.AttendancePromotionCommand
+import br.com.saqz.groups.domain.attendance.WaitlistCharge
+import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.attendance.AttendanceRoster
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.domain.attendance.AttendanceStatus
@@ -103,6 +105,17 @@ internal data class AttendanceRosterMemberTransport(
     val photoTag: String? = null,
     /** PRES-016: só vem verdadeiro para dono e admin. */
     val noShow: Boolean = false,
+    /** DEB-150: só nos itens da espera, só para o gestor; ausente no servidor antigo. */
+    val charge: WaitlistChargeTransport? = null,
+)
+
+@Serializable
+internal data class WaitlistChargeTransport(
+    val id: String,
+    // String e não enum: um status novo do backend não pode derrubar a espera.
+    val status: String,
+    val amountCents: Long,
+    val version: Long,
 )
 
 @Serializable
@@ -153,6 +166,8 @@ internal data class AttendancePromotionRequest(
     val memberId: String,
     val reason: String? = null,
     val guestSeq: Int = 0,
+    val markPaid: Boolean? = null,
+    val paidMethod: String? = null,
 )
 
 @Serializable
@@ -337,6 +352,8 @@ private fun AttendancePromotionCommand.toRequest() = AttendancePromotionRequest(
     memberId = memberId,
     reason = reason,
     guestSeq = guestSeq,
+    markPaid = markPaid.takeIf { it },
+    paidMethod = paidMethod?.takeIf { markPaid }?.name?.uppercase(),
 )
 
 private fun AttendanceCapacityCommand.toRequest() = AttendanceCapacityRequest(
@@ -484,4 +501,9 @@ private fun AttendanceRosterMemberTransport.toDomain() = AttendanceRosterMember(
     forced = forced,
     photoTag = photoTag?.takeIf { it.isNotBlank() && guestSeq == 0 },
     noShow = noShow,
+    charge = charge?.toDomain(),
 )
+
+private fun WaitlistChargeTransport.toDomain(): WaitlistCharge? =
+    ChargeStatus.entries.firstOrNull { it.name.equals(status, ignoreCase = true) }
+        ?.let { WaitlistCharge(id, it, amountCents, version) }

@@ -81,12 +81,22 @@ data class AttendanceRosterMember(
     val photoTag: String? = null,
     /** PRES-016: confirmou e não apareceu. Só vem verdadeiro para dono e admin. */
     val noShow: Boolean = false,
+    /** PROM-010: a diária deste jogo de quem está na espera; só vem para o gestor e `null` sem diária. */
+    val charge: WaitlistCharge? = null,
 ) {
     val isGuest: Boolean get() = guestSeq > 0
 
     /** Chave única de linha: dois convidados do mesmo anfitrião dividem o [memberId]. */
     val rowKey: String get() = if (isGuest) "$memberId#$guestSeq" else memberId
 }
+
+/** A diária de quem está na espera (DEB-150): dá o "Pagou" / "Falta pagar" e o Recebi com a [version]. */
+data class WaitlistCharge(
+    val id: String,
+    val status: br.com.saqz.groups.domain.finance.ChargeStatus,
+    val amountCents: Long,
+    val version: Long,
+)
 
 data class AttendanceRoster(
     val confirmed: List<AttendanceRosterMember>,
@@ -147,6 +157,9 @@ data class AttendancePromotionCommand(
     val memberId: String,
     val reason: String,
     val guestSeq: Int = 0,
+    /** PROM-010 "Colocar, já pagou": promove e dá baixa na diária na mesma transação. */
+    val markPaid: Boolean = false,
+    val paidMethod: br.com.saqz.groups.domain.finance.PaidMethod? = null,
 )
 
 data class AddGuestCommand(

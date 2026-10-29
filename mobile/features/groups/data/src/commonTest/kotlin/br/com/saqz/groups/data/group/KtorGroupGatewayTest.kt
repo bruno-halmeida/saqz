@@ -208,6 +208,67 @@ class KtorGroupGatewayTest {
             assertEquals(null, fixture { group(future) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.financeDefaults?.monthlyLateJoinPolicy)
         }
 
+    @Test fun `profile update sends Sem diária without a fee and the advance payment flag (DEB-146, DEB-150)`() =
+        runTest {
+            fixture { req ->
+                val body = req.bodyJson()
+                assertEquals(true, body["defaultNoGameFee"]?.jsonPrimitive?.boolean)
+                assertTrue("defaultGameFeeCents" !in body)
+                assertEquals(true, body["advancePaymentRequired"]?.jsonPrimitive?.boolean)
+                group()
+            }.gateway.updateProfile(
+                profileUpdate().copy(
+                    form = form().copy(
+                        defaultNoGameFee = true,
+                        promotionMode = PromotionMode.MANUAL,
+                        advancePaymentRequired = true,
+                    ),
+                ),
+            )
+        }
+
+    @Test fun `profile create sends the fee with the Sem diária mark off (DEB-146)`() =
+        runTest {
+            fixture { req ->
+                val body = req.bodyJson()
+                assertEquals(2000L, body["defaultGameFeeCents"]?.jsonPrimitive?.long)
+                assertEquals(false, body["defaultNoGameFee"]?.jsonPrimitive?.boolean)
+                group()
+            }.gateway.createProfile(
+                profileCreate().copy(form = form().copy(defaultGameFeeCents = 2000, defaultNoGameFee = false)),
+            )
+        }
+
+    @Test fun `profile update omits the new fields when the form leaves them null`() =
+        runTest {
+            fixture { req ->
+                val body = req.bodyJson()
+                assertTrue("defaultNoGameFee" !in body)
+                assertTrue("advancePaymentRequired" !in body)
+                group()
+            }.gateway.updateProfile(profileUpdate())
+        }
+
+    @Test fun `read maps the Sem diária mark, the undefined fee and the advance payment flag`() =
+        runTest {
+            val json = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"defaultGameFeeCents":null,"defaultNoGameFee":false,"gameFeeUndefined":true},"gameConfig":{"promotionMode":"MANUAL","advancePaymentRequired":true}}"""
+            val g = fixture { group(json) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group
+            assertEquals(true, g.financeDefaults?.gameFeeUndefined)
+            assertEquals(false, g.financeDefaults?.defaultNoGameFee)
+            assertEquals(true, g.gameConfig.advancePaymentRequired)
+            val noFee = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"defaultNoGameFee":true,"gameFeeUndefined":false}}"""
+            assertEquals(true, fixture { group(noFee) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.financeDefaults?.defaultNoGameFee)
+        }
+
+    @Test fun `read from an old server keeps the new fields off`() =
+        runTest {
+            val old = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"monthlyFeeCents":5000}}"""
+            val g = fixture { group(old) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group
+            assertEquals(false, g.financeDefaults?.gameFeeUndefined)
+            assertEquals(false, g.financeDefaults?.defaultNoGameFee)
+            assertEquals(false, g.gameConfig.advancePaymentRequired)
+        }
+
     @Test fun `profile update sends the WhatsApp list mode only when set`() =
         runTest {
             fixture { req ->

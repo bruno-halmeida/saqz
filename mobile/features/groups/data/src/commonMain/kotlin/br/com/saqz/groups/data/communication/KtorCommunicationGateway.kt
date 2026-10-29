@@ -27,6 +27,7 @@ private data class MessageDto(
     val id: String, val sequence: Long, val groupId: String, val authorId: String, val authorName: String,
     val channel: String, val body: String, val createdAt: String, val gameId: String? = null, val recipientCount: Int = 0,
     val photoTag: String? = null,
+    val eventKind: String? = null,
 ) {
     fun domain(): CommunicationMessage? {
         val channel = CommunicationChannel.entries.find { it.name == channel } ?: return null
@@ -34,6 +35,7 @@ private data class MessageDto(
         return CommunicationMessage(
             id, sequence, GroupId(groupId), authorId, authorName, channel, body, createdAt, gameId, recipientCount,
             photoTag?.takeIf(String::isNotBlank),
+            eventKind?.takeIf(String::isNotBlank),
         )
     }
 }

@@ -16,6 +16,8 @@ import br.com.saqz.groups.domain.game.SeriesBoundaryScope
 import br.com.saqz.groups.domain.game.Weekday
 import br.com.saqz.groups.domain.game.WeeklySeriesWriteCommand
 import br.com.saqz.groups.domain.game.WeeklySlot
+import br.com.saqz.groups.domain.game.VersionedGame
+import br.com.saqz.groups.domain.game.VersionedSeries
 import br.com.saqz.network.AuthenticatedNetworkClient
 import br.com.saqz.network.IdTokenProvider
 import br.com.saqz.network.NetworkClient
@@ -36,13 +38,18 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.long
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class KtorGameGatewayTest {
     @Test fun `list maps draft`() = statusCase("DRAFT", GameStatus.Draft)
@@ -112,6 +119,54 @@ class KtorGameGatewayTest {
             assertEquals("true", request.bodyJson()["useDefaultGameFee"]?.jsonPrimitive?.content)
             gameResponse(HttpStatusCode.Created)
         }.create(GROUP, gameCommand().copy(gameFeeCents = null, useDefaultGameFee = true))
+    }
+
+    @Test
+    fun `create sends Sem diária as the mark without a fee (DEB-146)`() = runTest {
+        gateway { request ->
+            val body = request.bodyJson()
+            assertEquals(true, body["noGameFee"]?.jsonPrimitive?.boolean)
+            assertTrue(body["gameFeeCents"] == null || body["gameFeeCents"] is JsonNull)
+            gameResponse(HttpStatusCode.Created)
+        }.create(GROUP, gameCommand().copy(gameFeeCents = null, useDefaultGameFee = false, noGameFee = true))
+    }
+
+    @Test
+    fun `edit sends the fee with the mark off (DEB-146)`() = runTest {
+        gateway { request ->
+            val body = request.bodyJson()
+            assertEquals(2500L, body["gameFeeCents"]?.jsonPrimitive?.long)
+            assertEquals(false, body["noGameFee"]?.jsonPrimitive?.boolean)
+            gameResponse()
+        }.edit(GROUP, GAME, GameVersionToken("\"7\""), gameCommand().copy(noGameFee = false))
+    }
+
+    @Test
+    fun `read maps the Sem diária mark and the advance payment flag; old server leaves both off`() = runTest {
+        val newJson = GAME_JSON.replace("\"gameFeeCents\":2500", "\"gameFeeCents\":null,\"noGameFee\":true,\"advancePaymentRequired\":true")
+        val game = assertIs<SaqzResult.Success<VersionedGame>>(
+            gateway { respond(newJson, headers = versionedHeaders("\"7\"")) }.read(GROUP, GAME),
+        ).value.game
+        assertEquals(null, game.gameFeeCents)
+        assertTrue(game.noGameFee)
+        assertTrue(game.advancePaymentRequired)
+        val old = assertIs<SaqzResult.Success<VersionedGame>>(gateway { gameResponse() }.read(GROUP, GAME)).value.game
+        assertFalse(old.noGameFee)
+        assertFalse(old.advancePaymentRequired)
+    }
+
+    @Test
+    fun `series slot carries the Sem diária mark both ways (DEB-146)`() = runTest {
+        val slot = seriesCommand().slots!!.single().copy(gameFeeCents = null, noGameFee = true)
+        val response = SERIES_JSON.replace("\"gameFeeCents\":2500,", "\"noGameFee\":true,")
+        val series = assertIs<SaqzResult.Success<VersionedSeries>>(
+            gateway { request ->
+                val sent = request.bodyJson()["slots"]!!.jsonArray.single().jsonObject
+                assertEquals(true, sent["noGameFee"]?.jsonPrimitive?.boolean)
+                seriesResponse(response)
+            }.createSeries(GROUP, seriesCommand().copy(slots = listOf(slot))),
+        ).value.series
+        assertTrue(series.slots.single().noGameFee)
     }
 
     @Test

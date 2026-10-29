@@ -92,6 +92,9 @@ internal data class GameTransport(
     val ownAttendance: AttendanceEntryTransport? = null,
     /** Campo novo e opcional da listagem (DEB-109); backend antigo não manda. */
     val positions: List<GamePositionTransport>? = null,
+    /** DEB-146 e DEB-150: aditivos; ausentes no servidor antigo. */
+    val noGameFee: Boolean = false,
+    val advancePaymentRequired: Boolean = false,
 )
 
 @Serializable
@@ -114,6 +117,8 @@ internal data class WeeklySlotTransport(
     val confirmationLeadMinutes: Int,
     val gameFeeCents: Long? = null,
     val title: String,
+    // Na escrita vai sempre: o app novo escolhe valor ou Sem diária (DEB-146).
+    val noGameFee: Boolean? = null,
 )
 
 @Serializable
@@ -155,6 +160,7 @@ internal data class GameWriteRequest(
     val gameFeeCents: Long? = null,
     val useDefaultGameFee: Boolean,
     val notes: String? = null,
+    val noGameFee: Boolean? = null,
 )
 
 @Serializable
@@ -329,6 +335,8 @@ private fun GameTransport.toDomain() = Game(
     version, confirmedCount, availableSpots, waitlistCount, financeReviewRequired,
     ownAttendance?.status?.let { AttendanceStatus.entries[it.ordinal] },
     positions.orEmpty().mapNotNull { it.toDomain() },
+    noGameFee,
+    advancePaymentRequired,
 )
 
 private fun GamePositionTransport.toDomain() = AthletePosition.entries.firstOrNull { it.name == position }
@@ -347,6 +355,7 @@ private fun WeeklySlotTransport.toDomain() = WeeklySlot(
     confirmationLeadMinutes,
     gameFeeCents,
     title,
+    noGameFee == true,
 )
 
 private fun SeriesOccurrenceTransport.toDomain() = SeriesOccurrence(
@@ -381,6 +390,7 @@ private fun WeeklySlot.toRequest() = WeeklySlotTransport(
     confirmationLeadMinutes,
     gameFeeCents,
     title,
+    noGameFee,
 )
 
 private fun GameWriteCommand.toRequest() = GameWriteRequest(
@@ -397,6 +407,7 @@ private fun GameWriteCommand.toRequest() = GameWriteRequest(
     gameFeeCents,
     useDefaultGameFee,
     notes,
+    noGameFee,
 )
 
 private fun WeeklySeriesWriteCommand.toRequest() = WeeklySeriesWriteRequest(

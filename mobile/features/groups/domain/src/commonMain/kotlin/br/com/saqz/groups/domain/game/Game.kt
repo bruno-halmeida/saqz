@@ -52,6 +52,10 @@ data class Game(
     val ownAttendance: AttendanceStatus? = null,
     /** Vagas por posição do jogo, só na listagem (DEB-109); vazio em jogo sem posições ou backend antigo. */
     val positions: List<br.com.saqz.groups.domain.attendance.PositionSummary> = emptyList(),
+    /** DEB-146: "Sem diária" escolhido de propósito. Sem valor e sem a marca = não definido (grupo legado). */
+    val noGameFee: Boolean = false,
+    /** DEB-150: o grupo só libera a vaga do avulso depois do pagamento (valor do grupo na hora da leitura). */
+    val advancePaymentRequired: Boolean = false,
 )
 
 data class VersionedGame(val game: Game, val version: GameVersionToken)
@@ -66,6 +70,8 @@ data class WeeklySlot(
     val confirmationLeadMinutes: Int,
     val gameFeeCents: Long? = null,
     val title: String,
+    /** DEB-146: mesmas regras do jogo; os jogos que a série cria copiam valor e marca. */
+    val noGameFee: Boolean = false,
 )
 
 data class SeriesOccurrence(
@@ -106,6 +112,8 @@ data class GameWriteCommand(
     val gameFeeCents: Long? = null,
     val useDefaultGameFee: Boolean = true,
     val notes: String? = null,
+    /** DEB-146: `true` = Sem diária (sem [gameFeeCents]); `null` = não enviar (app antigo). */
+    val noGameFee: Boolean? = null,
 )
 
 data class WeeklySeriesWriteCommand(
