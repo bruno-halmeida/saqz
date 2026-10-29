@@ -126,6 +126,8 @@ try {
     builtUrl = await command('/usr/libexec/PlistBuddy', ['-c', 'Print :SaqzAPIBaseURL', plist]);
   }
   if (builtUrl !== apiUrl) throw new Error(`SaqzIOS.app points to ${builtUrl}, not ${apiUrl}; remove ${derived} and retry.`);
+  // O app-update sobe a versão mínima acima desta.
+  const appVersion = await command('/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleShortVersionString', plist]);
 
   await acquireLock();
   for (const port of [18080, 9099, 4400, 4500]) await requireFreePort(port);
@@ -175,16 +177,24 @@ try {
     await command('xcrun', ['simctl', 'terminate', udid, 'app.saqz'], { env: xcodeEnv, onStderr: () => {} }).catch(() => {});
     await command('xcrun', ['simctl', 'uninstall', udid, 'app.saqz'], { env: xcodeEnv, onStderr: () => {} }).catch(() => {});
     await command('xcrun', ['simctl', 'keychain', udid, 'reset'], { env: xcodeEnv });
+    await command('xcrun', ['simctl', 'pbcopy', udid], { env: xcodeEnv, input: '' });
     const bundle = path.join(results, `${scenario.name}.xcresult`);
     try {
       await command('xcodebuild', [...project, 'test-without-building', `-only-testing:SaqzIOSUITests/${scenario.testClass}`,
         '-resultBundlePath', bundle], {
         stdio: ['ignore', 'inherit', 'inherit'],
-        env: { ...xcodeEnv, TEST_RUNNER_SAQZ_E2E_FIXTURE: encodedFixture, TEST_RUNNER_SAQZ_E2E_SCENARIO: scenario.name },
+        env: { ...xcodeEnv, TEST_RUNNER_SAQZ_E2E_FIXTURE: encodedFixture, TEST_RUNNER_SAQZ_E2E_SCENARIO: scenario.name,
+          TEST_RUNNER_SAQZ_E2E_APP_VERSION: appVersion },
       }).catch(error => { failures.push(`${scenario.name}: ${error.message.split('\n')[0]}`); });
       const summary = JSON.parse(await command('xcrun', ['xcresulttool', 'get', 'test-results', 'summary', '--path', bundle, '--format', 'json'], { env: xcodeEnv }));
       try { verifySummary(summary, scenario.count); }
       catch (error) { failures.push(`${scenario.name}: ${error.message}`); }
+      if (scenario.clipboard) {
+        const expected = fixture.scenarios[scenario.name][scenario.clipboard];
+        const copied = await command('xcrun', ['simctl', 'pbpaste', udid], { env: xcodeEnv });
+        if (copied !== expected) failures.push(`${scenario.name}: clipboard has "${copied}", expected ${scenario.clipboard} "${expected}"`);
+        else console.log(`Clipboard ${scenario.name}: ${scenario.clipboard} copied.`);
+      }
     } finally {
       await exportShots(scenario, bundle).catch(error => console.warn(`Shots ${scenario.name}: ${error.message}`));
     }

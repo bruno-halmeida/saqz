@@ -1,4 +1,3 @@
-import UIKit
 import XCTest
 
 /**
@@ -53,9 +52,8 @@ final class GroupPixE2eTest: InstalledE2E {
         XCTAssertNotNil(own, "Sem a seção Minhas cobranças")
         if let own { assertBelow("group-details-group-pix", own) }
         shot("atleta-secao-pix-do-grupo")
-        UIPasteboard.general.string = ""
+        // A área de transferência é conferida pelo runner no fim (simctl pbpaste): o teste não lê o que o app copiou.
         tap("group-details-group-pix-copy")
-        eventually("chave na área de transferência") { UIPasteboard.general.string == pixKey }
         shot("atleta-pix-copiado")
         backToShell()
 

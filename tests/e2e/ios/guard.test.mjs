@@ -32,3 +32,8 @@ test('SHOTS: nome do anexo vira <NN>-<passo>.png só para o cenário certo', () 
   assert.equal(shotFileName('cashbox', 'cashbox-arvore-da-tela.txt'), undefined);
   assert.equal(shotFileName('cashbox', 'Screenshot_0_5E1C0D3A-1B2C-4D5E-8F90-A1B2C3D4E5F6.png'), undefined);
 });
+
+test('ENV: cenários que copiam o Pix dizem qual campo da fixture o runner confere', () => {
+  assert.equal(selectScenarios('group-pix')[0].clipboard, 'pixKey');
+  assert.equal(selectScenarios('cashbox')[0].clipboard, undefined);
+});

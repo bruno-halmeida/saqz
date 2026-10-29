@@ -1,13 +1,19 @@
 import path from 'node:path';
 
 // Mesmos nomes de cenário do Android (tests/e2e/android/guard.mjs): a fixture de cada um vem de lá.
+// Terceiro item: campo da fixture que tem de estar na área de transferência do simulador ao fim (o XCUITest não lê o
+// que o app copiou, então o runner confere com `simctl pbpaste`).
 const scenarios = {
   'attendance-list': ['GroupListConfirmE2eTest', 1],
   'game-fee': ['GameFeeE2eTest', 1],
   cashbox: ['CashboxE2eTest', 1],
   'uncharged-review': ['UnchargedReviewE2eTest', 1],
-  'group-pix': ['GroupPixE2eTest', 1],
-  'receivables-off': ['ReceivablesOffE2eTest', 1],
+  'group-pix': ['GroupPixE2eTest', 1, 'pixKey'],
+  'receivables-off': ['ReceivablesOffE2eTest', 1, 'pixKey'],
+  'advance-payment': ['AdvancePaymentE2eTest', 1, 'pixKey'],
+  'group-list': ['GroupListE2eTest', 1],
+  // Por último: mexe nas versões do app no servidor, que valem para todas as contas (o teste devolve ao fim).
+  'app-update': ['AppUpdateE2eTest', 1],
 };
 
 /** `--scenario a` ou `--scenario a,b`; sem a opção, todos, na ordem do registro. */
@@ -17,7 +23,7 @@ export function selectScenarios(name) {
     if (!Object.hasOwn(scenarios, each)) throw new Error(`Unknown E2E scenario: ${each}`);
   }
   return Object.entries(scenarios).filter(([key]) => names === undefined || names.includes(key))
-    .map(([key, [testClass, count]]) => ({ name: key, testClass, count }));
+    .map(([key, [testClass, count, clipboard]]) => ({ name: key, testClass, count, ...(clipboard ? { clipboard } : {}) }));
 }
 
 export function simulatorUdid(value) {
