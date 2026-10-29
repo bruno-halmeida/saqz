@@ -1,0 +1,158 @@
+package br.com.saqz.androidapp
+
+import androidx.compose.ui.test.*
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.util.UUID
+
+/**
+ * JOGO-008 (roteiro 13, V1–V10): o cartão "Defina o valor por jogo" só para o dono; o editor de jogo não salva sem
+ * escolha nem com Cobrar diária vazio ou 0; Sem diária salva e o grupo sem valor passa a Sem diária. O avulso vê
+ * "Diária de R$ 20, cobrada ao confirmar" no jogo com valor (não no Sem diária) e o Vou gera a diária de R$ 20.
+ */
+@RunWith(AndroidJUnit4::class)
+internal class GameFeeE2eTest : InstalledE2e("game-fee") {
+    private val gamesPath get() = "/api/groups/$group/games"
+
+    @Test
+    fun ownerMustChooseTheGameFeeAndTheAvulsoSeesAndPaysTheFee() {
+        login("owner")
+        openGroup()
+        waitTag("group-details-game-fee-card")
+        waitText("Só você e os admins veem")
+        waitText("Defina o valor por jogo")
+        waitText("Hoje o avulso joga sem diária.")
+        shot("cartao-defina-o-valor")
+
+        openEditor()
+        pickTomorrowAt(20)
+        input("game-editor-venue-name", "Quadra J1")
+        waitTag("game-editor-game-fee")
+        tap("game-editor-submit")
+        waitTag("game-fee-error")
+        waitText("Escolha o valor ou Sem diária.")
+        shot("editor-sem-escolha")
+        assertEquals(0, games().length())
+
+        tap("game-fee-choice-charge")
+        tap("game-editor-submit")
+        waitText("Informe um valor maior que R$ 0,00.")
+        input("game-fee-amount", "0")
+        tap("game-editor-submit")
+        waitText("Informe um valor maior que R$ 0,00.")
+        shot("editor-cobrar-zero")
+        assertEquals(0, games().length())
+
+        tap("game-fee-choice-none")
+        waitText("O avulso joga sem pagar por jogo.")
+        shot("editor-sem-diaria")
+        tap("game-editor-submit")
+        waitGone("game-editor")
+        // Depois de marcar, a tela volta ao grupo (ou ao jogo novo); o cartão do grupo some.
+        val noFee = games().let { (0 until it.length()).map(it::getJSONObject) }.single()
+        assertTrue(noFee.getBoolean("noGameFee"))
+        assertTrue(noFee.isNull("gameFeeCents"))
+        assertEquals("PUBLISHED", noFee.getString("status"))
+        val defaults = api("owner", "/api/groups/$group").getJSONObject("financeDefaults")
+        assertTrue(defaults.getBoolean("defaultNoGameFee"))
+        assertFalse(defaults.getBoolean("gameFeeUndefined"))
+        if (ui.onAllNodesWithTag("group-details").fetchSemanticsNodes().isEmpty()) back()
+        waitTag("group-details")
+        waitGone("group-details-game-fee-card")
+        shot("grupo-sem-cartao")
+
+        // J2 com R$ 20 (precondição pela API: o valor no editor já foi coberto acima).
+        val withFee = publishGame("22:00", 2000)
+        backToShell()
+        logout()
+
+        login("athlete")
+        openGroup()
+        waitTag("group-details-hero")
+        ui.onNodeWithTag("group-details-game-fee-card").assertDoesNotExist()
+        shot("atleta-grupo-sem-cartao")
+
+        // O J1 (20h) é o próximo jogo, no topo do grupo; o J2 (22h) fica na agenda.
+        tap("group-details-view-game")
+        waitTag("game-detail")
+        waitTag("game-detail-attendance-going")
+        ui.onNodeWithTag("game-detail-fee-note").assertDoesNotExist()
+        shot("atleta-jogo-sem-diaria")
+        back()
+
+        openAgendaGame(withFee)
+        waitTag("game-detail-fee-note")
+        ui.onNode(hasText("cobrada ao confirmar", substring = true) and hasText("20", substring = true), useUnmergedTree = true)
+            .assertExists()
+        shot("atleta-jogo-diaria-20")
+        tap("game-detail-attendance-going")
+        ui.waitUntil(20_000) { ownCharges().length() == 1 }
+        val charge = ownCharges().getJSONObject(0)
+        assertEquals("GAME", charge.getString("kind"))
+        assertEquals(withFee, charge.getString("gameId"))
+        assertEquals(2000L, charge.getLong("amountCents"))
+        assertEquals("PENDING", charge.getString("status"))
+        assertEquals(data.getString("tomorrow"), charge.getString("dueDate"))
+        dismissNotificationPrompt()
+        waitTag("game-detail-attendance-change")
+        shot("atleta-confirmado-com-diaria")
+    }
+
+    private fun openEditor() {
+        ui.waitUntil(20_000) {
+            ui.onAllNodesWithTag("group-details-agenda-create").fetchSemanticsNodes().isNotEmpty() ||
+                ui.onAllNodesWithTag("group-details-create-next-game").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (ui.onAllNodesWithTag("group-details-create-next-game").fetchSemanticsNodes().isNotEmpty()) {
+            tap("group-details-create-next-game")
+        } else {
+            tap("group-details-agenda-create")
+        }
+        waitTag("game-editor")
+    }
+
+    private fun pickTomorrowAt(hour: Int) {
+        tap("game-editor-date")
+        waitTag("game-editor-date-time-picker")
+        tap("game-picker-day-${data.getString("tomorrow")}")
+        tap("game-picker-hour-$hour")
+        tap("game-picker-minute-0")
+        ui.onNode(hasText("Salvar data e horário") and hasClickAction()).performClick()
+        waitGone("game-picker-hour-$hour")
+    }
+
+    private fun openAgendaGame(id: String) {
+        val tag = "group-details-agenda-game-$id"
+        waitTag(tag)
+        tap(tag)
+        waitTag("game-detail")
+    }
+
+    private fun games(): JSONArray = JSONArray(apiRaw("owner", gamesPath))
+
+    private fun ownCharges(): JSONArray = api("athlete", "/api/groups/$group/charges/me").getJSONArray("charges")
+
+    private fun publishGame(time: String, fee: Long): String {
+        val date = LocalDate.parse(data.getString("tomorrow"))
+        val starts = date.atTime(time.take(2).toInt(), 0).atZone(ZoneId.of("America/Sao_Paulo")).toInstant()
+        val created = api("owner", gamesPath, "POST", JSONObject()
+            .put("requestId", UUID.randomUUID().toString()).put("title", "Quadra J2")
+            .put("venue", JSONObject().put("name", "Quadra J2").put("address", "Rua Teste 100"))
+            .put("localDate", date.toString()).put("localTime", time).put("zoneId", "America/Sao_Paulo")
+            .put("startsAt", starts.toString()).put("durationMinutes", 90).put("capacity", 6)
+            .put("confirmationDeadline", starts.minusSeconds(7200).toString())
+            .put("gameFeeCents", fee).put("useDefaultGameFee", false), status = 201)
+        val id = created.getString("id")
+        api("owner", "$gamesPath/$id/publish", "POST", headers = mapOf("If-Match" to "\"${created.getLong("version")}\""))
+        return id.also { check(Instant.now().isBefore(starts)) }
+    }
+}

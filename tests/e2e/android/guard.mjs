@@ -18,6 +18,15 @@ const scenarios = {
   'charge-lifecycle': ['ChargeLifecycleE2eTest', 1],
   settlement: ['SettlementE2eTest', 1],
   'past-games-no-show': ['PastGamesNoShowE2eTest', 1],
+  'game-fee': ['GameFeeE2eTest', 1],
+  cashbox: ['CashboxE2eTest', 1],
+  'uncharged-review': ['UnchargedReviewE2eTest', 1],
+  'group-pix': ['GroupPixE2eTest', 1],
+  'advance-payment': ['AdvancePaymentE2eTest', 1],
+  'group-list': ['GroupListE2eTest', 1],
+  'receivables-off': ['ReceivablesOffE2eTest', 1],
+  // Por último: mexe nas versões do app no servidor, que valem para todas as contas (o teste devolve ao fim).
+  'app-update': ['AppUpdateE2eTest', 1],
 };
 
 export function selectScenarios(name) {

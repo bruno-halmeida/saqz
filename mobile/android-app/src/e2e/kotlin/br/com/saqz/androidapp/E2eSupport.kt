@@ -2,6 +2,7 @@ package br.com.saqz.androidapp
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import android.os.ParcelFileDescriptor
 import androidx.test.platform.app.InstrumentationRegistry
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -74,6 +75,32 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         node.assertIsDisplayed().assertIsEnabled().performClick()
     }
 
+    /** Como [click], mas só rola quando há rolagem: serve para conteúdo e para rodapé fixo. */
+    protected fun tap(tag: String) {
+        waitTag(tag)
+        waitEnabled(tag)
+        val node = ui.onNodeWithTag(tag)
+        try {
+            node.performScrollTo()
+        } catch (_: AssertionError) {
+            // Rodapé ou barra fixa: não há pai rolável.
+        }
+        node.assertIsDisplayed().performClick()
+    }
+
+    /** Toca na opção [label] do segmentado (ou grupo de escolhas) com a tag [tag]. */
+    protected fun selectOption(tag: String, label: String) {
+        val matcher = hasText(label) and isSelectable() and hasAnyAncestor(hasTestTag(tag))
+        ui.waitUntil(20_000) { ui.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+        val node = ui.onNode(matcher)
+        try {
+            node.performScrollTo()
+        } catch (_: AssertionError) {
+            // Fora de lista rolável.
+        }
+        node.performClick()
+    }
+
     protected fun waitEnabled(tag: String) {
         ui.waitUntil(20_000) { ui.onAllNodes(hasTestTag(tag) and isEnabled()).fetchSemanticsNodes().size == 1 }
         ui.onNodeWithTag(tag).assertIsEnabled()
@@ -136,6 +163,17 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         ui.waitUntil(20_000) { ui.onAllNodesWithTag("notification-prompt").fetchSemanticsNodes().isEmpty() }
     }
 
+    /** Volta até a aba do shell (o editor pode deixar mais de uma tela empilhada sobre o grupo). */
+    protected fun backToShell(max: Int = 4) {
+        repeat(max) {
+            if (ui.onAllNodesWithTag("saqz-shell-content").fetchSemanticsNodes().isNotEmpty() &&
+                ui.onAllNodesWithTag("group-details").fetchSemanticsNodes().isEmpty() &&
+                ui.onAllNodesWithTag("game-detail").fetchSemanticsNodes().isEmpty()
+            ) return
+            back()
+        }
+    }
+
     protected fun logout() {
         tab("Perfil")
         click("own-profile-sign-out", scroll = true)
@@ -154,14 +192,68 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         return http("${BuildConfig.API_BASE_URL}$path", method, body, identity.getString("idToken"), status, headers)
     }
 
+    /** Como [api], mas devolve o corpo cru (listas JSON na raiz). */
+    protected fun apiRaw(role: String, path: String, status: Int = 200): String {
+        val identity = http(
+            "http://10.0.2.2:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-saqz-local-api-key",
+            "POST", JSONObject().put("email", actor(role).getString("email"))
+                .put("password", fixture.getString("password")).put("returnSecureToken", true),
+        )
+        return httpText("${BuildConfig.API_BASE_URL}$path", "GET", null, identity.getString("idToken"), status)
+    }
+
+    /**
+     * Print da tela inteira em `/data/local/tmp/saqz-e2e-shots/<cenário>/<NN>-<passo>.png`, numerado na ordem de
+     * execução do cenário; o runner limpa a pasta antes e a puxa no fim. Chame depois que a tela parou (texto ou tag
+     * esperados), nunca no meio de animação.
+     */
+    protected fun shot(step: String) {
+        ui.waitForIdle()
+        // Deixa a última animação curta (folha, troca de aba) assentar antes do quadro.
+        Thread.sleep(400)
+        val number = synchronized(shotCounters) { (shotCounters[scenarioName] ?: 0).plus(1).also { shotCounters[scenarioName] = it } }
+        val dir = "/data/local/tmp/saqz-e2e-shots/$scenarioName"
+        shell("mkdir -p $dir")
+        shell("screencap -p $dir/${number.toString().padStart(2, '0')}-$step.png")
+    }
+
+    /** Lê a saída até o fim: só assim o comando terminou (e o arquivo do print está completo). */
+    protected fun shell(command: String): String {
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes().decodeToString() }
+    }
+
+    /** Espera um texto que contém [text] (a tela usa espaço fino/inseparável em "R$ 20"). */
+    protected fun waitContains(text: String, count: Int = 1) {
+        val matcher = hasText(text, substring = true) and !hasSetTextAction()
+        try {
+            ui.waitUntil(20_000) { ui.onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().size >= count }
+        } catch (failure: ComposeTimeoutException) {
+            ui.onRoot(useUnmergedTree = true).printToLog("E2eFailure[$text]")
+            throw failure
+        }
+    }
+
+    protected fun waitGone(tag: String) {
+        ui.waitUntil(20_000) { ui.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty() }
+    }
+
     protected fun membershipIds(role: String): Set<String> {
         val memberships = api(role, "/api/session", "PUT").getJSONArray("memberships")
         return (0 until memberships.length()).map { memberships.getJSONObject(it).getString("groupId") }.toSet()
     }
 }
 
+private val shotCounters = mutableMapOf<String, Int>()
+
+/** "R$ 20,00" com o espaço inseparável que a formatação do app usa. */
+internal fun brl(text: String) = "R$\u00A0$text"
+
 /** Independent HTTP oracle: validates persisted server state, never invokes app gateways. */
-private fun http(url: String, method: String, body: JSONObject?, token: String? = null, status: Int = 200, headers: Map<String, String> = emptyMap()): JSONObject {
+private fun http(url: String, method: String, body: JSONObject?, token: String? = null, status: Int = 200, headers: Map<String, String> = emptyMap()): JSONObject =
+    httpText(url, method, body, token, status, headers).let { if (it.isBlank()) JSONObject() else JSONObject(it) }
+
+private fun httpText(url: String, method: String, body: JSONObject?, token: String? = null, status: Int = 200, headers: Map<String, String> = emptyMap()): String {
     val connection = URL(url).openConnection() as HttpURLConnection
     try {
         connection.requestMethod = method
@@ -176,8 +268,7 @@ private fun http(url: String, method: String, body: JSONObject?, token: String? 
         }
         assertEquals("$method ${URL(url).path}", status, connection.responseCode)
         val stream = if (status < 400) connection.inputStream else connection.errorStream
-        val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-        return if (response.isBlank()) JSONObject() else JSONObject(response)
+        return stream?.bufferedReader()?.use { it.readText() }.orEmpty()
     } finally {
         connection.disconnect()
     }
