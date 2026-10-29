@@ -243,7 +243,10 @@ class GroupSetupRootTest {
     private fun createViewModel(
         mode: GroupSetupMode = GroupSetupMode.Create,
     ) = GroupSetupViewModel(
-        initialState = GroupSetupState(mode = mode, form = completeForm, isLoading = mode is GroupSetupMode.Edit),
+        initialState = GroupSetupState(
+            mode = mode, form = completeForm, isLoading = mode is GroupSetupMode.Edit,
+            gameFeeChoice = br.com.saqz.groups.presentation.GameFeeChoice.NoFee,
+        ),
         savedState = SavedStateHandle(),
         groupGateway = FakeGroupGateway(),
         profileGateway = FakeGroupProfileGateway(),

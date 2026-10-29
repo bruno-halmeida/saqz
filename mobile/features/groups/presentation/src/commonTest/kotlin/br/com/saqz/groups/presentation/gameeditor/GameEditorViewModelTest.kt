@@ -558,6 +558,7 @@ class GameEditorViewModelTest {
             startsAt = "2026-08-04T22:30:00Z",
             confirmationDeadline = "2026-08-04T16:30:00Z",
             gameFeeCents = 2500,
+            noGameFee = false,
             status = GameStatus.Draft,
         )
         val draft = sampleVersionedGame(
@@ -723,7 +724,10 @@ class GameEditorViewModelTest {
 
     @Test
     fun `venue address is optional`() {
-        val blank = GameEditorFields(localDate = "2026-08-04", localTime = "19:30", venue = GameVenue(name = "CERET", address = ""))
+        val blank = GameEditorFields(
+            localDate = "2026-08-04", localTime = "19:30", venue = GameVenue(name = "CERET", address = ""),
+            gameFeeChoice = GameFeeChoice.NoFee,
+        )
         val absent = blank.copy(venue = null)
 
         assertTrue(validateGameEditor(blank).isEmpty())
@@ -1432,7 +1436,7 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `erasing the fee with Cobrar diária is refused and nothing is sent (JOGO-008)`() = runTest {
+    fun `erasing the fee with Cobrar diária is refused and nothing is sent - JOGO-008`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
@@ -1445,7 +1449,7 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `nothing chosen does not save and points at the fee block (JOGO-008)`() = runTest {
+    fun `nothing chosen does not save and points at the fee block - JOGO-008`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(null))
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
@@ -1457,7 +1461,7 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `Sem diária sends the mark without a fee (JOGO-008)`() = runTest {
+    fun `Sem diária sends the mark without a fee - JOGO-008`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
@@ -1494,7 +1498,7 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `recurring create in a group without fee gives the group this game's choice (DEB-146)`() = runTest {
+    fun `recurring create in a group without fee gives the group this game's choice - DEB-146`() = runTest {
         val profileGateway = FakeGroupProfileGateway()
         val groups = groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(null, null, null, gameFeeUndefined = true)) }
         val vm = viewModel(groupGateway = groups, profileGateway = profileGateway)

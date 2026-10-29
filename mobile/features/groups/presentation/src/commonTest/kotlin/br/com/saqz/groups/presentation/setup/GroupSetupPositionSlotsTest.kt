@@ -286,6 +286,7 @@ class GroupSetupPositionSlotsTest {
                 playStyle = playStyle,
                 defaultCapacity = 12,
             ),
+            gameFeeChoice = br.com.saqz.groups.presentation.GameFeeChoice.NoFee,
         ),
         savedState = SavedStateHandle(),
         groupGateway = FakeGroupGateway(),

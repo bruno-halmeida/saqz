@@ -207,6 +207,7 @@ class GroupSetupViewModelTest {
     fun `criar grupo envia o valor por jogo digitado`() = runTest(mainDispatcher) {
         val profileGateway = FakeGroupProfileGateway()
         val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
         viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(2500))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
@@ -230,6 +231,7 @@ class GroupSetupViewModelTest {
     fun `valor por jogo zerado e recusado e nada e enviado`() = runTest(mainDispatcher) {
         val profileGateway = FakeGroupProfileGateway()
         val viewModel = viewModel(profileGateway = profileGateway)
+        viewModel.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
         viewModel.onIntent(GroupSetupIntent.UpdateDefaultGameFee(0))
         viewModel.onIntent(GroupSetupIntent.Submit)
         runCurrent()
@@ -433,6 +435,10 @@ class GroupSetupViewModelTest {
             timeZonePort = FakeGroupSystemTimeZonePort(),
         )
 
+        // DEB-146: o valor por jogo também é obrigatório na criação; o erro abre "Mais detalhes" sozinho.
+        creating.onIntent(GroupSetupIntent.Submit)
+        assertEquals(setOf(GroupSetupError.GameFeeMissing), creating.state.value.errors)
+        creating.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.NoFee))
         creating.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
@@ -1563,7 +1569,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `Criar grupo with a monthly fee fills Cobrar diária with the monthly fee divided by 4, rounded to the real`() = runTest {
+    fun `Criar grupo with a monthly fee fills Cobrar diária with the monthly fee divided by 4 - rounded to the real`() = runTest {
         val vm = viewModel(form = completeForm.copy(defaultNoGameFee = false, monthlyFeeCents = 9000), gameFeeChoice = null)
 
         vm.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
@@ -1572,7 +1578,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `Sem diária creates the group with the mark and no fee; Cobrar diária sends the fee with the mark off`() = runTest {
+    fun `Sem diária creates the group with the mark and no fee - Cobrar diária sends the fee with the mark off`() = runTest {
         val profiles = FakeGroupProfileGateway()
         viewModel(form = completeForm.copy(defaultGameFeeCents = 2000), profileGateway = profiles).onIntent(GroupSetupIntent.Submit)
         assertEquals(true, profiles.lastCreateCommand?.form?.defaultNoGameFee)
@@ -1601,7 +1607,7 @@ class GroupSetupViewModelTest {
     }
 
     @Test
-    fun `opened from the card or the notice, a group without fee comes with the suggestion filled`() = runTest {
+    fun `opened from the card or the notice - a group without fee comes with the suggestion filled`() = runTest {
         val legacy = sampleGroup(financeDefaults = GroupFinanceDefaults(null, 8000, 10, gameFeeUndefined = true))
         val vm = viewModel(
             mode = GroupSetupMode.Edit("group-1", focusGameFee = true),

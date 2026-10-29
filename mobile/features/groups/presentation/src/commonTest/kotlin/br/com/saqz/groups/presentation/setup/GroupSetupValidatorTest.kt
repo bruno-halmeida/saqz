@@ -266,7 +266,7 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `valor por jogo sem escolha nao salva e Sem diaria passa sem valor (DEB-146)`() {
+    fun `valor por jogo sem escolha nao salva e Sem diaria passa sem valor - DEB-146`() {
         assertEquals(setOf(GroupSetupError.GameFeeMissing), validate(state(choice = null)))
         assertEquals(emptySet(), validate(state(choice = GameFeeChoice.NoFee) { copy(defaultGameFeeCents = null) }))
     }

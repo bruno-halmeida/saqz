@@ -392,7 +392,7 @@ class AttendanceLinkViewModelTest {
                     "me", "Rafa", null,
                     listOf(
                         br.com.saqz.groups.domain.athlete.OwnAthleteMembership(
-                            groupId = GroupId("group-1"), groupName = "Vôlei do CERET",
+                            groupId = GroupId("group"), groupName = "Vôlei do CERET",
                             role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE, position = null,
                             membershipType = type, active = true,
                         ),

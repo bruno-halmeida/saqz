@@ -198,10 +198,6 @@ class GameEditorViewModel(
                         localDate = game.localDate,
                         localTime = game.localTime,
                         durationMinutes = game.durationMinutes,
-                        gameFeeCents = game.gameFeeCents,
-                        gameFeeText = game.gameFeeCents?.let(::formatBrlPlain).orEmpty(),
-                        // Jogo "não definido" (app antigo, grupo legado) abre sem nada marcado e não salva sem escolha.
-                        gameFeeChoice = gameFeeChoiceOf(game.gameFeeCents, game.noGameFee),
                         venue = game.venue,
                         // Jogo antigo com 2 ou 3 vagas abre no mínimo; salvar grava o mínimo e a tela avisa.
                         capacity = game.capacity.coerceAtLeast(MIN_CAPACITY),
@@ -209,7 +205,7 @@ class GameEditorViewModel(
                             game.startsAt,
                             game.confirmationDeadline,
                         ) ?: defaultForm.confirmationLeadMinutes,
-                    )
+                    ).withGameFee(game.gameFeeCents, game.noGameFee) // "não definido" abre sem nada marcado
                     update {
                         it.copy(
                             isLoading = false,

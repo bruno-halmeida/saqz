@@ -122,7 +122,7 @@ class KtorGameGatewayTest {
     }
 
     @Test
-    fun `create sends Sem diária as the mark without a fee (DEB-146)`() = runTest {
+    fun `create sends Sem diária as the mark without a fee - DEB-146`() = runTest {
         gateway { request ->
             val body = request.bodyJson()
             assertEquals(true, body["noGameFee"]?.jsonPrimitive?.boolean)
@@ -132,7 +132,7 @@ class KtorGameGatewayTest {
     }
 
     @Test
-    fun `edit sends the fee with the mark off (DEB-146)`() = runTest {
+    fun `edit sends the fee with the mark off - DEB-146`() = runTest {
         gateway { request ->
             val body = request.bodyJson()
             assertEquals(2500L, body["gameFeeCents"]?.jsonPrimitive?.long)
@@ -142,7 +142,7 @@ class KtorGameGatewayTest {
     }
 
     @Test
-    fun `read maps the Sem diária mark and the advance payment flag; old server leaves both off`() = runTest {
+    fun `read maps the Sem diária mark and the advance payment flag - old server leaves both off`() = runTest {
         val newJson = GAME_JSON.replace("\"gameFeeCents\":2500", "\"gameFeeCents\":null,\"noGameFee\":true,\"advancePaymentRequired\":true")
         val game = assertIs<SaqzResult.Success<VersionedGame>>(
             gateway { respond(newJson, headers = versionedHeaders("\"7\"")) }.read(GROUP, GAME),
@@ -156,7 +156,7 @@ class KtorGameGatewayTest {
     }
 
     @Test
-    fun `series slot carries the Sem diária mark both ways (DEB-146)`() = runTest {
+    fun `series slot carries the Sem diária mark both ways - DEB-146`() = runTest {
         val slot = seriesCommand().slots!!.single().copy(gameFeeCents = null, noGameFee = true)
         val response = SERIES_JSON.replace("\"gameFeeCents\":2500,", "\"noGameFee\":true,")
         val series = assertIs<SaqzResult.Success<VersionedSeries>>(

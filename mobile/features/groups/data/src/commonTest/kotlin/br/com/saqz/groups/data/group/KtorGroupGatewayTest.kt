@@ -208,7 +208,7 @@ class KtorGroupGatewayTest {
             assertEquals(null, fixture { group(future) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group.financeDefaults?.monthlyLateJoinPolicy)
         }
 
-    @Test fun `profile update sends Sem diária without a fee and the advance payment flag (DEB-146, DEB-150)`() =
+    @Test fun `profile update sends Sem diária without a fee and the advance payment flag - DEB-146 - DEB-150`() =
         runTest {
             fixture { req ->
                 val body = req.bodyJson()
@@ -227,7 +227,7 @@ class KtorGroupGatewayTest {
             )
         }
 
-    @Test fun `profile create sends the fee with the Sem diária mark off (DEB-146)`() =
+    @Test fun `profile create sends the fee with the Sem diária mark off - DEB-146`() =
         runTest {
             fixture { req ->
                 val body = req.bodyJson()
@@ -249,7 +249,7 @@ class KtorGroupGatewayTest {
             }.gateway.updateProfile(profileUpdate())
         }
 
-    @Test fun `read maps the Sem diária mark, the undefined fee and the advance payment flag`() =
+    @Test fun `read maps the Sem diária mark - the undefined fee and the advance payment flag`() =
         runTest {
             val json = """{"id":"$ID","name":"Group","timeZone":"UTC","version":7,"role":"OWNER","financeDefaults":{"defaultGameFeeCents":null,"defaultNoGameFee":false,"gameFeeUndefined":true},"gameConfig":{"promotionMode":"MANUAL","advancePaymentRequired":true}}"""
             val g = fixture { group(json) }.gateway.read(GroupId(ID)).success<VersionedGroup>().group

@@ -1,6 +1,7 @@
 package br.com.saqz.groups.presentation.ui.gamedetail
 
 import br.com.saqz.groups.resources.advance_payment_org_footer
+import br.com.saqz.groups.resources.advance_payment_receive_failed
 import br.com.saqz.groups.presentation.photo.MemberPhoto
 import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
@@ -271,14 +272,12 @@ internal fun GameWaitingList(state: GameDetailState, onIntent: (GameDetailIntent
     } else {
         state.waitlist.forEachIndexed { index, person -> WaitingRow(state, person, index, index > 0, onIntent) }
     }
-    if (state.receivePaymentFailed) {
-        Box(Modifier.padding(start = NoteStart, end = SaqzTheme.metrics.horizontalPadding, top = 8.dp)) {
-            WaitlistPaymentFailure(state)
-        }
-    }
-    if (state.promotionFailed) {
+    if (state.promotionFailed || state.receivePaymentFailed) {
         Text(
-            text = stringResource(Res.string.game_waitlist_promotion_failed),
+            // PROM-010: o Recebi da espera que falhou usa a mesma linha do Colocar que falhou.
+            text = stringResource(
+                if (state.promotionFailed) Res.string.game_waitlist_promotion_failed else Res.string.advance_payment_receive_failed,
+            ),
             color = SaqzTheme.colors.errorForeground,
             style = SaqzTheme.typography.support,
             modifier = Modifier.padding(start = NoteStart, end = SaqzTheme.metrics.horizontalPadding, top = 8.dp),
@@ -312,7 +311,21 @@ private fun WaitingRow(
     val force = state.canForce(person)
     val payment = person.payment
     // PROM-010: com a linha do pagamento, o Colocar desce para ela (junto do Recebi) e a fileira fica só com o nome.
-    if (payment != null) {
+    if (payment != null) WaitingRowWithPayment(state, person, payment, queue, divider, force, onIntent)
+    else WaitingRowPlain(state, person, queue, divider, force, section?.full == true, reason, onIntent)
+}
+
+/** PROM-010: a fileira com a linha do pagamento embaixo (o Colocar vai para ela). */
+@Composable
+private fun WaitingRowWithPayment(
+    state: GameDetailState,
+    person: GameDetailWaitlistUi,
+    payment: br.com.saqz.groups.presentation.gamedetail.WaitlistPaymentUi,
+    queue: Int,
+    divider: Boolean,
+    force: Boolean,
+    onIntent: (GameDetailIntent) -> Unit,
+) {
         Column {
             PersonRow(
                 id = person.id,
@@ -334,8 +347,19 @@ private fun WaitingRow(
                 modifier = Modifier.padding(start = NoteStart, end = SaqzTheme.metrics.horizontalPadding, bottom = SaqzTheme.metrics.grid),
             )
         }
-        return
-    }
+}
+
+@Composable
+private fun WaitingRowPlain(
+    state: GameDetailState,
+    person: GameDetailWaitlistUi,
+    queue: Int,
+    divider: Boolean,
+    force: Boolean,
+    full: Boolean,
+    reason: String,
+    onIntent: (GameDetailIntent) -> Unit,
+) {
     PersonRow(
         id = person.id,
         name = person.name,
@@ -350,7 +374,6 @@ private fun WaitingRow(
         action = if (state.canPromote) {
             {
                 // Posição completa: contorno, e o toque abre a confirmação de entrada forçada (fica acima das vagas).
-                val full = section?.full == true
                 SaqzButton(
                     label = stringResource(Res.string.game_waitlist_place),
                     onClick = {

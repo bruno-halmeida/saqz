@@ -177,7 +177,7 @@ class KtorAttendanceGatewayTest {
     }
 
     @Test
-    fun `roster maps the waitlist charge and drops an unknown status (DEB-150)`() = runTest {
+    fun `roster maps the waitlist charge and drops an unknown status - DEB-150`() = runTest {
         val json = """{"confirmed":[],"waitlisted":[
             {"memberId":"m-1","displayName":"Rafa","waitlistPosition":1,"charge":{"id":"c-1","status":"PENDING","amountCents":2000,"version":3}},
             {"memberId":"m-2","displayName":"Bia","waitlistPosition":2,"charge":{"id":"c-2","status":"PAID","amountCents":2000,"version":4}},
@@ -197,7 +197,7 @@ class KtorAttendanceGatewayTest {
     }
 
     @Test
-    fun `promote sends markPaid and the method only for Colocar, já pagou (DEB-150)`() = runTest {
+    fun `promote sends markPaid and the method only for Colocar - já pagou - DEB-150`() = runTest {
         gateway { request ->
             val body = request.bodyJson()
             assertEquals(true, body["markPaid"]?.jsonPrimitive?.boolean)

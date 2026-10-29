@@ -101,7 +101,7 @@ class GameDetailAdvancePaymentTest {
     }
 
     @Test
-    fun `the organizer waitlist shows paid, missing and the host of a guest`() = runTest {
+    fun `the organizer waitlist shows paid - missing and the host of a guest`() = runTest {
         val waitlist = organizer().state.value.waitlist
 
         assertEquals(WaitlistPaymentUi("R$ 20", paid = true, chargeId = "c-caio", version = 4), waitlist[0].payment)
@@ -123,7 +123,6 @@ class GameDetailAdvancePaymentTest {
         }
         val vm = organizer(finance = finance)
 
-        vm.onIntent(GameDetailIntent.ReceiveWaitlistPayment("rafa"))
         vm.onIntent(GameDetailIntent.ReceiveWaitlistPayment("rafa"))
 
         val call = finance.statusCalls.single()

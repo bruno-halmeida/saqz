@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.setup
 
+import br.com.saqz.groups.presentation.GameFeeChoice
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.model.GroupPlayStyle
@@ -39,7 +40,8 @@ class GroupSetupCharacterizationTest {
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
         state: GroupSetupState = GroupSetupState(mode = GroupSetupMode.Create),
     ) = GroupSetupViewModel(
-        initialState = state,
+        // DEB-146: o valor por jogo é obrigatório; estes testes olham outro campo e escolhem Sem diária.
+        initialState = state.copy(gameFeeChoice = state.gameFeeChoice ?: GameFeeChoice.NoFee),
         savedState = SavedStateHandle(),
         groupGateway = FakeGroupGateway(),
         profileGateway = profileGateway,

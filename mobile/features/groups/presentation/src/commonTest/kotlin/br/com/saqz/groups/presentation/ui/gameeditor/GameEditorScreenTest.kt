@@ -342,7 +342,7 @@ class GameEditorScreenTest {
     }
 
     @Test
-    fun `nothing chosen shows the field error and the top banner (JOGO-008)`() = runComposeUiTest {
+    fun `nothing chosen shows the field error and the top banner - JOGO-008`() = runComposeUiTest {
         val state = create().copy(validationErrors = setOf(GameEditorFieldError.GameFeeMissing), submitAttempts = 1)
         setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
         waitForIdle()

@@ -153,16 +153,14 @@ class GroupSetupViewModel(
             }
             GroupSetupIntent.SuggestPositionSlots -> positions.suggest()
             is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
-            is GroupSetupIntent.SelectGameFeeChoice -> onGameFeeChoice(intent.value)
-            is GroupSetupIntent.ToggleAdvancePayment -> onGameConfigChange {
-                copy(advancePaymentRequired = intent.value && promotionMode == PromotionMode.MANUAL)
-            }
+            is GroupSetupIntent.SelectGameFeeChoice -> update { it.withGameFeeChoice(intent.value) }.also { onFormChange { this } }
+            is GroupSetupIntent.ToggleAdvancePayment -> onGameConfigChange { withAdvancePayment(intent.value) }
             is GroupSetupIntent.UpdateMonthlyFee, is GroupSetupIntent.UpdateMonthlyDueDay -> onMonthlyFeeIntent(intent)
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
             is GroupSetupIntent.ToggleMensalistaPriority ->
                 onGameConfigChange { copy(mensalistaPriority = intent.value) }
-            is GroupSetupIntent.SelectPromotionMode -> onPromotionModeChange(intent.value)
+            is GroupSetupIntent.SelectPromotionMode -> update { it.withPromotionMode(intent.value) }.also { onGameConfigChange { this } }
             is GroupSetupIntent.SelectAttendanceUpdatesMode ->
                 onGameConfigChange { copy(attendanceUpdatesMode = intent.value) }
             is GroupSetupIntent.SelectMonthlyLateJoinPolicy -> {
@@ -196,29 +194,6 @@ class GroupSetupViewModel(
         }
     }
 
-    /**
-     * DEB-146: a escolha do bloco "Valor por jogo". Em Criar grupo, Cobrar diária já vem com a mensalidade ÷ 4; nas
-     * outras telas a conta fica só no apoio. O valor digitado continua guardado ao passar para Sem diária e voltar.
-     */
-    private fun onGameFeeChoice(choice: GameFeeChoice) {
-        update { it.copy(gameFeeChoice = choice) }
-        onFormChange {
-            val prefill = if (choice == GameFeeChoice.Charge && defaultGameFeeCents == null && !state.value.isEditing) {
-                suggestedGameFeeCents(monthlyFeeCents)
-            } else defaultGameFeeCents
-            copy(defaultGameFeeCents = prefill, defaultNoGameFee = choice == GameFeeChoice.NoFee)
-        }
-    }
-
-    /** DEB-150: voltar para Ordem de chegada desliga o pagamento antecipado, com o aviso da prancha. */
-    private fun onPromotionModeChange(mode: PromotionMode) {
-        val turnedOff = mode == PromotionMode.FIFO && state.value.form.advancePaymentRequired
-        onGameConfigChange {
-            copy(promotionMode = mode, advancePaymentRequired = advancePaymentRequired && mode == PromotionMode.MANUAL)
-        }
-        update { it.copy(advancePaymentTurnedOff = turnedOff || (it.advancePaymentTurnedOff && mode == PromotionMode.FIFO)) }
-    }
-
     private fun load() {
         val mode = state.value.mode as? GroupSetupMode.Edit ?: return
         val generation = ++loadGeneration
@@ -234,7 +209,6 @@ class GroupSetupViewModel(
                     versionToken = result.value.versionToken
                     originalPix = group.profile?.pixKey to group.profile?.pixLabel
                     val loadedPix = LoadedPix.of(group.profile?.pixKey, group.profile?.pixLabel)
-                    val loadedFee = group.loadedGameFee(mode.focusGameFee)
                     update {
                         it.copy(
                             isLoading = false,
@@ -244,15 +218,14 @@ class GroupSetupViewModel(
                             canManageGameConfig = group.role != GroupRole.ATHLETE,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
-                            form = group.toForm().copy(defaultGameFeeCents = loadedFee.second),
-                            gameFeeChoice = loadedFee.first,
+                            form = group.toForm(),
                             // Sem isso, salvar a edição de um grupo com horários os apagaria:
                             // desligado, `slotsForCommand` manda a lista vazia.
                             recurring = group.profile?.regularSlots.orEmpty().isNotEmpty(),
                             pixKey = loadedPix.key,
                             pixLabel = group.profile?.pixLabel,
                             pixType = loadedPix.type,
-                        ).withSavedText(savedState)
+                        ).withLoadedGameFee(group.loadedGameFee(mode.focusGameFee)).withSavedText(savedState)
                     }
                     positions.loadInto(GroupId(mode.groupId), group.role != GroupRole.ATHLETE) { generation == loadGeneration }
                     val needsMonthlyPolicy = group.needsRosterToShowMonthlyPolicy()
@@ -532,6 +505,33 @@ class GroupSetupViewModel(
         form.attendanceUpdatesMode?.let { savedState[KeyAttendanceUpdatesMode] = it.name }
     }
 }
+
+/**
+ * DEB-146: a escolha do bloco "Valor por jogo". Em Criar grupo, Cobrar diária já vem com a mensalidade ÷ 4; nas outras
+ * telas a conta fica só no apoio. O valor digitado continua guardado ao passar para Sem diária e voltar.
+ */
+private fun GroupSetupState.withGameFeeChoice(choice: GameFeeChoice): GroupSetupState {
+    val prefill = if (choice == GameFeeChoice.Charge && form.defaultGameFeeCents == null && !isEditing) {
+        suggestedGameFeeCents(form.monthlyFeeCents)
+    } else form.defaultGameFeeCents
+    return copy(
+        gameFeeChoice = choice,
+        form = form.copy(defaultGameFeeCents = prefill, defaultNoGameFee = choice == GameFeeChoice.NoFee),
+    )
+}
+
+private fun GroupSetupState.withLoadedGameFee(loaded: Pair<GameFeeChoice?, Long?>) =
+    copy(gameFeeChoice = loaded.first, form = form.copy(defaultGameFeeCents = loaded.second))
+
+/** DEB-150: voltar para Ordem de chegada desliga o pagamento antecipado, com o aviso da prancha. */
+private fun GroupSetupState.withPromotionMode(mode: PromotionMode): GroupSetupState {
+    val turnedOff = mode == PromotionMode.FIFO && (form.advancePaymentRequired || advancePaymentTurnedOff)
+    return copy(form = form.copy(promotionMode = mode).withAdvancePayment(form.advancePaymentRequired), advancePaymentTurnedOff = turnedOff)
+}
+
+/** DEB-150: a chave só fica ligada na Escolha manual. */
+private fun GroupSetupForm.withAdvancePayment(on: Boolean) =
+    copy(advancePaymentRequired = on && promotionMode == PromotionMode.MANUAL)
 
 private fun GroupSetupState.withForm(transform: GroupSetupForm.() -> GroupSetupForm) = copy(form = form.transform())
 

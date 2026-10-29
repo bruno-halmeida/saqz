@@ -127,8 +127,9 @@ private suspend fun writeGroupDefaults(
     val profile = versioned.group.profile
     val newSlot = slot?.takeUnless { profile?.regularSlots.orEmpty().hasSlotAt(it) }
     val newVenue = venue?.takeIf { profile?.defaultVenue == null }
-    if (newSlot == null && newVenue == null) return SaqzResult.Success(Unit)
     val groupFee = fee?.takeIf { versioned.group.financeDefaults?.gameFeeUndefined == true }
+    // O horário já existe, mas o grupo ainda sem valor ganha a escolha deste jogo mesmo assim (DEB-146).
+    if (newSlot == null && newVenue == null && groupFee == null) return SaqzResult.Success(Unit)
     val form = recurrenceProfileForm(versioned.group, newVenue, newSlot, groupFee)
         ?: return SaqzResult.Failure(GroupProfileError.DataFailure(DataError.InvalidResponse))
     return profileGateway.updateProfile(

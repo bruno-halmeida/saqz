@@ -3,8 +3,9 @@ package br.com.saqz.groups.presentation.ui.gamedetail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,7 +35,6 @@ import br.com.saqz.groups.resources.advance_payment_box_body
 import br.com.saqz.groups.resources.advance_payment_box_title
 import br.com.saqz.groups.resources.advance_payment_copy_pix
 import br.com.saqz.groups.resources.advance_payment_paid
-import br.com.saqz.groups.resources.advance_payment_receive_failed
 import br.com.saqz.groups.resources.advance_payment_row_guest_missing
 import br.com.saqz.groups.resources.advance_payment_row_missing
 import br.com.saqz.groups.resources.advance_payment_row_paid
@@ -60,7 +60,6 @@ internal object GameAdvancePaymentTags {
     const val SheetPaid = "game-detail-advance-place-paid"
     const val SheetLater = "game-detail-advance-place-later"
     const val SheetBack = "game-detail-advance-place-back"
-    const val ReceiveFailed = "game-detail-advance-receive-failed"
 
     fun line(rowId: String) = "game-detail-advance-line-$rowId"
     fun receive(rowId: String) = "game-detail-advance-receive-$rowId"
@@ -133,6 +132,7 @@ internal fun HeroAdvancePayment(payment: AdvancePaymentUi, onIntent: (GameDetail
  * PROM-010 (prancha Antecipado-espera): a linha do pagamento embaixo de cada pessoa da espera do gestor. Pagou: verde
  * e Colocar; falta pagar: Recebi e Colocar (que abre a folha). Convidado: "<anfitrião> não pagou R$ 20".
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun WaitlistPaymentLine(
     state: GameDetailState,
@@ -142,10 +142,12 @@ internal fun WaitlistPaymentLine(
     modifier: Modifier = Modifier,
 ) {
     val reason = stringResource(Res.string.game_waitlist_promotion_reason)
-    Row(
+    // FlowRow: com fonte grande ou tela estreita os botões descem para baixo do chip em vez de espremê-lo.
+    FlowRow(
         modifier = modifier.fillMaxWidth().testTag(GameAdvancePaymentTags.line(person.id)),
-        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         SaqzStatusChip(
             text = when {
@@ -155,7 +157,7 @@ internal fun WaitlistPaymentLine(
             },
             tone = if (payment.paid) SaqzChipTone.Success else SaqzChipTone.Warning,
         )
-        Spacer(Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), verticalAlignment = Alignment.CenterVertically) {
         val idle = state.promotingMemberId == null && state.receivingPaymentId == null
         if (!payment.paid) {
             SaqzButton(
@@ -185,18 +187,8 @@ internal fun WaitlistPaymentLine(
                 modifier = Modifier.testTag(GameWaitlistTags.promote(person.id)),
             )
         }
+        }
     }
-}
-
-@Composable
-internal fun WaitlistPaymentFailure(state: GameDetailState) {
-    if (!state.receivePaymentFailed) return
-    Text(
-        text = stringResource(Res.string.advance_payment_receive_failed),
-        color = SaqzTheme.colors.errorForeground,
-        style = SaqzTheme.typography.support,
-        modifier = Modifier.testTag(GameAdvancePaymentTags.ReceiveFailed),
-    )
 }
 
 /**
