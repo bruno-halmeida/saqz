@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.gameeditor
 
+import br.com.saqz.groups.presentation.GameFeeChoice
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
@@ -46,7 +47,12 @@ fun List<GroupRegularSlot>.hasSlotAt(slot: GroupRegularSlot): Boolean =
  * próximo jogo pediria a quadra de novo. `null` quando o perfil está incompleto (sem modalidade
  * ou composição), que o `PUT` do grupo recusaria.
  */
-fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlot?): GroupSetupForm? {
+fun recurrenceProfileForm(
+    group: Group,
+    venue: GameVenue?,
+    slot: GroupRegularSlot?,
+    fee: RecurrenceGameFee? = null,
+): GroupSetupForm? {
     val profile = group.profile ?: return null
     val modality = profile.modality ?: return null
     val composition = profile.composition ?: return null
@@ -64,7 +70,9 @@ fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlo
         regularSlots = profile.regularSlots + listOfNotNull(slot),
         defaultCapacity = profile.defaultCapacity?.coerceAtLeast(GameCapacityLimits.Min),
         defaultConfirmationLeadMinutes = profile.defaultConfirmationLeadMinutes,
-        defaultGameFeeCents = group.financeDefaults?.defaultGameFeeCents,
+        defaultGameFeeCents = if (fee != null) fee.cents else group.financeDefaults?.defaultGameFeeCents,
+        // Só manda a marca quando a escolha deste jogo vira a do grupo; sem ela o servidor mantém a que tem.
+        defaultNoGameFee = fee?.noGameFee,
         monthlyFeeCents = group.financeDefaults?.monthlyFeeCents,
         monthlyDueDay = group.financeDefaults?.monthlyDueDay,
         mensalistaPriority = group.gameConfig.mensalistaPriority,
@@ -83,6 +91,12 @@ fun recurrenceProfileForm(group: Group, venue: GameVenue?, slot: GroupRegularSlo
  * Só a repetição é falha para quem chama: a quadra padrão é cortesia para o próximo jogo, e o
  * jogo já está marcado — se ela não gravar, a próxima criação pede a quadra de novo.
  */
+/**
+ * DEB-146: grupo sem valor por jogo que ganha "Repetir toda semana" recebe a escolha deste jogo, para os jogos da
+ * semana não nascerem "não definidos".
+ */
+data class RecurrenceGameFee(val cents: Long?, val noGameFee: Boolean)
+
 internal suspend fun saveGroupDefaults(
     groupId: String,
     state: GameEditorState,
@@ -96,7 +110,7 @@ internal suspend fun saveGroupDefaults(
     val read = groupGateway.read(GroupId(groupId))
     val saved = when (read) {
         is SaqzResult.Failure -> SaqzResult.Failure(read.error)
-        is SaqzResult.Success -> writeGroupDefaults(groupId, read.value, venue, slot, profileGateway)
+        is SaqzResult.Success -> writeGroupDefaults(groupId, read.value, venue, slot, profileGateway, state.recurrenceFee(slot))
     }
     // Sem repetição pedida, a quadra padrão é cortesia: falhar não falha o jogo.
     return if (saved is SaqzResult.Failure && slot == null) SaqzResult.Success(Unit) else saved
@@ -108,16 +122,25 @@ private suspend fun writeGroupDefaults(
     venue: GameVenue?,
     slot: GroupRegularSlot?,
     profileGateway: GroupProfileGateway,
+    fee: RecurrenceGameFee? = null,
 ): SaqzResult<Unit, GroupProfileError> {
     val profile = versioned.group.profile
     val newSlot = slot?.takeUnless { profile?.regularSlots.orEmpty().hasSlotAt(it) }
     val newVenue = venue?.takeIf { profile?.defaultVenue == null }
     if (newSlot == null && newVenue == null) return SaqzResult.Success(Unit)
-    val form = recurrenceProfileForm(versioned.group, newVenue, newSlot)
+    val groupFee = fee?.takeIf { versioned.group.financeDefaults?.gameFeeUndefined == true }
+    val form = recurrenceProfileForm(versioned.group, newVenue, newSlot, groupFee)
         ?: return SaqzResult.Failure(GroupProfileError.DataFailure(DataError.InvalidResponse))
     return profileGateway.updateProfile(
         UpdateGroupProfileCommand(GroupId(groupId), versioned.versionToken, form),
     ).map { }
+}
+
+private fun GameEditorState.recurrenceFee(slot: GroupRegularSlot?): RecurrenceGameFee? = when {
+    slot == null || !groupFeeUndefined -> null
+    form.gameFeeChoice == GameFeeChoice.NoFee -> RecurrenceGameFee(null, noGameFee = true)
+    form.gameFeeChoice == GameFeeChoice.Charge -> form.gameFeeCents?.let { RecurrenceGameFee(it, noGameFee = false) }
+    else -> null
 }
 
 private fun Int.pad(): String = toString().padStart(2, '0')

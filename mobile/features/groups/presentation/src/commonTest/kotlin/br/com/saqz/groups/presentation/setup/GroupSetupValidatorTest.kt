@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.setup
 
+import br.com.saqz.groups.presentation.GameFeeChoice
 import br.com.saqz.groups.presentation.pix.PixKeyType
 
 import br.com.saqz.groups.model.GroupComposition
@@ -246,28 +247,39 @@ class GroupSetupValidatorTest {
         // vale com a edição do 5-1 e tem teste próprio em `GroupSetupPositionSlotsTest`.
         assertEquals(
             // Tipo obrigatório e chave inválida são excludentes: aqui há tipo, então só a chave é acusada.
+            // Sem escolha no "Valor por jogo" o erro é o de nada escolhido, não o do valor (DEB-146).
             GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound -
-                GroupSetupError.PositionSlotsSumMismatch - GroupSetupError.PixTypeRequired,
+                GroupSetupError.PositionSlotsSumMismatch - GroupSetupError.PixTypeRequired - GroupSetupError.GameFeeInvalid,
             errors,
         )
     }
 
     @Test
-    fun `valor por jogo vazio e valido e zero e recusado`() {
-        assertEquals(emptySet(), validate(state { copy(defaultGameFeeCents = null) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
-        assertEquals(setOf(GroupSetupError.GameFeeInvalid), validate(state { copy(defaultGameFeeCents = 0) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
-        assertEquals(emptySet(), validate(state { copy(defaultGameFeeCents = 1) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
-        assertEquals(emptySet(), validate(state { copy(defaultGameFeeCents = 99_999_999) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
-        assertEquals(setOf(GroupSetupError.GameFeeInvalid), validate(state { copy(defaultGameFeeCents = 100_000_000) }).filter { it == GroupSetupError.GameFeeInvalid }.toSet())
+    fun `valor por jogo com Cobrar diaria vazio ou zero e recusado`() {
+        fun feeErrors(cents: Long?) = validate(state(choice = GameFeeChoice.Charge) { copy(defaultGameFeeCents = cents) })
+            .filter { it == GroupSetupError.GameFeeInvalid }.toSet()
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), feeErrors(null))
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), feeErrors(0))
+        assertEquals(emptySet(), feeErrors(1))
+        assertEquals(emptySet(), feeErrors(99_999_999))
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), feeErrors(100_000_000))
+    }
+
+    @Test
+    fun `valor por jogo sem escolha nao salva e Sem diaria passa sem valor (DEB-146)`() {
+        assertEquals(setOf(GroupSetupError.GameFeeMissing), validate(state(choice = null)))
+        assertEquals(emptySet(), validate(state(choice = GameFeeChoice.NoFee) { copy(defaultGameFeeCents = null) }))
     }
 
     private fun state(
         recurring: Boolean = true,
+        choice: GameFeeChoice? = GameFeeChoice.NoFee,
         form: GroupSetupForm.() -> GroupSetupForm = { this },
     ) = GroupSetupState(
         mode = GroupSetupMode.Create,
         form = validForm.form(),
         recurring = recurring,
+        gameFeeChoice = choice,
     )
 
     private val validForm = GroupSetupForm(

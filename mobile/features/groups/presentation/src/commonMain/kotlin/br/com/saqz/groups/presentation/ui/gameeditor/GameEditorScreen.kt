@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.gameeditor
 
+import br.com.saqz.groups.presentation.GameFeeProblem
+import br.com.saqz.groups.presentation.ui.components.GameFeeBlock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.SaqzBottomSheet
 import br.com.saqz.designsystem.SaqzButton
@@ -150,10 +151,6 @@ import br.com.saqz.groups.resources.game_editor_venue_address_hint
 import br.com.saqz.groups.resources.game_editor_venue_address_label
 import br.com.saqz.groups.resources.game_editor_venue_helper
 import br.com.saqz.groups.resources.game_editor_venue_helper_new
-import br.com.saqz.groups.resources.game_editor_error_fee
-import br.com.saqz.groups.resources.game_editor_fee_hint
-import br.com.saqz.groups.resources.game_editor_fee_label
-import br.com.saqz.groups.resources.game_editor_fee_placeholder
 import br.com.saqz.groups.resources.game_editor_missing_and
 import br.com.saqz.groups.resources.game_editor_missing_item_fee
 import br.com.saqz.groups.resources.game_editor_missing_item_date
@@ -415,19 +412,19 @@ private fun FormScroll(
             selected = state.form.confirmationLeadMinutes,
             onSelect = { onIntent(GameEditorIntent.SelectConfirmationLead(it)) },
         )
+        // DEB-146: o bloco "Valor por jogo" de Criar e Editar grupo, também com "Repetir toda semana".
         SaqzCard(modifier = Modifier.bringIntoViewRequester(targets.gameFee)) {
-            SaqzSectionHeader(title = stringResource(Res.string.game_editor_fee_label))
-            SaqzInput(
-                value = state.form.gameFeeText,
-                onValueChange = { onIntent(GameEditorIntent.UpdateGameFee(it)) },
-                label = stringResource(Res.string.game_editor_fee_label),
-                showLabel = false,
-                placeholder = stringResource(Res.string.game_editor_fee_placeholder),
-                helperText = stringResource(Res.string.game_editor_fee_hint),
-                errorText = if (GameEditorFieldError.GameFeeInvalid in errors) {
-                    stringResource(Res.string.game_editor_error_fee)
-                } else null,
-                keyboardType = KeyboardType.Decimal,
+            GameFeeBlock(
+                choice = state.form.gameFeeChoice,
+                feeText = state.form.gameFeeText,
+                onChoice = { onIntent(GameEditorIntent.SelectGameFeeChoice(it)) },
+                onFeeTextChange = { onIntent(GameEditorIntent.UpdateGameFee(it)) },
+                problem = when {
+                    GameEditorFieldError.GameFeeMissing in errors -> GameFeeProblem.Missing
+                    GameEditorFieldError.GameFeeInvalid in errors -> GameFeeProblem.Invalid
+                    else -> null
+                },
+                monthlyFeeCents = state.monthlyFeeCents,
                 modifier = Modifier.testTag(GameEditorTags.GameFee),
             )
         }
@@ -846,7 +843,7 @@ private class EditorScrollTargets {
         GameEditorFieldError.VenueNameMissing in errors || GameEditorFieldError.VenueNameTooLong in errors -> venueName
         GameEditorFieldError.VenueAddressTooShort in errors ||
             GameEditorFieldError.VenueAddressTooLong in errors -> venueAddress
-        GameEditorFieldError.GameFeeInvalid in errors -> gameFee
+        GameEditorFieldError.GameFeeInvalid in errors || GameEditorFieldError.GameFeeMissing in errors -> gameFee
         GameEditorFieldError.DurationInvalid in errors -> duration
         else -> null
     }
@@ -867,7 +864,9 @@ private fun missingItems(errors: Set<GameEditorFieldError>): String {
         ) {
             add(stringResource(Res.string.game_editor_missing_item_venue_address))
         }
-        if (GameEditorFieldError.GameFeeInvalid in errors) add(stringResource(Res.string.game_editor_missing_item_fee))
+        if (GameEditorFieldError.GameFeeInvalid in errors || GameEditorFieldError.GameFeeMissing in errors) {
+            add(stringResource(Res.string.game_editor_missing_item_fee))
+        }
     }
     val and = stringResource(Res.string.game_editor_missing_and)
     return when (items.size) {

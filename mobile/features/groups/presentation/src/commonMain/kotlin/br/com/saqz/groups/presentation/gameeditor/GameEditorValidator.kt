@@ -1,6 +1,8 @@
 package br.com.saqz.groups.presentation.gameeditor
 
+import br.com.saqz.groups.presentation.GameFeeProblem
 import br.com.saqz.groups.presentation.duration.CustomDuration
+import br.com.saqz.groups.presentation.gameFeeProblem
 
 /**
  * 4e — validação do formulário de jogo. Regra densa fora do ViewModel (AGENTS.md §4).
@@ -25,9 +27,11 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
     if (venueAddressLength > VENUE_ADDRESS_MAX) {
         errors += GameEditorFieldError.VenueAddressTooLong
     }
-    // Vazio = sem cobrança; preenchido precisa ser um valor de 0,01 a 999.999,99 (R$ 0,00 é recusado).
-    if (form.gameFeeText.isNotBlank() && form.gameFeeCents.let { it == null || it !in 1L..GAME_FEE_MAX_CENTS }) {
-        errors += GameEditorFieldError.GameFeeInvalid
+    // DEB-146: Cobrar diária ou Sem diária é obrigatório; com Cobrar diária, de 0,01 a 999.999,99 (vazio e 0 não valem).
+    when (gameFeeProblem(form.gameFeeChoice, form.gameFeeCents)) {
+        GameFeeProblem.Missing -> errors += GameEditorFieldError.GameFeeMissing
+        GameFeeProblem.Invalid -> errors += GameEditorFieldError.GameFeeInvalid
+        null -> Unit
     }
     if (form.durationInvalid()) errors += GameEditorFieldError.DurationInvalid
     return errors
@@ -36,7 +40,6 @@ fun validateGameEditor(form: GameEditorFields): Set<GameEditorFieldError> {
 /** Formulário ainda sem duração (0, antes da carga) não acusa erro. */
 private fun GameEditorFields.durationInvalid() = durationMinutes != 0 && CustomDuration.isInvalid(durationMinutes)
 
-private const val GAME_FEE_MAX_CENTS = 99_999_999L
 private const val VENUE_NAME_MIN = 2
 private const val VENUE_NAME_MAX = 120
 private const val VENUE_ADDRESS_MIN = 5

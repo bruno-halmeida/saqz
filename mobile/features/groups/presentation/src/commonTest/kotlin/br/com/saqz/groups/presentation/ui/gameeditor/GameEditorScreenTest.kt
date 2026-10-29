@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.ui.gameeditor
 
+import br.com.saqz.groups.presentation.ui.components.GameFeeBlockTags
+import br.com.saqz.groups.presentation.GameFeeChoice
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -302,7 +304,7 @@ class GameEditorScreenTest {
     @Test
     fun `the fee field shows the inherited value and the avulso help`() = runComposeUiTest {
         val base = create()
-        val state = base.copy(form = base.form.copy(gameFeeCents = 2500, gameFeeText = "25,00"))
+        val state = base.copy(form = base.form.copy(gameFeeCents = 2500, gameFeeText = "25,00", gameFeeChoice = GameFeeChoice.Charge))
         setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
         waitForIdle()
 
@@ -314,7 +316,8 @@ class GameEditorScreenTest {
     @Test
     fun `typing in the fee field sends the typed text`() = runComposeUiTest {
         val received = mutableListOf<GameEditorIntent>()
-        setContent { SaqzTheme { GameEditorScreen(state = create(), onBack = {}, onIntent = { received += it }) } }
+        val charge = create().let { it.copy(form = it.form.copy(gameFeeChoice = GameFeeChoice.Charge)) }
+        setContent { SaqzTheme { GameEditorScreen(state = charge, onBack = {}, onIntent = { received += it }) } }
         waitForIdle()
 
         onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(GameEditorTags.GameFee)), useUnmergedTree = true)
@@ -327,7 +330,7 @@ class GameEditorScreenTest {
     fun `a zero fee marks the field and the missing item`() = runComposeUiTest {
         val base = create()
         val state = base.copy(
-            form = base.form.copy(gameFeeCents = 0, gameFeeText = "0,00"),
+            form = base.form.copy(gameFeeCents = 0, gameFeeText = "0,00", gameFeeChoice = GameFeeChoice.Charge),
             validationErrors = setOf(GameEditorFieldError.GameFeeInvalid),
             submitAttempts = 1,
         )
@@ -336,6 +339,43 @@ class GameEditorScreenTest {
 
         onNodeWithText("Informe um valor maior que R$ 0,00.").performScrollTo().assertIsDisplayed()
         onNodeWithText("Corrija o valor por jogo para continuar.").assertExists()
+    }
+
+    @Test
+    fun `nothing chosen shows the field error and the top banner (JOGO-008)`() = runComposeUiTest {
+        val state = create().copy(validationErrors = setOf(GameEditorFieldError.GameFeeMissing), submitAttempts = 1)
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
+        waitForIdle()
+
+        onNodeWithText("Escolha o valor ou Sem diária.").performScrollTo().assertIsDisplayed()
+        onNodeWithText("Corrija o valor por jogo para continuar.").assertExists()
+        onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(GameEditorTags.GameFee)), useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `the two options send the choice and Sem diária explains itself`() = runComposeUiTest {
+        val received = mutableListOf<GameEditorIntent>()
+        var state by mutableStateOf(create())
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = { received += it }) } }
+        waitForIdle()
+
+        onNodeWithTag(GameFeeBlockTags.NoFee, useUnmergedTree = true).performScrollTo().performClick()
+        assertEquals(GameEditorIntent.SelectGameFeeChoice(GameFeeChoice.NoFee), received.last())
+        state = state.copy(form = state.form.copy(gameFeeChoice = GameFeeChoice.NoFee))
+        waitForIdle()
+        onNodeWithText("O avulso joga sem pagar por jogo.").performScrollTo().assertExists()
+        onNodeWithTag(GameFeeBlockTags.Charge, useUnmergedTree = true).performClick()
+        assertEquals(GameEditorIntent.SelectGameFeeChoice(GameFeeChoice.Charge), received.last())
+    }
+
+    @Test
+    fun `Cobrar diária shows the monthly suggestion in the help line`() = runComposeUiTest {
+        val state = create().let { it.copy(monthlyFeeCents = 8000, form = it.form.copy(gameFeeChoice = GameFeeChoice.Charge)) }
+        setContent { SaqzTheme { GameEditorScreen(state = state, onBack = {}, onIntent = {}) } }
+        waitForIdle()
+
+        onNodeWithText("Sugestão: mensalidade ÷ 4 (R$\u00A080 ÷ 4).").performScrollTo().assertExists()
     }
 
     @Test

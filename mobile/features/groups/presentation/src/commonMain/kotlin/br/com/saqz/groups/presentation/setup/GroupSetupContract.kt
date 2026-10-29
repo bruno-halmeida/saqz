@@ -16,6 +16,7 @@ import br.com.saqz.groups.model.MonthlyLateJoinPolicy
 import br.com.saqz.groups.model.PromotionMode
 import br.com.saqz.groups.domain.place.PlaceSuggestion
 import br.com.saqz.groups.presentation.GameCapacityLimits
+import br.com.saqz.groups.presentation.GameFeeChoice
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.pix.PixKeyType
 import br.com.saqz.groups.presentation.place.VenueSearchState
@@ -24,7 +25,8 @@ import br.com.saqz.groups.presentation.place.VenueSearchState
 sealed interface GroupSetupMode {
     data object Create : GroupSetupMode
 
-    data class Edit(val groupId: String) : GroupSetupMode
+    /** [focusGameFee]: abre "Mais detalhes" no "Valor por jogo", com a sugestão preenchida no grupo sem valor. */
+    data class Edit(val groupId: String, val focusGameFee: Boolean = false) : GroupSetupMode
 }
 
 sealed interface GroupSetupSheet {
@@ -141,6 +143,10 @@ data class GroupSetupState(
     /** As vagas por posição do grupo já chegaram do servidor; sem isso o 5-1 não bloqueia o Salvar nem mostra o card. */
     val positionSlotsReady: Boolean = false,
     val positionSuggestionFailed: Boolean = false,
+    /** DEB-146: Cobrar diária ou Sem diária; `null` = nada escolhido (não salva). */
+    val gameFeeChoice: GameFeeChoice? = null,
+    /** Aviso de que a volta para Ordem de chegada desligou o pagamento antecipado (DEB-150). */
+    val advancePaymentTurnedOff: Boolean = false,
 ) {
     val isEditing: Boolean = mode is GroupSetupMode.Edit
 
@@ -185,6 +191,9 @@ data class GroupSetupState(
      * gateway serializa `regularSlots` direto, então desligar o switch tem de recortar
      * aqui — os horários **continuam** no formulário, e religar o switch os devolve.
      */
+    /** DEB-150: a chave do pagamento antecipado só existe na Escolha manual. */
+    val showsAdvancePayment: Boolean = form.promotionMode == PromotionMode.MANUAL
+
     val slotsForCommand: List<GroupRegularSlotForm> =
         if (recurring) form.regularSlots else emptyList()
 
@@ -241,8 +250,14 @@ sealed interface GroupSetupIntent {
 
     /** Preenche as posições com a sugestão do servidor para o total de jogadores do grupo (editável depois). */
     data object SuggestPositionSlots : GroupSetupIntent
-    /** Valor por jogo em centavos; `null` = sem cobrança. */
+    /** Valor por jogo em centavos, com Cobrar diária; `null` = campo vazio (não salva). */
     data class UpdateDefaultGameFee(val cents: Long?) : GroupSetupIntent
+
+    /** DEB-146: Cobrar diária ou Sem diária. */
+    data class SelectGameFeeChoice(val value: GameFeeChoice) : GroupSetupIntent
+
+    /** DEB-150: "Vaga só com pagamento antecipado" (só na Escolha manual). */
+    data class ToggleAdvancePayment(val value: Boolean) : GroupSetupIntent
 
     /** Cartão "Mensalidade" (CONV-010): vazio tira a mensalidade padrão do grupo. */
     data class UpdateMonthlyFee(val cents: Long?) : GroupSetupIntent

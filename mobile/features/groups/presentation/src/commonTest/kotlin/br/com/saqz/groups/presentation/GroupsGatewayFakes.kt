@@ -569,6 +569,9 @@ fun sampleGroup(
     timeZone: GroupTimeZone = GroupTimeZone("America/Sao_Paulo"),
     role: GroupRole = GroupRole.ADMIN,
     profile: GroupProfile? = sampleProfile(),
+    // DEB-146: o grupo de exemplo já escolheu Sem diária, para os formulários salvarem sem mexer no "Valor por jogo".
+    financeDefaults: br.com.saqz.groups.domain.group.GroupFinanceDefaults? =
+        br.com.saqz.groups.domain.group.GroupFinanceDefaults(null, null, null, defaultNoGameFee = true),
 ) = Group(
     id = GroupId("group-1"),
     name = name,
@@ -576,6 +579,7 @@ fun sampleGroup(
     version = 2,
     role = role,
     profile = profile,
+    financeDefaults = financeDefaults,
 )
 
 fun sampleVersionedGroup(
@@ -636,6 +640,8 @@ fun sampleGame() = Game(
     confirmedCount = 8,
     availableSpots = 4,
     waitlistCount = 0,
+    // DEB-146: o jogo de exemplo é Sem diária (escolha explícita), para salvar sem mexer no bloco do valor.
+    noGameFee = true,
 )
 
 fun sampleVersionedGame(game: Game = sampleGame()) = VersionedGame(game, GameVersionToken("etag-1"))

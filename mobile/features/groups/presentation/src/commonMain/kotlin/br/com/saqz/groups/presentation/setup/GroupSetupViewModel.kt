@@ -1,5 +1,8 @@
 package br.com.saqz.groups.presentation.setup
 
+import br.com.saqz.groups.presentation.GameFeeChoice
+import br.com.saqz.groups.presentation.gameFeeChoiceOf
+import br.com.saqz.groups.presentation.suggestedGameFeeCents
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
@@ -150,13 +153,16 @@ class GroupSetupViewModel(
             }
             GroupSetupIntent.SuggestPositionSlots -> positions.suggest()
             is GroupSetupIntent.UpdateDefaultGameFee -> onFormChange { copy(defaultGameFeeCents = intent.cents) }
+            is GroupSetupIntent.SelectGameFeeChoice -> onGameFeeChoice(intent.value)
+            is GroupSetupIntent.ToggleAdvancePayment -> onGameConfigChange {
+                copy(advancePaymentRequired = intent.value && promotionMode == PromotionMode.MANUAL)
+            }
             is GroupSetupIntent.UpdateMonthlyFee, is GroupSetupIntent.UpdateMonthlyDueDay -> onMonthlyFeeIntent(intent)
             is GroupSetupIntent.SelectConfirmationLead ->
                 onFormChange { copy(defaultConfirmationLeadMinutes = intent.minutes) }
             is GroupSetupIntent.ToggleMensalistaPriority ->
                 onGameConfigChange { copy(mensalistaPriority = intent.value) }
-            is GroupSetupIntent.SelectPromotionMode ->
-                onGameConfigChange { copy(promotionMode = intent.value) }
+            is GroupSetupIntent.SelectPromotionMode -> onPromotionModeChange(intent.value)
             is GroupSetupIntent.SelectAttendanceUpdatesMode ->
                 onGameConfigChange { copy(attendanceUpdatesMode = intent.value) }
             is GroupSetupIntent.SelectMonthlyLateJoinPolicy -> {
@@ -190,6 +196,29 @@ class GroupSetupViewModel(
         }
     }
 
+    /**
+     * DEB-146: a escolha do bloco "Valor por jogo". Em Criar grupo, Cobrar diária já vem com a mensalidade ÷ 4; nas
+     * outras telas a conta fica só no apoio. O valor digitado continua guardado ao passar para Sem diária e voltar.
+     */
+    private fun onGameFeeChoice(choice: GameFeeChoice) {
+        update { it.copy(gameFeeChoice = choice) }
+        onFormChange {
+            val prefill = if (choice == GameFeeChoice.Charge && defaultGameFeeCents == null && !state.value.isEditing) {
+                suggestedGameFeeCents(monthlyFeeCents)
+            } else defaultGameFeeCents
+            copy(defaultGameFeeCents = prefill, defaultNoGameFee = choice == GameFeeChoice.NoFee)
+        }
+    }
+
+    /** DEB-150: voltar para Ordem de chegada desliga o pagamento antecipado, com o aviso da prancha. */
+    private fun onPromotionModeChange(mode: PromotionMode) {
+        val turnedOff = mode == PromotionMode.FIFO && state.value.form.advancePaymentRequired
+        onGameConfigChange {
+            copy(promotionMode = mode, advancePaymentRequired = advancePaymentRequired && mode == PromotionMode.MANUAL)
+        }
+        update { it.copy(advancePaymentTurnedOff = turnedOff || (it.advancePaymentTurnedOff && mode == PromotionMode.FIFO)) }
+    }
+
     private fun load() {
         val mode = state.value.mode as? GroupSetupMode.Edit ?: return
         val generation = ++loadGeneration
@@ -205,6 +234,7 @@ class GroupSetupViewModel(
                     versionToken = result.value.versionToken
                     originalPix = group.profile?.pixKey to group.profile?.pixLabel
                     val loadedPix = LoadedPix.of(group.profile?.pixKey, group.profile?.pixLabel)
+                    val loadedFee = group.loadedGameFee(mode.focusGameFee)
                     update {
                         it.copy(
                             isLoading = false,
@@ -214,7 +244,8 @@ class GroupSetupViewModel(
                             canManageGameConfig = group.role != GroupRole.ATHLETE,
                             durationMinutes = group.profile?.regularSlots?.firstOrNull()?.durationMinutes
                                 ?: it.durationMinutes,
-                            form = group.toForm(),
+                            form = group.toForm().copy(defaultGameFeeCents = loadedFee.second),
+                            gameFeeChoice = loadedFee.first,
                             // Sem isso, salvar a edição de um grupo com horários os apagaria:
                             // desligado, `slotsForCommand` manda a lista vazia.
                             recurring = group.profile?.regularSlots.orEmpty().isNotEmpty(),
@@ -614,7 +645,10 @@ private fun GroupSetupForm.toDomain(
     },
     defaultCapacity = defaultCapacity,
     defaultConfirmationLeadMinutes = defaultConfirmationLeadMinutes,
-    defaultGameFeeCents = defaultGameFeeCents,
+    // DEB-146: Sem diária vai como a marca, sem valor; Cobrar diária manda o valor com a marca desligada.
+    defaultGameFeeCents = defaultGameFeeCents.takeUnless { defaultNoGameFee },
+    defaultNoGameFee = defaultNoGameFee,
+    advancePaymentRequired = advancePaymentRequired && promotionMode == PromotionMode.MANUAL,
     monthlyFeeCents = monthlyFeeCents,
     monthlyDueDay = monthlyDueDay,
     monthlyLateJoinPolicy = monthlyLateJoinPolicy?.let {
@@ -628,6 +662,18 @@ private fun GroupSetupForm.toDomain(
     pixKey = pixKey?.trim(),
     pixLabel = pixLabel?.trim(),
 ).cleaned()
+
+/**
+ * A escolha que o grupo já tem (valor = Cobrar diária, marca = Sem diária). Grupo sem valor aberto pelo cartão ou pelo
+ * aviso (DEB-146) vem com Cobrar diária e a mensalidade ÷ 4; sem mensalidade, nada marcado.
+ */
+private fun br.com.saqz.groups.domain.group.Group.loadedGameFee(focus: Boolean): Pair<GameFeeChoice?, Long?> {
+    val cents = financeDefaults?.defaultGameFeeCents
+    val choice = gameFeeChoiceOf(cents, financeDefaults?.defaultNoGameFee == true)
+    if (choice != null || !focus) return choice to cents
+    val suggestion = suggestedGameFeeCents(financeDefaults?.monthlyFeeCents) ?: return null to null
+    return GameFeeChoice.Charge to suggestion
+}
 
 private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     name = name,
@@ -653,6 +699,8 @@ private fun br.com.saqz.groups.domain.group.Group.toForm() = GroupSetupForm(
     mensalistaPriority = gameConfig.mensalistaPriority,
     promotionMode = PromotionMode.valueOf(gameConfig.promotionMode.name),
     attendanceUpdatesMode = AttendanceUpdatesMode.valueOf(gameConfig.attendanceUpdatesMode.name),
+    defaultNoGameFee = financeDefaults?.defaultNoGameFee == true,
+    advancePaymentRequired = gameConfig.advancePaymentRequired,
 )
 
 /**

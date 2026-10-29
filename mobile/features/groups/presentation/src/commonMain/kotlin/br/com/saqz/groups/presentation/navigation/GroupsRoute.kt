@@ -15,7 +15,8 @@ sealed interface GroupsRoute : NavKey {
     data class Details(val groupId: String, val photoFailed: Boolean = false) : GroupsRoute
 
     @Serializable
-    data class Edit(val groupId: String) : GroupsRoute
+    /** [focusGameFee]: aberto pelo cartão ou pelo aviso do grupo sem valor (DEB-146), já no "Valor por jogo". */
+    data class Edit(val groupId: String, val focusGameFee: Boolean = false) : GroupsRoute
 
     @Serializable
     data class Members(val groupId: String) : GroupsRoute

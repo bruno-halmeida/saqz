@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.gameeditor
 
+import br.com.saqz.groups.presentation.GameFeeChoice
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
@@ -59,7 +60,7 @@ class GameEditorViewModelTest {
         gameId: String? = null,
         savedState: SavedStateHandle = SavedStateHandle(),
         gameGateway: FakeGameGateway = FakeGameGateway(),
-        groupGateway: FakeGroupGateway = FakeGroupGateway(),
+        groupGateway: FakeGroupGateway = groupGateway { it },
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
         trialAccess: GroupTrialAccessPort? = null,
         notificationPrompt: br.com.saqz.groups.presentation.communication.NotificationPromptOffer? = null,
@@ -75,7 +76,8 @@ class GameEditorViewModelTest {
     ) = FakeGroupGateway(
         readResult = SaqzResult.Success(
             br.com.saqz.groups.presentation.sampleVersionedGroup(
-                transform(br.com.saqz.groups.presentation.sampleGroup()),
+                // DEB-146: o grupo de exemplo já escolheu Sem diária; os testes do valor trocam isso.
+                transform(br.com.saqz.groups.presentation.sampleGroup().copy(financeDefaults = NoFeeDefaults)),
             ),
         ),
     )
@@ -1371,7 +1373,10 @@ class GameEditorViewModelTest {
 
     // ---- Valor por jogo: vem do padrão do grupo e pode ser trocado só neste jogo ----
 
-    private fun groupWithGameFee(cents: Long?) = groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(cents, null, null)) }
+    private fun groupWithGameFee(cents: Long?, monthly: Long? = null) =
+        groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(cents, monthly, null)) }
+
+    private val NoFeeDefaults = GroupFinanceDefaults(null, null, null, defaultNoGameFee = true)
 
     @Test
     fun `the fee field starts with the group default`() = runTest {
@@ -1387,6 +1392,7 @@ class GameEditorViewModelTest {
 
         assertEquals("", vm.state.value.form.gameFeeText)
         assertNull(vm.state.value.form.gameFeeCents)
+        assertNull(vm.state.value.form.gameFeeChoice, "grupo sem valor abre sem nada marcado")
     }
 
     @Test
@@ -1426,7 +1432,7 @@ class GameEditorViewModelTest {
     }
 
     @Test
-    fun `erasing the fee sends a game without charge`() = runTest {
+    fun `erasing the fee with Cobrar diária is refused and nothing is sent (JOGO-008)`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
         vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
@@ -1434,9 +1440,74 @@ class GameEditorViewModelTest {
         vm.onIntent(GameEditorIntent.UpdateGameFee(""))
         vm.onIntent(GameEditorIntent.Submit)
 
+        assertEquals(setOf(GameEditorFieldError.GameFeeInvalid), vm.state.value.validationErrors)
+        assertEquals(0, gateway.createCalls)
+    }
+
+    @Test
+    fun `nothing chosen does not save and points at the fee block (JOGO-008)`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(null))
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(setOf(GameEditorFieldError.GameFeeMissing), vm.state.value.validationErrors)
+        assertEquals(0, gateway.createCalls)
+    }
+
+    @Test
+    fun `Sem diária sends the mark without a fee (JOGO-008)`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.SelectGameFeeChoice(GameFeeChoice.NoFee))
+        vm.onIntent(GameEditorIntent.Submit)
+
         assertEquals(1, gateway.createCalls)
         assertNull(gateway.lastCreateCommand?.gameFeeCents)
-        assertFalse(gateway.lastCreateCommand?.useDefaultGameFee == true, "vazio quer dizer sem cobrança, não o padrão")
+        assertEquals(true, gateway.lastCreateCommand?.noGameFee)
+    }
+
+    @Test
+    fun `Cobrar diária sends the fee with the mark off`() = runTest {
+        val gateway = FakeGameGateway()
+        val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(null))
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
+        vm.onIntent(GameEditorIntent.UpdateGameFee("20"))
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertEquals(2000L, gateway.lastCreateCommand?.gameFeeCents)
+        assertEquals(false, gateway.lastCreateCommand?.noGameFee)
+    }
+
+    @Test
+    fun `a group that chose Sem diária opens new games with Sem diária and the monthly fee only as a hint`() = runTest {
+        val vm = viewModel(groupGateway = groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(null, 8000, 10, defaultNoGameFee = true)) })
+
+        assertEquals(GameFeeChoice.NoFee, vm.state.value.form.gameFeeChoice)
+        assertNull(vm.state.value.form.gameFeeCents, "no editor a conta fica só no apoio")
+        assertEquals(8000L, vm.state.value.monthlyFeeCents)
+    }
+
+    @Test
+    fun `recurring create in a group without fee gives the group this game's choice (DEB-146)`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val groups = groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(null, null, null, gameFeeUndefined = true)) }
+        val vm = viewModel(groupGateway = groups, profileGateway = profileGateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.ToggleRecurring(true))
+        vm.onIntent(GameEditorIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
+        vm.onIntent(GameEditorIntent.UpdateGameFee("15"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val form = assertNotNull(profileGateway.lastUpdateCommand).form
+        assertEquals(1500L, form.defaultGameFeeCents)
+        assertEquals(false, form.defaultNoGameFee)
     }
 
     @Test

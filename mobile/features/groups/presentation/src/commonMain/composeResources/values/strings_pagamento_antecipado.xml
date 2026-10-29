@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DEB-150 · PROM-010: vaga do avulso só com pagamento antecipado (pranchas Antecipado-*) -->
+    <string name="advance_payment_toggle_label">Vaga só com pagamento antecipado</string>
+    <string name="advance_payment_toggle_hint">O avulso paga antes de entrar.</string>
+    <string name="advance_payment_info">Vale para avulso e convidado. A diária nasce no Vou, com o Pix do grupo.</string>
+    <string name="advance_payment_turned_off">A vaga volta a ser por ordem de chegada; quem está na espera sobe pela fila.</string>
+    <!-- Avulso na espera -->
+    <string name="advance_payment_waitlist_chip">Na espera · falta pagar</string>
+    <string name="advance_payment_box_title">Pague %1$s para entrar</string>
+    <string name="advance_payment_box_body">A vaga é liberada pelo organizador depois do pagamento.</string>
+    <string name="advance_payment_copy_pix">Copiar o Pix do grupo</string>
+    <string name="advance_payment_pix_copied">Pix do grupo copiado.</string>
+    <string name="advance_payment_paid">Pagamento recebido. O organizador libera a vaga.</string>
+    <string name="advance_payment_roster_footer">O organizador coloca quem já pagou.</string>
+    <!-- Espera do organizador -->
+    <string name="advance_payment_row_paid">Pagou %1$s</string>
+    <string name="advance_payment_row_missing">Falta pagar %1$s</string>
+    <string name="advance_payment_row_guest_missing">%1$s não pagou %2$s</string>
+    <string name="advance_payment_row_received">Recebi</string>
+    <string name="advance_payment_row_place">Colocar</string>
+    <string name="advance_payment_org_footer">Você escolhe quem entra. Pix e dinheiro chegam por fora: marque Recebi.</string>
+    <string name="advance_payment_receive_failed">Não deu para marcar o pagamento. Tente de novo.</string>
+    <!-- Folha de colocar quem não pagou: sem supor gênero -->
+    <string name="advance_payment_sheet_title">%1$s ainda não pagou</string>
+    <string name="advance_payment_sheet_body">Diária de %1$s. Como você quer colocar %2$s?</string>
+    <string name="advance_payment_sheet_paid">Colocar, já pagou</string>
+    <string name="advance_payment_sheet_paid_hint">Marca os %1$s como recebidos.</string>
+    <string name="advance_payment_sheet_later">Colocar e cobrar depois</string>
+    <string name="advance_payment_sheet_later_hint">A diária fica pendente, como hoje.</string>
+    <string name="advance_payment_sheet_back">Voltar</string>
+</resources>

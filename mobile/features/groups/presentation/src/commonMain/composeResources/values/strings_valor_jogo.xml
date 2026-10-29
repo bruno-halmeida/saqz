@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DEB-146 · JOGO-008: valor por jogo obrigatório (prancha Valor-A, Aviso-grupo e Avulso-diaria) -->
+    <string name="game_fee_block_label">Valor por jogo</string>
+    <string name="game_fee_choice_charge">Cobrar diária</string>
+    <string name="game_fee_choice_none">Sem diária</string>
+    <string name="game_fee_none_hint">O avulso joga sem pagar por jogo.</string>
+    <string name="game_fee_charge_hint">Cobrado de quem joga avulso.</string>
+    <string name="game_fee_suggestion">Sugestão: mensalidade ÷ 4 (%1$s ÷ 4).</string>
+    <string name="game_fee_error_missing">Escolha o valor ou Sem diária.</string>
+    <string name="game_fee_error_invalid">Informe um valor maior que R$ 0,00.</string>
+    <string name="game_fee_banner_missing">Falta o valor por jogo em Regras dos jogos.</string>
+    <!-- Cartão do grupo sem valor: só dono e admins -->
+    <string name="game_fee_card_kicker">Só você e os admins veem</string>
+    <string name="game_fee_card_title">Defina o valor por jogo</string>
+    <string name="game_fee_card_body">Hoje o avulso joga sem diária.</string>
+    <string name="game_fee_card_body_suggestion">Hoje o avulso joga sem diária. Sugestão: %1$s, a mensalidade ÷ 4.</string>
+    <string name="game_fee_card_action">Definir valor</string>
+    <!-- Linha da diária antes do Vou, para quem paga diária -->
+    <string name="game_fee_line">Diária de %1$s, cobrada ao confirmar</string>
+</resources>

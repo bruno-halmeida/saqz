@@ -73,6 +73,7 @@ private data class PersistedGameEditorForm(
     val localEndDate: String = "",
     val slots: List<PersistedWeeklySlot> = emptyList(),
     val gameFeeCents: Long? = null,
+    val noGameFee: Boolean = false,
 )
 
 @Serializable
@@ -572,6 +573,7 @@ private fun GameEditorForm.toPersisted() = PersistedGameEditorForm(
     localEndDate = localEndDate,
     slots = slots.map(WeeklySlot::toPersisted),
     gameFeeCents = gameFeeCents,
+    noGameFee = noGameFee,
 )
 
 private fun PersistedGameEditorForm.toDomain() = GameEditorForm(
@@ -589,6 +591,7 @@ private fun PersistedGameEditorForm.toDomain() = GameEditorForm(
     localEndDate = localEndDate,
     slots = slots.map(PersistedWeeklySlot::toDomain),
     gameFeeCents = gameFeeCents,
+    noGameFee = noGameFee,
 )
 
 private fun GameVenue.toPersisted() = PersistedGameVenue(venueId, name, address, court)

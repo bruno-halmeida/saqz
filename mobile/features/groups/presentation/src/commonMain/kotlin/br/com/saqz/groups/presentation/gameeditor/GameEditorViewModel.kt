@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.gameeditor
 
+import br.com.saqz.groups.presentation.GameFeeChoice
+import br.com.saqz.groups.presentation.gameFeeChoiceOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.formatting.formatBrlPlain
@@ -98,6 +100,7 @@ class GameEditorViewModel(
                 val text = sanitizeBrlInput(intent.text)
                 copy(gameFeeText = text, gameFeeCents = parseBrlToCents(text))
             }
+            is GameEditorIntent.SelectGameFeeChoice -> updateForm { copy(gameFeeChoice = intent.value) }
             is GameEditorIntent.SelectConfirmationLead -> updateForm {
                 copy(confirmationLeadMinutes = intent.minutes)
             }
@@ -164,8 +167,9 @@ class GameEditorViewModel(
             val group = (groupResult as SaqzResult.Success).value.group
             val trial = trialAccess?.read(GroupId(groupId))
             val profile = group.profile
+            // O jogo novo parte da escolha do grupo (valor ou Sem diária); grupo sem valor abre sem nada marcado.
             val defaultForm = defaultForm(profile, group.name)
-                .withGameFee(group.financeDefaults?.defaultGameFeeCents)
+                .withGameFee(group.financeDefaults?.defaultGameFeeCents, group.financeDefaults?.defaultNoGameFee == true)
             if (gameId == null) {
                 update {
                     it.copy(
@@ -175,6 +179,8 @@ class GameEditorViewModel(
                         form = restoreForm(defaultForm),
                         // Perfil incompleto não aceita o `PUT` do grupo: aí o toggle nem aparece.
                         recurrenceOffered = profile?.modality != null && profile.composition != null,
+                        monthlyFeeCents = group.financeDefaults?.monthlyFeeCents,
+                        groupFeeUndefined = group.financeDefaults?.gameFeeUndefined == true,
                         regularSlots = profile?.regularSlots.orEmpty(),
                         groupHasVenue = profile?.defaultVenue != null,
                     ).withTrial(trial, now())
@@ -194,6 +200,8 @@ class GameEditorViewModel(
                         durationMinutes = game.durationMinutes,
                         gameFeeCents = game.gameFeeCents,
                         gameFeeText = game.gameFeeCents?.let(::formatBrlPlain).orEmpty(),
+                        // Jogo "não definido" (app antigo, grupo legado) abre sem nada marcado e não salva sem escolha.
+                        gameFeeChoice = gameFeeChoiceOf(game.gameFeeCents, game.noGameFee),
                         venue = game.venue,
                         // Jogo antigo com 2 ou 3 vagas abre no mínimo; salvar grava o mínimo e a tela avisa.
                         capacity = game.capacity.coerceAtLeast(MIN_CAPACITY),
@@ -210,6 +218,7 @@ class GameEditorViewModel(
                         zoneId = group.timeZone.id,
                         form = restoreForm(serverForm),
                         groupHasVenue = profile?.defaultVenue != null,
+                        monthlyFeeCents = group.financeDefaults?.monthlyFeeCents,
                             versionToken = gameResult.value.version.value,
                             confirmedCount = game.confirmedCount,
                             legacyCapacity = game.capacity.takeIf { capacity -> capacity < MIN_CAPACITY },
@@ -473,7 +482,8 @@ class GameEditorViewModel(
                 durationMinutes = state.form.durationMinutes.toString(),
                 capacity = state.form.capacity.toString(),
                 confirmationDeadline = deadline.orEmpty(),
-                gameFeeCents = state.form.gameFeeCents,
+                gameFeeCents = state.form.gameFeeCents.takeIf { state.form.gameFeeChoice == GameFeeChoice.Charge },
+                noGameFee = state.form.gameFeeChoice == GameFeeChoice.NoFee,
             ),
         )
     }
@@ -507,6 +517,7 @@ class GameEditorViewModel(
         savedState[KeyLead] = form.confirmationLeadMinutes
         savedState[KeyRecurring] = form.recurring
         savedState[KeyGameFee] = form.gameFeeText
+        form.gameFeeChoice?.let { savedState[KeyGameFeeChoice] = it.name }
         form.venue?.let {
             savedState[KeyVenueName] = it.name
             savedState[KeyVenueAddress] = it.address
@@ -527,6 +538,8 @@ class GameEditorViewModel(
         } else {
             form.gameFeeCents
         },
+        gameFeeChoice = savedState.get<String>(KeyGameFeeChoice)
+            ?.let { saved -> GameFeeChoice.entries.firstOrNull { it.name == saved } } ?: form.gameFeeChoice,
         venue = savedState.get<String>(KeyVenueName)?.let { name ->
             (form.venue ?: emptyVenue()).copy(
                 name = name,
@@ -569,6 +582,7 @@ class GameEditorViewModel(
         const val KeyLead = "game-editor-confirmation-lead"
         const val KeyRecurring = "game-editor-recurring"
         const val KeyGameFee = "game-editor-game-fee"
+        const val KeyGameFeeChoice = "game-editor-game-fee-choice"
         const val KeyVenueName = "game-editor-venue-name"
         const val KeyVenueAddress = "game-editor-venue-address"
         const val KeyPendingGameId = "game-editor-pending-game-id"
@@ -589,9 +603,10 @@ private fun buildCommand(draft: GameEditorDraft): GameWriteCommand =
         durationMinutes = draft.form.durationMinutes.toIntOrNull(),
         capacity = draft.form.capacity.toIntOrNull(),
         confirmationDeadline = draft.form.confirmationDeadline,
-        // O campo já vem com o padrão do grupo: o que está nele vale, e vazio é jogo sem cobrança.
-        gameFeeCents = draft.form.gameFeeCents,
+        // O bloco já vem com a escolha do grupo: vale o valor (Cobrar diária) ou a marca (Sem diária), nunca os dois.
+        gameFeeCents = draft.form.gameFeeCents.takeUnless { draft.form.noGameFee },
         useDefaultGameFee = false,
+        noGameFee = draft.form.noGameFee,
     )
 
 /** Fatos do plano lidos do servidor; o bloqueio do fim do plano depende do jogo e do limite. */
@@ -669,6 +684,7 @@ private fun commandFingerprint(command: GameWriteCommand, resolvedDefaultGameFee
     command.capacity,
     command.confirmationDeadline,
     if (command.useDefaultGameFee) resolvedDefaultGameFeeCents else command.gameFeeCents,
+    command.noGameFee == true,
 ).fingerprint()
 
 private fun gameFingerprint(game: Game): String = listOf(
@@ -685,6 +701,7 @@ private fun gameFingerprint(game: Game): String = listOf(
     game.capacity,
     game.confirmationDeadline,
     game.gameFeeCents,
+    game.noGameFee,
 ).fingerprint()
 
 private fun GameWriteCommand.withResolvedGameFee(resolvedGameFeeCents: Long?): GameWriteCommand =
@@ -701,8 +718,11 @@ private fun confirmationLeadMinutes(startsAt: String, deadline: String): Int? = 
     (Instant.parse(startsAt) - Instant.parse(deadline)).inWholeMinutes.toInt()
 }.getOrNull()
 
-private fun GameEditorFields.withGameFee(cents: Long?) =
-    copy(gameFeeCents = cents, gameFeeText = cents?.let(::formatBrlPlain).orEmpty())
+private fun GameEditorFields.withGameFee(cents: Long?, noGameFee: Boolean) = copy(
+    gameFeeCents = cents,
+    gameFeeText = cents?.let(::formatBrlPlain).orEmpty(),
+    gameFeeChoice = gameFeeChoiceOf(cents, noGameFee),
+)
 
 private fun emptyVenue() = GameVenue(name = "", address = "")
 

@@ -33,6 +33,7 @@ import br.com.saqz.designsystem.SaqzToast
 import br.com.saqz.designsystem.SaqzToastText
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.game_fee_banner_missing
 import br.com.saqz.groups.resources.group_setup_error_banner
 import br.com.saqz.groups.resources.group_setup_error_banner_edit
 import br.com.saqz.groups.resources.group_setup_error_banner_one
@@ -61,7 +62,7 @@ private const val SoftTintAlpha = 0.1f
  * existe: o texto fala em salvar, não em criar.
  */
 @Composable
-internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier, isEditing: Boolean = false) {
+internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier, isEditing: Boolean = false, gameFeeOnly: Boolean = false) {
     val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
     Row(
@@ -76,6 +77,7 @@ internal fun GroupErrorBanner(count: Int, modifier: Modifier = Modifier, isEditi
         SaqzIcon(SaqzIcons.CircleAlert, tint = colors.errorForeground)
         Text(
             text = when {
+                gameFeeOnly -> stringResource(Res.string.game_fee_banner_missing)
                 count == 1 && isEditing -> stringResource(Res.string.group_setup_error_banner_one_edit, count)
                 count == 1 -> stringResource(Res.string.group_setup_error_banner_one, count)
                 isEditing -> stringResource(Res.string.group_setup_error_banner_edit, count)

@@ -63,6 +63,8 @@ data class GameEditorForm(
     val localEndDate: String = "",
     val slots: List<WeeklySlot> = emptyList(),
     val gameFeeCents: Long? = null,
+    /** DEB-146: Sem diária escolhido (sem [gameFeeCents]). */
+    val noGameFee: Boolean = false,
 )
 
 data class GameEditorDraft(

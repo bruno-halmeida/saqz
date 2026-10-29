@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.setup
 
+import br.com.saqz.groups.presentation.GameFeeChoice
+import br.com.saqz.groups.domain.group.GroupFinanceDefaults
 import androidx.lifecycle.SavedStateHandle
 import br.com.saqz.groups.model.GroupComposition
 import br.com.saqz.groups.presentation.pix.PixKeyType
@@ -42,6 +44,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -969,6 +972,7 @@ class GroupSetupViewModelTest {
             monthlyFeeCents = fee,
             monthlyDueDay = 10,
             monthlyLateJoinPolicy = policy,
+            defaultNoGameFee = true,
         ),
     )
 
@@ -1483,12 +1487,14 @@ class GroupSetupViewModelTest {
         profileGateway: FakeGroupProfileGateway = FakeGroupProfileGateway(),
         trialAccess: GroupTrialAccessPort? = null,
         athleteGateway: FakeAthleteGateway? = null,
+        gameFeeChoice: GameFeeChoice? = GameFeeChoice.NoFee,
     ) = GroupSetupViewModel(
         initialState = GroupSetupState(
             mode = mode,
             form = form,
             recurring = recurring,
             saveFailed = saveFailed,
+            gameFeeChoice = gameFeeChoice,
         ),
         savedState = savedState,
         groupGateway = groupGateway,
@@ -1524,7 +1530,139 @@ class GroupSetupViewModelTest {
             ),
             defaultCapacity = 12,
             defaultConfirmationLeadMinutes = 360,
+            defaultNoGameFee = true,
         )
+    }
+
+    // ---- DEB-146 · JOGO-008: valor por jogo obrigatório ----
+
+    @Test
+    fun `nothing chosen in Valor por jogo does not save and shows the error`() = runTest {
+        val profiles = FakeGroupProfileGateway()
+        val vm = viewModel(form = completeForm.copy(defaultNoGameFee = false), gameFeeChoice = null, profileGateway = profiles)
+
+        vm.onIntent(GroupSetupIntent.Submit)
+
+        assertEquals(setOf(GroupSetupError.GameFeeMissing), vm.state.value.errors)
+        assertNull(profiles.lastCreateCommand)
+    }
+
+    @Test
+    fun `Cobrar diária without a fee or with zero does not save`() = runTest {
+        val profiles = FakeGroupProfileGateway()
+        val vm = viewModel(form = completeForm.copy(defaultNoGameFee = false), gameFeeChoice = null, profileGateway = profiles)
+        vm.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
+
+        vm.onIntent(GroupSetupIntent.Submit)
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), vm.state.value.errors)
+
+        vm.onIntent(GroupSetupIntent.UpdateDefaultGameFee(0))
+        vm.onIntent(GroupSetupIntent.Submit)
+        assertEquals(setOf(GroupSetupError.GameFeeInvalid), vm.state.value.errors)
+        assertNull(profiles.lastCreateCommand)
+    }
+
+    @Test
+    fun `Criar grupo with a monthly fee fills Cobrar diária with the monthly fee divided by 4, rounded to the real`() = runTest {
+        val vm = viewModel(form = completeForm.copy(defaultNoGameFee = false, monthlyFeeCents = 9000), gameFeeChoice = null)
+
+        vm.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
+
+        assertEquals(2300L, vm.state.value.form.defaultGameFeeCents, "R$ 90 ÷ 4 = R$ 22,50, arredondado a R$ 23")
+    }
+
+    @Test
+    fun `Sem diária creates the group with the mark and no fee; Cobrar diária sends the fee with the mark off`() = runTest {
+        val profiles = FakeGroupProfileGateway()
+        viewModel(form = completeForm.copy(defaultGameFeeCents = 2000), profileGateway = profiles).onIntent(GroupSetupIntent.Submit)
+        assertEquals(true, profiles.lastCreateCommand?.form?.defaultNoGameFee)
+        assertNull(profiles.lastCreateCommand?.form?.defaultGameFeeCents, "o valor digitado antes não vai com Sem diária")
+
+        val charged = FakeGroupProfileGateway()
+        val vm = viewModel(form = completeForm.copy(defaultNoGameFee = false), gameFeeChoice = null, profileGateway = charged)
+        vm.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
+        vm.onIntent(GroupSetupIntent.UpdateDefaultGameFee(2000))
+        vm.onIntent(GroupSetupIntent.Submit)
+        assertEquals(2000L, charged.lastCreateCommand?.form?.defaultGameFeeCents)
+        assertEquals(false, charged.lastCreateCommand?.form?.defaultNoGameFee)
+    }
+
+    @Test
+    fun `Editar grupo of a group without fee opens with nothing chosen and does not prefill the suggestion`() = runTest {
+        val legacy = sampleGroup(financeDefaults = GroupFinanceDefaults(null, 8000, 10, gameFeeUndefined = true))
+        val vm = viewModel(
+            mode = GroupSetupMode.Edit("group-1"),
+            profileGateway = FakeGroupProfileGateway(readResult = SaqzResult.Success(sampleVersionedGroup(legacy))),
+        )
+
+        assertNull(vm.state.value.gameFeeChoice)
+        vm.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.Charge))
+        assertNull(vm.state.value.form.defaultGameFeeCents, "fora do Criar grupo a conta fica só no apoio")
+    }
+
+    @Test
+    fun `opened from the card or the notice, a group without fee comes with the suggestion filled`() = runTest {
+        val legacy = sampleGroup(financeDefaults = GroupFinanceDefaults(null, 8000, 10, gameFeeUndefined = true))
+        val vm = viewModel(
+            mode = GroupSetupMode.Edit("group-1", focusGameFee = true),
+            profileGateway = FakeGroupProfileGateway(readResult = SaqzResult.Success(sampleVersionedGroup(legacy))),
+        )
+
+        assertEquals(GameFeeChoice.Charge, vm.state.value.gameFeeChoice)
+        assertEquals(2000L, vm.state.value.form.defaultGameFeeCents)
+
+        val noMonthly = sampleGroup(financeDefaults = GroupFinanceDefaults(null, null, null, gameFeeUndefined = true))
+        val empty = viewModel(
+            mode = GroupSetupMode.Edit("group-1", focusGameFee = true),
+            profileGateway = FakeGroupProfileGateway(readResult = SaqzResult.Success(sampleVersionedGroup(noMonthly))),
+        )
+        assertNull(empty.state.value.gameFeeChoice, "sem mensalidade, vazio")
+    }
+
+    @Test
+    fun `Editar grupo keeps the saved choice`() = runTest {
+        val charged = sampleGroup(financeDefaults = GroupFinanceDefaults(1500, null, null))
+        val vm = viewModel(
+            mode = GroupSetupMode.Edit("group-1"),
+            profileGateway = FakeGroupProfileGateway(readResult = SaqzResult.Success(sampleVersionedGroup(charged))),
+        )
+        assertEquals(GameFeeChoice.Charge, vm.state.value.gameFeeChoice)
+        assertEquals(1500L, vm.state.value.form.defaultGameFeeCents)
+        val none = viewModel(mode = GroupSetupMode.Edit("group-1"))
+        assertEquals(GameFeeChoice.NoFee, none.state.value.gameFeeChoice)
+    }
+
+    // ---- DEB-150 · PROM-010: pagamento antecipado ----
+
+    @Test
+    fun `advance payment only exists with Escolha manual and goes to the server`() = runTest {
+        val profiles = FakeGroupProfileGateway()
+        val vm = viewModel(mode = GroupSetupMode.Edit("group-1"), profileGateway = profiles)
+        assertFalse(vm.state.value.showsAdvancePayment)
+        vm.onIntent(GroupSetupIntent.ToggleAdvancePayment(true))
+        assertFalse(vm.state.value.form.advancePaymentRequired, "em Ordem de chegada a chave não liga")
+
+        vm.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
+        assertTrue(vm.state.value.showsAdvancePayment)
+        vm.onIntent(GroupSetupIntent.ToggleAdvancePayment(true))
+        vm.onIntent(GroupSetupIntent.Submit)
+
+        assertEquals(true, profiles.lastUpdateCommand?.form?.advancePaymentRequired)
+    }
+
+    @Test
+    fun `back to Ordem de chegada turns advance payment off with the notice`() = runTest {
+        val profiles = FakeGroupProfileGateway()
+        val vm = viewModel(mode = GroupSetupMode.Edit("group-1"), profileGateway = profiles)
+        vm.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.MANUAL))
+        vm.onIntent(GroupSetupIntent.ToggleAdvancePayment(true))
+
+        vm.onIntent(GroupSetupIntent.SelectPromotionMode(PromotionMode.FIFO))
+
+        assertFalse(vm.state.value.form.advancePaymentRequired)
+        assertTrue(vm.state.value.advancePaymentTurnedOff)
+        vm.onIntent(GroupSetupIntent.Submit)
+        assertEquals(false, profiles.lastUpdateCommand?.form?.advancePaymentRequired)
     }
 
     @Test

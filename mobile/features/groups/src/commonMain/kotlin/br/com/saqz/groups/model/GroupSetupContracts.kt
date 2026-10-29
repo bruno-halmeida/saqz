@@ -56,6 +56,10 @@ data class GroupSetupForm(
     val monthlyLateJoinPolicy: MonthlyLateJoinPolicy? = null,
     /** Nulo = não enviar (o backend mantém). Só o dono troca. */
     val attendanceUpdatesMode: AttendanceUpdatesMode? = null,
+    /** DEB-146: "Sem diária" escolhido; vale só sem [defaultGameFeeCents]. */
+    val defaultNoGameFee: Boolean = false,
+    /** DEB-150: vaga do avulso só com pagamento antecipado; só com Escolha manual. */
+    val advancePaymentRequired: Boolean = false,
 ) {
     fun cleaned(): GroupSetupForm = copy(
         name = name.trim(),

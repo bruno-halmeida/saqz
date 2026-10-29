@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.setup
 
+import br.com.saqz.groups.presentation.GameFeeChoice
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -57,18 +58,19 @@ class GroupSetupScreenTest {
 
     @Test
     fun theGameFeeFieldAppearsWhenCreatingAndEditingWithTheHelpText() = runComposeUiTest {
-        setContent { SaqzTheme { GroupSetupScreen(GroupSetupState(mode = GroupSetupMode.Create), {}, {}) } }
+        val state = GroupSetupState(mode = GroupSetupMode.Create, gameFeeChoice = GameFeeChoice.Charge)
+        setContent { SaqzTheme { GroupSetupScreen(state, {}, {}) } }
         onNodeWithTag(GroupSetupTags.Advanced).performScrollTo().performClick()
         onNodeWithTag(GroupSetupTags.GameFee).performScrollTo().assertExists()
         onNodeWithText("Valor por jogo").performScrollTo().assertExists()
         onNodeWithText("R$").assertExists()
-        onNodeWithText("Para avulsos. Cada jogo pode ter outro valor.").assertExists()
+        onNodeWithText("Cobrado de quem joga avulso.").assertExists()
     }
 
     @Test
     fun typingTheGameFeeSendsTheCents() = runComposeUiTest {
         val received = mutableListOf<GroupSetupIntent>()
-        setContent { SaqzTheme { GroupSetupScreen(PreviewErrorState, { received += it }, {}) } }
+        setContent { SaqzTheme { GroupSetupScreen(PreviewErrorState.copy(gameFeeChoice = GameFeeChoice.Charge), { received += it }, {}) } }
 
         onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag(GroupSetupTags.GameFee)), useUnmergedTree = true)
             .performScrollTo().performTextInput("25,50")
@@ -158,7 +160,11 @@ class GroupSetupScreenTest {
     @Test
     fun aZeroGameFeeShowsTheError() = runComposeUiTest {
         val state = GroupSetupState(mode = GroupSetupMode.Edit("grp-1")).let {
-            it.copy(form = it.form.copy(defaultGameFeeCents = 0), errors = setOf(GroupSetupError.GameFeeInvalid))
+            it.copy(
+                form = it.form.copy(defaultGameFeeCents = 0),
+                errors = setOf(GroupSetupError.GameFeeInvalid),
+                gameFeeChoice = GameFeeChoice.Charge,
+            )
         }
         setContent { SaqzTheme { GroupSetupScreen(state, {}, {}) } }
 

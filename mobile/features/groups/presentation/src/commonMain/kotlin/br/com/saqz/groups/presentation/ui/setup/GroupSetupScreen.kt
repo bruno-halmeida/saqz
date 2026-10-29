@@ -99,6 +99,8 @@ internal object GroupSetupTags {
     const val GameConfigConfirmationLead = "group-game-config-confirmation-lead"
     const val MensalistaPriority = "group-game-config-mensalista-priority"
     const val PromotionMode = "group-game-config-promotion-mode"
+    const val AdvancePayment = "group-game-config-advance-payment"
+    const val AdvancePaymentTurnedOff = "group-game-config-advance-payment-turned-off"
     const val MonthlyLateJoinPolicy = "group-monthly-late-join-policy"
     const val AttendanceUpdatesMode = "group-attendance-updates-mode"
     const val MonthlyFee = "group-monthly-fee"
@@ -198,7 +200,12 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
         SaqzOfflineBanner(message = stringResource(Res.string.group_system_offline))
     }
     if (state.errors.isNotEmpty()) {
-        GroupErrorBanner(count = state.errors.size, isEditing = state.isEditing)
+        GroupErrorBanner(
+            count = state.errors.size,
+            isEditing = state.isEditing,
+            // DEB-146: só o valor por jogo faltando ganha o aviso da prancha, que diz onde ele está.
+            gameFeeOnly = state.errors.all { it == GroupSetupError.GameFeeMissing || it == GroupSetupError.GameFeeInvalid },
+        )
     }
     if (state.saveFailed) {
         GroupSaveFailureCard(
@@ -240,6 +247,7 @@ private fun GroupSetupState.hasErrorInsideDetails(): Boolean = errors.any {
         GroupSetupError.CapacityOutOfRange,
         GroupSetupError.PositionSlotsSumMismatch,
         GroupSetupError.GameFeeInvalid,
+        GroupSetupError.GameFeeMissing,
         GroupSetupError.MonthlyFeeInvalid,
         GroupSetupError.DurationOutOfRange,
         -> true
@@ -266,6 +274,12 @@ private fun GroupSetupDetails(
             confirmationLeadMinutes = form.defaultConfirmationLeadMinutes,
             onMensalistaPriorityChange = { onIntent(GroupSetupIntent.ToggleMensalistaPriority(it)) },
             onPromotionModeSelect = { onIntent(GroupSetupIntent.SelectPromotionMode(it)) },
+            advancePayment = GroupAdvancePaymentState(
+                visible = state.showsAdvancePayment,
+                checked = form.advancePaymentRequired,
+                turnedOff = state.advancePaymentTurnedOff,
+                onChange = { onIntent(GroupSetupIntent.ToggleAdvancePayment(it)) },
+            ),
             onConfirmationLeadSelect = { onIntent(GroupSetupIntent.SelectConfirmationLead(it)) },
         )
         if (state.showsMonthlyFee) {

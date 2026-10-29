@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.domain.game.GameVenue
 import br.com.saqz.groups.domain.group.GroupRegularSlot
 import br.com.saqz.groups.domain.place.PlaceSuggestion
+import br.com.saqz.groups.presentation.GameFeeChoice
 import br.com.saqz.groups.presentation.GroupUiError
 import br.com.saqz.groups.presentation.place.VenueSearchState
 
@@ -55,6 +56,10 @@ data class GameEditorState(
     val regularSlots: List<GroupRegularSlot> = emptyList(),
     /** Sem quadra padrão, o editor pede o nome da quadra, e ela vira a do grupo ao marcar o jogo. */
     val groupHasVenue: Boolean = false,
+    /** Mensalidade padrão do grupo: dá a sugestão (÷ 4) no apoio do "Valor por jogo" (DEB-146). */
+    val monthlyFeeCents: Long? = null,
+    /** O grupo ainda não tem valor por jogo: com "Repetir toda semana", a escolha deste jogo vira a do grupo. */
+    val groupFeeUndefined: Boolean = false,
     /** O jogo foi marcado, mas o horário regular não foi gravado; o retry resume o rascunho. */
     val recurrenceFailed: Boolean = false,
     val validationErrors: Set<GameEditorFieldError> = emptySet(),
@@ -81,8 +86,10 @@ data class GameEditorFields(
     val localTime: String = "",
     val durationMinutes: Int = 0,
     val gameFeeCents: Long? = null,
-    /** O que a pessoa digitou em "Valor por jogo"; [gameFeeCents] é o valor lido dele (vazio = sem cobrança). */
+    /** O que a pessoa digitou em "Valor por jogo"; [gameFeeCents] é o valor lido dele. */
     val gameFeeText: String = "",
+    /** DEB-146: Cobrar diária ou Sem diária; `null` = nada escolhido (não salva). */
+    val gameFeeChoice: GameFeeChoice? = null,
     val venue: GameVenue? = null,
     val venueEditable: Boolean = false,
     val capacity: Int = 0,
@@ -103,6 +110,8 @@ enum class GameEditorFieldError {
     VenueNameTooLong,
     VenueAddressTooLong,
     GameFeeInvalid,
+    /** DEB-146: nem Cobrar diária nem Sem diária. */
+    GameFeeMissing,
     DurationInvalid,
 }
 
@@ -119,6 +128,7 @@ sealed interface GameEditorIntent {
     data class UpdateCapacity(val capacity: Int) : GameEditorIntent
     data class SelectConfirmationLead(val minutes: Int) : GameEditorIntent
     data class UpdateGameFee(val text: String) : GameEditorIntent
+    data class SelectGameFeeChoice(val value: GameFeeChoice) : GameEditorIntent
     data class ToggleRecurring(val value: Boolean) : GameEditorIntent
     data object DismissConflict : GameEditorIntent
     data object DismissSubscriptionRequired : GameEditorIntent

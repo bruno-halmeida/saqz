@@ -79,6 +79,10 @@ import br.com.saqz.groups.presentation.ui.label
 import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzChipTone
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.advance_payment_info
+import br.com.saqz.groups.resources.advance_payment_toggle_hint
+import br.com.saqz.groups.resources.advance_payment_toggle_label
+import br.com.saqz.groups.resources.advance_payment_turned_off
 import br.com.saqz.groups.resources.pix_hidden_from_athletes
 import br.com.saqz.groups.resources.pix_hidden_note
 import br.com.saqz.groups.resources.pix_personal_title
@@ -443,6 +447,7 @@ internal fun GroupGameConfigSection(
     onPromotionModeSelect: (PromotionMode) -> Unit,
     onConfirmationLeadSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    advancePayment: GroupAdvancePaymentState? = null,
 ) {
     val metrics = SaqzTheme.metrics
     Column(
@@ -489,6 +494,7 @@ internal fun GroupGameConfigSection(
                 modifier = Modifier.testTag(GroupSetupTags.PromotionMode),
             )
         }
+        advancePayment?.let { GroupAdvancePaymentCard(it) }
         // Prioridade ligada: o prazo é o fim da prioridade dos mensalistas. Desligada com escolha manual: é o aviso para o
         // gestor escolher quem joga. Desligada com ordem de chegada o campo some (o valor salvo continua indo no comando).
         if (mensalistaPriority || promotionMode == PromotionMode.MANUAL) {
@@ -622,5 +628,61 @@ internal fun GroupAttendanceUpdatesSection(
             onSelect = { onSelect(AttendanceUpdatesModeOptions[it]) },
             modifier = Modifier.testTag(GroupSetupTags.AttendanceUpdatesMode),
         )
+    }
+}
+
+/** DEB-150 · PROM-010 (prancha Antecipado-config): a chave fica logo abaixo de Escolha manual, só nesse modo. */
+internal class GroupAdvancePaymentState(
+    val visible: Boolean,
+    val checked: Boolean,
+    val turnedOff: Boolean,
+    val onChange: (Boolean) -> Unit,
+)
+
+@Composable
+private fun GroupAdvancePaymentCard(state: GroupAdvancePaymentState) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    if (!state.visible) {
+        // Voltou para Ordem de chegada com a opção ligada: ela desliga e a tela diz o que muda.
+        if (state.turnedOff) {
+            Text(
+                text = stringResource(Res.string.advance_payment_turned_off),
+                style = SaqzTheme.typography.support,
+                color = colors.textSecondary,
+                modifier = Modifier.testTag(GroupSetupTags.AdvancePaymentTurnedOff),
+            )
+        }
+        return
+    }
+    SaqzCard {
+        SaqzSwitch(
+            checked = state.checked,
+            onCheckedChange = state.onChange,
+            label = stringResource(Res.string.advance_payment_toggle_label),
+            modifier = Modifier.testTag(GroupSetupTags.AdvancePayment),
+        )
+        Text(
+            text = stringResource(Res.string.advance_payment_toggle_hint),
+            style = SaqzTheme.typography.support,
+            color = colors.textSecondary,
+        )
+        if (state.checked) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(metrics.cardRadius))
+                    .background(colors.surfaceSoft)
+                    .padding(horizontal = metrics.blockGap, vertical = metrics.grid),
+                horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+            ) {
+                SaqzIcon(SaqzIcons.Banknote, tint = colors.primary)
+                Text(
+                    text = stringResource(Res.string.advance_payment_info),
+                    style = SaqzTheme.typography.support,
+                    color = colors.textPrimary,
+                )
+            }
+        }
     }
 }

@@ -1,6 +1,12 @@
 package br.com.saqz.groups.presentation.ui.setup
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.saveable.rememberSaveable
+import br.com.saqz.groups.presentation.GameFeeProblem
+import br.com.saqz.groups.presentation.setup.GroupSetupMode
+import br.com.saqz.groups.presentation.ui.components.GameFeeBlock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +35,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import br.com.saqz.core.common.formatting.formatBrlPlain
 import br.com.saqz.core.common.formatting.parseBrlToCents
 import br.com.saqz.core.common.formatting.sanitizeBrlInput
@@ -69,7 +74,6 @@ import br.com.saqz.groups.resources.group_setup_composition_hint
 import br.com.saqz.groups.resources.group_setup_composition_label
 import br.com.saqz.groups.resources.group_setup_confirmation_lead_hint
 import br.com.saqz.groups.resources.group_setup_confirmation_lead_label
-import br.com.saqz.groups.resources.group_setup_currency_prefix
 import br.com.saqz.groups.resources.group_setup_custom_level_hint
 import br.com.saqz.groups.resources.group_setup_description_hint
 import br.com.saqz.groups.resources.group_setup_description_label
@@ -78,14 +82,10 @@ import br.com.saqz.groups.resources.group_setup_error_capacity_hint
 import br.com.saqz.groups.resources.group_setup_error_composition
 import br.com.saqz.groups.resources.group_setup_error_custom_level
 import br.com.saqz.groups.resources.group_setup_error_description
-import br.com.saqz.groups.resources.group_setup_error_game_fee
 import br.com.saqz.groups.resources.group_setup_error_modality
 import br.com.saqz.groups.resources.group_setup_error_name
 import br.com.saqz.groups.resources.group_setup_error_venue_address
 import br.com.saqz.groups.resources.group_setup_error_venue_name
-import br.com.saqz.groups.resources.group_setup_game_fee_hint
-import br.com.saqz.groups.resources.group_setup_game_fee_label
-import br.com.saqz.groups.resources.group_setup_game_fee_placeholder
 import br.com.saqz.groups.resources.group_setup_games_no
 import br.com.saqz.groups.resources.group_setup_games_title
 import br.com.saqz.groups.resources.group_setup_games_yes
@@ -489,11 +489,7 @@ internal fun GroupRulesSection(
                 )
             }
             if (state.showsPositionSlots) GroupPositionSlotsSection(state = state, onIntent = onIntent)
-            GroupGameFeeField(
-                cents = form.defaultGameFeeCents,
-                hasError = GroupSetupError.GameFeeInvalid in state.errors,
-                onChange = { onIntent(GroupSetupIntent.UpdateDefaultGameFee(it)) },
-            )
+            GroupGameFeeField(state = state, onIntent = onIntent)
             feePreview?.invoke(form.defaultGameFeeCents)
             DurationStepper(
                 minutes = state.durationMinutes,
@@ -526,39 +522,45 @@ internal fun GroupRulesSection(
     }
 }
 
-/** "Valor por jogo": reais digitados com "R$" dentro do campo; o formulário recebe centavos e vazio é "sem cobrança". */
+/**
+ * DEB-146: o bloco "Valor por jogo" (Cobrar diária · Sem diária) de Criar e Editar grupo. Reais digitados com "R$"
+ * dentro do campo; o formulário recebe centavos. Aberto pelo cartão ou pelo aviso do grupo sem valor, a tela rola
+ * até aqui uma vez.
+ */
 @Composable
-internal fun GroupGameFeeField(cents: Long?, hasError: Boolean, onChange: (Long?) -> Unit, modifier: Modifier = Modifier) {
+internal fun GroupGameFeeField(state: GroupSetupState, onIntent: (GroupSetupIntent) -> Unit, modifier: Modifier = Modifier) {
+    val cents = state.form.defaultGameFeeCents
     var text by remember { mutableStateOf(cents?.let(::formatBrlPlain).orEmpty()) }
-    // Valor vindo de fora (carregamento, restauração) substitui o texto; a digitação em curso não.
+    // Valor vindo de fora (carregamento, restauração, sugestão) substitui o texto; a digitação em curso não.
     LaunchedEffect(cents) {
         if (parseBrlToCents(text) != cents) text = cents?.let(::formatBrlPlain).orEmpty()
     }
-    val label = stringResource(Res.string.group_setup_game_fee_label)
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid)) {
-        GroupFieldLabel(label, icon = SaqzIcons.Banknote)
-        SaqzInput(
-            value = text,
-            onValueChange = { raw ->
-                text = sanitizeBrlInput(raw)
-                onChange(parseBrlToCents(text))
-            },
-            label = label,
-            showLabel = false,
-            placeholder = stringResource(Res.string.group_setup_game_fee_placeholder),
-            errorText = if (hasError) stringResource(Res.string.group_setup_error_game_fee) else null,
-            keyboardType = KeyboardType.Decimal,
-            leadingContent = {
-                Text(
-                    text = stringResource(Res.string.group_setup_currency_prefix),
-                    style = SaqzTheme.typography.label,
-                    color = SaqzTheme.colors.textSecondary,
-                )
-            },
-            modifier = Modifier.testTag(GroupSetupTags.GameFee),
-        )
-        GroupFieldHint(stringResource(Res.string.group_setup_game_fee_hint))
+    val requester = remember { BringIntoViewRequester() }
+    var focused by rememberSaveable { mutableStateOf(false) }
+    val focus = (state.mode as? GroupSetupMode.Edit)?.focusGameFee == true
+    LaunchedEffect(focus, state.isLoading) {
+        if (focus && !state.isLoading && !focused) {
+            focused = true
+            requester.bringIntoView()
+        }
     }
+    GameFeeBlock(
+        choice = state.gameFeeChoice,
+        feeText = text,
+        onChoice = { onIntent(GroupSetupIntent.SelectGameFeeChoice(it)) },
+        onFeeTextChange = { raw ->
+            text = sanitizeBrlInput(raw)
+            onIntent(GroupSetupIntent.UpdateDefaultGameFee(parseBrlToCents(text)))
+        },
+        problem = when {
+            GroupSetupError.GameFeeMissing in state.errors -> GameFeeProblem.Missing
+            GroupSetupError.GameFeeInvalid in state.errors -> GameFeeProblem.Invalid
+            else -> null
+        },
+        // Em Criar grupo o valor já vem preenchido com a conta; a sugestão no apoio é das outras telas.
+        monthlyFeeCents = state.form.monthlyFeeCents.takeIf { state.isEditing },
+        modifier = modifier.bringIntoViewRequester(requester).testTag(GroupSetupTags.GameFee),
+    )
 }
 
 /** Prioridade dos mensalistas: segmentado 3h · 6h · 12h · 24h. Valor salvo fora dessas quatro fica sem marca. */
