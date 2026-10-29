@@ -28,7 +28,10 @@ data class FinanceStatementSummary(
     val totalInCents: Long,
     val totalOutCents: Long,
     val periodBalanceCents: Long,
+    /** Soma o saldo inicial (DEB-148): o app antigo mostra o saldo certo sem mudar. */
     val accumulatedBalanceCents: Long,
+    /** Saldo inicial do caixa; nulo enquanto ninguém respondeu. */
+    val openingBalanceCents: Long? = null,
 )
 
 data class FinanceStatementPage(

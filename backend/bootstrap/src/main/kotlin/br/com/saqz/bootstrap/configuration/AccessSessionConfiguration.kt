@@ -1057,6 +1057,14 @@ class AccessSessionConfiguration {
     @Bean fun chargeManagementRepository(dataSource: DataSource) = JdbcChargeManagementRepository(dataSource)
     @Bean fun chargeManagement(transaction: JdbcTransactionRunner, repository: JdbcChargeManagementRepository) = ChargeManagement(transaction, repository, Instant::now, java.util.UUID::randomUUID)
     @Bean fun chargeController(actor: VerifiedGroupActorResolver, management: ChargeManagement, generation: ChargeTransactions) = ChargeController(actor, management, generation)
+    // Saldo inicial do caixa (DEB-148, FIN-006).
+    @Bean fun openingBalanceController(actor: VerifiedGroupActorResolver, transaction: JdbcTransactionRunner, dataSource: DataSource) =
+        br.com.saqz.groups.adapter.input.http.OpeningBalanceController(
+            actor,
+            br.com.saqz.groups.application.finance.openingbalance.OpeningBalanceService(
+                transaction, br.com.saqz.groups.adapter.output.jdbc.finance.JdbcOpeningBalanceRepository(dataSource), Instant::now,
+            ),
+        )
     // Diária retroativa (DEB-147, FIN-016).
     @Bean fun unchargedReview(transaction: JdbcTransactionRunner, dataSource: DataSource, charges: ChargeTransactions, lookup: JdbcChargeManagementRepository) =
         br.com.saqz.groups.application.finance.uncharged.UnchargedReview(

@@ -70,6 +70,7 @@ class JdbcFinanceStatementRepository(
                     totalInCents = rs.getLong("total_in_cents"),
                     totalOutCents = rs.getLong("total_out_cents"),
                     accumulatedBalanceCents = rs.getLong("accumulated_balance_cents"),
+                    openingBalanceCents = rs.getObject("opening_balance_cents", java.lang.Long::class.java)?.toLong(),
                 )
             }
             .single()
@@ -78,6 +79,7 @@ class JdbcFinanceStatementRepository(
             totalOutCents = row.totalOutCents,
             periodBalanceCents = row.totalInCents - row.totalOutCents,
             accumulatedBalanceCents = row.accumulatedBalanceCents,
+            openingBalanceCents = row.openingBalanceCents,
         )
     }
 
@@ -99,6 +101,7 @@ class JdbcFinanceStatementRepository(
         val totalInCents: Long,
         val totalOutCents: Long,
         val accumulatedBalanceCents: Long,
+        val openingBalanceCents: Long?,
     )
 
     private companion object {
@@ -254,7 +257,10 @@ class JdbcFinanceStatementRepository(
                     WHERE expenses.group_id = :group
                       AND expenses.status = 'ACTIVE'
                       AND expenses.direction = 'OUT'
-                ), 0) AS accumulated_balance_cents
+                ), 0)
+                -- Saldo inicial (DEB-148): soma sempre, sem data.
+                + COALESCE((SELECT opening_balance_cents FROM access_groups WHERE id = :group), 0) AS accumulated_balance_cents,
+                (SELECT opening_balance_cents FROM access_groups WHERE id = :group) AS opening_balance_cents
             """
     }
 }

@@ -127,7 +127,7 @@ class JdbcFinanceOverviewRepository(
 
     private companion object {
         const val ADMINISTERED_GROUPS = """
-            SELECT groups.id, groups.name, groups.monthly_fee_cents, groups.monthly_due_day
+            SELECT groups.id, groups.name, groups.monthly_fee_cents, groups.monthly_due_day, groups.opening_balance_cents
             FROM access_groups groups
             WHERE groups.deleted_at IS NULL
               AND (
@@ -171,6 +171,8 @@ class JdbcFinanceOverviewRepository(
                           AND expenses.status = 'ACTIVE'
                           AND expenses.direction = 'OUT'
                     ), 0)
+                    -- Saldo inicial do caixa (DEB-148).
+                    + COALESCE(groups.opening_balance_cents, 0)
                 ) AS balance_cents,
                 (
                     COALESCE((

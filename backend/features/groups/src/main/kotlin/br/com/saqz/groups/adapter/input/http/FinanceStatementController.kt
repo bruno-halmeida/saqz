@@ -35,6 +35,8 @@ data class FinanceStatementSummaryResponse(
     val totalOutCents: Long,
     val periodBalanceCents: Long,
     val accumulatedBalanceCents: Long,
+    /** Saldo inicial (DEB-148), já somado em [accumulatedBalanceCents]; nulo enquanto ninguém respondeu. */
+    val openingBalanceCents: Long? = null,
 )
 
 data class FinanceStatementResponse(
@@ -125,4 +127,5 @@ private fun FinanceStatementSummary.response() = FinanceStatementSummaryResponse
     totalOutCents = totalOutCents,
     periodBalanceCents = periodBalanceCents,
     accumulatedBalanceCents = accumulatedBalanceCents,
+    openingBalanceCents = openingBalanceCents,
 )
