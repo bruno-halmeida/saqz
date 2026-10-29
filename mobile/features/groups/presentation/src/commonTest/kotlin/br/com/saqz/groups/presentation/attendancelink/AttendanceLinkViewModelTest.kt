@@ -385,6 +385,45 @@ class AttendanceLinkViewModelTest {
         assertEquals(card, answered.state.value.game)
     }
 
+    @Test fun theAvulsoSeesTheDiariaLineOnlyInAGameWithFee() = runTest {
+        fun profile(type: br.com.saqz.groups.domain.athlete.AthleteMembershipType) = br.com.saqz.groups.presentation.FakeAthleteGateway(
+            ownProfileResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.athlete.OwnAthleteProfile(
+                    "me", "Rafa", null,
+                    listOf(
+                        br.com.saqz.groups.domain.athlete.OwnAthleteMembership(
+                            groupId = GroupId("group-1"), groupName = "Vôlei do CERET",
+                            role = br.com.saqz.groups.domain.group.GroupRole.ATHLETE, position = null,
+                            membershipType = type, active = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val withFee = br.com.saqz.groups.presentation.FakeGameGateway(
+            readResult = SaqzResult.Success(
+                br.com.saqz.groups.presentation.sampleVersionedGame(
+                    br.com.saqz.groups.presentation.sampleGame().copy(gameFeeCents = 2000, noGameFee = false),
+                ),
+            ),
+        )
+        val avulso = AttendanceLinkViewModel(
+            code, false, SharingFake(), AttendanceFake(), InviteFake(), games = withFee,
+            athletes = profile(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO),
+        )
+        assertEquals("R$\u00A020", avulso.state.value.game?.feeLine)
+        val mensalista = AttendanceLinkViewModel(
+            code, false, SharingFake(), AttendanceFake(), InviteFake(), games = withFee,
+            athletes = profile(br.com.saqz.groups.domain.athlete.AthleteMembershipType.MENSALISTA),
+        )
+        assertNull(mensalista.state.value.game?.feeLine)
+        val noFee = AttendanceLinkViewModel(
+            code, false, SharingFake(), AttendanceFake(), InviteFake(), games = br.com.saqz.groups.presentation.FakeGameGateway(),
+            athletes = profile(br.com.saqz.groups.domain.athlete.AthleteMembershipType.AVULSO),
+        )
+        assertNull(noFee.state.value.game?.feeLine, "jogo Sem diária não mostra a linha")
+    }
+
     @Test fun failureReadingTheGameLeavesNoCardAndTheAnswerGoesOnAnyway() = runTest {
         val games = br.com.saqz.groups.presentation.FakeGameGateway(
             readResult = SaqzResult.Failure(br.com.saqz.groups.domain.game.GameError.Data(DataError.Connectivity)),

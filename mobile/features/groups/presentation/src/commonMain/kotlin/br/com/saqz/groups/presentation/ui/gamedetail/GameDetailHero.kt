@@ -313,6 +313,8 @@ private fun ColumnScope.GamePublishedBlock(
 ) {
     val response = state.response
     if (response.visible) {
+        // DEB-146: quem paga diária vê o valor antes do Vou.
+        state.feeNoteAmount?.takeIf { header.canRespond }?.let { HeroFeeNote(GameDetailTags.FeeNote, amount = it) }
         HeroResponseLine(
             confirmationOpen = header.confirmationOpen,
             responseOpen = header.responseOpen,
@@ -345,7 +347,7 @@ private fun ColumnScope.GamePublishedBlock(
             tags = GameDetailHeroAttendanceTags,
         )
     }
-    if (state.showsFeeNote && header.canRespond) HeroFeeNote(GameDetailTags.FeeNote)
+    if (state.showsFeeNote && state.feeNoteAmount == null && header.canRespond) HeroFeeNote(GameDetailTags.FeeNote)
     if (state.canNotify) GameNotifyPanel(state, onIntent)
     state.limeLine?.let { GameLimeLineRow(it) }
 }

@@ -1471,6 +1471,14 @@ class GameDetailViewModelTest {
     }
 
     @Test
+    fun theDiariaLineShowsTheFeeOnlyToTheAvulsoAndOnlyInAGameWithFee() = runTest {
+        val charged = openGame().copy(gameFeeCents = 2000, noGameFee = false)
+        assertEquals("R$\u00A020", responder(game = charged, athletes = avulsoProfile(AthleteMembershipType.AVULSO)).state.value.feeNoteAmount)
+        assertNull(responder(game = charged, athletes = avulsoProfile(AthleteMembershipType.MENSALISTA)).state.value.feeNoteAmount)
+        assertNull(responder(game = openGame(), athletes = avulsoProfile(AthleteMembershipType.AVULSO)).state.value.feeNoteAmount)
+    }
+
+    @Test
     fun anAvulsoUnderMensalistaPriorityWaitsInTheAvulsoList() = runTest {
         val attendance = FakeAttendanceGateway(respondResult = mutation(AttendanceStatus.Waitlisted, position = 1))
         val viewModel = responder(attendance, athletes = avulsoProfile(AthleteMembershipType.AVULSO))

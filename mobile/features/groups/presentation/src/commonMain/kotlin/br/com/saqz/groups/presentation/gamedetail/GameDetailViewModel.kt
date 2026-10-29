@@ -1,4 +1,5 @@
 package br.com.saqz.groups.presentation.gamedetail
+import br.com.saqz.groups.presentation.ui.components.formatBrlShort
 import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
@@ -510,6 +511,8 @@ class GameDetailViewModel(
                         groupName = groupName,
                         hero = hero,
                         showsFeeNote = membershipType == AthleteMembershipType.AVULSO && game.gameFeeCents != null,
+                        feeNoteAmount = game.gameFeeCents
+                            ?.takeIf { membershipType == AthleteMembershipType.AVULSO && it > 0 }?.let(::formatBrlShort),
                         gameMenuOpen = false,
                         personActionsId = null,
                         settlementPending = settlementPending,

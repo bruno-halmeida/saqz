@@ -64,6 +64,8 @@ data class GameDetailState(
     val whatsAppGroupActive: Boolean = false,
     /** Avulso em jogo com taxa e respostas abertas: a nota da cobrança, como no grupo. */
     val showsFeeNote: Boolean = false,
+    /** A diária já formatada ("R$ 20") para a linha antes do Vou (DEB-146); nula sem valor ou para quem não é avulso. */
+    val feeNoteAmount: String? = null,
     /** Menu ⋯ da barra (dono/admin). */
     val gameMenuOpen: Boolean = false,
     /** Linha cujo ⋮ abriu a folha de ações da pessoa. */

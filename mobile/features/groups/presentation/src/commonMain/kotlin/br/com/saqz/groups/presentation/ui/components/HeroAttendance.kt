@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.ui.components
 
+import br.com.saqz.groups.resources.game_fee_line
 import br.com.saqz.groups.presentation.photo.MemberPhoto
 import br.com.saqz.groups.presentation.photo.avatarSlot
 import androidx.compose.foundation.background
@@ -91,18 +92,20 @@ internal data class HeroAttendanceTags(
  * Nasceu no hero do grupo; a tela do jogo (DEB-116) é o segundo uso.
  */
 @Composable
-internal fun HeroFeeNote(tag: String, modifier: Modifier = Modifier) {
+internal fun HeroFeeNote(tag: String, modifier: Modifier = Modifier, amount: String? = null) {
     val color = SaqzTheme.colors.onPrimary.copy(alpha = HeroFeeAlpha)
     Row(
         modifier = modifier.testTag(tag),
         horizontalArrangement = Arrangement.spacedBy(HeroIconGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SaqzIcon(SaqzIcons.CreditCard, tint = color, size = HeroLineIconSize)
+        // DEB-146 (prancha Avulso-diaria): com o valor, "Diária de R$ 20, cobrada ao confirmar", em branco.
+        SaqzIcon(if (amount != null) SaqzIcons.Banknote else SaqzIcons.CreditCard, tint = color, size = HeroLineIconSize)
         Text(
-            text = stringResource(Res.string.game_response_day_member_fee),
+            text = amount?.let { stringResource(Res.string.game_fee_line, it) }
+                ?: stringResource(Res.string.game_response_day_member_fee),
             style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-            color = color,
+            color = if (amount != null) SaqzTheme.colors.onPrimary else color,
         )
     }
 }

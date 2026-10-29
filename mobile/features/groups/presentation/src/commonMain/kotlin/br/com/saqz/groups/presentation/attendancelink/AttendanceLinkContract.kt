@@ -44,6 +44,8 @@ data class AttendanceLinkGame(
     /** Vagas e confirmados do jogo; nulos na prévia do convite, que não traz a contagem. */
     val capacity: Int? = null,
     val confirmedCount: Int? = null,
+    /** DEB-146: a diária já formatada ("R$ 20") para o avulso, em jogo com valor; nula para os outros. */
+    val feeLine: String? = null,
 )
 
 data class AttendanceLinkState(

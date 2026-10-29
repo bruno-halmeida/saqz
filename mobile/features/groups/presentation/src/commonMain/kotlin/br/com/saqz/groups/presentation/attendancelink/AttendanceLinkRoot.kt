@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.attendancelink
 
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +22,7 @@ import org.koin.core.parameter.parametersOf
 
 internal object AttendanceLinkTags {
     const val GameCard = "attendance-link-game-card"
+    const val FeeLine = "attendance-link-fee-line"
     const val Undo = "attendance-link-undo"
     const val ResultCard = "attendance-link-result-card"
     const val Spots = "attendance-link-spots"
@@ -99,6 +102,7 @@ internal fun AttendanceLinkScreen(
                         address = if (pending) null else game.court,
                         modifier = Modifier.testTag(AttendanceLinkTags.GameCard),
                     )
+                    game.feeLine?.takeIf { !pending }?.let { AttendanceFeeLine(it) }
                 }
                 // Como no Main.dc.html: o jogo em cima, o andamento do pedido embaixo.
                 if (phase == AttendanceLinkPhase.Pending) AttendancePendingCard(state)
@@ -273,4 +277,21 @@ internal fun AttendanceLinkGame.title(): String {
         else -> null
     }?.let { stringResource(it) }
     return if (weekday == null) dateTime else "$weekday, $dateTime"
+}
+
+/** DEB-146 (prancha Avulso-diaria): "Diária de R$ 20, cobrada ao confirmar", para o avulso, junto do jogo. */
+@Composable
+private fun AttendanceFeeLine(amount: String) {
+    Row(
+        modifier = Modifier.testTag(AttendanceLinkTags.FeeLine),
+        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SaqzIcon(SaqzIcons.Banknote, tint = SaqzTheme.colors.textSecondary)
+        Text(
+            text = stringResource(Res.string.game_fee_line, amount),
+            style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
+            color = SaqzTheme.colors.textPrimary,
+        )
+    }
 }

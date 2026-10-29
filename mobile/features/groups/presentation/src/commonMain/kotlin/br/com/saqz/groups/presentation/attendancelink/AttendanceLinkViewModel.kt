@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.attendancelink
 
+import br.com.saqz.groups.presentation.ui.components.formatBrlShort
+import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.mvi.MviViewModel
@@ -193,7 +195,14 @@ class AttendanceLinkViewModel(
         viewModelScope.launch {
             val result = gateway.read(destination.groupId, destination.gameId)
             if (current != generation || result !is SaqzResult.Success) return@launch
-            val card = result.value.game.toCard()
+            val game = result.value.game
+            // DEB-146: a linha da diária só para quem paga diária (avulso) e em jogo com valor.
+            val avulso = game.gameFeeCents != null && athletes?.ownProfile()?.let { profile ->
+                (profile as? SaqzResult.Success)?.value?.memberships
+                    ?.firstOrNull { it.groupId == destination.groupId }?.membershipType == AthleteMembershipType.AVULSO
+            } == true
+            if (current != generation) return@launch
+            val card = game.toCard().copy(feeLine = game.gameFeeCents?.takeIf { avulso && it > 0 }?.let(::formatBrlShort))
             update { if (it.destination == destination) it.copy(game = card) else it }
         }
     }
