@@ -553,7 +553,6 @@ internal fun GroupGameFeeField(state: GroupSetupState, onIntent: (GroupSetupInte
             onIntent(GroupSetupIntent.UpdateDefaultGameFee(parseBrlToCents(text)))
         },
         problem = when {
-            GroupSetupError.GameFeeMissing in state.errors -> GameFeeProblem.Missing
             GroupSetupError.GameFeeInvalid in state.errors -> GameFeeProblem.Invalid
             else -> null
         },

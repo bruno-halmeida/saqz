@@ -37,7 +37,6 @@ import br.com.saqz.groups.presentation.gameeditor.GameEditorFieldError
 import br.com.saqz.groups.presentation.gameeditor.GameEditorFields
 import br.com.saqz.groups.presentation.gameeditor.GameEditorState
 import br.com.saqz.groups.presentation.home.HomeWaitlistKind
-import br.com.saqz.groups.presentation.setup.GroupSetupError
 import br.com.saqz.groups.presentation.setup.GroupSetupMode
 import br.com.saqz.groups.presentation.setup.GroupSetupState
 import br.com.saqz.groups.presentation.ui.components.GameFeeBlock
@@ -104,7 +103,7 @@ class DiariaAntecipadoScreenshotTest {
 
     @Test
     @Config(qualifiers = "+h2400dp")
-    fun criarGrupoNadaEscolhido() = capture("criar-grupo-nada-escolhido") {
+    fun criarGrupoSemValor() = capture("criar-grupo-sem-valor") {
         GroupSetupScreen(
             state = GroupSetupState(
                 mode = GroupSetupMode.Create,
@@ -113,7 +112,6 @@ class DiariaAntecipadoScreenshotTest {
                     modality = GroupModality.COURT_VOLLEYBALL,
                     composition = GroupComposition.MIXED,
                 ),
-                errors = setOf(GroupSetupError.GameFeeMissing),
             ),
             onIntent = {},
             onBack = {},

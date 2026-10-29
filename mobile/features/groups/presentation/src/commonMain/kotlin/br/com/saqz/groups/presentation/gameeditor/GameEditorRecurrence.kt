@@ -92,8 +92,8 @@ fun recurrenceProfileForm(
  * jogo já está marcado — se ela não gravar, a próxima criação pede a quadra de novo.
  */
 /**
- * DEB-146: grupo sem valor por jogo que ganha "Repetir toda semana" recebe a escolha deste jogo, para os jogos da
- * semana não nascerem "não definidos".
+ * DEB-146: grupo ainda sem valor por jogo recebe a escolha do jogo novo (ou do "Repetir toda semana"), para os próximos
+ * jogos não nascerem "não definidos" e o cartão do grupo sumir.
  */
 data class RecurrenceGameFee(val cents: Long?, val noGameFee: Boolean)
 
@@ -106,13 +106,14 @@ internal suspend fun saveGroupDefaults(
 ): SaqzResult<Unit, GroupProfileError> {
     val slot = recurrenceSlotFor(state.form).takeIf { state.recurrenceOffered && state.form.recurring }
     val venue = state.form.venue?.takeIf { creating && it.name.isNotBlank() }
-    if (slot == null && venue == null) return SaqzResult.Success(Unit)
+    val fee = state.groupFeeFromGame(creating, slot)
+    if (slot == null && venue == null && fee == null) return SaqzResult.Success(Unit)
     val read = groupGateway.read(GroupId(groupId))
     val saved = when (read) {
         is SaqzResult.Failure -> SaqzResult.Failure(read.error)
-        is SaqzResult.Success -> writeGroupDefaults(groupId, read.value, venue, slot, profileGateway, state.recurrenceFee(slot))
+        is SaqzResult.Success -> writeGroupDefaults(groupId, read.value, venue, slot, profileGateway, fee)
     }
-    // Sem repetição pedida, a quadra padrão é cortesia: falhar não falha o jogo.
+    // Sem repetição pedida, a quadra padrão e o valor do grupo são cortesia: falhar não falha o jogo.
     return if (saved is SaqzResult.Failure && slot == null) SaqzResult.Success(Unit) else saved
 }
 
@@ -137,8 +138,8 @@ private suspend fun writeGroupDefaults(
     ).map { }
 }
 
-private fun GameEditorState.recurrenceFee(slot: GroupRegularSlot?): RecurrenceGameFee? = when {
-    slot == null || !groupFeeUndefined -> null
+private fun GameEditorState.groupFeeFromGame(creating: Boolean, slot: GroupRegularSlot?): RecurrenceGameFee? = when {
+    !groupFeeUndefined || (!creating && slot == null) -> null
     form.gameFeeChoice == GameFeeChoice.NoFee -> RecurrenceGameFee(null, noGameFee = true)
     form.gameFeeChoice == GameFeeChoice.Charge -> form.gameFeeCents?.let { RecurrenceGameFee(it, noGameFee = false) }
     else -> null

@@ -247,7 +247,7 @@ class GroupSetupValidatorTest {
         // vale com a edição do 5-1 e tem teste próprio em `GroupSetupPositionSlotsTest`.
         assertEquals(
             // Tipo obrigatório e chave inválida são excludentes: aqui há tipo, então só a chave é acusada.
-            // Sem escolha no "Valor por jogo" o erro é o de nada escolhido, não o do valor (DEB-146).
+            // Sem escolha no "Valor por jogo" não há erro: no grupo ele é opcional (DEB-146, 29/10).
             GroupSetupError.entries.toSet() - GroupSetupError.VenueAddressNotFound -
                 GroupSetupError.PositionSlotsSumMismatch - GroupSetupError.PixTypeRequired - GroupSetupError.GameFeeInvalid,
             errors,
@@ -266,8 +266,8 @@ class GroupSetupValidatorTest {
     }
 
     @Test
-    fun `valor por jogo sem escolha nao salva e Sem diaria passa sem valor - DEB-146`() {
-        assertEquals(setOf(GroupSetupError.GameFeeMissing), validate(state(choice = null)))
+    fun `valor por jogo sem escolha passa e Sem diaria passa sem valor - DEB-146`() {
+        assertEquals(emptySet(), validate(state(choice = null)))
         assertEquals(emptySet(), validate(state(choice = GameFeeChoice.NoFee) { copy(defaultGameFeeCents = null) }))
     }
 

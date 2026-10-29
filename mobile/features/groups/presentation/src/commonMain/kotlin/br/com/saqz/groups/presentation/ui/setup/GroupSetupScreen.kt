@@ -203,8 +203,8 @@ private fun GroupSetupNotices(state: GroupSetupState, onIntent: (GroupSetupInten
         GroupErrorBanner(
             count = state.errors.size,
             isEditing = state.isEditing,
-            // DEB-146: só o valor por jogo faltando ganha o aviso da prancha, que diz onde ele está.
-            gameFeeOnly = state.errors.all { it == GroupSetupError.GameFeeMissing || it == GroupSetupError.GameFeeInvalid },
+            // DEB-146: só o valor do Cobrar diária faltando ganha o aviso da prancha, que diz onde ele está.
+            gameFeeOnly = state.errors.all { it == GroupSetupError.GameFeeInvalid },
         )
     }
     if (state.saveFailed) {
@@ -247,7 +247,6 @@ private fun GroupSetupState.hasErrorInsideDetails(): Boolean = errors.any {
         GroupSetupError.CapacityOutOfRange,
         GroupSetupError.PositionSlotsSumMismatch,
         GroupSetupError.GameFeeInvalid,
-        GroupSetupError.GameFeeMissing,
         GroupSetupError.MonthlyFeeInvalid,
         GroupSetupError.DurationOutOfRange,
         -> true

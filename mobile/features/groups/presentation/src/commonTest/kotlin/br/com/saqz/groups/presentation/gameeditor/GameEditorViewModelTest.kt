@@ -1515,6 +1515,33 @@ class GameEditorViewModelTest {
     }
 
     @Test
+    fun `a single new game in a group without fee gives the group this game's choice - DEB-146`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val groups = groupGateway { it.copy(financeDefaults = GroupFinanceDefaults(null, null, null, gameFeeUndefined = true)) }
+        val vm = viewModel(groupGateway = groups, profileGateway = profileGateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+        vm.onIntent(GameEditorIntent.SelectGameFeeChoice(GameFeeChoice.NoFee))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        val form = assertNotNull(profileGateway.lastUpdateCommand).form
+        assertNull(form.defaultGameFeeCents)
+        assertEquals(true, form.defaultNoGameFee)
+        assertTrue(vm.effects.first() is GameEditorEffect.Saved)
+    }
+
+    @Test
+    fun `a single new game in a group with a fee leaves the group alone`() = runTest {
+        val profileGateway = FakeGroupProfileGateway()
+        val vm = viewModel(groupGateway = groupWithGameFee(2500), profileGateway = profileGateway)
+        vm.onIntent(GameEditorIntent.SaveDateTime("2026-08-04", "19:30"))
+
+        vm.onIntent(GameEditorIntent.Submit)
+
+        assertNull(profileGateway.lastUpdateCommand)
+    }
+
+    @Test
     fun `a zero fee is refused and nothing is sent`() = runTest {
         val gateway = FakeGameGateway()
         val vm = viewModel(gameGateway = gateway, groupGateway = groupWithGameFee(2500))

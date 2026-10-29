@@ -28,8 +28,6 @@ enum class GroupSetupError {
     CapacityOutOfRange,
     PositionSlotsSumMismatch,
     GameFeeInvalid,
-    /** DEB-146: nem Cobrar diária nem Sem diária. */
-    GameFeeMissing,
     MonthlyFeeInvalid,
     SlotsRequired,
     VenueNameRequired,
@@ -141,9 +139,6 @@ fun validate(state: GroupSetupState): Set<GroupSetupError> {
         // DEB-102: no 5-1 a soma das posições é obrigatória e igual ao total de jogadores.
         if (state.positionsBlockSave) add(GroupSetupError.PositionSlotsSumMismatch)
         addAll(validateFees(state, form))
-        if (gameFeeProblem(state.gameFeeChoice, form.defaultGameFeeCents) == GameFeeProblem.Missing) {
-            add(GroupSetupError.GameFeeMissing)
-        }
         if (CustomDuration.isInvalid(state.durationMinutes)) add(GroupSetupError.DurationOutOfRange)
         if (state.recurring && form.regularSlots.isEmpty()) add(GroupSetupError.SlotsRequired)
         addAll(validateVenue(state.recurring, venue))
@@ -182,8 +177,9 @@ private fun validateVenue(recurring: Boolean, venue: GroupVenueForm?): Set<Group
 }
 
 /**
- * Valor por jogo (DEB-146): com Cobrar diária precisa de 0,01 a 999.999,99 (vazio e R$ 0,00 são recusados); o "nada
- * escolhido" é o [GroupSetupError.GameFeeMissing], de [validate]. Mensalidade vazia segue sem cobrança.
+ * Valor por jogo (DEB-146): no grupo é opcional (decidido pelo dono em 29/10). Sem escolha, o grupo fica sem valor e a
+ * página do grupo cobra a escolha; com Cobrar diária precisa de 0,01 a 999.999,99 (vazio e R$ 0,00 são recusados).
+ * O obrigatório fica no editor de jogo. Mensalidade vazia segue sem cobrança.
  */
 private fun validateFees(state: GroupSetupState, form: br.com.saqz.groups.model.GroupSetupForm): List<GroupSetupError> = buildList {
     if (gameFeeProblem(state.gameFeeChoice, form.defaultGameFeeCents) == GameFeeProblem.Invalid) {

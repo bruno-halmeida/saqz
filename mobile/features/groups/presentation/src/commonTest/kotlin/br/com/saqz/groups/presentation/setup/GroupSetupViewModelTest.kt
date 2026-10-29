@@ -435,10 +435,7 @@ class GroupSetupViewModelTest {
             timeZonePort = FakeGroupSystemTimeZonePort(),
         )
 
-        // DEB-146: o valor por jogo também é obrigatório na criação; o erro abre "Mais detalhes" sozinho.
-        creating.onIntent(GroupSetupIntent.Submit)
-        assertEquals(setOf(GroupSetupError.GameFeeMissing), creating.state.value.errors)
-        creating.onIntent(GroupSetupIntent.SelectGameFeeChoice(GameFeeChoice.NoFee))
+        // DEB-146: na criação o valor por jogo é opcional (29/10); sem escolha o grupo nasce sem valor.
         creating.onIntent(GroupSetupIntent.Submit)
         runCurrent()
 
@@ -1543,14 +1540,17 @@ class GroupSetupViewModelTest {
     // ---- DEB-146 · JOGO-008: valor por jogo obrigatório ----
 
     @Test
-    fun `nothing chosen in Valor por jogo does not save and shows the error`() = runTest {
+    fun `nothing chosen in Valor por jogo saves the group without a fee`() = runTest {
         val profiles = FakeGroupProfileGateway()
         val vm = viewModel(form = completeForm.copy(defaultNoGameFee = false), gameFeeChoice = null, profileGateway = profiles)
 
         vm.onIntent(GroupSetupIntent.Submit)
+        runCurrent()
 
-        assertEquals(setOf(GroupSetupError.GameFeeMissing), vm.state.value.errors)
-        assertNull(profiles.lastCreateCommand)
+        assertEquals(emptySet(), vm.state.value.errors)
+        val form = assertNotNull(profiles.lastCreateCommand).form
+        assertNull(form.defaultGameFeeCents)
+        assertEquals(false, form.defaultNoGameFee)
     }
 
     @Test
