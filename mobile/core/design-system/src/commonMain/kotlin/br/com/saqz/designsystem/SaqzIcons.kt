@@ -52,6 +52,7 @@ import com.composables.icons.lucide.Trash
 import com.composables.icons.lucide.User
 import com.composables.icons.lucide.UserPlus
 import com.composables.icons.lucide.Users
+import com.composables.icons.lucide.Wallet
 import com.composables.icons.lucide.X
 
 /**
@@ -101,6 +102,9 @@ object SaqzIcons {
 
     /** Valor por jogo. */
     val Banknote = Lucide.Banknote
+
+    /** Caixa do grupo ("O organizador já vê no caixa do grupo."). */
+    val Wallet = Lucide.Wallet
 
     /** Prioridade dos mensalistas. */
     val Star = Lucide.Star

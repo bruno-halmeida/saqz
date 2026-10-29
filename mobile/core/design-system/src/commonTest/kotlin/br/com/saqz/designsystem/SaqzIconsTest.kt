@@ -44,6 +44,7 @@ class SaqzIconsTest {
         "Ban" to Pair(SaqzIcons.Ban, "ban"),
         "FileText" to Pair(SaqzIcons.FileText, "file-text"),
         "Banknote" to Pair(SaqzIcons.Banknote, "banknote"),
+        "Wallet" to Pair(SaqzIcons.Wallet, "wallet"),
         "Star" to Pair(SaqzIcons.Star, "star"),
         "ChevronDown" to Pair(SaqzIcons.ChevronDown, "chevron-down"),
         "ChevronUp" to Pair(SaqzIcons.ChevronUp, "chevron-up"),

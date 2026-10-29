@@ -141,4 +141,4 @@ object PaymentTags {
     const val Error = "receivables-error"
 }
 
-private const val HERO_SUPPORT_ALPHA = 0.82f
+internal const val HERO_SUPPORT_ALPHA = 0.82f

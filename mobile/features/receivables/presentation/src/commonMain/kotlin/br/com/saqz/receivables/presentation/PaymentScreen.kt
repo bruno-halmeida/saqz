@@ -1,26 +1,42 @@
 package br.com.saqz.receivables.presentation
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saqz.designsystem.*
+import br.com.saqz.designsystem.resources.action_close
+import br.com.saqz.designsystem.resources.saqz_volleyball
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.receivables.domain.PaymentError
 import br.com.saqz.receivables.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import br.com.saqz.designsystem.resources.Res as DesignRes
 
 object PaymentScreenTags {
     const val Screen = "receivable-payment"
@@ -33,6 +49,7 @@ object PaymentScreenTags {
     const val NewCode = "receivable-payment-new-code"
     const val Nothing = "receivable-payment-nothing"
     const val Confirmed = "receivable-payment-confirmed"
+    const val Close = "receivable-payment-close"
     const val Offer = "receivable-payment-offer"
     const val AcceptOffer = "receivable-payment-offer-accept"
     const val DeclineOffer = "receivable-payment-offer-decline"
@@ -184,39 +201,103 @@ private fun ColumnScope.Expired(onIntent: (PaymentIntent) -> Unit) {
         modifier = Modifier.testTag(PaymentScreenTags.NewCode))
 }
 
+/**
+ * Proposta A do canvas do financeiro (escolhida pelo dono em 29/10, DEB-149): a confirmação é a faixa verde de borda a
+ * borda, desde o topo da janela, com a bola da marca ao fundo. Sai a barra cinza com o título repetido (fica só o X) e a
+ * oferta do automático vira cartão branco, para o azul não disputar com o verde.
+ */
 @Composable
 private fun ConfirmedScreen(confirmed: PaymentConfirmedUi, onIntent: (PaymentIntent) -> Unit, onClose: () -> Unit,
-    modifier: Modifier = Modifier) = ReceivablesPage(stringResource(Res.string.confirmed_title), PaymentScreenTags.Confirmed, onClose,
-    modifier,
-    footer = {
-        SaqzButton(stringResource(Res.string.confirmed_back), onClose, fullWidth = true,
-            variant = if (confirmed.offer) SaqzButtonVariant.Ghost else SaqzButtonVariant.Primary,
-            modifier = Modifier.testTag(PaymentScreenTags.Done))
-    }) {
+    modifier: Modifier = Modifier) {
+    val colors = SaqzTheme.colors
     val metrics = SaqzTheme.metrics
-    Column(Modifier.fillMaxWidth().padding(metrics.horizontalPadding).padding(top = metrics.sectionGap),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
-        SaqzIcon(SaqzIcons.Check, tint = SaqzTheme.colors.successForeground, size = metrics.grid * 6)
-        Text(stringResource(Res.string.confirmed_title), style = SaqzTheme.typography.headline, color = SaqzTheme.colors.textPrimary,
-            textAlign = TextAlign.Center)
-        Text(confirmed.summary, style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-            color = SaqzTheme.colors.textPrimary, textAlign = TextAlign.Center)
-        Text(stringResource(Res.string.confirmed_body), style = SaqzTheme.typography.support, color = SaqzTheme.colors.textSecondary,
-            textAlign = TextAlign.Center)
-    }
-    if (confirmed.offer) {
-        ReceivablesHero(kicker = stringResource(Res.string.autopay_kicker), amount = stringResource(Res.string.confirmed_offer_title),
-            support = confirmed.dueDay?.let { stringResource(Res.string.confirmed_offer_body, it) }
-                ?: stringResource(Res.string.confirmed_offer_body_no_day),
-            modifier = Modifier.padding(top = metrics.sectionGap).testTag(PaymentScreenTags.Offer)) {
-            SaqzButton(stringResource(Res.string.confirmed_offer_accept), { onIntent(PaymentIntent.AcceptOffer) },
-                variant = SaqzButtonVariant.Inverse, fullWidth = true, modifier = Modifier.testTag(PaymentScreenTags.AcceptOffer))
-            SaqzButton(stringResource(Res.string.confirmed_offer_decline), { onIntent(PaymentIntent.DeclineOffer) },
-                variant = SaqzButtonVariant.Ghost, contentColor = SaqzTheme.colors.onPrimary, fullWidth = true,
-                modifier = Modifier.testTag(PaymentScreenTags.DeclineOffer))
+    Column(modifier.fillMaxSize().background(colors.surface).testTag(PaymentScreenTags.Confirmed)) {
+        // O app é edge-to-edge: o verde passa por trás da barra de status e fica parado quando o conteúdo rola.
+        Spacer(Modifier.fillMaxWidth().background(colors.successForeground).windowInsetsTopHeight(WindowInsets.statusBars))
+        Column(Modifier.weight(1f).clipToBounds().verticalScroll(rememberScrollState())) {
+            ConfirmedHero(confirmed.summary, onClose)
+            if (confirmed.offer) AutopayOffer(confirmed.dueDay, onIntent,
+                Modifier.padding(horizontal = metrics.horizontalPadding).padding(top = metrics.sectionGap - metrics.subGrid))
+        }
+        Box(Modifier.fillMaxWidth().padding(metrics.horizontalPadding)) {
+            SaqzButton(stringResource(Res.string.confirmed_back), onClose, fullWidth = true,
+                variant = if (confirmed.offer) SaqzButtonVariant.Secondary else SaqzButtonVariant.Primary,
+                modifier = Modifier.testTag(PaymentScreenTags.Done))
         }
     }
 }
+
+@Composable
+private fun ConfirmedHero(summary: String, onClose: () -> Unit) {
+    val colors = SaqzTheme.colors
+    val metrics = SaqzTheme.metrics
+    val soft = colors.onPrimary.copy(alpha = HERO_SUPPORT_ALPHA)
+    Box(Modifier.fillMaxWidth().background(colors.successForeground).clipToBounds()) {
+        // Numa caixa do tamanho da faixa, como no SaqzHeroCard: a bola de 240 não dita a altura.
+        Box(Modifier.matchParentSize()) {
+            Image(painterResource(DesignRes.drawable.saqz_volleyball), contentDescription = null,
+                colorFilter = ColorFilter.tint(colors.onPrimary),
+                modifier = Modifier.align(Alignment.TopEnd).offset(x = ConfirmedBallOffsetX, y = ConfirmedBallOffsetY)
+                    .wrapContentSize(Alignment.TopEnd, unbounded = true).size(ConfirmedBallSize)
+                    .alpha(CONFIRMED_BALL_ALPHA).clearAndSetSemantics {})
+        }
+        Column(Modifier.fillMaxWidth().padding(bottom = metrics.sectionGap)) {
+            SaqzIconButton(onClick = onClose, contentDescription = stringResource(DesignRes.string.action_close),
+                modifier = Modifier.padding(start = metrics.subGrid, top = metrics.subGrid).testTag(PaymentScreenTags.Close)) {
+                SaqzIcon(SaqzIcons.Close, tint = colors.onPrimary, size = ConfirmedCloseIconSize)
+            }
+            Column(Modifier.fillMaxWidth().padding(horizontal = ConfirmedHeroPadding)
+                .padding(top = metrics.sectionGap - metrics.subGrid), verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
+                Box(Modifier.size(ConfirmedCheckSize).background(colors.onPrimary, CircleShape), contentAlignment = Alignment.Center) {
+                    SaqzIcon(SaqzIcons.Check, tint = colors.successForeground, size = ConfirmedCheckIconSize)
+                }
+                Text(stringResource(Res.string.confirmed_title), style = SaqzTheme.typography.display, color = colors.onPrimary,
+                    modifier = Modifier.semantics { heading() })
+                Text(summary, style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold), color = colors.onPrimary)
+                Row(horizontalArrangement = Arrangement.spacedBy(metrics.grid), verticalAlignment = Alignment.CenterVertically) {
+                    SaqzIcon(SaqzIcons.Wallet, tint = soft, size = ConfirmedNoteIconSize)
+                    Text(stringResource(Res.string.confirmed_body), style = SaqzTheme.typography.support, color = soft)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AutopayOffer(dueDay: String?, onIntent: (PaymentIntent) -> Unit, modifier: Modifier = Modifier) =
+    SaqzCard(modifier.testTag(PaymentScreenTags.Offer)) {
+        val colors = SaqzTheme.colors
+        Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.grid), verticalAlignment = Alignment.CenterVertically) {
+            SaqzIcon(SaqzIcons.CreditCard, tint = colors.primary, size = OfferKickerIconSize)
+            Text(stringResource(Res.string.autopay_kicker).uppercase(), style = SaqzTheme.typography.eyebrow, color = colors.primary)
+        }
+        Text(stringResource(Res.string.confirmed_offer_title),
+            style = SaqzTheme.typography.display.copy(fontSize = OfferTitleSize, lineHeight = OfferTitleLineHeight),
+            color = colors.textPrimary)
+        Text(dueDay?.let { stringResource(Res.string.confirmed_offer_body, it) }
+            ?: stringResource(Res.string.confirmed_offer_body_no_day), style = SaqzTheme.typography.support,
+            color = colors.textSecondary)
+        Column(verticalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+            SaqzButton(stringResource(Res.string.confirmed_offer_accept), { onIntent(PaymentIntent.AcceptOffer) }, fullWidth = true,
+                modifier = Modifier.testTag(PaymentScreenTags.AcceptOffer))
+            SaqzButton(stringResource(Res.string.confirmed_offer_decline), { onIntent(PaymentIntent.DeclineOffer) },
+                variant = SaqzButtonVariant.Ghost, fullWidth = true, modifier = Modifier.testTag(PaymentScreenTags.DeclineOffer))
+        }
+    }
+
+// Medidas da proposta A do canvas: bola de 240 deslocada para a direita e para baixo, check de 30 num círculo de 56.
+private val ConfirmedHeroPadding = 20.dp
+private val ConfirmedBallSize = 240.dp
+private val ConfirmedBallOffsetX = 70.dp
+private val ConfirmedBallOffsetY = 46.dp
+private const val CONFIRMED_BALL_ALPHA = 0.20f
+private val ConfirmedCloseIconSize = 24.dp
+private val ConfirmedCheckSize = 56.dp
+private val ConfirmedCheckIconSize = 30.dp
+private val ConfirmedNoteIconSize = 18.dp
+private val OfferKickerIconSize = 16.dp
+private val OfferTitleSize = 24.sp
+private val OfferTitleLineHeight = 28.sp
 
 private val previewPix = PaymentState(groupName = "Vôlei do CERET", loading = false, subject = PaymentSubject.GAME,
     kicker = "Vôlei do CERET · terça, 28/07", amountLabel = "R$ 40,00",
@@ -235,6 +316,12 @@ private fun PaymentCardPreview() = SaqzTheme { PaymentScreen(previewPix.copy(tab
 @Composable
 private fun PaymentConfirmedPreview() = SaqzTheme {
     PaymentScreen(previewPix.copy(confirmed = PaymentConfirmedUi("R$ 100,00 · mensalidade de agosto", true, "10")), {}, {})
+}
+
+@Preview(name = "Pagamento confirmado · diária", widthDp = 390)
+@Composable
+private fun PaymentConfirmedGamePreview() = SaqzTheme {
+    PaymentScreen(previewPix.copy(confirmed = PaymentConfirmedUi("R$ 20,00 · diária de terça, 27/10", false, null)), {}, {})
 }
 
 @Preview(name = "Nada em aberto", widthDp = 390)
