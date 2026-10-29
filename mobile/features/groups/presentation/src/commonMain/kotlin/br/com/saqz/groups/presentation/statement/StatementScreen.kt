@@ -36,6 +36,32 @@ import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.domain.finance.FinanceDirection
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
 import br.com.saqz.groups.resources.Res
+import br.com.saqz.groups.resources.cash_expense
+import br.com.saqz.groups.resources.cash_income
+import br.com.saqz.groups.resources.cash_opening_conflict
+import br.com.saqz.groups.resources.cash_opening_edit
+import br.com.saqz.groups.resources.cash_opening_failed
+import br.com.saqz.groups.resources.cash_opening_invalid
+import br.com.saqz.groups.resources.cash_opening_label
+import br.com.saqz.groups.resources.cash_opening_pinned
+import br.com.saqz.groups.resources.cash_opening_pinned_sub
+import br.com.saqz.groups.resources.cash_opening_save_short
+import br.com.saqz.groups.resources.cash_opening_sheet_body
+import br.com.saqz.groups.resources.cash_opening_sheet_title
+import br.com.saqz.groups.resources.cash_opening_unanswered
+import br.com.saqz.groups.resources.statement_month_in
+import br.com.saqz.groups.resources.statement_month_out
+import br.com.saqz.groups.presentation.ui.finance.CashIconTile
+import br.com.saqz.groups.presentation.ui.finance.CashListRow
+import br.com.saqz.groups.presentation.ui.finance.CashMoneyField
+import br.com.saqz.groups.presentation.ui.finance.CashRowText
+import br.com.saqz.groups.presentation.ui.finance.CashTileTone
+import br.com.saqz.groups.presentation.ui.finance.formatBrlShort
+import br.com.saqz.groups.presentation.ui.finance.weekdayDayMonth
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import br.com.saqz.groups.resources.statement_action_conflict
 import br.com.saqz.groups.resources.statement_action_failure
 import br.com.saqz.groups.resources.statement_action_forbidden
@@ -56,11 +82,8 @@ import br.com.saqz.groups.resources.statement_in_accessibility
 import br.com.saqz.groups.resources.statement_load_more
 import br.com.saqz.groups.resources.statement_pagination_error
 import br.com.saqz.groups.resources.statement_pagination_retry
-import br.com.saqz.groups.resources.statement_new_entry
 import br.com.saqz.groups.resources.statement_out_accessibility
-import br.com.saqz.groups.resources.statement_summary
 import br.com.saqz.groups.resources.statement_title
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal object StatementTags {
@@ -71,6 +94,12 @@ internal object StatementTags {
     const val ActionError = "finance-statement-action-error"
     const val VoidSheet = "finance-statement-void-sheet"
     const val VoidConfirm = "finance-statement-void-confirm"
+    const val NewExpense = "finance-statement-new-expense"
+    const val Summary = "finance-statement-summary"
+    const val Opening = "finance-statement-opening"
+    const val OpeningEdit = "finance-statement-opening-edit"
+    const val OpeningInput = "finance-statement-opening-input"
+    const val OpeningSave = "finance-statement-opening-save"
 
     fun edit(id: String) = "finance-statement-edit-$id"
     fun void(id: String) = "finance-statement-void-$id"
@@ -102,108 +131,125 @@ internal fun StatementScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = metrics.horizontalPadding),
+                val days = state.items.groupBy { it.dayKey }.toList()
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = metrics.horizontalPadding, vertical = metrics.subGrid),
                     verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
                 ) {
-                    SaqzSegmented(
-                        options = listOf(
-                            stringResource(Res.string.statement_filter_all),
-                            stringResource(Res.string.statement_filter_in),
-                            stringResource(Res.string.statement_filter_out),
-                        ),
-                        selected = state.filter.ordinal,
-                        onSelect = { selected ->
-                            onIntent(StatementIntent.SelectFilter(StatementFilter.entries[selected]))
-                        },
-                        modifier = Modifier
-                            .testTag(StatementTags.Filter)
-                            .semantics { contentDescription = statementTitle },
-                    )
-                    state.actionError?.let { error ->
-                        Text(
-                            text = stringResource(
-                                when (error) {
-                                    StatementActionError.Conflict -> Res.string.statement_action_conflict
-                                    StatementActionError.Forbidden -> Res.string.statement_action_forbidden
-                                    StatementActionError.Failed -> Res.string.statement_action_failure
-                                },
+                    item(key = "filter") {
+                        SaqzSegmented(
+                            options = listOf(
+                                stringResource(Res.string.statement_filter_all),
+                                stringResource(Res.string.statement_filter_in),
+                                stringResource(Res.string.statement_filter_out),
                             ),
-                            style = SaqzTheme.typography.caption,
-                            color = SaqzTheme.colors.errorForeground,
-                            modifier = Modifier.testTag(StatementTags.ActionError),
+                            selected = state.filter.ordinal,
+                            onSelect = { selected ->
+                                onIntent(StatementIntent.SelectFilter(StatementFilter.entries[selected]))
+                            },
+                            modifier = Modifier
+                                .testTag(StatementTags.Filter)
+                                .semantics { contentDescription = statementTitle },
                         )
                     }
-                    Text(
-                        text = pluralStringResource(
-                            Res.plurals.statement_summary,
-                            state.items.size,
-                            state.items.size,
-                            formatStatementBalance(state.summary.periodBalanceCents),
-                        ),
-                        style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
-                        color = SaqzTheme.colors.textSecondary,
-                    )
-                }
-                if (state.items.isEmpty()) {
-                    SaqzEmptyState(
-                        title = stringResource(Res.string.statement_empty_title),
-                        description = stringResource(Res.string.statement_empty_body),
-                        icon = SaqzIcons.CreditCard,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = metrics.horizontalPadding,
-                            vertical = metrics.blockGap,
-                        ),
-                    ) {
-                        itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                            StatementRow(item, busy = state.isVoiding, onIntent = onIntent)
-                            if (index < state.items.lastIndex) SaqzDivider()
+                    item(key = "summary") { MonthSummary(state) }
+                    state.actionError?.let { error ->
+                        item(key = "action-error") {
+                            Text(
+                                text = stringResource(
+                                    when (error) {
+                                        StatementActionError.Conflict -> Res.string.statement_action_conflict
+                                        StatementActionError.Forbidden -> Res.string.statement_action_forbidden
+                                        StatementActionError.Failed -> Res.string.statement_action_failure
+                                    },
+                                ),
+                                style = SaqzTheme.typography.caption,
+                                color = SaqzTheme.colors.errorForeground,
+                                modifier = Modifier.testTag(StatementTags.ActionError),
+                            )
                         }
-                        if (state.hasMore) {
-                            item {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = metrics.blockGap),
-                                    verticalArrangement = Arrangement.spacedBy(metrics.blockGap),
-                                ) {
-                                    if (state.paginationFailed != null) {
-                                        Text(
-                                            text = stringResource(Res.string.statement_pagination_error),
-                                            style = SaqzTheme.typography.caption,
-                                            color = SaqzTheme.colors.errorForeground,
-                                        )
+                    }
+                    if (state.openingLoaded && state.filter == StatementFilter.All) {
+                        item(key = "opening") { PinnedOpening(state, onIntent) }
+                    }
+                    if (state.items.isEmpty()) {
+                        item(key = "empty") {
+                            SaqzEmptyState(
+                                title = stringResource(Res.string.statement_empty_title),
+                                description = stringResource(Res.string.statement_empty_body),
+                                icon = SaqzIcons.CreditCard,
+                            )
+                        }
+                    }
+                    days.forEach { (day, items) ->
+                        item(key = "day-$day") {
+                            Column(verticalArrangement = Arrangement.spacedBy(metrics.grid)) {
+                                Text(
+                                    text = weekdayDayMonth(day),
+                                    style = SaqzTheme.typography.caption.copy(fontWeight = FontWeight.SemiBold),
+                                    color = SaqzTheme.colors.textSecondary,
+                                    modifier = Modifier.padding(top = metrics.grid, start = metrics.subGrid),
+                                )
+                                SaqzCard(padded = false) {
+                                    items.forEachIndexed { index, item ->
+                                        StatementRow(item, first = index == 0, busy = state.isVoiding, onIntent = onIntent)
                                     }
-                                    SaqzButton(
-                                        label = if (state.paginationFailed != null) {
-                                            stringResource(Res.string.statement_pagination_retry)
-                                        } else {
-                                            stringResource(Res.string.statement_load_more)
-                                        },
-                                        onClick = { onIntent(StatementIntent.LoadMore) },
-                                        loading = state.isLoadingMore,
-                                        enabled = !state.isLoadingMore,
-                                        fullWidth = true,
-                                        modifier = Modifier.testTag(StatementTags.LoadMore),
-                                    )
                                 }
                             }
                         }
                     }
+                    if (state.hasMore) {
+                        item(key = "more") {
+                            Column(verticalArrangement = Arrangement.spacedBy(metrics.blockGap)) {
+                                if (state.paginationFailed != null) {
+                                    Text(
+                                        text = stringResource(Res.string.statement_pagination_error),
+                                        style = SaqzTheme.typography.caption,
+                                        color = SaqzTheme.colors.errorForeground,
+                                    )
+                                }
+                                SaqzButton(
+                                    label = if (state.paginationFailed != null) {
+                                        stringResource(Res.string.statement_pagination_retry)
+                                    } else {
+                                        stringResource(Res.string.statement_load_more)
+                                    },
+                                    onClick = { onIntent(StatementIntent.LoadMore) },
+                                    loading = state.isLoadingMore,
+                                    enabled = !state.isLoadingMore,
+                                    fullWidth = true,
+                                    modifier = Modifier.testTag(StatementTags.LoadMore),
+                                )
+                            }
+                        }
+                    }
                 }
-                SaqzButton(
-                    label = stringResource(Res.string.statement_new_entry),
-                    onClick = { onIntent(StatementIntent.NewEntry) },
-                    fullWidth = true,
+                SaqzDivider()
+                Row(
                     modifier = Modifier
-                        .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap)
-                        .testTag(StatementTags.NewEntry),
-                )
+                        .fillMaxWidth()
+                        .background(SaqzTheme.colors.surface)
+                        .padding(horizontal = metrics.horizontalPadding, vertical = metrics.blockGap),
+                    horizontalArrangement = Arrangement.spacedBy(metrics.grid),
+                ) {
+                    SaqzButton(
+                        label = stringResource(Res.string.cash_income),
+                        onClick = { onIntent(StatementIntent.NewEntry) },
+                        variant = SaqzButtonVariant.Secondary,
+                        leadingContent = { SaqzIcon(SaqzIcons.Plus, tint = it) },
+                        modifier = Modifier.weight(1f).testTag(StatementTags.NewEntry),
+                    )
+                    SaqzButton(
+                        label = stringResource(Res.string.cash_expense),
+                        onClick = { onIntent(StatementIntent.NewExpense) },
+                        variant = SaqzButtonVariant.Ghost,
+                        contentColor = SaqzTheme.colors.errorForeground,
+                        borderColor = SaqzTheme.colors.errorForeground,
+                        leadingContent = { SaqzIcon(SaqzIcons.Minus, tint = it) },
+                        modifier = Modifier.weight(1f).testTag(StatementTags.NewExpense),
+                    )
+                }
             }
         }
         val voidItem = state.items.firstOrNull { it.id == state.voidTargetId }
@@ -214,7 +260,83 @@ internal fun StatementScreen(
             onClose = { onIntent(StatementIntent.DismissVoid) },
             onConfirm = { onIntent(StatementIntent.ConfirmVoid) },
         )
+        OpeningSheet(state, onIntent)
     }
+}
+
+/** "Outubro · entrou R$ 880 · saiu R$ 640", com o saiu em vermelho. */
+@Composable
+private fun MonthSummary(state: StatementState) {
+    val summary = state.summary
+    val colors = SaqzTheme.colors
+    val inText = stringResource(Res.string.statement_month_in, formatBrlShort(summary.totalInCents))
+    val outText = stringResource(Res.string.statement_month_out, formatBrlShort(kotlin.math.abs(summary.totalOutCents)))
+    Text(
+        text = buildAnnotatedString {
+            append(summary.monthName.replaceFirstChar(Char::uppercase))
+            append(" · ")
+            append(inText)
+            append(" · ")
+            withStyle(SpanStyle(color = colors.errorForeground, fontWeight = FontWeight.SemiBold)) { append(outText) }
+        },
+        style = SaqzTheme.typography.support,
+        color = colors.textSecondary,
+        modifier = Modifier.testTag(StatementTags.Summary),
+    )
+}
+
+/** O saldo inicial fixo no topo do extrato, com Editar (FIN-006). */
+@Composable
+private fun PinnedOpening(state: StatementState, onIntent: (StatementIntent) -> Unit) = SaqzCard(
+    padded = false,
+    modifier = Modifier.testTag(StatementTags.Opening),
+) {
+    CashListRow(first = true) {
+        CashIconTile(SaqzIcons.Flag, CashTileTone.Brand)
+        CashRowText(stringResource(Res.string.cash_opening_pinned), stringResource(Res.string.cash_opening_pinned_sub))
+        Text(
+            text = state.openingBalanceCents?.let(::formatBrlShort) ?: stringResource(Res.string.cash_opening_unanswered),
+            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.Bold),
+            color = SaqzTheme.colors.textPrimary,
+        )
+        SaqzButton(
+            label = stringResource(Res.string.cash_opening_edit),
+            onClick = { onIntent(StatementIntent.EditOpening) },
+            variant = SaqzButtonVariant.Ghost,
+            size = SaqzButtonSize.Sm,
+            modifier = Modifier.testTag(StatementTags.OpeningEdit),
+        )
+    }
+}
+
+@Composable
+private fun OpeningSheet(state: StatementState, onIntent: (StatementIntent) -> Unit) = SaqzBottomSheet(
+    open = state.openingSheetOpen,
+    onClose = { onIntent(StatementIntent.DismissOpening) },
+    title = stringResource(Res.string.cash_opening_sheet_title),
+    description = stringResource(Res.string.cash_opening_sheet_body),
+    footer = {
+        SaqzButton(
+            label = stringResource(Res.string.cash_opening_save_short),
+            onClick = { onIntent(StatementIntent.SaveOpening) },
+            fullWidth = true,
+            loading = state.openingSaving,
+            modifier = Modifier.testTag(StatementTags.OpeningSave),
+        )
+    },
+) {
+    CashMoneyField(
+        value = state.openingInput,
+        onValueChange = { onIntent(StatementIntent.OpeningInputChanged(it)) },
+        label = stringResource(Res.string.cash_opening_label),
+        errorText = when {
+            state.openingInvalid -> stringResource(Res.string.cash_opening_invalid)
+            state.openingFailed -> stringResource(Res.string.cash_opening_failed)
+            else -> null
+        },
+        helperText = if (state.openingConflict) stringResource(Res.string.cash_opening_conflict) else null,
+        modifier = Modifier.fillMaxWidth().testTag(StatementTags.OpeningInput),
+    )
 }
 
 /** Confirmação de "Anular": o lançamento sai do saldo e não volta. */
@@ -266,46 +388,24 @@ internal fun VoidEntrySheet(
 }
 
 @Composable
-private fun StatementRow(item: StatementItemUi, busy: Boolean, onIntent: (StatementIntent) -> Unit) {
-    val colors = SaqzTheme.colors
-    val directionLabel = if (item.direction == FinanceDirection.In) {
+private fun StatementRow(item: StatementItemUi, first: Boolean, busy: Boolean, onIntent: (StatementIntent) -> Unit) {
+    val out = item.direction == FinanceDirection.Out
+    val directionLabel = if (!out) {
         stringResource(Res.string.statement_in_accessibility, item.title, item.meta, item.amountLabel)
     } else {
         stringResource(Res.string.statement_out_accessibility, item.title, item.meta, item.amountLabel)
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = SaqzTheme.metrics.blockGap)
-            .semantics { contentDescription = directionLabel },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.blockGap),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(SaqzTheme.metrics.iconButtonSize)
-                .background(
-                    if (item.direction == FinanceDirection.In) {
-                        colors.success.copy(alpha = 0.12f)
-                    } else {
-                        colors.errorForeground.copy(alpha = 0.10f)
-                    },
-                    androidx.compose.foundation.shape.CircleShape,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            SaqzIcon(
-                icon = if (item.direction == FinanceDirection.In) SaqzIcons.ArrowRight else SaqzIcons.CreditCard,
-                tint = if (item.direction == FinanceDirection.In) colors.success else colors.errorForeground,
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.title, style = SaqzTheme.typography.body, color = colors.textPrimary)
-            Text(item.meta, style = SaqzTheme.typography.caption, color = colors.textSecondary)
-            if (item.manual) {
+    CashListRow(
+        first = first,
+        modifier = Modifier.semantics { contentDescription = directionLabel },
+        below = if (item.manual) {
+            {
                 val editLabel = stringResource(Res.string.statement_entry_edit_accessibility, item.title)
                 val voidLabel = stringResource(Res.string.statement_entry_void_accessibility, item.title)
-                Row(horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid)) {
+                Row(
+                    modifier = Modifier.padding(start = SaqzTheme.metrics.grid * 6),
+                    horizontalArrangement = Arrangement.spacedBy(SaqzTheme.metrics.subGrid),
+                ) {
                     SaqzButton(
                         label = stringResource(Res.string.statement_entry_edit),
                         onClick = { onIntent(StatementIntent.Edit(item.id)) },
@@ -328,11 +428,14 @@ private fun StatementRow(item: StatementItemUi, busy: Boolean, onIntent: (Statem
                     )
                 }
             }
-        }
+        } else null,
+    ) {
+        CashIconTile(if (out) SaqzIcons.MoneyOut else SaqzIcons.MoneyIn, if (out) CashTileTone.Out else CashTileTone.In)
+        CashRowText(item.title, item.meta)
         Text(
             text = item.amountLabel,
-            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.SemiBold),
-            color = if (item.direction == FinanceDirection.In) colors.success else colors.errorForeground,
+            style = SaqzTheme.typography.body.copy(fontWeight = FontWeight.Bold),
+            color = if (out) SaqzTheme.colors.errorForeground else SaqzTheme.colors.successForeground,
         )
     }
 }
@@ -350,10 +453,13 @@ private fun StatementPreview() = SaqzTheme {
         state = StatementState(
             isLoading = false,
             items = listOf(
-                StatementItemUi("1", FinanceDirection.In, "Mensalidade · Bia", "Pix · 04/08/2026", "+R$ 80,00"),
-                StatementItemUi("2", FinanceDirection.Out, "Aluguel da quadra", "Quadra · 03/08/2026", "−R$ 320,00", manual = true),
+                StatementItemUi("1", FinanceDirection.In, "Mensalidade · Bia", "Pix", "+R$ 80", dayKey = "2026-08-04"),
+                StatementItemUi("2", FinanceDirection.Out, "Aluguel da quadra", "Saída · Quadra", "−R$ 320", manual = true,
+                    dayKey = "2026-08-03"),
             ),
-            summary = StatementSummaryUi(periodBalanceCents = 64000),
+            summary = StatementSummaryUi(totalInCents = 8000, totalOutCents = 32000, monthName = "agosto"),
+            openingLoaded = true,
+            openingBalanceCents = 25000,
         ),
         onBack = {},
         onIntent = {},

@@ -73,7 +73,7 @@ fun groupsPresentationModule(): Module = module {
             positionSlotsGateway = getOrNull(),
         )
     }
-    viewModel { params -> StatementViewModel(params.get(), get(), get()) }
+    viewModel { params -> StatementViewModel(params.get(), get(), get(), get()) }
     viewModel { params -> ReportsViewModel(params.get(), get(), get()) }
     viewModel { params -> NewEntryViewModel(params.get(), params.get(), get(), get<GroupNowPort>()) }
     viewModel { params -> MonthlyGenerationViewModel(params.get(), params.get(), get(), get(), get(), get<GroupNowPort>()) }

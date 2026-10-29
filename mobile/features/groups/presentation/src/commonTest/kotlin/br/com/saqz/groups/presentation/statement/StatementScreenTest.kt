@@ -79,6 +79,45 @@ class StatementScreenTest {
         onNodeWithText("Este lançamento mudou. Atualizamos o extrato.").assertExists()
     }
 
+    @Test
+    fun `month summary pinned opening balance days and the two bottom buttons`() = runComposeUiTest {
+        val intents = mutableListOf<StatementIntent>()
+        setScreen(
+            StatementState(
+                isLoading = false,
+                items = listOf(charge.copy(dayKey = "2026-10-27"), manual.copy(dayKey = "2026-10-26")),
+                summary = StatementSummaryUi(totalInCents = 88_000L, totalOutCents = 64_000L, monthName = "outubro"),
+                openingLoaded = true,
+                openingBalanceCents = 25_000L,
+                openingVersion = "\"2\"",
+            ),
+            intents::add,
+        )
+
+        onNodeWithText("Outubro · entrou R$\u00A0880 · saiu R$\u00A0640").assertExists()
+        onNodeWithTag(StatementTags.Opening).assertExists()
+        onNodeWithText("Terça, 27/10").assertExists()
+        onNodeWithText("Segunda, 26/10").assertExists()
+        onNodeWithTag(StatementTags.OpeningEdit).performClick()
+        onNodeWithTag(StatementTags.NewEntry).performClick()
+        onNodeWithTag(StatementTags.NewExpense).performClick()
+
+        assertEquals(
+            listOf(StatementIntent.EditOpening, StatementIntent.NewEntry, StatementIntent.NewExpense),
+            intents,
+        )
+    }
+
+    @Test
+    fun `pinned opening balance only shows on the all filter`() = runComposeUiTest {
+        setScreen(
+            StatementState(isLoading = false, filter = StatementFilter.Out, openingLoaded = true, openingBalanceCents = 1L),
+            {},
+        )
+
+        onNodeWithTag(StatementTags.Opening).assertDoesNotExist()
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.setScreen(
         state: StatementState,
         onIntent: (StatementIntent) -> Unit,

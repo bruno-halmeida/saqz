@@ -55,4 +55,6 @@
     <string name="cash_opening_pinned_sub">Antes do Saqz</string>
     <string name="cash_opening_edit">Editar</string>
     <string name="cash_opening_unanswered">Não informado</string>
+    <string name="statement_month_in">entrou %1$s</string>
+    <string name="statement_month_out">saiu %1$s</string>
 </resources>

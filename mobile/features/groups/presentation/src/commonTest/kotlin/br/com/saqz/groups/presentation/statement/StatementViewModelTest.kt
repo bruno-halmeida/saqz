@@ -45,18 +45,18 @@ class StatementViewModelTest {
         val gateway = FakeStatementGateway(
             pages = ArrayDeque(listOf(statementPage(items = listOf(incomeItem), balance = 64_000L))),
         )
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
 
         assertFalse(viewModel.state.value.isLoading)
         assertEquals(FinanceStatementQuery(limit = 20, offset = 0), gateway.queries.single())
-        assertEquals("Quadra · Pix · 04/08/2026", viewModel.state.value.items.single().meta)
-        assertEquals("+R$ 80,00", viewModel.state.value.items.single().amountLabel)
+        assertEquals("Pix", viewModel.state.value.items.single().meta)
+        assertEquals("+R$\u00A080", viewModel.state.value.items.single().amountLabel)
         assertEquals(64_000L, viewModel.state.value.summary.periodBalanceCents)
     }
 
     @Test
-    fun `maps charge kinds to Portuguese statement categories`() = runTest(dispatcher) {
+    fun `charges say the method and manual entries say the direction and category`() = runTest(dispatcher) {
         val gateway = FakeStatementGateway(
             pages = ArrayDeque(
                 listOf(
@@ -69,11 +69,11 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
 
         assertEquals(
-            listOf("Mensalidade · Pix · 04/08/2026", "Jogo · 04/08/2026"),
+            listOf("Pix", "Saída · Jogo"),
             viewModel.state.value.items.map { it.meta },
         )
     }
@@ -101,7 +101,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
 
         viewModel.onIntent(StatementIntent.SelectFilter(StatementFilter.Out))
@@ -121,7 +121,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
 
         viewModel.onIntent(StatementIntent.LoadMore)
@@ -143,7 +143,7 @@ class StatementViewModelTest {
                 ),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
 
         viewModel.onIntent(StatementIntent.LoadMore)
@@ -163,7 +163,7 @@ class StatementViewModelTest {
         val old = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
         val fresh = CompletableDeferred<SaqzResult<FinanceStatementPage, FinanceError>>()
         val gateway = FakeStatementGateway(deferreds = ArrayDeque(listOf(old, fresh)))
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
 
         viewModel.onIntent(StatementIntent.Retry)
         viewModel.onIntent(StatementIntent.SelectFilter(StatementFilter.Out))
@@ -204,7 +204,7 @@ class StatementViewModelTest {
                     ),
                 ),
             )
-            val viewModel = StatementViewModel("group-1", gateway, finance)
+            val viewModel = StatementViewModel("group-1", gateway, finance, br.com.saqz.groups.presentation.FakeCashboxGateway())
             viewModel.onIntent(StatementIntent.Retry)
 
             viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
@@ -250,7 +250,7 @@ class StatementViewModelTest {
                 listOf(statementPage(items = listOf(expenseItem)), statementPage(items = listOf(expenseItem))),
             ),
         )
-        val viewModel = StatementViewModel("group-1", gateway, finance)
+        val viewModel = StatementViewModel("group-1", gateway, finance, br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
         viewModel.onIntent(StatementIntent.AskVoid("expense-1"))
 
@@ -317,7 +317,7 @@ class StatementViewModelTest {
     @Test
     fun `a statement the role cannot read exposes no entries to act on`() = runTest(dispatcher) {
         val gateway = FakeStatementGateway(results = ArrayDeque(listOf(SaqzResult.Failure(FinanceError.Forbidden))))
-        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance())
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), br.com.saqz.groups.presentation.FakeCashboxGateway())
         viewModel.onIntent(StatementIntent.Retry)
 
         assertTrue(viewModel.state.value.loadFailed)
@@ -327,6 +327,74 @@ class StatementViewModelTest {
         assertNull(viewModel.state.value.voidTargetId)
     }
 
+    @Test
+    fun `month summary and the pinned opening balance come with the first page`() = runTest(dispatcher) {
+        val gateway = FakeStatementGateway(pages = ArrayDeque(listOf(statementPage(items = listOf(incomeItem)))))
+        val cashbox = br.com.saqz.groups.presentation.FakeCashboxGateway(
+            openingResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.finance.OpeningBalance(25_000L, FinanceVersionToken("\"2\"")),
+            ),
+        )
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), cashbox)
+        viewModel.onIntent(StatementIntent.Retry)
+
+        assertEquals("agosto", viewModel.state.value.summary.monthName)
+        assertTrue(viewModel.state.value.openingLoaded)
+        assertEquals(25_000L, viewModel.state.value.openingBalanceCents)
+    }
+
+    @Test
+    fun `editing the opening balance saves with the version and tells the cashbox`() = runTest(dispatcher) {
+        val gateway = FakeStatementGateway(pages = ArrayDeque(listOf(statementPage(items = emptyList()), statementPage(items = emptyList()))))
+        val cashbox = br.com.saqz.groups.presentation.FakeCashboxGateway(
+            openingResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.finance.OpeningBalance(25_000L, FinanceVersionToken("\"2\"")),
+            ),
+        )
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), cashbox)
+        viewModel.onIntent(StatementIntent.Retry)
+
+        viewModel.onIntent(StatementIntent.EditOpening)
+        assertEquals("250,00", viewModel.state.value.openingInput)
+        viewModel.onIntent(StatementIntent.OpeningInputChanged("300"))
+        viewModel.onIntent(StatementIntent.SaveOpening)
+
+        assertEquals(listOf(FinanceVersionToken("\"2\"") to 30_000L), cashbox.saves)
+        assertFalse(viewModel.state.value.openingSheetOpen)
+        assertEquals(StatementEffect.Voided, viewModel.effects.first())
+    }
+
+    @Test
+    fun `opening balance conflict keeps the sheet with the new value and warns`() = runTest(dispatcher) {
+        val gateway = FakeStatementGateway(pages = ArrayDeque(listOf(statementPage(items = emptyList()))))
+        val cashbox = br.com.saqz.groups.presentation.FakeCashboxGateway(
+            openingResult = SaqzResult.Success(
+                br.com.saqz.groups.domain.finance.OpeningBalance(25_000L, FinanceVersionToken("\"2\"")),
+            ),
+            saveResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = StatementViewModel("group-1", gateway, FakeExpenseFinance(), cashbox)
+        viewModel.onIntent(StatementIntent.Retry)
+        viewModel.onIntent(StatementIntent.EditOpening)
+        cashbox.openingResult = SaqzResult.Success(
+            br.com.saqz.groups.domain.finance.OpeningBalance(10_000L, FinanceVersionToken("\"3\"")),
+        )
+
+        viewModel.onIntent(StatementIntent.SaveOpening)
+
+        assertTrue(viewModel.state.value.openingConflict)
+        assertTrue(viewModel.state.value.openingSheetOpen)
+        assertEquals("100,00", viewModel.state.value.openingInput)
+    }
+
+    @Test
+    fun `income and expense buttons open their own screens`() = runTest(dispatcher) {
+        val viewModel = loaded(statementPage(items = emptyList()))
+
+        viewModel.onIntent(StatementIntent.NewExpense)
+        assertEquals(StatementEffect.OpenNewEntry("group-1", out = true), viewModel.effects.first())
+    }
+
     private fun loaded(
         page: FinanceStatementPage,
         finance: FakeExpenseFinance = FakeExpenseFinance(),
@@ -334,6 +402,7 @@ class StatementViewModelTest {
         "group-1",
         FakeStatementGateway(pages = ArrayDeque(listOf(page, page))),
         finance,
+        br.com.saqz.groups.presentation.FakeCashboxGateway(),
     ).also { it.onIntent(StatementIntent.Retry) }
 
     private companion object {

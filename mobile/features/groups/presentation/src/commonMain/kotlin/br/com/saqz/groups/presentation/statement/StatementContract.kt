@@ -19,6 +19,8 @@ data class StatementItemUi(
     val amountLabel: String,
     /** Lançamento feito à mão (Entrada ou Saída): é o que se corrige e se anula. Cobrança não. */
     val manual: Boolean = false,
+    /** O dia do lançamento ("2026-10-27"), que agrupa a lista sob "Terça, 27/10". */
+    val dayKey: String = "",
 )
 
 @Immutable
@@ -27,6 +29,8 @@ data class StatementSummaryUi(
     val totalOutCents: Long = 0,
     val periodBalanceCents: Long = 0,
     val accumulatedBalanceCents: Long = 0,
+    /** "outubro": o mês do resumo ("Outubro · entrou R$ 880 · saiu R$ 640"). */
+    val monthName: String = "",
 )
 
 @Immutable
@@ -44,6 +48,16 @@ data class StatementState(
     val voidTargetId: String? = null,
     val isVoiding: Boolean = false,
     val actionError: StatementActionError? = null,
+    /** Saldo inicial fixo no topo (FIN-006); `openingLoaded = false` esconde o cartão. */
+    val openingLoaded: Boolean = false,
+    val openingBalanceCents: Long? = null,
+    val openingVersion: String? = null,
+    val openingSheetOpen: Boolean = false,
+    val openingInput: String = "",
+    val openingSaving: Boolean = false,
+    val openingInvalid: Boolean = false,
+    val openingFailed: Boolean = false,
+    val openingConflict: Boolean = false,
 )
 
 enum class StatementActionError {
@@ -60,6 +74,11 @@ sealed interface StatementIntent {
     data class SelectFilter(val filter: StatementFilter) : StatementIntent
     data object LoadMore : StatementIntent
     data object NewEntry : StatementIntent
+    data object NewExpense : StatementIntent
+    data object EditOpening : StatementIntent
+    data object DismissOpening : StatementIntent
+    data class OpeningInputChanged(val value: String) : StatementIntent
+    data object SaveOpening : StatementIntent
     data class Edit(val itemId: String) : StatementIntent
     data class AskVoid(val itemId: String) : StatementIntent
     data object DismissVoid : StatementIntent
@@ -67,9 +86,9 @@ sealed interface StatementIntent {
 }
 
 sealed interface StatementEffect {
-    data class OpenNewEntry(val groupId: String) : StatementEffect
+    data class OpenNewEntry(val groupId: String, val out: Boolean = false) : StatementEffect
     data class OpenEditEntry(val groupId: String, val expenseId: String) : StatementEffect
 
-    /** Lançamento anulado: o caixa e o resumo dos outros ecrãs mudaram. */
+    /** Lançamento anulado ou saldo inicial mudado: o caixa e o resumo dos outros ecrãs mudaram. */
     data object Voided : StatementEffect
 }

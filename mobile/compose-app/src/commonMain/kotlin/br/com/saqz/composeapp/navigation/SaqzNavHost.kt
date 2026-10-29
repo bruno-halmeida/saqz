@@ -873,7 +873,7 @@ internal fun SaqzNavHost(
                         onEffect = { effect ->
                             when (effect) {
                                 is StatementEffect.OpenNewEntry -> backStack.add(
-                                    FinanceRoute.NewEntry(effect.groupId),
+                                    FinanceRoute.NewEntry(effect.groupId, out = effect.out),
                                 )
                                 is StatementEffect.OpenEditEntry -> backStack.add(
                                     FinanceRoute.NewEntry(effect.groupId, expenseId = effect.expenseId),

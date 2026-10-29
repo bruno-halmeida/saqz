@@ -6,7 +6,14 @@ import androidx.lifecycle.viewModelScope
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.formatting.sanitizeBrlInput
+import br.com.saqz.groups.domain.finance.CashboxGateway
 import br.com.saqz.groups.domain.finance.ExpenseStatus
+import br.com.saqz.groups.presentation.ui.finance.formatBrlIn
+import br.com.saqz.groups.presentation.ui.finance.formatBrlOut
+import br.com.saqz.groups.presentation.ui.finance.monthNameOf
 import br.com.saqz.groups.domain.finance.FinanceDirection
 import br.com.saqz.groups.domain.finance.FinanceError
 import br.com.saqz.groups.domain.finance.FinanceStatementItem
@@ -27,6 +34,7 @@ class StatementViewModel(
     private val groupId: String,
     private val gateway: FinanceStatementGateway,
     private val finance: OrganizerFinanceGateway,
+    private val cashbox: CashboxGateway,
 ) : MviViewModel<StatementState, StatementIntent, StatementEffect>(StatementState()) {
     private var loadGeneration = 0L
     private var loadInFlight = false
@@ -44,6 +52,25 @@ class StatementViewModel(
                 load(reset = false)
             }
             StatementIntent.NewEntry -> emit(StatementEffect.OpenNewEntry(groupId))
+            StatementIntent.NewExpense -> emit(StatementEffect.OpenNewEntry(groupId, out = true))
+            StatementIntent.EditOpening -> if (state.value.openingVersion != null && !state.value.isLoading) {
+                update {
+                    it.copy(
+                        openingSheetOpen = true,
+                        openingInput = it.openingBalanceCents?.let(::formatBrlPlain).orEmpty(),
+                        openingInvalid = false,
+                        openingFailed = false,
+                        openingConflict = false,
+                    )
+                }
+            }
+            StatementIntent.DismissOpening -> if (!state.value.openingSaving) {
+                update { it.copy(openingSheetOpen = false) }
+            }
+            is StatementIntent.OpeningInputChanged -> update {
+                it.copy(openingInput = sanitizeBrlInput(intent.value), openingInvalid = false, openingFailed = false)
+            }
+            StatementIntent.SaveOpening -> saveOpening()
             is StatementIntent.Edit -> if (state.value.canAct(intent.itemId)) {
                 update { it.copy(actionError = null) }
                 emit(StatementEffect.OpenEditEntry(groupId, intent.itemId))
@@ -55,6 +82,50 @@ class StatementViewModel(
                 update { it.copy(voidTargetId = null) }
             }
             StatementIntent.ConfirmVoid -> confirmVoid()
+        }
+    }
+
+    /** Mesmo contrato do caixa: `If-Match` com a versão lida; 409 relê e avisa; toque duplo trava em `openingSaving`. */
+    private fun saveOpening() {
+        val current = state.value
+        if (current.openingSaving) return
+        val version = current.openingVersion ?: return
+        val cents = parseBrlToCents(current.openingInput)
+        if (cents == null || cents > MAX_OPENING_CENTS) {
+            update { it.copy(openingInvalid = true) }
+            return
+        }
+        update { it.copy(openingSaving = true, openingFailed = false, openingConflict = false) }
+        viewModelScope.launch {
+            when (val result = cashbox.saveOpeningBalance(GroupId(groupId), FinanceVersionToken(version), cents)) {
+                is SaqzResult.Success -> {
+                    update {
+                        it.copy(
+                            openingSaving = false,
+                            openingSheetOpen = false,
+                            openingBalanceCents = result.value.amountCents,
+                            openingVersion = result.value.version.value,
+                        )
+                    }
+                    // O saldo acumulado do resumo mudou e o caixa também.
+                    load(reset = true, softRefresh = true)
+                    emit(StatementEffect.Voided)
+                }
+                is SaqzResult.Failure -> if (result.error == FinanceError.Conflict) {
+                    val fresh = (cashbox.openingBalance(GroupId(groupId)) as? SaqzResult.Success)?.value
+                    update {
+                        it.copy(
+                            openingSaving = false,
+                            openingConflict = true,
+                            openingBalanceCents = fresh?.amountCents ?: it.openingBalanceCents,
+                            openingVersion = fresh?.version?.value ?: it.openingVersion,
+                            openingInput = fresh?.amountCents?.let(::formatBrlPlain) ?: it.openingInput,
+                        )
+                    }
+                } else {
+                    update { it.copy(openingSaving = false, openingFailed = true) }
+                }
+            }
         }
     }
 
@@ -163,10 +234,24 @@ class StatementViewModel(
                 }
                 is SaqzResult.Success -> if (requestGeneration == loadGeneration) {
                     applyPage(result.value, reset)
+                    if (reset) loadOpening(requestGeneration)
                 }
             }
         }
         job.invokeOnCompletion { if (requestGeneration == loadGeneration) loadInFlight = false }
+    }
+
+    /** O saldo inicial vem do caixa (com a versão para editar); falhou, o cartão fica escondido. */
+    private suspend fun loadOpening(generation: Long) {
+        val opening = (cashbox.openingBalance(GroupId(groupId)) as? SaqzResult.Success)?.value ?: return
+        if (generation != loadGeneration) return
+        update {
+            it.copy(
+                openingLoaded = true,
+                openingBalanceCents = opening.amountCents,
+                openingVersion = opening.version.value,
+            )
+        }
     }
 
     private fun applyPage(page: FinanceStatementPage, reset: Boolean) {
@@ -181,7 +266,7 @@ class StatementViewModel(
                 items = if (reset) page.items.map(FinanceStatementItem::toUi) else {
                     it.items + page.items.map(FinanceStatementItem::toUi)
                 },
-                summary = page.summary.toUi(),
+                summary = page.summary.toUi().copy(monthName = monthNameOf(page.month)),
                 hasMore = page.hasMore,
                 nextOffset = page.offset + page.items.size,
             )
@@ -209,6 +294,7 @@ class StatementViewModel(
 
     private companion object {
         const val PAGE_SIZE = 20
+        const val MAX_OPENING_CENTS = 99_999_999L
     }
 }
 
@@ -216,8 +302,13 @@ private fun FinanceStatementItem.toUi() = StatementItemUi(
     id = id,
     direction = direction,
     title = title,
+    // DEB-148: o dia vai no cabeçalho do grupo; a linha diz "Saída · Quadra", "Entrada · Venda" ou o meio ("Pix").
     meta = listOfNotNull(
-        category.toStatementCategoryLabel(),
+        if (type.equals("EXPENSE", ignoreCase = true)) {
+            (if (direction == FinanceDirection.In) "Entrada · " else "Saída · ") + category.toStatementCategoryLabel()
+        } else {
+            null
+        },
         // FIN-014: o que veio pelo app diz o meio; a taxa automática se identifica e não se edita.
         when {
             appMethod == AppPaymentMethod.Card -> "pelo app · cartão"
@@ -225,11 +316,15 @@ private fun FinanceStatementItem.toUi() = StatementItemUi(
             else -> paidMethod?.toStatementMethodLabel()
         },
         "automático".takeIf { automatic },
-        occurredAt.toStatementDateLabel(),
     ).joinToString(" · "),
-    amountLabel = formatStatementAmount(amountCents, direction),
+    amountLabel = if (direction == FinanceDirection.In) formatBrlIn(amountCents) else formatBrlOut(amountCents),
     manual = type.equals("EXPENSE", ignoreCase = true) && !automatic,
+    dayKey = occurredAt.toStatementDayKey(),
 )
+
+/** O dia local do lançamento ("2026-10-27"); data sem horário volta como veio. */
+internal fun String.toStatementDayKey(timeZone: TimeZone = TimeZone.currentSystemDefault()): String =
+    runCatching { Instant.parse(this).toLocalDateTime(timeZone).date.toString() }.getOrElse { take(10) }
 
 private fun FinanceStatementSummary.toUi() = StatementSummaryUi(
     totalInCents = totalInCents,
@@ -261,8 +356,10 @@ private fun String.toStatementCategoryLabel(): String = when (uppercase()) {
     "GAME" -> "Jogo"
     "VENUE", "QUADRA" -> "Quadra"
     "EQUIPMENT", "MATERIAL" -> "Material"
-    "REFEREE", "ARBITRAGEM" -> "Arbitragem"
+    "REFEREE", "ARBITRAGEM" -> "Árbitro"
     "RACHA" -> "Racha"
+    "SPONSORSHIP" -> "Patrocínio"
+    "SALE" -> "Venda"
     "OTHER", "OUTROS" -> "Outros"
     else -> this.replaceFirstChar { it.uppercase() }
 }
