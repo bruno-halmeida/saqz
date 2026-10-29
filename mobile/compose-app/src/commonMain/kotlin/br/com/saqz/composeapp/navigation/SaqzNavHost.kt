@@ -853,9 +853,13 @@ internal fun SaqzNavHost(
                             }
                         } else null,
                         onOpenMonthlyGeneration = { backStack.add(FinanceRoute.MonthlyGeneration(it)) },
-                        onOpenNewEntry = { groupId ->
-                            backStack.add(FinanceRoute.NewEntry(groupId))
+                        onOpenNewEntry = { groupId, out ->
+                            backStack.add(FinanceRoute.NewEntry(groupId, out = out))
                         },
+                        onOpenUnchargedReview = { groupId, gameId ->
+                            backStack.add(FinanceRoute.UnchargedReview(groupId, gameId))
+                        },
+                        onOpenUnchargedGames = { groupId -> backStack.add(FinanceRoute.UnchargedGames(groupId)) },
                         onOpenGroupSettings = { groupId -> backStack.add(GroupsRoute.Edit(groupId)) },
                         onOpenStatement = { groupId ->
                             backStack.add(FinanceRoute.Statement(groupId))

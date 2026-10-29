@@ -18,35 +18,120 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GroupCashboxScreenTest {
     @Test
-    fun `loaded state exposes cashbox sections and actions`() = runComposeUiTest {
+    fun `loaded state shows the blue balance the score and the due list without the pix card`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(loadedState, intents::add)
 
-        onNodeWithText("SALDO DO GRUPO").assertExists()
+        onNodeWithText("SALDO DO CAIXA").assertExists()
+        onNodeWithText("Inclui o saldo inicial de R$\u00A0250").assertExists()
+        onNodeWithTag(GroupCashboxTags.TabIn).assertExists()
+        onNodeWithTag(GroupCashboxTags.TabOut).assertExists()
+        onNodeWithTag(GroupCashboxTags.TabDue).assertExists()
         onNodeWithTag(GroupCashboxTags.Monthly).assertExists()
-        onNodeWithTag(GroupCashboxTags.Debtors).assertExists()
-        onNodeWithTag(GroupCashboxTags.Pix).assertExists()
+        onNodeWithText("Mensalidades de agosto").assertExists()
         onNodeWithText("Camila").assertExists()
-        onNodeWithText("Recebi").assertExists()
-        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsEnabled()
+        onNodeWithText("pix@saqz.com").assertDoesNotExist()
 
-        onNodeWithTag(GroupCashboxTags.Register).performClick()
-        onNodeWithText("Cobrar").performClick()
+        onNodeWithTag(GroupCashboxTags.Income).performClick()
+        onNodeWithTag(GroupCashboxTags.Expense).performClick()
+        onNodeWithTag(GroupCashboxTags.received("charge-1")).performClick()
+        onNodeWithTag(GroupCashboxTags.debtorMore("charge-1")).performClick()
+        onNodeWithTag(GroupCashboxTags.TabOut).performClick()
         assertEquals(
-            listOf<GroupCashboxIntent>(GroupCashboxIntent.Register, GroupCashboxIntent.ChargeIndividual("charge-1")),
+            listOf(
+                GroupCashboxIntent.NewIncome,
+                GroupCashboxIntent.NewExpense,
+                GroupCashboxIntent.OpenReceipt("charge-1"),
+                GroupCashboxIntent.OpenDebtorMenu("charge-1"),
+                GroupCashboxIntent.SelectTab(CashboxTab.Out),
+            ),
             intents,
         )
     }
 
     @Test
-    fun `empty state shows the requested first launch copy and CTA`() = runComposeUiTest {
+    fun `debtor menu has charge waive only for who withdrew and cancel`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
-        setScreen(loadedState.copy(cashboxEmpty = true, debtors = emptyList()), intents::add)
+        setScreen(loadedState.copy(debtorMenuChargeId = "charge-1"), intents::add)
 
-        onNodeWithTag(GroupCashboxTags.Empty).assertExists()
-        onNodeWithText("Comece definindo a mensalidade ou registrando o aluguel da quadra").assertExists()
-        onNodeWithText("Registrar primeiro lançamento").performClick()
-        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.Register), intents)
+        onNodeWithTag(GroupCashboxTags.chargeWaive("charge-1")).assertDoesNotExist()
+        onNodeWithTag(GroupCashboxTags.chargeIndividual("charge-1")).performClick()
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ChargeIndividual("charge-1")), intents)
+    }
+
+    @Test
+    fun `out tab lists the month exits with the red amount`() = runComposeUiTest {
+        setScreen(
+            loadedState.copy(
+                tab = CashboxTab.Out,
+                monthOut = listOf(LedgerUi("e1", "Quadra", "Terça, 27/10", "\u2212R$\u00A0160", out = true)),
+            ),
+            {},
+        )
+
+        onNodeWithText("Saídas de agosto").assertExists()
+        onNodeWithText("Quadra").assertExists()
+        onNodeWithText("\u2212R$\u00A0160").assertExists()
+        onNodeWithTag(GroupCashboxTags.Monthly).assertDoesNotExist()
+    }
+
+    @Test
+    fun `cashbox menu has opening balance and monthly charges and says where the pix went`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(menuOpen = true), intents::add)
+
+        onNodeWithText("O Pix do grupo fica na página do grupo.").assertExists()
+        onNodeWithText("R$\u00A0250 · antes do Saqz").assertExists()
+        onNodeWithTag(GroupCashboxTags.MenuOpening).performClick()
+        onNodeWithTag(GroupCashboxTags.GenerateMonthly).performClick()
+        assertEquals(
+            listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenOpeningBalance, GroupCashboxIntent.GenerateMonthly),
+            intents,
+        )
+    }
+
+    @Test
+    fun `uncharged strip shows the count and opens the review`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(loadedState.copy(uncharged = UnchargedPendingUi(6, 2, "outubro", null, null)), intents::add)
+
+        onNodeWithText("6 jogaram sem cobrança").assertExists()
+        onNodeWithText("Em 2 jogos de outubro").assertExists()
+        onNodeWithTag(GroupCashboxTags.UnchargedReview).performClick()
+        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ReviewUncharged), intents)
+    }
+
+    @Test
+    fun `opening sheet warns about a version conflict`() = runComposeUiTest {
+        setScreen(loadedState.copy(openingSheetOpen = true, openingConflict = true, openingInput = "300,00"), {})
+
+        onNodeWithText("Alguém mudou o saldo inicial. O valor novo já está aqui.").assertExists()
+    }
+
+    @Test
+    fun `zeroed cashbox asks how much the group has with save and start from zero`() = runComposeUiTest {
+        val intents = mutableListOf<GroupCashboxIntent>()
+        setScreen(
+            loadedState.copy(
+                cashboxEmpty = true,
+                debtors = emptyList(),
+                openingLoaded = true,
+                openingBalanceCents = null,
+                openingVersion = "\"0\"",
+            ),
+            intents::add,
+        )
+
+        onNodeWithTag(GroupCashboxTags.OpeningQuestion).assertExists()
+        onNodeWithText("Quanto o grupo já tem em caixa?").assertExists()
+        onNodeWithText("Nada lançado ainda").assertExists()
+        onNodeWithTag(GroupCashboxTags.TabDue).assertDoesNotExist()
+        onNodeWithTag(GroupCashboxTags.OpeningSave).performClick()
+        onNodeWithTag(GroupCashboxTags.OpeningZero).performClick()
+        assertEquals(
+            listOf<GroupCashboxIntent>(GroupCashboxIntent.SaveOpeningBalance, GroupCashboxIntent.StartFromZero),
+            intents,
+        )
     }
 
     @Test
@@ -79,37 +164,18 @@ class GroupCashboxScreenTest {
         setScreen(loadedState.copy(pix = null), intents::add)
 
         onNodeWithText("Cadastre o Pix do grupo em Editar grupo").assertDoesNotExist()
-        onNodeWithTag(GroupCashboxTags.ChargeMissing).performClick()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).performScrollTo().performClick()
         assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ChargeMissing), intents)
     }
 
     @Test
-    fun `no pending debtors disables charge missing CTA even with Pix`() = runComposeUiTest {
+    fun `no pending debtors hide the charge button and say everything was received`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(loadedState.copy(debtors = emptyList()), intents::add)
 
-        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertIsNotEnabled()
+        onNodeWithTag(GroupCashboxTags.ChargeMissing).assertDoesNotExist()
+        onNodeWithText("Ninguém devendo. Tudo recebido.").assertExists()
         assertEquals(emptyList(), intents)
-    }
-
-    @Test
-    fun `overdue state shows named members and active charge CTA`() = runComposeUiTest {
-        val intents = mutableListOf<GroupCashboxIntent>()
-        setScreen(
-            loadedState.copy(
-                overdueBanner = OverdueBannerUi(
-                    message = "Camila, Pedro e Thiago estão com julho em aberto",
-                    monthLabel = "julho de 2026",
-                ),
-            ),
-            intents::add,
-        )
-
-        onNodeWithTag(GroupCashboxTags.Overdue).assertExists()
-        onNodeWithText("Camila, Pedro e Thiago estão com julho em aberto").assertExists()
-        onNodeWithTag(GroupCashboxTags.OverdueCharge).assertIsEnabled()
-        onNodeWithTag(GroupCashboxTags.OverdueCharge).performClick()
-        assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.ChargeMissing), intents)
     }
 
     @Test
@@ -124,14 +190,14 @@ class GroupCashboxScreenTest {
     }
 
     @Test
-    fun `withdrawn debtor shows the withdrew tag and a waive action beside received`() = runComposeUiTest {
+    fun `withdrawn debtor shows the withdrew tag and the waive action in the menu`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
-        setScreen(withdrewState, intents::add)
+        setScreen(withdrewState.copy(debtorMenuChargeId = "charge-1"), intents::add)
 
         onNodeWithTag(GroupCashboxTags.chargeWithdrew("charge-1")).assertExists()
         onNodeWithText("Desistiu").assertExists()
         onNodeWithText("Recebi").assertExists()
-        onNodeWithTag(GroupCashboxTags.chargeWaive("charge-1")).performScrollTo().assertIsEnabled().performClick()
+        onNodeWithTag(GroupCashboxTags.chargeWaive("charge-1")).assertIsEnabled().performClick()
 
         assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenWaive("charge-1")), intents)
     }
@@ -168,10 +234,10 @@ class GroupCashboxScreenTest {
     @Test
     fun `every pending debtor has a cancel action even without having withdrawn`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
-        setScreen(loadedState, intents::add)
+        setScreen(loadedState.copy(debtorMenuChargeId = "charge-1"), intents::add)
 
         onNodeWithTag(GroupCashboxTags.chargeWithdrew("charge-1")).assertDoesNotExist()
-        onNodeWithTag(GroupCashboxTags.chargeCancel("charge-1")).performScrollTo().assertIsEnabled().performClick()
+        onNodeWithTag(GroupCashboxTags.chargeCancel("charge-1")).assertIsEnabled().performClick()
 
         assertEquals(listOf<GroupCashboxIntent>(GroupCashboxIntent.OpenCancel("charge-1")), intents)
     }
@@ -358,6 +424,12 @@ class GroupCashboxScreenTest {
             ),
             overdueBanner = OverdueBannerUi("Camila está com julho em aberto", "julho de 2026"),
             pix = PixUi("pix@saqz.com", "Vôlei do CERET"),
-        )
+            openingBalanceCents = 25_000L,
+            openingVersion = "\"2\"",
+            openingLoaded = true,
+            monthInLabel = "R$\u00A0880",
+            monthOutLabel = "R$\u00A0640",
+            dueLabel = "R$\u00A070",
+        ).let { it.copy(debtors = it.debtors.map { d -> d.copy(month = "2026-08") }) }
     }
 }

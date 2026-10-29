@@ -86,7 +86,7 @@ fun groupsPresentationModule(): Module = module {
             notificationPrompt = getOrNull(),
         )
     }
-    viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>()) }
+    viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>(), get()) }
     viewModel {
         params ->
         GameSettlementViewModel(params.get(), params.get(), get(), get(), get(), get(), get())

@@ -26,8 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.saqz.designsystem.theme.SaqzTheme
 
-/** Cor do número de uma aba do placar: lima (quem vai), branco (espera) ou branco apagado (quem não vai). */
-enum class SaqzScoreTabTone { Accent, Plain, Muted }
+/**
+ * Cor do número de uma aba do placar: lima (quem vai), branco (espera), branco apagado (quem não vai) ou
+ * vermelho claro (o Saiu do caixa, DEB-148).
+ */
+enum class SaqzScoreTabTone { Accent, Plain, Muted, Out }
 
 /** Uma aba do placar: "9" + "/12" sobre "Vão". */
 data class SaqzScoreTab(
@@ -84,6 +87,7 @@ fun SaqzScoreTabs(
                                 SaqzScoreTabTone.Accent -> colors.accent
                                 SaqzScoreTabTone.Plain -> colors.onPrimary
                                 SaqzScoreTabTone.Muted -> colors.onPrimary.copy(alpha = ScoreMutedAlpha)
+                                SaqzScoreTabTone.Out -> colors.outOnPrimary
                             },
                             maxLines = 1,
                         )

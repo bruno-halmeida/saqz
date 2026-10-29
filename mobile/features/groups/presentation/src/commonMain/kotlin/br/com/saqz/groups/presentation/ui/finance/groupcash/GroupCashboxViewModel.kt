@@ -6,7 +6,21 @@ import br.com.saqz.core.common.formatting.formatBrl
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.domain.GroupId
 import br.com.saqz.domain.SaqzResult
+import br.com.saqz.core.common.formatting.formatBrlPlain
+import br.com.saqz.core.common.formatting.parseBrlToCents
+import br.com.saqz.core.common.formatting.sanitizeBrlInput
+import br.com.saqz.groups.domain.finance.CashboxGateway
 import br.com.saqz.groups.domain.finance.Charge
+import br.com.saqz.groups.domain.finance.FinanceDirection
+import br.com.saqz.groups.domain.finance.FinanceStatementItem
+import br.com.saqz.groups.domain.finance.OpeningBalance
+import br.com.saqz.groups.domain.finance.UnchargedSummary
+import br.com.saqz.groups.presentation.ui.finance.dayMonth
+import br.com.saqz.groups.presentation.ui.finance.formatBrlIn
+import br.com.saqz.groups.presentation.ui.finance.formatBrlOut
+import br.com.saqz.groups.presentation.ui.finance.formatBrlShort
+import br.com.saqz.groups.presentation.ui.finance.monthNameOf
+import br.com.saqz.groups.presentation.ui.finance.weekdayDayMonth
 import br.com.saqz.groups.domain.finance.ChargeKind
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.domain.finance.ChargeStatusCommand
@@ -34,6 +48,7 @@ class GroupCashboxViewModel(
     private val statementGateway: FinanceStatementGateway,
     private val organizerFinanceGateway: OrganizerFinanceGateway,
     private val now: GroupNowPort,
+    private val cashboxGateway: CashboxGateway,
 ) : MviViewModel<GroupCashboxState, GroupCashboxIntent, GroupCashboxEffect>(GroupCashboxState()) {
 
     private var loadGeneration = 0L
@@ -56,8 +71,32 @@ class GroupCashboxViewModel(
             GroupCashboxIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
             GroupCashboxIntent.ChargeMissing -> openChargeSheet()
             is GroupCashboxIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
-            GroupCashboxIntent.Register -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
+            GroupCashboxIntent.Register, GroupCashboxIntent.NewIncome -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
+            GroupCashboxIntent.NewExpense -> emit(GroupCashboxEffect.OpenNewEntry(groupId, out = true))
+            is GroupCashboxIntent.SelectTab -> update { it.copy(tab = intent.tab) }
+            GroupCashboxIntent.OpenMenu -> if (!state.value.isLoading && !state.value.loadFailed) {
+                update { it.copy(menuOpen = true) }
+            }
+            GroupCashboxIntent.DismissMenu -> update { it.copy(menuOpen = false) }
+            is GroupCashboxIntent.OpenDebtorMenu -> openDebtorMenu(intent.chargeId)
+            GroupCashboxIntent.DismissDebtorMenu -> update { it.copy(debtorMenuChargeId = null) }
+            GroupCashboxIntent.OpenOpeningBalance -> openOpeningSheet()
+            GroupCashboxIntent.DismissOpeningBalance -> if (!state.value.openingSaving) {
+                update { it.copy(openingSheetOpen = false, openingInvalid = false, openingFailed = false) }
+            }
+            is GroupCashboxIntent.OpeningInputChanged -> update {
+                it.copy(openingInput = sanitizeBrlInput(intent.value), openingInvalid = false, openingFailed = false)
+            }
+            GroupCashboxIntent.SaveOpeningBalance -> saveOpening(fromZero = false)
+            GroupCashboxIntent.StartFromZero -> saveOpening(fromZero = true)
+            GroupCashboxIntent.ReviewUncharged -> state.value.uncharged?.let { pending ->
+                emit(
+                    pending.singleGameId?.let { GroupCashboxEffect.OpenUnchargedReview(groupId, it) }
+                        ?: GroupCashboxEffect.OpenUnchargedGames(groupId),
+                )
+            }
             GroupCashboxIntent.GenerateMonthly -> if (!state.value.isLoading && !state.value.loadFailed) {
+                update { it.copy(menuOpen = false) }
                 emit(GroupCashboxEffect.OpenMonthlyGeneration(groupId))
             }
             GroupCashboxIntent.ViewFullStatement -> emit(GroupCashboxEffect.OpenStatement(groupId))
@@ -86,6 +125,76 @@ class GroupCashboxViewModel(
         }
     }
 
+    /** O ⋮ do devedor: Cobrar, Dispensar (quem desistiu ou faltou) e Cancelar. */
+    private fun openDebtorMenu(chargeId: String) {
+        val current = state.value
+        if (current.isLoading || current.updatingChargeId != null ||
+            current.debtors.none { it.chargeId == chargeId }
+        ) return
+        update { it.copy(debtorMenuChargeId = chargeId) }
+    }
+
+    private fun openOpeningSheet() {
+        val current = state.value
+        if (current.isLoading || current.loadFailed || current.openingVersion == null) return
+        update {
+            it.copy(
+                menuOpen = false,
+                openingSheetOpen = true,
+                openingInput = it.openingBalanceCents?.let(::formatBrlPlain).orEmpty(),
+                openingInvalid = false,
+                openingFailed = false,
+                openingConflict = false,
+            )
+        }
+    }
+
+    /**
+     * Grava o saldo inicial com a versão lida (`If-Match`). Trava de toque duplo em [GroupCashboxState.openingSaving].
+     * 409: relê o saldo, põe o valor de quem salvou antes no campo e avisa.
+     */
+    private fun saveOpening(fromZero: Boolean) {
+        val current = state.value
+        if (current.openingSaving || current.isLoading) return
+        val version = current.openingVersion ?: return
+        val cents = if (fromZero) 0L else parseBrlToCents(current.openingInput)
+        if (cents == null || cents < 0L || cents > MAX_OPENING_CENTS) {
+            update { it.copy(openingInvalid = true) }
+            return
+        }
+        update { it.copy(openingSaving = true, openingInvalid = false, openingFailed = false, openingConflict = false) }
+        viewModelScope.launch {
+            when (val result = cashboxGateway.saveOpeningBalance(GroupId(groupId), FinanceVersionToken(version), cents)) {
+                is SaqzResult.Success -> {
+                    update {
+                        it.copy(
+                            openingSaving = false,
+                            openingSheetOpen = false,
+                            openingBalanceCents = result.value.amountCents,
+                            openingVersion = result.value.version.value,
+                        )
+                    }
+                    emit(GroupCashboxEffect.MutationSucceeded)
+                    load(softRefresh = true)
+                }
+                is SaqzResult.Failure -> if (result.error == FinanceError.Conflict) {
+                    val fresh = (cashboxGateway.openingBalance(GroupId(groupId)) as? SaqzResult.Success)?.value
+                    update {
+                        it.copy(
+                            openingSaving = false,
+                            openingConflict = true,
+                            openingBalanceCents = fresh?.amountCents ?: it.openingBalanceCents,
+                            openingVersion = fresh?.version?.value ?: it.openingVersion,
+                            openingInput = fresh?.amountCents?.let(::formatBrlPlain) ?: it.openingInput,
+                        )
+                    }
+                } else {
+                    update { it.copy(openingSaving = false, openingFailed = true) }
+                }
+            }
+        }
+    }
+
     private fun openChargeSheet(chargeId: String? = null) {
         val current = state.value
         val busy = current.isLoading || current.updatingChargeId != null
@@ -98,6 +207,7 @@ class GroupCashboxViewModel(
             it.copy(
                 chargeSheetOpen = true,
                 chargeSheetChargeId = chargeId,
+                debtorMenuChargeId = null,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
                 cancelSheetChargeId = null,
@@ -130,6 +240,7 @@ class GroupCashboxViewModel(
         update {
             it.copy(
                 waiveSheetChargeId = chargeId,
+                debtorMenuChargeId = null,
                 receiptSheetChargeId = null,
                 chargeSheetOpen = false,
                 chargeSheetChargeId = null,
@@ -145,6 +256,7 @@ class GroupCashboxViewModel(
         update {
             it.copy(
                 cancelSheetChargeId = chargeId,
+                debtorMenuChargeId = null,
                 receiptSheetChargeId = null,
                 waiveSheetChargeId = null,
                 reviewSheetChargeId = null,
@@ -191,6 +303,7 @@ class GroupCashboxViewModel(
         val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
         return copy(
             debtors = remainingDebtors,
+            dueLabel = formatBrlShort(remainingDebtors.sumOf { it.amountCents }),
             overdueBanner = buildOverdueBanner(remainingDebtors),
             updatingChargeId = debtor.chargeId,
             operationFailed = false,
@@ -325,7 +438,8 @@ class GroupCashboxViewModel(
 
     private fun GroupCashboxState.interacting() =
         chargeSheetOpen || receiptSheetChargeId != null || waiveSheetChargeId != null || cancelSheetChargeId != null ||
-            reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null
+            reviewSheetChargeId != null || undoSheetChargeId != null || updatingChargeId != null ||
+            menuOpen || debtorMenuChargeId != null || openingSheetOpen || openingSaving
 
     /**
      * Volta à tela: recarga por baixo, sem esqueleto e sem tela de erro. Com carga em voo, folha
@@ -379,9 +493,10 @@ class GroupCashboxViewModel(
             }
             val date = currentDate(group.timeZone.id)
             val monthKey = date.monthKey()
+            // ponytail: o mês inteiro numa página; paginar se um grupo passar de ~200 lançamentos no mês.
             val statementResult = statementGateway.statement(
                 GroupId(groupId),
-                FinanceStatementQuery(month = monthKey),
+                FinanceStatementQuery(month = monthKey, limit = MONTH_PAGE),
             )
             if (generation != loadGeneration) return@launch
             val chargesResult = organizerFinanceGateway.charges(GroupId(groupId))
@@ -394,6 +509,11 @@ class GroupCashboxViewModel(
                 is SaqzResult.Failure -> return@launch failLoad(generation, softRefresh)
                 is SaqzResult.Success -> chargesResult.value.charges
             }
+            // Saldo inicial e pendência da retroativa não derrubam o caixa: sem eles, some a pergunta e a faixa.
+            val opening = (cashboxGateway.openingBalance(GroupId(groupId)) as? SaqzResult.Success)?.value
+            if (generation != loadGeneration) return@launch
+            val uncharged = (cashboxGateway.unchargedSummary(GroupId(groupId)) as? SaqzResult.Success)?.value
+            if (generation != loadGeneration) return@launch
             // Por baixo, uma folha aberta depois do pedido não pode ser fechada pela troca do estado.
             if (softRefresh && state.value.interacting()) return@launch
             updateIfCurrent(generation) {
@@ -406,7 +526,9 @@ class GroupCashboxViewModel(
                     statement = statement,
                     pixKey = group.profile?.pixKey,
                     pixLabel = group.profile?.pixLabel,
-                ).keepingNoticesFrom(it, softRefresh)
+                    opening = opening,
+                    uncharged = uncharged,
+                ).copy(tab = it.tab).keepingNoticesFrom(it, softRefresh)
             }
         }
         job.invokeOnCompletion {
@@ -437,6 +559,8 @@ class GroupCashboxViewModel(
                 is SaqzResult.Success -> {
                     update { it.copy(updatingChargeId = null, operationFailed = false) }
                     emit(GroupCashboxEffect.MutationSucceeded)
+                    // O recebido entra no Entrou do mês e no extrato: recarrega por baixo para o placar fechar.
+                    load(softRefresh = true)
                 }
                 is SaqzResult.Failure -> update {
                     previous.copy(operationFailed = true, updatingChargeId = null, receiptSheetChargeId = null)
@@ -478,6 +602,7 @@ class GroupCashboxViewModel(
         val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
         return copy(
             debtors = remainingDebtors,
+            dueLabel = formatBrlShort(remainingDebtors.sumOf { it.amountCents }),
             overdueBanner = buildOverdueBanner(remainingDebtors),
             updatingChargeId = debtor.chargeId,
             operationFailed = false,
@@ -512,6 +637,8 @@ class GroupCashboxViewModel(
         statement: FinanceStatementPage,
         pixKey: String?,
         pixLabel: String?,
+        opening: OpeningBalance? = null,
+        uncharged: UnchargedSummary? = null,
     ): GroupCashboxState {
         val monthly = charges.filter {
             it.kind == ChargeKind.Monthly && it.month == monthKey && it.status != ChargeStatus.Cancelled
@@ -524,7 +651,7 @@ class GroupCashboxViewModel(
         fun Charge.photo() = if (guestDisplayName != null) null else memberPhotos[memberId]
         val debtors = pending
             .map { it.toDebtor(memberNames[it.memberId] ?: "Membro", it.dueDate < date.toString()).copy(photo = it.photo()) }
-            .sortedBy { it.dueLabel }
+            .sortedWith(compareBy({ it.month == null }, { it.dueDate }, { it.name }))
         val balanceCents = statement.summary.accumulatedBalanceCents
         val receivedCents = paidMonthly.sumOf { it.amountCents }
         val expensesCents = statement.summary.totalOutCents
@@ -559,6 +686,39 @@ class GroupCashboxViewModel(
                 .filter { (it.status == ChargeStatus.Paid || it.status == ChargeStatus.Waived) && !it.settledElectronically }
                 .map { it.toSettled(memberNames[it.memberId] ?: "Membro").copy(photo = it.photo()) },
             pix = pixKey?.trim()?.takeIf(String::isNotEmpty)?.let { PixUi(it, pixLabel) },
+            monthIn = statement.items.filter { it.direction == FinanceDirection.In }.map { it.toLedger() },
+            monthOut = statement.items.filter { it.direction == FinanceDirection.Out }.map { it.toLedger() },
+            monthInLabel = formatBrlShort(statement.summary.totalInCents),
+            monthOutLabel = formatBrlShort(kotlin.math.abs(statement.summary.totalOutCents)),
+            dueLabel = formatBrlShort(debtors.sumOf { it.amountCents }),
+            openingBalanceCents = opening?.amountCents ?: statement.summary.openingBalanceCents,
+            openingVersion = opening?.version?.value,
+            openingLoaded = opening != null,
+            uncharged = uncharged?.toPending(),
+        )
+    }
+
+    private fun FinanceStatementItem.toLedger(): LedgerUi {
+        val out = direction == FinanceDirection.Out
+        return LedgerUi(
+            id = id,
+            title = title,
+            subtitle = weekdayDayMonth(occurredAt),
+            amountLabel = if (out) formatBrlOut(amountCents) else formatBrlIn(amountCents),
+            out = out,
+        )
+    }
+
+    private fun UnchargedSummary.toPending(): UnchargedPendingUi? {
+        if (peopleCount <= 0 || games.isEmpty()) return null
+        val months = games.map { it.localDate.take(7) }.distinct()
+        val single = games.singleOrNull()
+        return UnchargedPendingUi(
+            peopleCount = peopleCount,
+            gamesCount = games.size,
+            monthName = months.singleOrNull()?.let(::monthNameOf),
+            singleGameDate = single?.let { dayMonth(it.localDate) },
+            singleGameId = single?.gameId,
         )
     }
 
@@ -574,6 +734,13 @@ class GroupCashboxViewModel(
         isOverdue = isOverdue,
         withdrew = withdrew,
         noShow = noShow && !withdrew,
+        dueDate = dueDate,
+        cashMeta = when {
+            kind == ChargeKind.Monthly ->
+                "${if (isOverdue) "Venceu" else "Vence"} ${formatDate(dueDate)} · ${formatBrlShort(amountCents)}"
+            guestDisplayName != null -> "Convite · $guestDisplayName · ${formatBrlShort(amountCents)}"
+            else -> "${weekdayDayMonth(dueDate)} · ${formatBrlShort(amountCents)}"
+        },
         referenceLabel = when (kind) {
             ChargeKind.Game -> "Diarista · jogo de ${formatDate(dueDate)}"
             ChargeKind.Monthly -> "Mensalista · ${month?.let(::monthNameOnlyFromKey) ?: "mês"}"
@@ -614,6 +781,7 @@ class GroupCashboxViewModel(
         val nextOpen = (openCents - if (isMonthly) debtor.amountCents else 0L).coerceAtLeast(0L)
         val remainingDebtors = debtors.filterNot { it.chargeId == debtor.chargeId }
         return copy(
+            dueLabel = formatBrlShort(remainingDebtors.sumOf { it.amountCents }),
             balanceCents = balanceCents + debtor.amountCents,
             balanceLabel = formatBrl(balanceCents + debtor.amountCents),
             receivedCents = nextReceived,
@@ -684,6 +852,8 @@ class GroupCashboxViewModel(
     }
 
     private companion object {
+        const val MONTH_PAGE = 200
+        const val MAX_OPENING_CENTS = 99_999_999L
         val MONTH_NAMES = listOf(
             "janeiro", "fevereiro", "março", "abril", "maio", "junho",
             "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",

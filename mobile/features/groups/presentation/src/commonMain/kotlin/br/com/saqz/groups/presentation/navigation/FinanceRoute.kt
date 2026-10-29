@@ -28,7 +28,17 @@ sealed interface FinanceRoute : NavKey {
         val prefill: NewEntryPrefill? = null,
         /** Presente: a tela abre em modo correção desse lançamento. */
         val expenseId: String? = null,
+        /** DEB-148: Entrada e Saída são telas separadas; `true` abre a Saída. */
+        val out: Boolean = false,
     ) : FinanceRoute
+
+    /** FIN-016: a revisão de quem jogou sem cobrança num jogo. */
+    @Serializable
+    data class UnchargedReview(val groupId: String, val gameId: String) : FinanceRoute
+
+    /** FIN-016: os jogos com gente sem cobrança, quando a pendência do caixa tem mais de um. */
+    @Serializable
+    data class UnchargedGames(val groupId: String) : FinanceRoute
 
     @Serializable
     data class GameSettlement(val groupId: String, val gameId: String) : FinanceRoute

@@ -90,6 +90,7 @@ class GroupCashboxRootTest {
             statementGateway = statementGateway,
             organizerFinanceGateway = cashboxGateway,
             now = now,
+            cashboxGateway = br.com.saqz.groups.presentation.FakeCashboxGateway(),
         )
         val detailsViewModel = GroupDetailsViewModel(
             departureGateway = br.com.saqz.groups.domain.membership.GroupDepartureGateway { SaqzResult.Success(Unit) },
@@ -208,6 +209,7 @@ class GroupCashboxRootTest {
             ),
             organizerFinanceGateway = cashboxGateway,
             now = GroupNowPort { Instant.parse("2026-08-20T12:00:00Z") },
+            cashboxGateway = br.com.saqz.groups.presentation.FakeCashboxGateway(),
         )
         var refreshVersion by mutableIntStateOf(0)
 

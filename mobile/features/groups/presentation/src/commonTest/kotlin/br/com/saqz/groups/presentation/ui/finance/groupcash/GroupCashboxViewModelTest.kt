@@ -29,7 +29,11 @@ import br.com.saqz.groups.domain.finance.ExpenseWriteCommand
 import br.com.saqz.groups.domain.finance.FinanceOverviewGateway
 import br.com.saqz.groups.domain.group.GroupProfileError
 import br.com.saqz.groups.domain.membership.GroupMembership
+import br.com.saqz.groups.presentation.FakeCashboxGateway
 import br.com.saqz.groups.presentation.FakeGroupGateway
+import br.com.saqz.groups.domain.finance.OpeningBalance
+import br.com.saqz.groups.domain.finance.UnchargedGame
+import br.com.saqz.groups.domain.finance.UnchargedSummary
 import br.com.saqz.groups.presentation.FakeGroupMembershipGateway
 import br.com.saqz.groups.presentation.sampleGroup
 import br.com.saqz.groups.presentation.sampleVersionedGroup
@@ -886,6 +890,170 @@ class GroupCashboxViewModelTest {
         assertFalse(viewModel.state.value.isRefreshing)
     }
 
+    @Test
+    fun `balance comes from the statement with the opening balance and the score is the month`() = runTest {
+        val page = statement(88_000L, 64_000L, 24_000L, 49_000L).let {
+            it.copy(
+                summary = it.summary.copy(openingBalanceCents = 25_000L),
+                items = listOf(
+                    FinanceStatementItem("e1", "EXPENSE", FinanceDirection.Out, "Quadra", "VENUE", null,
+                        "2026-08-18T22:00:00Z", -16_000L),
+                    FinanceStatementItem("c1", "CHARGE", FinanceDirection.In, "Diária · Bia", "GAME", PaidMethod.Pix,
+                        "2026-08-18T22:00:00Z", 2_000L),
+                ),
+            )
+        }
+        val viewModel = viewModel(
+            statement = FakeStatementGateway(SaqzResult.Success(page)),
+            cashbox = FakeCashboxGateway(openingResult = SaqzResult.Success(OpeningBalance(25_000L, FinanceVersionToken("\"2\"")))),
+        )
+        val state = viewModel.state.value
+
+        assertEquals("R$\u00A0490,00", state.balanceLabel)
+        assertEquals("R$\u00A0250", state.openingLabel)
+        assertEquals("R$\u00A0880", state.monthInLabel)
+        assertEquals("R$\u00A0640", state.monthOutLabel)
+        assertEquals(listOf("Quadra"), state.monthOut.map { it.title })
+        assertEquals("\u2212R$\u00A0160", state.monthOut.single().amountLabel)
+        assertEquals("Terça, 18/08", state.monthOut.single().subtitle)
+        assertEquals(listOf("Diária · Bia"), state.monthIn.map { it.title })
+        assertEquals(CashboxTab.Due, state.tab)
+        assertFalse(state.askOpening)
+    }
+
+    @Test
+    fun `due number is the sum of every pending charge and tabs switch the list`() = runTest {
+        val viewModel = viewModel()
+        val state = viewModel.state.value
+
+        assertEquals(formatShort(state.debtors.sumOf { it.amountCents }), state.dueLabel)
+        viewModel.onIntent(GroupCashboxIntent.SelectTab(CashboxTab.Out))
+        assertEquals(CashboxTab.Out, viewModel.state.value.tab)
+    }
+
+    @Test
+    fun `zeroed cashbox asks the opening balance only when nobody answered and nothing was launched`() = runTest {
+        val empty = FakeOrganizerFinanceGateway(chargesResult = SaqzResult.Success(ChargeList(emptyList())))
+        val zeroed = viewModel(
+            statement = FakeStatementGateway(SaqzResult.Success(statement(0L, 0L, 0L, 0L))),
+            organizer = empty,
+            cashbox = FakeCashboxGateway(openingResult = SaqzResult.Success(OpeningBalance(null, FinanceVersionToken("\"0\"")))),
+        )
+        assertTrue(zeroed.state.value.askOpening)
+
+        val answered = viewModel(
+            statement = FakeStatementGateway(SaqzResult.Success(statement(0L, 0L, 0L, 0L))),
+            organizer = empty,
+        )
+        assertFalse(answered.state.value.askOpening)
+    }
+
+    @Test
+    fun `saving the opening balance sends the cents with the read version and closes the sheet`() = runTest {
+        val cashbox = FakeCashboxGateway(openingResult = SaqzResult.Success(OpeningBalance(25_000L, FinanceVersionToken("\"2\""))))
+        val viewModel = viewModel(cashbox = cashbox)
+
+        viewModel.onIntent(GroupCashboxIntent.OpenOpeningBalance)
+        assertEquals("250,00", viewModel.state.value.openingInput)
+        viewModel.onIntent(GroupCashboxIntent.OpeningInputChanged("300,00"))
+        viewModel.onIntent(GroupCashboxIntent.SaveOpeningBalance)
+
+        assertEquals(listOf(FinanceVersionToken("\"2\"") to 30_000L), cashbox.saves)
+        assertFalse(viewModel.state.value.openingSheetOpen)
+    }
+
+    @Test
+    fun `start from zero saves zero and a double tap saves once`() = runTest {
+        val reply = CompletableDeferred<SaqzResult<OpeningBalance, FinanceError>>()
+        val cashbox = FakeCashboxGateway(
+            openingResult = SaqzResult.Success(OpeningBalance(null, FinanceVersionToken("\"0\""))),
+            saveDeferred = reply,
+        )
+        val viewModel = viewModel(cashbox = cashbox)
+
+        viewModel.onIntent(GroupCashboxIntent.StartFromZero)
+        viewModel.onIntent(GroupCashboxIntent.StartFromZero)
+        reply.complete(SaqzResult.Success(OpeningBalance(0L, FinanceVersionToken("\"1\""))))
+
+        assertEquals(listOf(FinanceVersionToken("\"0\"") to 0L), cashbox.saves)
+        assertEquals(0L, viewModel.state.value.openingBalanceCents)
+    }
+
+    @Test
+    fun `invalid opening balance is refused without calling the server`() = runTest {
+        val cashbox = FakeCashboxGateway()
+        val viewModel = viewModel(cashbox = cashbox)
+
+        viewModel.onIntent(GroupCashboxIntent.OpenOpeningBalance)
+        viewModel.onIntent(GroupCashboxIntent.OpeningInputChanged(""))
+        viewModel.onIntent(GroupCashboxIntent.SaveOpeningBalance)
+
+        assertTrue(viewModel.state.value.openingInvalid)
+        assertTrue(cashbox.saves.isEmpty())
+    }
+
+    @Test
+    fun `opening balance conflict reloads the value and warns`() = runTest {
+        val cashbox = FakeCashboxGateway(
+            openingResult = SaqzResult.Success(OpeningBalance(25_000L, FinanceVersionToken("\"2\""))),
+            saveResult = SaqzResult.Failure(FinanceError.Conflict),
+        )
+        val viewModel = viewModel(cashbox = cashbox)
+        viewModel.onIntent(GroupCashboxIntent.OpenOpeningBalance)
+        cashbox.openingResult = SaqzResult.Success(OpeningBalance(40_000L, FinanceVersionToken("\"3\"")))
+
+        viewModel.onIntent(GroupCashboxIntent.OpeningInputChanged("300"))
+        viewModel.onIntent(GroupCashboxIntent.SaveOpeningBalance)
+        val state = viewModel.state.value
+
+        assertTrue(state.openingConflict)
+        assertTrue(state.openingSheetOpen)
+        assertEquals(40_000L, state.openingBalanceCents)
+        assertEquals("\"3\"", state.openingVersion)
+        assertEquals("400,00", state.openingInput)
+    }
+
+    @Test
+    fun `uncharged pending with one game opens its review and with many opens the game list`() = runTest {
+        val one = viewModel(cashbox = FakeCashboxGateway(summaryResult = SaqzResult.Success(
+            UnchargedSummary(4, listOf(UnchargedGame("g1", "Vôlei", "2026-10-20", "19:30", "CERET", 4))),
+        )))
+        assertEquals("20/10", one.state.value.uncharged?.singleGameDate)
+        one.onIntent(GroupCashboxIntent.ReviewUncharged)
+        assertEquals(GroupCashboxEffect.OpenUnchargedReview("group-1", "g1"), one.effects.first())
+
+        val many = viewModel(cashbox = FakeCashboxGateway(summaryResult = SaqzResult.Success(
+            UnchargedSummary(
+                6,
+                listOf(
+                    UnchargedGame("g2", "Vôlei", "2026-10-20", "19:30", "CERET", 4),
+                    UnchargedGame("g1", "Vôlei", "2026-10-13", "19:30", "CERET", 2),
+                ),
+            ),
+        )))
+        assertEquals(6, many.state.value.uncharged?.peopleCount)
+        assertEquals("outubro", many.state.value.uncharged?.monthName)
+        many.onIntent(GroupCashboxIntent.ReviewUncharged)
+        assertEquals(GroupCashboxEffect.OpenUnchargedGames("group-1"), many.effects.first())
+    }
+
+    @Test
+    fun `no one to decide means no uncharged strip`() = runTest {
+        assertNull(viewModel().state.value.uncharged)
+    }
+
+    @Test
+    fun `income and expense open their own screens`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onIntent(GroupCashboxIntent.NewExpense)
+        assertEquals(GroupCashboxEffect.OpenNewEntry("group-1", out = true), viewModel.effects.first())
+        viewModel.onIntent(GroupCashboxIntent.NewIncome)
+        assertEquals(GroupCashboxEffect.OpenNewEntry("group-1"), viewModel.effects.first())
+    }
+
+    private fun formatShort(cents: Long) = br.com.saqz.groups.presentation.ui.finance.formatBrlShort(cents)
+
     private fun viewModel(
         group: FakeGroupGateway = FakeGroupGateway(
             readResult = SaqzResult.Success(
@@ -910,6 +1078,7 @@ class GroupCashboxViewModelTest {
         ),
         statement: FakeStatementGateway = FakeStatementGateway(SaqzResult.Success(statement(7_000L, 2_500L, 4_500L, 14_000L))),
         organizer: FakeOrganizerFinanceGateway = FakeOrganizerFinanceGateway(),
+        cashbox: FakeCashboxGateway = FakeCashboxGateway(),
     ) = GroupCashboxViewModel(
         "group-1",
         group,
@@ -917,6 +1086,7 @@ class GroupCashboxViewModelTest {
         statement,
         organizer,
         GroupNowPort { Instant.parse("2026-08-20T12:00:00Z") },
+        cashbox,
     )
 
     private fun statement(totalIn: Long, totalOut: Long, period: Long, accumulated: Long) = FinanceStatementPage(

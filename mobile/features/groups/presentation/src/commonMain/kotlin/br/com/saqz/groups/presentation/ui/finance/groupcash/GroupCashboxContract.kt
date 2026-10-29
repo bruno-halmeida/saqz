@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import br.com.saqz.groups.presentation.pix.PixKeyType
 import br.com.saqz.groups.presentation.pix.PixKeys
 import br.com.saqz.groups.domain.finance.PaidMethod
+import br.com.saqz.groups.presentation.ui.finance.formatBrlShort
 
 @Immutable
 data class GroupCashboxState(
@@ -50,11 +51,70 @@ data class GroupCashboxState(
     val settled: List<SettledUi> = emptyList(),
     val undoSheetChargeId: String? = null,
     val undoFailed: Boolean = false,
+    /** Caixa novo (FIN-006, DEB-148): a aba do placar que manda na lista de baixo. */
+    val tab: CashboxTab = CashboxTab.Due,
+    /** Entradas e saídas do mês do placar, do extrato. */
+    val monthIn: List<LedgerUi> = emptyList(),
+    val monthOut: List<LedgerUi> = emptyList(),
+    val monthInLabel: String = "",
+    val monthOutLabel: String = "",
+    val dueLabel: String = "",
+    /** `null`: ninguém respondeu o saldo inicial (ou o servidor não tem o campo). */
+    val openingBalanceCents: Long? = null,
+    val openingVersion: String? = null,
+    val openingLoaded: Boolean = false,
+    /** A pendência "N jogaram sem cobrança" (FIN-016); `null` sem ninguém a decidir. */
+    val uncharged: UnchargedPendingUi? = null,
+    val menuOpen: Boolean = false,
+    val debtorMenuChargeId: String? = null,
+    val openingSheetOpen: Boolean = false,
+    val openingInput: String = "",
+    val openingSaving: Boolean = false,
+    val openingInvalid: Boolean = false,
+    val openingFailed: Boolean = false,
+    /** 409: outra pessoa mudou o saldo inicial; o valor novo já está na tela. */
+    val openingConflict: Boolean = false,
 ) {
+    /** Saldo inicial maior que zero: o saldo diz "Inclui o saldo inicial de R$ 250". */
+    val openingLabel: String?
+        get() = openingBalanceCents?.takeIf { it > 0L }?.let(::formatBrlShort)
+
+    /** Caixa zerado: ninguém respondeu o saldo inicial e nada foi lançado — aparece a pergunta. */
+    val askOpening: Boolean
+        get() = openingLoaded && openingBalanceCents == null && cashboxEmpty
+
+    val monthlyDebtors: List<DebtorUi> get() = debtors.filter { it.month == monthKey }
+    val otherMonthlyDebtors: List<DebtorUi> get() = debtors.filter { it.month != null && it.month != monthKey }
+    val gameDebtors: List<DebtorUi> get() = debtors.filter { it.month == null }
+
     /** Há cobrança pendente e o grupo não tem chave Pix: ninguém sabe como pagar (DEB-058). */
     val pixKeyNotice: Boolean
         get() = !isLoading && !loadFailed && debtors.isNotEmpty() && pix == null
 }
+
+enum class CashboxTab { In, Out, Due }
+
+/** Uma linha de entrada ou saída: "Quadra" · "Terça, 27/10" · "−R$ 160". */
+@Immutable
+data class LedgerUi(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val amountLabel: String,
+    val out: Boolean,
+)
+
+/** A faixa do caixa: "6 jogaram sem cobrança · Em 2 jogos de outubro". Um jogo só abre a revisão dele. */
+@Immutable
+data class UnchargedPendingUi(
+    val peopleCount: Int,
+    val gamesCount: Int,
+    /** "outubro" quando todos os jogos são do mesmo mês; senão `null`. */
+    val monthName: String?,
+    /** Data do jogo ("20/10") quando há um jogo só. */
+    val singleGameDate: String?,
+    val singleGameId: String?,
+)
 
 @Immutable
 data class DebtorUi(
@@ -75,6 +135,9 @@ data class DebtorUi(
     val photo: MemberPhoto? = null,
     /** PRES-016: faltou sem avisar e a diária segue pendente; mesmo "Dispensar" de quem desistiu. */
     val noShow: Boolean = false,
+    /** Linha de baixo do caixa novo: "Venceu 10/10 · R$ 80", "Terça, 27/10 · R$ 20", "Convidada Júlia · R$ 20". */
+    val cashMeta: String = "",
+    val dueDate: String = "",
 ) {
     val waivable: Boolean get() = withdrew || noShow
 }
@@ -135,6 +198,21 @@ sealed interface GroupCashboxIntent {
     data object ChargeMissing : GroupCashboxIntent
     data class ChargeIndividual(val chargeId: String) : GroupCashboxIntent
     data object Register : GroupCashboxIntent
+    data object NewIncome : GroupCashboxIntent
+    data object NewExpense : GroupCashboxIntent
+    data class SelectTab(val tab: CashboxTab) : GroupCashboxIntent
+    data object OpenMenu : GroupCashboxIntent
+    data object DismissMenu : GroupCashboxIntent
+    data class OpenDebtorMenu(val chargeId: String) : GroupCashboxIntent
+    data object DismissDebtorMenu : GroupCashboxIntent
+    data object OpenOpeningBalance : GroupCashboxIntent
+    data object DismissOpeningBalance : GroupCashboxIntent
+    data class OpeningInputChanged(val value: String) : GroupCashboxIntent
+    data object SaveOpeningBalance : GroupCashboxIntent
+
+    /** "Começar do zero": grava R$ 0 e fecha a pergunta. */
+    data object StartFromZero : GroupCashboxIntent
+    data object ReviewUncharged : GroupCashboxIntent
     data object GenerateMonthly : GroupCashboxIntent
     data object ViewFullStatement : GroupCashboxIntent
     data class OpenReceipt(val chargeId: String) : GroupCashboxIntent
@@ -164,7 +242,9 @@ sealed interface GroupCashboxIntent {
 
 sealed interface GroupCashboxEffect {
     data class OpenStatement(val groupId: String) : GroupCashboxEffect
-    data class OpenNewEntry(val groupId: String) : GroupCashboxEffect
+    data class OpenNewEntry(val groupId: String, val out: Boolean = false) : GroupCashboxEffect
+    data class OpenUnchargedReview(val groupId: String, val gameId: String) : GroupCashboxEffect
+    data class OpenUnchargedGames(val groupId: String) : GroupCashboxEffect
     data class OpenGroupSettings(val groupId: String) : GroupCashboxEffect
     data class OpenMonthlyGeneration(val groupId: String) : GroupCashboxEffect
     data class CopyPix(val key: String) : GroupCashboxEffect

@@ -12,7 +12,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import br.com.saqz.designsystem.theme.SaqzTheme
+import com.composables.icons.lucide.ArrowDownLeft
 import com.composables.icons.lucide.ArrowRight
+import com.composables.icons.lucide.ArrowUpRight
 import com.composables.icons.lucide.Ban
 import com.composables.icons.lucide.History
 import com.composables.icons.lucide.Banknote
@@ -90,6 +92,12 @@ object SaqzIcons {
     val ChevronDown = Lucide.ChevronDown
     val ChevronUp = Lucide.ChevronUp
     val ArrowRight = Lucide.ArrowRight
+
+    /** Entrada no caixa e no extrato (DEB-148). */
+    val MoneyIn = Lucide.ArrowDownLeft
+
+    /** Saída no caixa e no extrato, em vermelho (DEB-148). */
+    val MoneyOut = Lucide.ArrowUpRight
     val Close = Lucide.X
     val Plus = Lucide.Plus
     val Minus = Lucide.Minus

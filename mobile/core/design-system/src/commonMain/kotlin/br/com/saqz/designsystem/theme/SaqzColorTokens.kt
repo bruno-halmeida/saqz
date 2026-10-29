@@ -41,6 +41,11 @@ data class SaqzColorTokens(
     val disabledForeground: Color,
     val scrim: Color,
     val chrome: Color,
+    /**
+     * Vermelho claro das saídas sobre o azul da marca (DEB-148, pedido de 29/10): o número do Saiu no placar e o
+     * botão Saída do caixa. 4,7:1 sobre o `primary`.
+     */
+    val outOnPrimary: Color = Color(0xFFFFB3B8),
 ) {
     companion object {
         val Light = SaqzColorTokens(

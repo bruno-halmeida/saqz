@@ -21,7 +21,10 @@ fun GroupCashboxRoot(
     onBack: () -> Unit,
     onOpenStatement: (String) -> Unit,
     onOpenMonthlyGeneration: (String) -> Unit,
-    onOpenNewEntry: (String) -> Unit = {},
+    /** `out = true`: a tela de Saída; senão a de Entrada. */
+    onOpenNewEntry: (groupId: String, out: Boolean) -> Unit = { _, _ -> },
+    onOpenUnchargedReview: (groupId: String, gameId: String) -> Unit = { _, _ -> },
+    onOpenUnchargedGames: (groupId: String) -> Unit = {},
     onOpenGroupSettings: (String) -> Unit = {},
     onMutationSuccess: () -> Unit = {},
     refreshVersion: Int = 0,
@@ -48,7 +51,9 @@ fun GroupCashboxRoot(
     ObserveAsEvents(viewModel.effects) { effect ->
         when (effect) {
             is GroupCashboxEffect.OpenStatement -> onOpenStatement(effect.groupId)
-            is GroupCashboxEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId)
+            is GroupCashboxEffect.OpenNewEntry -> onOpenNewEntry(effect.groupId, effect.out)
+            is GroupCashboxEffect.OpenUnchargedReview -> onOpenUnchargedReview(effect.groupId, effect.gameId)
+            is GroupCashboxEffect.OpenUnchargedGames -> onOpenUnchargedGames(effect.groupId)
             is GroupCashboxEffect.OpenGroupSettings -> onOpenGroupSettings(effect.groupId)
             is GroupCashboxEffect.OpenMonthlyGeneration -> onOpenMonthlyGeneration(effect.groupId)
             is GroupCashboxEffect.CopyPix -> clipboard.setText(AnnotatedString(effect.key))
