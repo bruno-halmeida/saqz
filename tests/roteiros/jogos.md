@@ -87,6 +87,27 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Valor R$ 0,00 | Recusado | ☐ | ☐ |
 | Recado enviado por app antigo | Aceito e ignorado | ☐ | ☐ |
 
+_Linhas novas decididas em 28/10/2026 (DEB-146, valor por jogo obrigatório): rodar só depois da entrega._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Editor de jogo, horário regular, Criar grupo e Editar grupo | Bloco "Valor por jogo" com Cobrar diária e Sem diária, nada marcado | ☐ | ☐ |
+| Nem Cobrar diária nem Sem diária | Não salva; erro no topo e no campo ("Escolha o valor ou Sem diária.") | ☐ | ☐ |
+| Cobrar diária com R$ 0,00 ou vazio | Não salva | ☐ | ☐ |
+| Sem diária | Jogo sem cobrança, sem linha de diária e sem faixa de retroativa | ☐ | ☐ |
+| Cobrar diária R$ 20 | Avulso confirmado ganha diária de R$ 20 | ☐ | ☐ |
+| Criar grupo com mensalidade R$ 40 | Cobrar diária já vem com R$ 10 | ☐ | ☐ |
+| Editor com mensalidade R$ 80 no grupo | Apoio "Sugestão: mensalidade ÷ 4 (R$ 80 ÷ 4)." | ☐ | ☐ |
+| App antigo manda valor vazio, grupo com R$ 20 | Aceito; o jogo leva R$ 20 | ☐ | ☐ |
+| App antigo manda valor vazio, grupo Sem diária | Aceito; o jogo fica Sem diária | ☐ | ☐ |
+| App antigo abre jogo Sem diária | Mostra o jogo como sem valor, como hoje | ☐ | ☐ |
+| Grupo existente sem valor | Nada muda; cartão azul no grupo só para dono e admins | ☐ | ☐ |
+| Aviso uma vez a dono e admins [push: só produção] | Push e central "<Grupo>: defina o valor por jogo"; o toque abre o Valor por jogo | ☐ | ☐ |
+| Dono escolhe R$ 10 pelo aviso | Horário regular e próximos jogos sem valor passam a R$ 10; cartão some | ☐ | ☐ |
+| Atleta comum | Não vê o cartão nem recebe o aviso | ☐ | ☐ |
+| Avulso abre o jogo e o link de presença | "Diária de R$ 20, cobrada ao confirmar" antes do Vou | ☐ | ☐ |
+| Jogo Sem diária | Sem a linha da diária | ☐ | ☐ |
+
 ## JOGO-009 · Um jogo por vez no grupo [MULTI]
 
 | Situação | Resultado | iOS | Android |

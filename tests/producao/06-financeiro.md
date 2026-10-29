@@ -107,3 +107,76 @@ só registro: nada aqui move dinheiro. O caixa fica em Gestão → "Caixa do gru
 
 **Conferir**
 - ATL2 não vê as cobranças de ATL, nem "Caixa do grupo", nem a aba "Financeiro".
+
+## PROD-FI09 · Saldo inicial do caixa · P0
+
+_Só depois da entrega da DEB-148 (backend e app novos)._
+
+**Quem:** ORG, num grupo QA novo, sem nada lançado.
+
+1. Abrir Gestão → "Caixa do grupo".
+2. Em "Quanto o grupo já tem em caixa?", digitar 250,00 e tocar "Salvar saldo inicial".
+3. Abrir o extrato, tocar "Editar" no saldo inicial e trocar para 300,00.
+4. No caixa, abrir o ⋯ e conferir os itens.
+
+**Conferir**
+- Depois do passo 2, a pergunta some e o saldo do caixa mostra R$ 250,00 ("Inclui o saldo inicial de R$ 250").
+- O extrato mostra "Saldo inicial · Antes do Saqz · R$ 250" fixo no topo; depois do passo 3, R$ 300 e o saldo sobe R$ 50.
+- O ⋯ do caixa tem "Saldo inicial" e "Criar cobranças do mês". O caixa não mostra mais o cartão do Pix.
+- A aba "Financeiro" (caixa geral) soma o saldo inicial no saldo do grupo.
+- Num segundo grupo QA, "Começar do zero" fecha a pergunta e o saldo fica R$ 0,00.
+
+## PROD-FI10 · Entrada e saída em telas separadas · P1
+
+_Só depois da entrega da DEB-148. Substitui o caminho do "Registrar" de PROD-FI04._
+
+**Quem:** ORG.
+
+1. No caixa, tocar "Saída": "Valor" R$ 80 pelo atalho, "Descrição" `QA Bolas`, "Categoria" Material; tocar na data, escolher
+   ontem no calendário e tocar "Salvar saída".
+2. Tocar "Entrada": "Valor" 50,00, "Descrição" `QA Patrocínio`, "Categoria" Patrocínio; tocar "Salvar entrada".
+3. Abrir o extrato e alternar "Tudo", "Entradas" e "Saídas".
+
+**Conferir**
+- A Saída só oferece Quadra, Material, Árbitro e Outros, e a data veio com hoje antes da troca.
+- A Entrada só oferece Patrocínio, Venda e Outros, sem os atalhos de valor.
+- `QA Bolas` aparece em ontem, com o valor em vermelho; `QA Patrocínio` em hoje, em verde.
+- No placar do caixa, "Saiu" sobe R$ 80 (em vermelho) e "Entrou" sobe R$ 50; tocar em cada número troca a lista de baixo.
+
+## PROD-FI11 · Quem jogou sem cobrança · P0
+
+_Só depois da entrega da DEB-146 e da DEB-147._
+
+**Quem:** ORG; ATL e ATL2 como avulsos.
+
+**Preparação:** um jogo QA marcado como "Sem diária", com ATL e ATL2 confirmados. Depois, ORG edita o jogo para "Cobrar
+diária" de R$ 10,00.
+
+1. ORG abre o acerto do jogo: a faixa "2 jogaram sem cobrança" aparece; tocar "Revisar".
+2. Deixar ATL em "Cobrar" e trocar ATL2 para "Já pagou", com o meio trocado para Dinheiro.
+3. Conferir o resumo e tocar "Confirmar".
+4. ATL abre a Início.
+
+**Conferir**
+- A revisão veio com o valor do jogo (R$ 10,00) e os dois em Cobrar.
+- O resumo diz "1 cobrança · 1 já pagou · 0 sem cobrança" antes de confirmar.
+- Depois: ATL tem a diária de R$ 10,00 pendente, vencendo hoje; ATL2 aparece como recebido em dinheiro, e o caixa mostra a
+  entrada na data do jogo; a faixa some do acerto e do caixa.
+- Nem ATL nem ATL2 recebem push ou WhatsApp pela revisão; só depois, se ORG tocar "Cobrar".
+
+## PROD-FI12 · Pix do grupo na página do grupo · P1
+
+_Só depois da entrega da DEB-148 (app novo)._
+
+**Quem:** ATL2, sem cobrança no grupo QA; ATL, com uma cobrança em aberto; ORG.
+
+1. ATL2 abre a página do grupo e toca "Copiar" em "Pix do grupo".
+2. ATL abre a página do grupo.
+3. ORG abre a página do grupo.
+
+**Conferir**
+- ATL2 vê a seção "Pix do grupo" depois de "Minhas cobranças", com a chave e o tipo ("Chave Pix · E-mail"); o "Copiar" copia a
+  chave.
+- ATL vê a chave só no cartão da cobrança ("Copiar chave Pix"), sem a seção repetida.
+- ORG, sem cobrança própria, vê a seção depois da "Galera".
+

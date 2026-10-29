@@ -13,9 +13,9 @@ Mailpit, sandbox) e não serve para produção como está.
 | [01-acesso.md](01-acesso.md) | PROD-AC01–AC08: cadastro, e-mail, login, Google/Apple, senha, sessão, troca de conta |
 | [02-inicio-e-perfil.md](02-inicio-e-perfil.md) | PROD-IN01–IN04 e PROD-PF01–PF08: Início, perfil, privacidade, exclusão de conta |
 | [03-grupos-e-convites.md](03-grupos-e-convites.md) | PROD-GR01–GR06, PROD-CV01–CV11 (CV08–CV11: convite de mensalistas pelo WhatsApp, só depois da entrega do DEB-106) e PROD-MB01–MB05 |
-| [04-jogos-e-presenca.md](04-jogos-e-presenca.md) | PROD-JG01–JG13: marcar, responder, espera, convidado, encerramento, acerto e link de presença |
+| [04-jogos-e-presenca.md](04-jogos-e-presenca.md) | PROD-JG01–JG15: marcar, responder, espera, convidado, encerramento, acerto, link de presença, valor por jogo obrigatório e pagamento antecipado (JG14–JG15 só depois da entrega das DEB-146 e DEB-150) |
 | [05-avisos-e-notificacoes.md](05-avisos-e-notificacoes.md) | PROD-NT01–NT07: push, avisos, central, preferências, denúncia e bloqueio |
-| [06-financeiro.md](06-financeiro.md) | PROD-FI01–FI08: mensalidade, baixa, lançamentos, extrato, cobrança |
+| [06-financeiro.md](06-financeiro.md) | PROD-FI01–FI12: mensalidade, baixa, lançamentos, extrato, cobrança, saldo inicial, entrada e saída, quem jogou sem cobrança e Pix na página do grupo (FI09–FI12 só depois da entrega das DEB-146 a DEB-148) |
 | [07-assinatura.md](07-assinatura.md) | PROD-AS01–AS07: teste grátis, compra nas lojas, troca, cancelamento |
 | [08-site-e-links.md](08-site-e-links.md) | PROD-WEB01–WEB07: saqz.app, /comecar, /assinar e links |
 | [problemas-conhecidos.md](problemas-conhecidos.md) | O que já sabemos que não funciona como o app promete |

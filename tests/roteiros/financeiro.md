@@ -69,6 +69,13 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Jogo cancelado, recebida | Continua recebida, com "revisar" | ☐ | ☐ |
 | Valor do jogo muda depois | Antigas mantêm o valor | ☐ | ☐ |
 
+_Linhas novas decididas em 28/10/2026 (DEB-146 e DEB-150): rodar só depois da entrega._
+
+| Situação | Cobrança | iOS | Android |
+| --- | --- | --- | --- |
+| Jogo Sem diária, avulso confirma | Nenhuma | ☐ | ☐ |
+| Avulso na espera, grupo com pagamento antecipado (PROM-010) | Pendente desde o "Vou", vence na data do jogo | ☐ | ☐ |
+
 ## FIN-005 · Cobrar": o lembrete ao devedor [MULTI] [push: só produção]
 
 | Situação | Resultado | iOS | Android |
@@ -90,6 +97,28 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Lançamento corrigido | Saldo usa o valor novo; histórico guarda a edição | ☐ | ☐ |
 | Atleta abre o caixa | 403 | ☐ | ☐ |
 
+_Linhas novas decididas em 28 e 29/10/2026 (DEB-148, caixa novo): rodar só depois da entrega._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Caixa zerado, primeira vez | Pergunta "Quanto o grupo já tem em caixa?" com Salvar saldo inicial e Começar do zero | ☐ | ☐ |
+| Salva saldo inicial de R$ 250 | Saldo + R$ 250; fixo no topo do extrato, com Editar | ☐ | ☐ |
+| Edita o saldo inicial de R$ 250 para R$ 300 (extrato ou ⋯ do caixa) | Saldo sobe R$ 50 | ☐ | ☐ |
+| Saldo inicial negativo | Recusado | ☐ | ☐ |
+| "Começar do zero" | Pergunta some; saldo inicial R$ 0 | ☐ | ☐ |
+| Caixa: botões | Entrada e Saída no lugar do "Registrar" | ☐ | ☐ |
+| Placar Entrou · Saiu · Falta receber | Cada número troca a lista de baixo; Saiu em vermelho | ☐ | ☐ |
+| Devedor na lista do caixa | Recebi e o ⋮ com Cobrar, Dispensar e Cancelar | ☐ | ☐ |
+| Menu ⋯ do caixa | Saldo inicial e Criar cobranças do mês | ☐ | ☐ |
+| Caixa novo | Sem o cartão do Pix (o Pix está na página do grupo) | ☐ | ☐ |
+| Nova entrada | Patrocínio, Venda e Outros; sem atalhos de valor | ☐ | ☐ |
+| Nova saída | Quadra, Material, Árbitro e Outros; atalhos R$ 80, 120 e 160 | ☐ | ☐ |
+| Data da saída | Vem com hoje; o toque abre o calendário | ☐ | ☐ |
+| Saída com outro dia escolhido | Entra no extrato nesse dia | ☐ | ☐ |
+| Saída antiga de Racha | Continua "Racha" no extrato | ☐ | ☐ |
+| Extrato | Filtro Tudo · Entradas · Saídas; valores de saída em vermelho | ☐ | ☐ |
+| Atleta mexe no saldo inicial | 403 | ☐ | ☐ |
+
 ## FIN-007 · O acerto do jogo
 
 | Situação | Mostra | iOS | Android |
@@ -98,6 +127,18 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Uma dispensada | Sai do "falta" e do recebido | ☐ | ☐ |
 | Atleta abre | Recusado | ☐ | ☐ |
 | Dois jogos no mesmo dia, uma saída de quadra | Nenhum dos acertos mostra custo | ☐ | ☐ |
+
+_Tela nova aprovada em 29/10/2026 (DEB-147 e DEB-150): rodar só depois da entrega._
+
+| Situação | Mostra | iOS | Android |
+| --- | --- | --- | --- |
+| 12 jogaram, 2 de 4 diárias pagas | Cabeçalho azul; placar 12 · 2/4 · falta R$ 40; mensalistas numa linha | ☐ | ☐ |
+| Avulso na lista | "Avulso", nunca "Diarista"; Recebi e o ⋮ | ☐ | ☐ |
+| Jogo com gente sem cobrança | Faixa "N jogaram sem cobrança" com Revisar e a seção Sem cobrança | ☐ | ☐ |
+| Avulso com diária antecipada que ficou na espera | Em "Não jogaram · você decide", com "Não liberado" | ☐ | ☐ |
+| Avulso com diária que disse "Não vou" | Em "Não jogaram", com "Desistiu" | ☐ | ☐ |
+| Lançar da quadra | Saída com Quadra e a data do jogo, sem valor | ☐ | ☐ |
+| Cobrar os N que faltam | No rodapé | ☐ | ☐ |
 
 ## FIN-008 · O que o atleta vê [MULTI]
 
@@ -109,3 +150,38 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | Abre o caixa do grupo | 403 | ☐ | ☐ |
 | Convidado dele | Cobrança no nome dele, com o nome do convidado | ☐ | ☐ |
 | Grupo sem chave Pix, cobrança pendente | Organizador vê o aviso para cadastrar | ☐ | ☐ |
+
+_Pix na página do grupo, decidido em 29/10/2026 (DEB-148): rodar só depois da entrega._
+
+| Situação | O que aparece | iOS | Android |
+| --- | --- | --- | --- |
+| Membro sem cobrança, grupo com chave | Seção "Pix do grupo" depois de Minhas cobranças, com a chave, o tipo e Copiar | ☐ | ☐ |
+| Copiar na seção | Copia a chave guardada (CPF e telefone só com dígitos) | ☐ | ☐ |
+| Membro com cobrança em aberto | Chave só no cartão da cobrança; sem a seção | ☐ | ☐ |
+| Dono ou admin sem cobrança | Seção "Pix do grupo", depois da Galera | ☐ | ☐ |
+| Grupo com recebimentos ativos | Sem a seção | ☐ | ☐ |
+| Grupo sem chave | Sem a seção para o membro; gestor com o aviso e a checklist de hoje | ☐ | ☐ |
+
+## FIN-016 · Quem jogou sem cobrança: a diária retroativa [CRÍTICO]
+
+_Decidida em 28/10/2026 (DEB-147, diária retroativa): rodar só depois da entrega._
+
+Preparação para ter gente sem cobrança num jogo novo: marcar o jogo como Sem diária, deixar avulsos confirmarem e depois trocar para Cobrar diária. Grupo antigo com jogo sem valor serve do mesmo jeito.
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Jogo realizado sem valor, 6 avulsos confirmados | Faixa "6 jogaram sem cobrança" no acerto; revisão com os 6 em Cobrar e o valor do grupo | ☐ | ☐ |
+| Confirma com os 6 em Cobrar, R$ 10 | 6 diárias pendentes de R$ 10, vencendo hoje; faixa some | ☐ | ☐ |
+| 1 em Já pagou, meio trocado para Dinheiro | Diária recebida com a data do jogo e meio Dinheiro; entra no caixa nesse dia | ☐ | ☐ |
+| 2 em Não cobrar | Nenhuma cobrança; atleta não vê nada; ficam em "Sem cobrança" no acerto | ☐ | ☐ |
+| Reabre um Não cobrar e escolhe Cobrar | Diária pendente vencendo no dia | ☐ | ☐ |
+| Resumo antes de confirmar | "2 cobranças · 1 já pagou · 2 sem cobrança" | ☐ | ☐ |
+| Mensalista confirmado | Não aparece | ☐ | ☐ |
+| Mensalista com 1 convidado | Convidado em Cobrar, no nome do mensalista | ☐ | ☐ |
+| Avulso marcado Faltou ou que saiu do grupo | Em Não cobrar, com a etiqueta | ☐ | ☐ |
+| Valor entrou depois de 10 confirmados (jogo aberto) | Faixa com os avulsos entre os 10; quem confirmar depois já nasce cobrado | ☐ | ☐ |
+| Dois jogos com gente sem cobrança | Faixa no caixa soma os dois e leva à lista dos jogos | ☐ | ☐ |
+| Jogo Sem diária ou cancelado | Sem faixa | ☐ | ☐ |
+| Toque duplo em Confirmar, ou dois gestores juntos | Uma diária por pessoa | ☐ | ☐ |
+| Atleta tenta | 403 | ☐ | ☐ |
+| Confirmar | Nenhum push ou WhatsApp ao atleta | ☐ | ☐ |

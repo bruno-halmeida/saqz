@@ -197,3 +197,43 @@ QA vinculado a um grupo de WhatsApp de teste (Editar grupo → "WhatsApp" → "C
   conseguirá ir?", e só grava ao tocar "Sim, não vou" (depois: "Avisamos o grupo que você não vai. Sua vaga
   ficou livre para a fila de espera."). Fechar a folha ("Voltar") deixa a presença como estava.
 - Grupo que exige aprovação de entrada: vira pedido ("Pedido enviado"), sem confirmação.
+
+## PROD-JG14 · Valor por jogo obrigatório · P0
+
+_Só depois da entrega da DEB-146 (backend e app novos)._
+
+**Quem:** ORG; ATL como avulso.
+
+1. ORG toca "Marcar jogo" e tenta salvar sem escolher "Cobrar diária" nem "Sem diária".
+2. ORG escolhe "Cobrar diária", confere a sugestão no apoio, digita 20,00 e publica.
+3. ATL abre o jogo pela Início, antes de responder.
+4. ORG cria um grupo QA novo com mensalidade R$ 40,00 e abre "Valor por jogo".
+
+**Conferir**
+- No passo 1 o jogo não salva, com o aviso no topo e "Escolha o valor ou Sem diária." no campo.
+- ATL vê "Diária de R$ 20, cobrada ao confirmar" antes do "Vou"; ao confirmar, a diária de R$ 20 aparece em Minhas cobranças.
+- No grupo novo, "Cobrar diária" já vem com R$ 10,00.
+- **Grupo QA antigo sem valor por jogo** (criado antes da entrega): ORG vê o cartão azul "Hoje o avulso joga sem diária.
+  Sugestão: R$ 10, a mensalidade ÷ 4." até escolher; ATL não vê o cartão. O push e a central "<Grupo>: defina o valor por jogo"
+  chegam uma vez, quando o aviso for ligado no servidor depois do app nas lojas.
+
+## PROD-JG15 · Vaga do avulso só com pagamento antecipado · P0
+
+_Só depois da entrega da DEB-150 (backend e app novos)._
+
+**Quem:** ORG; ATL e ATL2 como avulsos; jogo QA com diária de R$ 20,00.
+
+1. ORG abre Editar grupo → "Como preencher as vagas", escolhe "Escolha manual" e liga "Vaga só com pagamento antecipado".
+2. ATL e ATL2 tocam "Vou" no jogo.
+3. ORG abre o jogo → "Na espera", toca "Recebi" em ATL e depois "Colocar" em ATL.
+4. ORG toca "Colocar" em ATL2 e escolhe "Colocar e cobrar depois".
+5. Num segundo jogo, ATL dá "Vou", ORG marca Recebi e não coloca ninguém; depois do jogo, ORG abre o acerto.
+
+**Conferir**
+- No passo 2, ATL e ATL2 vão para a espera com "Pague R$ 20 para entrar" e Copiar o Pix do grupo, e a cobrança aparece em Minhas
+  cobranças e na Início.
+- Na espera do ORG, ATL passa de "Falta pagar R$ 20" para "Pagou R$ 20" depois do Recebi; colocado, não ganha outra diária.
+- ATL2 entra confirmado com a diária ainda pendente.
+- No passo 5, o acerto mostra ATL em "Não jogaram · você decide" com "Não liberado"; nada é desfeito sozinho.
+- Voltar o grupo para "Ordem de chegada" desliga a opção, com o aviso.
+

@@ -260,6 +260,13 @@ _Decidida em 22/10/2026; vale depois da entrega do DEB-129 (app 1.0.12 onde houv
 | Rascunho, cancelado ou concluído | Negado (PRES-001) | ☐ | ☐ |
 | Depois do início do jogo | Negado (a implementar) | ☐ | ☐ |
 
+_Decidida em 28 e 29/10/2026 (DEB-150, pagamento antecipado): rodar só depois da entrega._
+
+| Caso | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Pagamento antecipado ligado, espera do organizador | Cada pessoa com "Pagou R$ 20" ou "Falta pagar R$ 20" | ☐ | ☐ |
+| Colocar quem não pagou | Folha "Colocar, ele já pagou" ou "Colocar e cobrar depois" (PROM-010) | ☐ | ☐ |
+
 ## PROM-005 · O job do prazo [MULTI]
 
 | Jogo no prazo | Modo | Resultado | iOS | Android |
@@ -306,7 +313,32 @@ Depois que A sobe, o próximo é o 1º. O dono vê a mesma ordem que o atleta.
 | Convidado promovido | Criada em nome do anfitrião, com o nome do convidado | ☐ | ☐ |
 | Convidado removido, cobrança pendente | Cancelada | ☐ | ☐ |
 | Desistência do próprio confirmado | Continua pendente | ☐ | ☐ |
+| Avulso na espera, grupo com pagamento antecipado (DEB-150, rodar só depois da entrega) | Criada no "Vou"; o Colocar não cria outra | ☐ | ☐ |
 
 ## PROM-009 · Os avisos da lista de espera e da promoção [MULTI]
 
 Conferir cada linha da tabela com um jogo de teste. Lembrete manual e automático devem ter o mesmo corpo (prazo e vagas). A ordem da espera na lista deve igualar a posição mostrada no app (PROM-007).
+
+## PROM-010 · Vaga do avulso só com pagamento antecipado [CRÍTICO] [MULTI]
+
+_Decidida em 28 e 29/10/2026 (DEB-150, pagamento antecipado): rodar só depois da entrega._
+
+| Situação | Resultado | iOS | Android |
+| --- | --- | --- | --- |
+| Grupo em Ordem de chegada | A opção não aparece em Como preencher as vagas | ☐ | ☐ |
+| Liga a opção em Escolha manual | Salva; avulso passa a ver o aviso de pagamento | ☐ | ☐ |
+| Volta para Ordem de chegada | Opção desliga sozinha, com o aviso; diárias da espera continuam | ☐ | ☐ |
+| Avulso dá "Vou", jogo R$ 20 | Vai para a espera; diária pendente de R$ 20 vencendo na data do jogo; vê "Pague R$ 20 para entrar" e Copiar o Pix do grupo | ☐ | ☐ |
+| A cobrança do avulso na espera | Aparece em Minhas cobranças e na Início | ☐ | ☐ |
+| Mensalista dá "Vou" | Segue a Escolha manual; nenhuma diária | ☐ | ☐ |
+| Mensalista leva convidado | Diária pendente no nome do mensalista; espera mostra "<anfitrião> não pagou R$ 20" | ☐ | ☐ |
+| Jogo Sem diária | Escolha manual comum, sem aviso nem diária | ☐ | ☐ |
+| Organizador marca Recebi na espera | Linha vira "Pagou R$ 20"; entra no caixa | ☐ | ☐ |
+| Colocar quem pagou | Confirmado, sem segunda diária | ☐ | ☐ |
+| Colocar quem não pagou, "Colocar, ele já pagou" | Diária recebida e pessoa confirmada | ☐ | ☐ |
+| Colocar quem não pagou, "Colocar e cobrar depois" | Pessoa confirmada; diária pendente | ☐ | ☐ |
+| Avulso diz "Não vou" depois de pagar | Diária recebida continua; acerto mostra "Desistiu" | ☐ | ☐ |
+| Avulso fica na espera até o início | Diária continua como estava; acerto mostra "Não liberado" | ☐ | ☐ |
+| Jogo cancelado | Pendentes canceladas; recebidas com "revisar" | ☐ | ☐ |
+| Mesmo `requestId` no "Vou" ou no Colocar | Uma diária, sem segundo efeito | ☐ | ☐ |
+| Atleta tenta ligar a opção ou marcar Recebi | 403 | ☐ | ☐ |
