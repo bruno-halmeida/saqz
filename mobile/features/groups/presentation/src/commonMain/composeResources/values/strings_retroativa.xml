@@ -85,4 +85,5 @@
     <string name="retro_games_people_one">1 a decidir</string>
     <string name="retro_games_people">%1$d a decidir</string>
     <string name="retro_games_empty">Nenhum jogo com gente sem cobrança.</string>
+    <string name="settle_cancel_short">Cancelar</string>
 </resources>

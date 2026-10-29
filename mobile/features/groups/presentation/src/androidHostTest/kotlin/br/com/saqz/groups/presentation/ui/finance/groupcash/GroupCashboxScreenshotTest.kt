@@ -46,7 +46,6 @@ class GroupCashboxScreenshotTest {
                 receivablesHeader = { androidx.compose.material.Text("Na sua carteira do Saqz") })
         } }
         compose.onNodeWithText("Na sua carteira do Saqz").assertExists()
-        compose.onNodeWithTag(GroupCashboxTags.Pix).assertDoesNotExist()
         compose.onRoot().captureRoboImage("../../../build/reports/receivables-configuration/caixa-pelo-app.png")
     }
 

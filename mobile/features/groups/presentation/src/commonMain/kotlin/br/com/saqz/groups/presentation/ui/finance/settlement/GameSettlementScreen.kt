@@ -503,7 +503,7 @@ private fun NotPlayedSection(state: GameSettlementState, onIntent: (GameSettleme
                                 modifier = Modifier.testTag(GameSettlementTags.waive(diarist.chargeId)),
                             )
                             SaqzButton(
-                                label = stringResource(Res.string.game_settlement_cancel_action),
+                                label = stringResource(Res.string.settle_cancel_short),
                                 onClick = { onIntent(GameSettlementIntent.OpenCancel(diarist.chargeId)) },
                                 variant = SaqzButtonVariant.Ghost,
                                 size = SaqzButtonSize.Sm,
