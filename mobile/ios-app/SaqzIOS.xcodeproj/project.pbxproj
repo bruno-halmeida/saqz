@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E50000000000000000000003 /* GroupListConfirmE2eTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000004 /* GroupListConfirmE2eTest.swift */; };
+		E50000000000000000000001 /* E2ESupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000002 /* E2ESupport.swift */; };
 		A10000000000000000000001 /* SaqzIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* SaqzIOSApp.swift */; };
 		A10000000000000000000002 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework */; };
 		A10000000000000000000003 /* SaqzIOSUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* SaqzIOSUITests.swift */; };
@@ -92,6 +94,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E50000000000000000000004 /* GroupListConfirmE2eTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupListConfirmE2eTest.swift; sourceTree = "<group>"; };
+		E50000000000000000000002 /* E2ESupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2ESupport.swift; sourceTree = "<group>"; };
 		A10000000000000000000011 /* SaqzIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* ../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = "../compose-app/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/SaqzMobile.framework"; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000013 /* SaqzIOSUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaqzIOSUITests.swift; sourceTree = "<group>"; };
@@ -220,6 +224,8 @@
 				A1000000000000000000001C /* AccessibilityUITests.swift */,
 				A50000000000000000000012 /* IOSAuthenticatedLifecycleUITests.swift */,
 				B60000000000000000000013 /* IOSGroupPhotoLifecycleUITests.swift */,
+				E50000000000000000000004 /* GroupListConfirmE2eTest.swift */,
+				E50000000000000000000002 /* E2ESupport.swift */,
 			);
 			path = SaqzIOSUITests;
 			sourceTree = "<group>";
@@ -537,6 +543,8 @@
 				A1000000000000000000000A /* AccessibilityUITests.swift in Sources */,
 				A50000000000000000000002 /* IOSAuthenticatedLifecycleUITests.swift in Sources */,
 				B60000000000000000000003 /* IOSGroupPhotoLifecycleUITests.swift in Sources */,
+				E50000000000000000000001 /* E2ESupport.swift in Sources */,
+				E50000000000000000000003 /* GroupListConfirmE2eTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
