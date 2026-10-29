@@ -207,12 +207,13 @@ _Só depois da entrega da DEB-146 (backend e app novos)._
 1. ORG toca "Marcar jogo" e tenta salvar sem escolher "Cobrar diária" nem "Sem diária".
 2. ORG escolhe "Cobrar diária", confere a sugestão no apoio, digita 20,00 e publica.
 3. ATL abre o jogo pela Início, antes de responder.
-4. ORG cria um grupo QA novo com mensalidade R$ 40,00 e abre "Valor por jogo".
+4. ORG cria um grupo QA novo sem mexer em "Mais detalhes" e marca o primeiro jogo com "Sem diária".
 
 **Conferir**
 - No passo 1 o jogo não salva, com o aviso no topo e "Escolha o valor ou Sem diária." no campo.
 - ATL vê "Diária de R$ 20, cobrada ao confirmar" antes do "Vou"; ao confirmar, a diária de R$ 20 aparece em Minhas cobranças.
-- No grupo novo, "Cobrar diária" já vem com R$ 10,00.
+- O grupo novo é criado sem escolher o valor e mostra a ORG o cartão azul; depois do primeiro jogo com "Sem diária", o
+  cartão some e o próximo jogo já vem com "Sem diária".
 - **Grupo QA antigo sem valor por jogo** (criado antes da entrega): ORG vê o cartão azul "Hoje o avulso joga sem diária.
   Sugestão: R$ 10, a mensalidade ÷ 4." até escolher; ATL não vê o cartão. O push e a central "<Grupo>: defina o valor por jogo"
   chegam uma vez, quando o aviso for ligado no servidor depois do app nas lojas.

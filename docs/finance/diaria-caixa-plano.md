@@ -158,9 +158,10 @@ A página do grupo (`GroupDetailsScreen`) é tocada pelas duas, em blocos difere
 - **Bloco "Valor por jogo"** (prancha `Valor-A`, funções `fee_states("a")` e `board_valor`): segmentado de largura igual
   **Cobrar diária · Sem diária**, nada marcado; Cobrar diária abre o campo de valor com a sugestão no apoio
   ("Sugestão: mensalidade ÷ 4 (R$ 80 ÷ 4).", só com mensalidade); Sem diária mostra "O avulso joga sem pagar por jogo."; sem
-  escolha não salva ("Escolha o valor ou Sem diária." no campo e o aviso geral no topo). Um componente só, usado no editor de
-  jogo (inclusive "Repetir toda semana"), em Criar grupo e em Editar grupo. Em Criar grupo, com mensalidade, Cobrar diária
-  já vem com a mensalidade ÷ 4 arredondada ao real.
+  escolha o editor de jogo não salva ("Escolha o valor ou Sem diária." no campo e o aviso geral no topo). Um componente só,
+  usado no editor de jogo (inclusive "Repetir toda semana"), em Criar grupo e em Editar grupo. **Ajuste do dono em 29/10:**
+  em Criar e Editar grupo o bloco é opcional (o grupo pode ficar sem valor); no grupo sem valor, a escolha do jogo novo
+  vira a do grupo.
 - **Cartão do grupo sem valor** (prancha `Aviso-grupo`): na página do grupo, só para dono e admins, enquanto
   `financeDefaults.gameFeeUndefined`; abre o "Valor por jogo" de Editar grupo com a sugestão preenchida (ou vazio sem mensalidade).
 - **Aviso `GAME_FEE_UNDEFINED`:** o toque na central e no push leva ao mesmo lugar (`compose-app`, `SaqzNavHost`).

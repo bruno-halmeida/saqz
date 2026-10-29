@@ -1388,7 +1388,10 @@ def canvas(heights):
            "Texto do push: \"Vôlei de quinta: defina o valor por jogo\" / \"Hoje o avulso joga sem diária. Toque para "
            "definir.\"\n\n"
            "O avulso vê \"Diária de R$ 20, cobrada ao confirmar\" no jogo; o link de presença ganha a mesma "
-           "linha.", "blue", w=460)
+           "linha.\n\n"
+           "Ajuste do dono em 29/10: em Criar e Editar grupo o bloco é opcional (o grupo pode ficar sem valor e o cartão "
+           "cobra a escolha); o obrigatório fica no editor de jogo; no grupo sem valor, a escolha do jogo novo vira a do "
+           "grupo.", "blue", w=460)
     y += max(hs) + ROW_GAP + ROW_TITLE
 
     # 5 · pagamento antecipado

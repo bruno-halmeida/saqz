@@ -91,12 +91,13 @@ _Linhas novas decididas em 28/10/2026 (DEB-146, valor por jogo obrigatório): ro
 
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
-| Editor de jogo, horário regular, Criar grupo e Editar grupo | Bloco "Valor por jogo" com Cobrar diária e Sem diária, nada marcado | ☐ | ☐ |
-| Nem Cobrar diária nem Sem diária | Não salva; erro no topo e no campo ("Escolha o valor ou Sem diária.") | ☐ | ☐ |
+| Editor de jogo e horário regular | Bloco "Valor por jogo" com Cobrar diária e Sem diária; jogo novo vem com a escolha do grupo | ☐ | ☐ |
+| Editor de jogo, nem Cobrar diária nem Sem diária | Não salva; erro no topo e no campo ("Escolha o valor ou Sem diária.") | ☐ | ☐ |
+| Criar ou Editar grupo sem escolha (decidido em 29/10) | Salva; grupo sem valor; cartão azul para dono e admins | ☐ | ☐ |
+| Primeiro jogo num grupo sem valor, com Sem diária ou com valor | O grupo passa a ter a mesma escolha; cartão some | ☐ | ☐ |
 | Cobrar diária com R$ 0,00 ou vazio | Não salva | ☐ | ☐ |
 | Sem diária | Jogo sem cobrança, sem linha de diária e sem faixa de retroativa | ☐ | ☐ |
 | Cobrar diária R$ 20 | Avulso confirmado ganha diária de R$ 20 | ☐ | ☐ |
-| Criar grupo com mensalidade R$ 40 | Cobrar diária já vem com R$ 10 | ☐ | ☐ |
 | Editor com mensalidade R$ 80 no grupo | Apoio "Sugestão: mensalidade ÷ 4 (R$ 80 ÷ 4)." | ☐ | ☐ |
 | App antigo manda valor vazio, grupo com R$ 20 | Aceito; o jogo leva R$ 20 | ☐ | ☐ |
 | App antigo manda valor vazio, grupo Sem diária | Aceito; o jogo fica Sem diária | ☐ | ☐ |
