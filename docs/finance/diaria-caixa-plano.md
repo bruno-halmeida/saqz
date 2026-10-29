@@ -135,7 +135,7 @@ leem categoria desconhecida como "Outros" (`KtorFinanceGateways`, desde 08/2026)
 | `GameResponse` | `advancePaymentRequired: Boolean` | O valor do grupo na hora da leitura (a tela do jogo e o link de presença mostram a caixa de pagamento). |
 | `GET .../attendance/roster` → itens de `waitlisted` | `charge: { "id", "status", "amountCents", "version" }?` | Só para o gestor; `null` sem diária daquele jogo e sempre `null` para o atleta. É o que dá "Pagou R$ 20" / "Falta pagar R$ 20" e o Recebi (rota de status de sempre, com a `version`). |
 | `POST .../attendance/promote` (`AttendancePromotionRequest`) | `markPaid: Boolean?`, `paidMethod: String?` | `markPaid=true`: promove e, na mesma transação, dá baixa na diária do jogo (`PIX` se `paidMethod` ausente); sem diária, cria e dá baixa. Diária já recebida: só promove. `requestId` repetido: mesmo resultado. |
-| `ChargeResponse` (lista do gestor) | `waitlisted: Boolean` | `true` quando a pessoa da diária (membro e `guestSeq`) está na espera daquele jogo. O app mostra "Na espera" antes do início e "Não liberado" depois. "Desistiu" continua vindo de `withdrew`. |
+| `ChargeResponse` (lista do gestor) | `waitlisted: Boolean` | `true` quando a pessoa da diária (membro e `guestSeq`) está na espera daquele jogo. O app mostra "Na espera" antes do início e "Não liberado" depois. "Desistiu" continua vindo de `withdrew`, que passa a valer também para a diária **recebida** (presença `DECLINED`); Dispensar continua só na pendente. |
 
 - **Diária no "Vou":** com a opção ligada, `ChargeTransactions.attendance` cria a diária também em `WAITLISTED`, para avulso e
   para convidado (no nome do anfitrião, inclusive ao adicionar o convidado), em jogo com valor. Vence na data do jogo.
