@@ -503,6 +503,7 @@ private class LifecycleLinkPort : AndroidIntentLinkPort, NativeGroupLinkPort {
         settleGameId: String?,
         settleBillingMonth: String?,
         paymentKind: String?,
+        eventKind: String?,
     ) {
         if (groupListeners.isNotEmpty()) {
             groupListeners.forEach { it.onEvent(GroupLinkEvent.NotificationOpen(groupId, gameId, channel, pickPosition)) }
