@@ -84,6 +84,8 @@ import br.com.saqz.groups.presentation.ui.athleteregistration.AthleteRegistratio
 import br.com.saqz.groups.presentation.ui.details.GroupDetailsRoot
 import br.com.saqz.groups.presentation.ui.finance.overview.FinanceOverviewRoot
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxRoot
+import br.com.saqz.groups.presentation.ui.finance.review.UnchargedGamesRoot
+import br.com.saqz.groups.presentation.ui.finance.review.UnchargedReviewRoot
 import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementRoot
 import br.com.saqz.groups.presentation.ui.gameeditor.GameEditorRoot
 import br.com.saqz.groups.presentation.ui.gamedetail.GameDetailRoot
@@ -886,6 +888,29 @@ internal fun SaqzNavHost(
                             }
                         },
                         refreshVersion = statementRefreshVersion,
+                    )
+                }
+                // FIN-016: a revisão de quem jogou sem cobrança e a lista dos jogos da pendência do caixa.
+                entry<FinanceRoute.UnchargedReview> { route ->
+                    UnchargedReviewRoot(
+                        groupId = route.groupId,
+                        gameId = route.gameId,
+                        onBack = pop,
+                        onDone = {
+                            pop()
+                            groupCashboxRefreshVersion++
+                            settlementRefreshVersion++
+                            statementRefreshVersion++
+                            groupDetailsRefreshVersion++
+                        },
+                    )
+                }
+                entry<FinanceRoute.UnchargedGames> { route ->
+                    UnchargedGamesRoot(
+                        groupId = route.groupId,
+                        onBack = pop,
+                        onOpenReview = { groupId, gameId -> backStack.add(FinanceRoute.UnchargedReview(groupId, gameId)) },
+                        refreshVersion = groupCashboxRefreshVersion,
                     )
                 }
                 entry<FinanceRoute.Reports> { route ->

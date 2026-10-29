@@ -35,6 +35,8 @@ import br.com.saqz.groups.presentation.setup.GroupSetupViewModel
 import br.com.saqz.groups.presentation.reports.ReportsViewModel
 import br.com.saqz.groups.presentation.statement.StatementViewModel
 import br.com.saqz.groups.presentation.ui.finance.groupcash.GroupCashboxViewModel
+import br.com.saqz.groups.presentation.ui.finance.review.UnchargedGamesViewModel
+import br.com.saqz.groups.presentation.ui.finance.review.UnchargedReviewViewModel
 import br.com.saqz.groups.presentation.ui.finance.settlement.GameSettlementViewModel
 import org.koin.core.parameter.ParametersHolder
 import org.koin.core.module.Module
@@ -86,6 +88,8 @@ fun groupsPresentationModule(): Module = module {
             notificationPrompt = getOrNull(),
         )
     }
+    viewModel { params -> UnchargedReviewViewModel(params.get(), params.get(), get(), get()) }
+    viewModel { params -> UnchargedGamesViewModel(params.get(), get()) }
     viewModel { params -> GroupCashboxViewModel(params.get(), get(), get(), get(), get(), get<GroupNowPort>(), get()) }
     viewModel {
         params ->
