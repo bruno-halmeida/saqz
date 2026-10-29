@@ -23,6 +23,8 @@ data class NotificationCenterState(
 data class NotificationUi(
     val sequence: Long, val groupId: String, val channel: CommunicationChannel, val gameId: String?,
     val content: ThreadMessageUi, val read: Boolean,
+    /** O que o aviso de sistema quer dizer (ex.: `GAME_FEE_UNDEFINED`, DEB-146). */
+    val eventKind: String? = null,
 )
 sealed interface NotificationCenterIntent {
     data object Refresh : NotificationCenterIntent
@@ -36,5 +38,10 @@ sealed interface NotificationCenterIntent {
     data class Preferences(val value: NotificationPreferences) : NotificationCenterIntent
 }
 sealed interface NotificationCenterEffect {
-    data class Open(val groupId: String, val channel: CommunicationChannel, val gameId: String?) : NotificationCenterEffect
+    data class Open(
+        val groupId: String,
+        val channel: CommunicationChannel,
+        val gameId: String?,
+        val eventKind: String? = null,
+    ) : NotificationCenterEffect
 }

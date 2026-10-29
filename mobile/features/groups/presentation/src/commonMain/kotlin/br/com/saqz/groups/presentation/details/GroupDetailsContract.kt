@@ -85,6 +85,11 @@ data class GroupDetailsState(
     val checklist: GroupChecklistUi? = null,
     /** Cobrança pendente e grupo sem chave Pix (só gestor): o aviso toma o lugar do item Pix da checklist. */
     val pixKeyNotice: Boolean = false,
+    /**
+     * DEB-146 (prancha Aviso-grupo): o grupo ainda não tem valor por jogo; só dono e admins veem o cartão. Leva a
+     * sugestão já formatada ("R$ 10", a mensalidade ÷ 4) ou `null` sem mensalidade.
+     */
+    val gameFeeUndefined: GameFeeUndefinedUi? = null,
 ) {
     /** A seção "Pix do grupo" aparece: há chave, nada em aberto e a seção de cobranças já carregou. */
     val showGroupPix: Boolean
@@ -101,6 +106,9 @@ data class GroupDetailsState(
     val reminderRecipients: Int
         get() = ((attendance?.pending ?: 0) - if (viewerPending) 1 else 0).coerceAtLeast(0)
 }
+
+@Immutable
+data class GameFeeUndefinedUi(val suggestion: String?)
 
 /** Nome, linha de resumo e — só no 2e — os chips de bairro/modalidade/agenda. */
 @Immutable
@@ -349,6 +357,9 @@ sealed interface GroupDetailsIntent {
 
     data object EditGroup : GroupDetailsIntent
 
+    /** DEB-146: "Definir valor" do cartão do grupo sem valor. */
+    data object DefineGameFee : GroupDetailsIntent
+
     data object NotifyPending : GroupDetailsIntent
 
     data object EditVenue : GroupDetailsIntent
@@ -441,7 +452,8 @@ sealed interface GroupDetailsIntent {
 sealed interface GroupDetailsEffect {
     data class ShareSaqz(val message: String) : GroupDetailsEffect
     data class OpenSettlement(val groupId: String, val gameId: String) : GroupDetailsEffect
-    data class OpenEdit(val groupId: String) : GroupDetailsEffect
+    /** [focusGameFee]: abre já no "Valor por jogo", com a sugestão preenchida (DEB-146). */
+    data class OpenEdit(val groupId: String, val focusGameFee: Boolean = false) : GroupDetailsEffect
 
     data class OpenMembers(val groupId: String) : GroupDetailsEffect
 

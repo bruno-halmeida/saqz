@@ -2313,6 +2313,38 @@ class GroupDetailsViewModelTest {
         assertNull(viewModel.state.value.checklist)
     }
 
+    // ---- DEB-146: cartão do grupo sem valor por jogo ----
+
+    private fun undefinedFeeGroup(role: GroupRole, monthly: Long? = 4000) = FakeGroupGateway(
+        readResult = SaqzResult.Success(
+            sampleVersionedGroup(
+                sampleGroup(
+                    role = role,
+                    financeDefaults = br.com.saqz.groups.domain.group.GroupFinanceDefaults(
+                        null, monthly, 10, gameFeeUndefined = true,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    @Test
+    fun `owner and admins see the game fee card with the suggestion and it opens the fee block`() = runTest {
+        listOf(GroupRole.OWNER, GroupRole.ADMIN).forEach { role ->
+            val viewModel = viewModel(groupGateway = undefinedFeeGroup(role))
+            assertEquals(GameFeeUndefinedUi("R$\u00A010"), viewModel.state.value.gameFeeUndefined)
+            viewModel.onIntent(GroupDetailsIntent.DefineGameFee)
+            assertEquals(GroupDetailsEffect.OpenEdit(GROUP_ID, focusGameFee = true), viewModel.effects.first())
+        }
+        assertEquals(GameFeeUndefinedUi(null), viewModel(groupGateway = undefinedFeeGroup(GroupRole.OWNER, monthly = null)).state.value.gameFeeUndefined)
+    }
+
+    @Test
+    fun `the athlete never sees the game fee card and a group with a choice has none`() = runTest {
+        assertNull(viewModel(groupGateway = undefinedFeeGroup(GroupRole.ATHLETE)).state.value.gameFeeUndefined)
+        assertNull(viewModel().state.value.gameFeeUndefined)
+    }
+
     @Test
     fun `opening the rules from the checklist remembers it locally and navigates to edit`() = runTest {
         val memory = FakeGroupOnboardingMemory()

@@ -119,6 +119,25 @@ class CommunicationViewModelTest {
         assertEquals(listOf(8L), vm.state.value.items.map { it.sequence })
         assertEquals(CommunicationChannel.NOTICE, vm.state.value.items.single().channel)
     }
+    @Test fun theGameFeeNoticeCarriesItsEventKindToTheOpenEffect() = runTest {
+        val notice = sampleCommunicationMessage().copy(
+            channel = CommunicationChannel.FIRST_MEMBER, eventKind = "GAME_FEE_UNDEFINED",
+            body = "Hoje o avulso joga sem diária. Toque para definir.",
+        )
+        val gateway = FakeCommunicationGateway().apply {
+            inboxResult = SaqzResult.Success(CommunicationPage(listOf(InAppNotification(9, notice, false)), null))
+        }
+        val vm = NotificationCenterViewModel(false, gateway, fakeBlocks())
+        val effects = mutableListOf<NotificationCenterEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.effects.collect { effects += it } }
+        vm.onIntent(NotificationCenterIntent.Open(9))
+        assertEquals(
+            listOf<NotificationCenterEffect>(
+                NotificationCenterEffect.Open("group-1", CommunicationChannel.FIRST_MEMBER, null, "GAME_FEE_UNDEFINED"),
+            ),
+            effects,
+        )
+    }
     @Test fun organizerOnboardingNoticesShowInTheCenterAndOpenTheirTarget() = runTest {
         val joined = sampleCommunicationMessage().copy(channel = CommunicationChannel.FIRST_MEMBER, body = "Rafa entrou no QA Vôlei. A galera começou a chegar.")
         val confirmed = joined.copy(

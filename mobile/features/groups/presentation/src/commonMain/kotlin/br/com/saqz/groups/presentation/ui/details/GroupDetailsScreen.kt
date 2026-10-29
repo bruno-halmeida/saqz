@@ -62,6 +62,10 @@ internal fun GroupDetailsScreen(
                 ) {
                     GroupTopContent(photoFailed = photoFailed)
                     GroupHeroBlock(state = state, onIntent = onIntent, onboardingGroup = onboardingGroup)
+                    // DEB-146: só gestor; o servidor manda o "não definido" e a VM já filtrou o atleta.
+                    state.gameFeeUndefined?.takeIf { state.isAdmin }?.let { notice ->
+                        GroupGameFeeCard(notice = notice, onDefine = { onIntent(GroupDetailsIntent.DefineGameFee) })
+                    }
                     if (state.isAdmin && state.pixKeyNotice) {
                         PixKeyNotice(
                             onOpenSetup = { onIntent(GroupDetailsIntent.OpenPixSetup) },

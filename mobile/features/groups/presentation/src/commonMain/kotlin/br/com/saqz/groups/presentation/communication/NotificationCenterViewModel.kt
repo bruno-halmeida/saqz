@@ -71,7 +71,7 @@ class NotificationCenterViewModel(
                             val message = notification.message
                             NotificationUi(
                                 notification.sequence, message.groupId.value, message.channel,
-                                message.gameId, message.toThreadUi(), notification.read,
+                                message.gameId, message.toThreadUi(), notification.read, message.eventKind,
                             )
                         }).distinctBy { item -> item.sequence })
                 }
@@ -101,7 +101,7 @@ class NotificationCenterViewModel(
                     update {
                         it.copy(busy = false, items = it.items.map { row -> if (row.sequence == sequence) row.copy(read = true) else row })
                     }
-                    emit(NotificationCenterEffect.Open(item.groupId, item.channel, item.gameId))
+                    emit(NotificationCenterEffect.Open(item.groupId, item.channel, item.gameId, item.eventKind))
                 }
                 is SaqzResult.Failure -> update { it.copy(busy = false, actionFailed = true) }
             }

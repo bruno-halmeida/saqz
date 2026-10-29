@@ -88,7 +88,7 @@ internal class MainActivityModel(
         // Convite de quem instalou pela página de links: chega depois, como um link tocado.
         composition.installReferrer?.readOnce(composition.links::onWarmIntent)
         notificationGroupId?.let { composition.links.onNotificationOpen(
-            it, notificationGameId, notificationChannel, pickPosition, settle?.gameId, settle?.billingMonth, settle?.kind,
+            it, notificationGameId, notificationChannel, pickPosition, settle?.gameId, settle?.billingMonth, settle?.kind, settle?.eventKind,
         ) }
     }
 
@@ -102,7 +102,7 @@ internal class MainActivityModel(
     ) {
         composition.links.onWarmIntent(url)
         notificationGroupId?.let { composition.links.onNotificationOpen(
-            it, notificationGameId, notificationChannel, pickPosition, settle?.gameId, settle?.billingMonth, settle?.kind,
+            it, notificationGameId, notificationChannel, pickPosition, settle?.gameId, settle?.billingMonth, settle?.kind, settle?.eventKind,
         ) }
     }
 
@@ -122,5 +122,6 @@ private fun Intent.settle(): PaymentSettle? {
     val game = getStringExtra(EXTRA_SETTLE_GAME_ID)
     val month = getStringExtra(EXTRA_SETTLE_MONTH)
     val kind = getStringExtra(EXTRA_PAYMENT_KIND)
-    return if (game == null && month == null && kind == null) null else PaymentSettle(game, month, kind)
+    val event = getStringExtra(EXTRA_EVENT_KIND)
+    return if (game == null && month == null && kind == null && event == null) null else PaymentSettle(game, month, kind, event)
 }

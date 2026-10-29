@@ -24,6 +24,7 @@ internal interface AndroidIntentLinkPort : NativeLinkPort {
         settleGameId: String? = null,
         settleBillingMonth: String? = null,
         paymentKind: String? = null,
+        eventKind: String? = null,
     )
 }
 
@@ -89,9 +90,10 @@ internal class AndroidLinkAdapter(
         settleGameId: String?,
         settleBillingMonth: String?,
         paymentKind: String?,
+        eventKind: String?,
     ) {
         val event = GroupLinkEvent.NotificationOpen(groupId, gameId, channel, pickPosition, settleGameId, settleBillingMonth,
-            paymentKind)
+            paymentKind, eventKind)
         if (groupListeners.isEmpty()) {
             pendingGroupEvent = event
         } else {

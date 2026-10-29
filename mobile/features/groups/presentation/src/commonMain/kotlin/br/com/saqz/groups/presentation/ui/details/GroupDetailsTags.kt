@@ -13,6 +13,8 @@ import br.com.saqz.groups.presentation.details.GroupChecklistItem
 internal object GroupDetailsTags {
     const val Screen = "group-details"
     const val Content = "group-details-content"
+    const val GameFeeCard = "group-details-game-fee-card"
+    const val GameFeeCardAction = "group-details-game-fee-card-action"
     const val Skeleton = "group-details-skeleton"
     const val Toast = "group-details-toast"
 

@@ -29,9 +29,11 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
             let settleGameId = note.userInfo?["settleGameId"] as? String
             let settleBillingMonth = note.userInfo?["settleBillingMonth"] as? String
             let paymentKind = note.userInfo?["paymentKind"] as? String
+            let eventKind = note.userInfo?["eventKind"] as? String
             MainActor.assumeIsolated {
                 self?.onNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition,
-                                         settleGameId: settleGameId, settleBillingMonth: settleBillingMonth, paymentKind: paymentKind)
+                                         settleGameId: settleGameId, settleBillingMonth: settleBillingMonth, paymentKind: paymentKind,
+                                         eventKind: eventKind)
             }
         }
     }
@@ -42,10 +44,11 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
 
     /** Push tap: game pushes open the game, the rest the notification center; no dedup across taps. */
     func onNotificationOpen(groupId: String?, gameId: String?, channel: String? = nil, pickPosition: Bool = false,
-                            settleGameId: String? = nil, settleBillingMonth: String? = nil, paymentKind: String? = nil) {
+                            settleGameId: String? = nil, settleBillingMonth: String? = nil, paymentKind: String? = nil,
+                            eventKind: String? = nil) {
         let event = GroupLinkEventNotificationOpen(groupId: groupId, gameId: gameId, channel: channel, pickPosition: pickPosition,
                                                    settleGameId: settleGameId, settleBillingMonth: settleBillingMonth,
-                                                   paymentKind: paymentKind)
+                                                   paymentKind: paymentKind, eventKind: eventKind)
         if listeners.isEmpty {
             pendingEvent = event
         } else {
@@ -114,7 +117,7 @@ final class IOSLinkAdapter: @preconcurrency NativeGroupLinkPort, @preconcurrency
               let game = items.first(where: { $0.name == "game" })?.value else { return nil }
         let pickPosition = items.first(where: { $0.name == "pickPosition" })?.value == "1"
         return GroupLinkEventNotificationOpen(groupId: group, gameId: game, channel: nil, pickPosition: pickPosition,
-                                              settleGameId: nil, settleBillingMonth: nil, paymentKind: nil)
+                                              settleGameId: nil, settleBillingMonth: nil, paymentKind: nil, eventKind: nil)
     }
 
     @discardableResult

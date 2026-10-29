@@ -51,6 +51,8 @@ sealed interface GroupLinkEvent {
         val settleBillingMonth: String? = null,
         /** Tipo do aviso do recebimento (`paymentKind`): PAID, REVIEW, CONFIRMED, SETTLE, REFUSED, PRICE_CHANGE, AUTOPAY_CANCELLED. */
         val paymentKind: String? = null,
+        /** O que o aviso de sistema quer dizer (`eventKind`, ex.: `GAME_FEE_UNDEFINED`, DEB-146); nulo nos outros. */
+        val eventKind: String? = null,
     ) : GroupLinkEvent
 }
 

@@ -472,7 +472,10 @@ internal fun SaqzNavHost(
             // quem já assina); os outros, a central.
             // "Vou" do push de jogo com posições: a tela de posição, que abre o jogo depois de confirmar (DEB-107).
             // Avisos do recebimento (canal PAYMENT): ver `paymentPushDestination`.
-            if (opened.channel == PAYMENT_CHANNEL && groupId != null) {
+            val gameFeeNotice = gameFeeNoticeDestination(opened.eventKind, groupId)
+            if (gameFeeNotice != null) {
+                backStack.add(gameFeeNotice)
+            } else if (opened.channel == PAYMENT_CHANNEL && groupId != null) {
                 backStack.add(paymentPushDestination(opened, groupId, state.session.administers(groupId)))
             } else if (groupId != null && gameId != null && opened.pickPosition) {
                 backStack.add(GroupsRoute.PositionPicker(groupId, gameId, PositionPickerOrigin.Push.routeValue))
@@ -1059,7 +1062,7 @@ internal fun SaqzNavHost(
                 }
                 entry<GroupsRoute.Edit> { route ->
                     GroupSetupDestination(
-                        mode = GroupSetupMode.Edit(route.groupId),
+                        mode = GroupSetupMode.Edit(route.groupId, route.focusGameFee),
                         backStack = backStack,
                         receivables = if (receipts.configurationEntryAvailable) {
                             GroupSetupReceivables(
@@ -1259,7 +1262,10 @@ internal fun SaqzNavHost(
                 }
                 entry<GroupsRoute.Notifications> { route ->
                     br.com.saqz.groups.presentation.communication.NotificationCenterRoot(route.settings, onBack = pop) { effect ->
-                        if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.ENTRY_REQUEST) {
+                        val gameFeeNotice = gameFeeNoticeDestination(effect.eventKind, effect.groupId)
+                        if (gameFeeNotice != null) {
+                            backStack.add(gameFeeNotice)
+                        } else if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.ENTRY_REQUEST) {
                             // Pedido para entrar: abre Convidar, onde ficam os pedidos para aprovar.
                             backStack.add(GroupsRoute.Invite(effect.groupId))
                         } else if (effect.channel == br.com.saqz.groups.domain.communication.CommunicationChannel.TRIAL_ENDING) {
@@ -1602,7 +1608,7 @@ private fun GroupSetupDestination(
  */
 internal fun MutableList<NavKey>.onDetailsEffect(effect: GroupDetailsEffect, pop: () -> Unit) {
     when (effect) {
-        is GroupDetailsEffect.OpenEdit -> add(GroupsRoute.Edit(effect.groupId))
+        is GroupDetailsEffect.OpenEdit -> add(GroupsRoute.Edit(effect.groupId, effect.focusGameFee))
         is GroupDetailsEffect.OpenMembers -> add(GroupsRoute.Members(effect.groupId))
         is GroupDetailsEffect.OpenSchedule -> add(GroupsRoute.Schedule(effect.groupId))
         // Sair do grupo devolve à lista; o efeito é a confirmação, não a pergunta.
@@ -1696,6 +1702,16 @@ private const val OwnerRole = "OWNER"
 
 /** Canal dos pushes do recebimento pelo app (`MessageChannel.PAYMENT` no backend). */
 internal const val PAYMENT_CHANNEL = "PAYMENT"
+
+/** DEB-146: aviso de sistema (canal FIRST_MEMBER) do grupo ainda sem valor por jogo. */
+internal const val GAME_FEE_UNDEFINED_EVENT = "GAME_FEE_UNDEFINED"
+
+/**
+ * DEB-146: o toque no aviso do grupo sem valor (central ou push) abre o "Valor por jogo" de Editar grupo, com a
+ * sugestão preenchida. `null` para os outros avisos, que seguem o caminho de sempre (o FIRST_MEMBER abre o grupo).
+ */
+internal fun gameFeeNoticeDestination(eventKind: String?, groupId: String?): GroupsRoute.Edit? =
+    groupId?.takeIf { eventKind == GAME_FEE_UNDEFINED_EVENT }?.let { GroupsRoute.Edit(it, focusGameFee = true) }
 
 /**
  * Para onde vai o toque num push do recebimento (FIN-013/FIN-014), pelo `paymentKind` (rodada 3):

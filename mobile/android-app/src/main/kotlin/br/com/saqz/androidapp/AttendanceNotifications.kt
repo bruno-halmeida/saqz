@@ -21,6 +21,7 @@ internal data class AttendancePush(
     val settleGameId: String? = null,
     val settleBillingMonth: String? = null,
     val paymentKind: String? = null,
+    val eventKind: String? = null,
 ) {
     /** Janela de presença das 24 h: expira sozinha e, no Android 16+, vira Live Update. */
     val isWindow get() = windowEndsAt != null && gameId != null
@@ -37,6 +38,7 @@ internal data class AttendancePush(
                 id, data["groupId"], gameId, title, body, data["recipient"], windowEndsAt, data["channel"],
                 positions = data["positions"] == "true",
                 settleGameId = data["settleGameId"], settleBillingMonth = data["settleBillingMonth"], paymentKind = data["paymentKind"],
+                eventKind = data["eventKind"],
             )
         }
     }
@@ -125,5 +127,5 @@ internal const val FINAL_STATE_MS = 120_000L
 internal fun attendanceWindowId(gameId: String) = "window:$gameId".hashCode()
 
 internal fun AttendancePush.settle(): PaymentSettle? =
-    if (settleGameId == null && settleBillingMonth == null && paymentKind == null) null
-    else PaymentSettle(settleGameId, settleBillingMonth, paymentKind)
+    if (settleGameId == null && settleBillingMonth == null && paymentKind == null && eventKind == null) null
+    else PaymentSettle(settleGameId, settleBillingMonth, paymentKind, eventKind)

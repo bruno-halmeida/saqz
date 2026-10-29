@@ -1,5 +1,7 @@
 package br.com.saqz.groups.presentation.details
 
+import br.com.saqz.groups.presentation.ui.components.formatBrlShort
+import br.com.saqz.groups.presentation.suggestedGameFeeCents
 import br.com.saqz.groups.domain.attendance.AttendanceRosterMember
 import br.com.saqz.groups.presentation.photo.memberPhoto
 import androidx.lifecycle.viewModelScope
@@ -205,6 +207,7 @@ class GroupDetailsViewModel(
                 GroupDetailsEffect.OpenCreateGame(groupId, firstGame = state.value.onboarding == GroupOnboarding.CreateGame),
             )
             GroupDetailsIntent.EditGroup -> emit(GroupDetailsEffect.OpenEdit(groupId))
+            GroupDetailsIntent.DefineGameFee -> emit(GroupDetailsEffect.OpenEdit(groupId, focusGameFee = true))
             GroupDetailsIntent.EditVenue -> emit(GroupDetailsEffect.OpenEdit(groupId))
             GroupDetailsIntent.ManageMembers,
             GroupDetailsIntent.ViewAllMembers,
@@ -1220,6 +1223,10 @@ private fun GroupDetailsState.from(group: Group): GroupDetailsState {
         ),
         venue = profile?.defaultVenue?.let { VenueUi(it.name, it.address) },
         scheduleSummary = profile?.regularSlots?.let { slots -> groupScheduleSummary(slots) { it.label() } },
+        // DEB-146: o cartão sai do estado do grupo, não do envio do aviso; atleta nunca vê.
+        gameFeeUndefined = group.financeDefaults
+            ?.takeIf { group.role != GroupRole.ATHLETE && it.gameFeeUndefined }
+            ?.let { GameFeeUndefinedUi(suggestedGameFeeCents(it.monthlyFeeCents)?.let(::formatBrlShort)) },
     )
 }
 
