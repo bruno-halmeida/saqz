@@ -51,7 +51,8 @@ async function memberPrivacy(ctx) {
   assert.equal(completed.status, 'COMPLETED');
   const stats = await request(`${api}/api/groups/${group}/athletes/${other.id}/stats`, 'GET', undefined, owner.token);
   // Jogos realizados contam só quem estava confirmada (DEB-049): quem disse "Não vou" tem 0 jogos e 1 falta.
-  assert.deepEqual(stats, { games: 0, attendanceRate: 0, absences: 1 });
+  // A falta sem aviso (DEB-129) entrou nas estatísticas: quem avisou não conta nela.
+  assert.deepEqual(stats, { games: 0, attendanceRate: 0, absences: 1, noShows: 0 });
   return { privatePhone, privateCharge: charge.id };
 }
 
