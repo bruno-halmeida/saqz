@@ -128,6 +128,8 @@ fun NotificationPush.data(): Map<String, String> = buildMap {
     settleGameId?.let { put("settleGameId", it.toString()) }
     settleBillingMonth?.let { put("settleBillingMonth", it.toString().take(7)) }
     paymentKind?.let { put("paymentKind", it) }
+    // Aditivo (DEB-146): `GAME_FEE_UNDEFINED` leva o app novo ao "Valor por jogo"; o antigo abre o grupo.
+    eventKind?.let { put("eventKind", it) }
 }
 
 /** Nome do `ActivityAttributes` no app iOS (VUL-268): o sistema só abre a Live Activity se bater. */

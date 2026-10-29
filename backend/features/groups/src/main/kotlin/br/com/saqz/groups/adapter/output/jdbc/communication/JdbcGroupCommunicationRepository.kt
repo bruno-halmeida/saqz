@@ -77,19 +77,22 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         groupId: UUID, actor: UUID, channel: MessageChannel, body: String, gameId: UUID?,
         requestId: UUID = UUID.randomUUID(),
         eventKind: String? = null,
+        pushTitle: String? = null,
+        /** Aviso do sistema assinado por [actor] (o dono): ele também recebe. */
+        systemAuthored: Boolean = false,
     ): Boolean {
         val id = UUID.randomUUID()
         val inserted = jdbc.sql(
             """
-            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id, event_kind)
-            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game, :eventKind FROM access_users WHERE id = :actor
+            INSERT INTO group_messages (id, group_id, author_id, author_name, channel, request_id, body, game_id, event_kind, push_title)
+            SELECT :id, :group, :actor, display_name, :channel, :request, :body, :game, :eventKind, :pushTitle FROM access_users WHERE id = :actor
             ON CONFLICT DO NOTHING
             """.trimIndent(),
         ).param("id", id).param("group", groupId).param("actor", actor).param("channel", channel.name, Types.OTHER)
             .param("request", requestId).param("body", body).param("game", gameId, Types.OTHER)
-            .param("eventKind", eventKind, Types.VARCHAR).update()
+            .param("eventKind", eventKind, Types.VARCHAR).param("pushTitle", pushTitle, Types.VARCHAR).update()
         if (inserted == 0) return false
-        deliver(id, groupId, actor, channel, gameId)
+        deliver(id, groupId, actor, channel, gameId, systemAuthored)
         return true
     }
 
@@ -122,7 +125,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         return checkNotNull(findRequest(groupId, actor, MessageChannel.NOTICE, requestId))
     }
 
-    private fun deliver(id: UUID, groupId: UUID, actor: UUID, channel: MessageChannel, gameId: UUID?) {
+    private fun deliver(id: UUID, groupId: UUID, actor: UUID, channel: MessageChannel, gameId: UUID?, authoredBySystem: Boolean = false) {
         // GAME_OPEN e a janela de presença não têm autor de verdade — o dono só assina o aviso do
         // sistema, e jogando como qualquer um também precisa recebê-los. Ver [firstGameOpenNotice].
         // O filtro de "já respondeu" vale para lembrete e jogo liberado. O aviso de prazo vencido é para
@@ -131,7 +134,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             channel == MessageChannel.WAITLIST_DEADLINE || channel == MessageChannel.FIRST_CONFIRMATION
         // Os avisos do primeiro atleta e da primeira confirmação NÃO são systemAuthored: o autor é quem causou o
         // evento e não recebe o próprio aviso (se for admin).
-        val systemAuthored = channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW ||
+        val systemAuthored = authoredBySystem || channel == MessageChannel.GAME_OPEN || channel == MessageChannel.ATTENDANCE_WINDOW ||
             channel == MessageChannel.WAITLIST_DEADLINE
         // Prazo vencido e avisos de onboarding são assunto de quem organiza: dono e admins (o dono também tem linha ADMIN).
         val adminsOnly = channel in ADMINS_ONLY_CHANNELS
@@ -407,6 +410,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         authorId = rs.getObject("author_id", UUID::class.java), authorName = rs.getString("author_name"),
         channel = MessageChannel.valueOf(rs.getString("channel")), body = rs.getString("body"),
         gameId = rs.getObject("game_id", UUID::class.java), recipientCount = rs.getInt("recipient_count"), createdAt = rs.getTimestamp("created_at").toInstant(),
+        eventKind = rs.getString("event_kind"),
     )
 
     private companion object {

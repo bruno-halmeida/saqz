@@ -37,6 +37,8 @@ data class GroupMessage(
     val createdAt: Instant,
     /** Foto de perfil do autor para quem lê (MEM-006); preenchida na borda HTTP. */
     val photoTag: String? = null,
+    /** Marca do evento (`event_kind`); `GAME_FEE_UNDEFINED` leva o app novo ao "Valor por jogo" (DEB-146). */
+    val eventKind: String? = null,
 )
 
 data class CommunicationPage<T>(val items: List<T>, val nextCursor: Long?)

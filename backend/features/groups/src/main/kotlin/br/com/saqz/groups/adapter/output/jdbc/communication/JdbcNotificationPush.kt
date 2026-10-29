@@ -47,6 +47,8 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
             SELECT c.group_id, c.recipient_id, c.channel, c.body, c.push_body, c.push_title, c.settle_game_id, c.settle_month, c.game_id, c.window_ends_at, u.firebase_subject,
                    (SELECT m.payment_kind FROM group_notifications n JOIN group_messages m ON m.id = n.message_id
                     WHERE n.sequence = c.sequence) AS payment_kind,
+                   (SELECT m.event_kind FROM group_notifications n JOIN group_messages m ON m.id = n.message_id
+                    WHERE n.sequence = c.sequence) AS event_kind,
                    (SELECT g.local_date FROM games g WHERE g.id = c.game_id) AS game_local_date,
                    coalesce((SELECT g.confirmation_deadline <= now() FROM games g WHERE g.id = c.game_id), false) AS deadline_passed,
                    EXISTS (SELECT 1 FROM game_position_slots s WHERE s.game_id = c.game_id AND s.slots > 0) AS positions,
@@ -83,6 +85,7 @@ class JdbcNotificationPush(dataSource: DataSource, private val transaction: Tran
                 settleGameId = rs.getObject("settle_game_id", UUID::class.java),
                 settleBillingMonth = rs.getObject("settle_month", java.time.LocalDate::class.java),
                 paymentKind = rs.getString("payment_kind"),
+                eventKind = rs.getString("event_kind"),
                 // Só a janela junta o jogo: nos outros canais `venue_name` vem nulo e não há card.
                 liveActivity = rs.getString("venue_name")?.let { venue ->
                     LiveActivityGame(

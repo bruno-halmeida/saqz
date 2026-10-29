@@ -27,5 +27,7 @@ data class NotificationPush(
     val settleBillingMonth: java.time.LocalDate? = null,
     /** Tipo do aviso do recebimento (`paymentKind`, V200): aditivo, o app antigo ignora. */
     val paymentKind: String? = null,
+    /** Marca do evento (`event_kind`): `GAME_FEE_UNDEFINED` abre o "Valor por jogo" no app novo (DEB-146). */
+    val eventKind: String? = null,
 )
 fun interface NotificationPushSender { fun send(token: String, message: NotificationPush): PushDelivery }
