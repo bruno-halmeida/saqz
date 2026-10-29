@@ -43,6 +43,9 @@ class JdbcGroupCreationRepositoryIntegrationTest {
     fun startDatabase() {
         dataSource = TestPostgres.migrated(accessMigrationLocation()).dataSource
         execute("ALTER TABLE access_groups ADD COLUMN deleted_at timestamptz DEFAULT NULL")
+        // DEB-146 e DEB-150 (V201, V202 de groups): colunas que os repositórios gravam e leem.
+        execute("ALTER TABLE access_groups ADD COLUMN default_no_game_fee boolean NOT NULL DEFAULT false")
+        execute("ALTER TABLE access_groups ADD COLUMN advance_payment_required boolean NOT NULL DEFAULT false")
         transaction = JdbcTransactionRunner(dataSource)
         repository = JdbcGroupCreationRepository(dataSource)
         useCase = CreateGroup(transaction, repository, UnlimitedSubscriptionLimits)

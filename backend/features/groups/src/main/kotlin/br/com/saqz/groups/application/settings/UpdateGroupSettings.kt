@@ -18,12 +18,16 @@ import br.com.saqz.groups.domain.group.PromotionMode
 import br.com.saqz.sharedkernel.moderation.ObjectionableText
 import java.util.UUID
 
+/** Leva o valor por jogo do grupo à série e aos jogos não começados e "não definidos" (DEB-146), na transação. */
+fun interface GameFeePropagation { fun propagate(groupId: UUID) }
+
 class UpdateGroupSettings(
     private val transactionRunner: TransactionRunner,
     private val readRepository: GroupReadRepository,
     private val settingsRepository: GroupSettingsRepository,
     private val accessPolicy: GroupAccessPolicy,
     private val scheduleSeries: ScheduleSeriesSync = ScheduleSeriesSync { },
+    private val gameFeePropagation: GameFeePropagation = GameFeePropagation { },
 ) {
     /**
      * O perfil carrega os horários regulares, então a série semanal acompanha a gravação na hora,
@@ -95,18 +99,26 @@ class UpdateGroupSettings(
             ) {
                 SettingsWriteResult.GroupNotFound -> UpdateGroupSettingsResult.GroupNotFound
                 SettingsWriteResult.VersionConflict -> UpdateGroupSettingsResult.VersionConflict
-                is SettingsWriteResult.Updated -> UpdateGroupSettingsResult.Success(
-                    UpdatedGroupSettings(
-                        write.settings.id,
-                        write.settings.name,
-                        write.settings.timeZone,
-                        requireNotNull(current.role),
-                        write.settings.version,
-                        write.settings.profileStatus,
-                        write.settings.entryRequiresApproval,
-                        write.settings.attendanceUpdatesMode,
-                    ),
-                )
+                is SettingsWriteResult.Updated -> {
+                    // O grupo deixou de estar "não definido" (DEB-146): a versão conferida no UPDATE garante que
+                    // o estado lido acima é o de antes desta gravação.
+                    val wasUndefined = current.financeDefaults?.let { it.defaultGameFeeCents == null && !it.defaultNoGameFee } == true
+                    if (wasUndefined && (validProfile.defaultGameFeeCents != null || validProfile.defaultNoGameFee == true)) {
+                        gameFeePropagation.propagate(groupId)
+                    }
+                    UpdateGroupSettingsResult.Success(
+                        UpdatedGroupSettings(
+                            write.settings.id,
+                            write.settings.name,
+                            write.settings.timeZone,
+                            requireNotNull(current.role),
+                            write.settings.version,
+                            write.settings.profileStatus,
+                            write.settings.entryRequiresApproval,
+                            write.settings.attendanceUpdatesMode,
+                        ),
+                    )
+                }
             }
         }
 

@@ -50,6 +50,9 @@ class JdbcGroupSettingsRepositoryIntegrationTest {
         execute("ALTER TABLE access_groups ADD COLUMN entry_requires_approval boolean NOT NULL DEFAULT false")
         execute("ALTER TABLE access_groups ADD COLUMN monthly_late_join_policy varchar(32) NOT NULL DEFAULT 'GROUP_DUE_DATE'")
         execute("ALTER TABLE access_groups ADD COLUMN attendance_updates_mode varchar(12) NOT NULL DEFAULT 'SCHEDULED'")
+        // DEB-146 e DEB-150 (V201, V202 de groups): colunas que os repositórios gravam e leem.
+        execute("ALTER TABLE access_groups ADD COLUMN default_no_game_fee boolean NOT NULL DEFAULT false")
+        execute("ALTER TABLE access_groups ADD COLUMN advance_payment_required boolean NOT NULL DEFAULT false")
         // As migrations de access não trazem games nem game_series_slots; esta tabela reproduz a FK sem
         // ON DELETE que elas têm para group_venues (fk_games_venue, fk_game_series_slots_venue).
         execute(

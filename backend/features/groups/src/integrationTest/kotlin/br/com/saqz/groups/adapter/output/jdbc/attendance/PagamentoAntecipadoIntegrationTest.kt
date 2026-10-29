@@ -57,7 +57,7 @@ class PagamentoAntecipadoIntegrationTest {
 
     @Test fun `o roster mostra a diaria da espera so ao gestor`() {
         val a = h.atleta(); vou(a)
-        val semDiaria = h.atleta(); h.presenca(semDiaria, "WAITLISTED", 99)
+        val semDiaria = h.atleta(); h.presenca(semDiaria, "WAITLISTED", h.repo().nextWaitlistSequence(h.group, h.game))
         val gestor = checkNotNull(h.repo().roster(h.dono, h.group, h.game)).waitlisted.associateBy { it.memberId }
         val charge = assertNotNull(gestor.getValue(a).charge)
         assertEquals("PENDING", charge.status); assertEquals(2500, charge.amountCents); assertEquals(1, charge.version)
@@ -73,7 +73,7 @@ class PagamentoAntecipadoIntegrationTest {
         assertEquals("CASH", h.string("SELECT paid_method::text FROM group_charges WHERE member_user_id='$pendente'"))
 
         // Esperava antes de a opção ser ligada: a diária nasce no Colocar e já sai recebida (PIX por padrão).
-        val antigo = h.atleta(); h.presenca(antigo, "WAITLISTED", 50)
+        val antigo = h.atleta(); h.presenca(antigo, "WAITLISTED", h.repo().nextWaitlistSequence(h.group, h.game))
         assertIs<AttendanceCommandResult.Success>(colocar(antigo, markPaid = true))
         assertEquals("PAID", h.statusDaDiaria(antigo)); assertEquals("PIX", h.string("SELECT paid_method::text FROM group_charges WHERE member_user_id='$antigo'"))
 

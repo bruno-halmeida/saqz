@@ -606,7 +606,11 @@ class AccessSessionConfiguration {
         readRepository: JdbcGroupReadRepository,
         settingsRepository: JdbcGroupSettingsRepository,
         scheduleSeries: br.com.saqz.groups.application.game.series.SyncScheduleSeries,
-    ) = UpdateGroupSettings(transaction, readRepository, settingsRepository, GroupAccessPolicy(), scheduleSeries)
+        dataSource: DataSource,
+    ) = UpdateGroupSettings(
+        transaction, readRepository, settingsRepository, GroupAccessPolicy(), scheduleSeries,
+        br.com.saqz.groups.adapter.output.jdbc.game.JdbcGameFeePropagation(dataSource),
+    )
 
     @Bean
     fun groupPositionSlotsRepository(dataSource: DataSource) =

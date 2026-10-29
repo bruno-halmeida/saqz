@@ -10,7 +10,7 @@ class ExpenseTest{
     @Test fun `amount accepts exact bounds`(){assertEquals(1,valid(draft(amount=1)).amountCents);assertEquals(99_999_999,valid(draft(amount=99_999_999)).amountCents)}
     @Test fun `amount rejects zero negative and overflow`(){listOf(0L,-1L,100_000_000L).forEach{assertInvalid("amountCents",draft(amount=it))}}
     @Test fun `date and category are required`(){assertInvalid("expenseDate",draft(date=null));assertInvalid("category",draft(category=null))}
-    @Test fun `confirmed category vocabulary contains racha and referee not service`(){assertEquals(setOf("VENUE","EQUIPMENT","REFEREE","RACHA","OTHER"),ExpenseCategory.entries.map{it.name}.toSet())}
+    @Test fun `confirmed category vocabulary contains racha and referee not service`(){assertEquals(setOf("VENUE","EQUIPMENT","REFEREE","RACHA","OTHER","SPONSORSHIP","SALE"),ExpenseCategory.entries.map{it.name}.toSet())}
     @Test fun `manual vocabulary has no monthly fee category`(){assertTrue(ExpenseCategory.entries.none{it.name in setOf("MONTHLY","MENSALIDADE","MONTHLY_FEE")})}
     @Test fun `omitted direction keeps the outflow the expenses always were`(){assertEquals(ExpenseDirection.OUT,valid(draft()).direction)}
     @Test fun `omitted direction on edit keeps the direction of the current snapshot`(){assertEquals(ExpenseDirection.IN,requireNotNull(ExpenseValidator.validate(draft(),ExpenseDirection.IN).snapshot).direction)}

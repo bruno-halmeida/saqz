@@ -46,8 +46,11 @@ class ValorPorJogoIntegrationTest {
     private fun grupo(fee: Long?, noFee: Boolean = false) =
         h.execute("UPDATE access_groups SET default_game_fee_cents=${fee ?: "NULL"}, default_no_game_fee=$noFee WHERE id='${h.group}'")
 
+    private var dias = 4L
+
     private fun criar(fee: NullableGameFeeOverride): GameCommandResult {
-        val startsAt = Instant.now().plus(5, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES)
+        // Um dia por jogo: dois jogos no mesmo horário do grupo são conflito de agenda.
+        val startsAt = Instant.now().plus(++dias, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MINUTES)
         val local = startsAt.atZone(zone)
         return CreateGame(tx, games).execute(
             h.dono, h.group, UUID.randomUUID(),
@@ -130,7 +133,7 @@ class ValorPorJogoIntegrationTest {
         advance: Boolean? = null,
     ): UpdateGroupSettingsResult {
         val version = h.int("SELECT version FROM access_groups WHERE id='${h.group}'").toLong()
-        return UpdateGroupSettings(tx, JdbcGroupReadRepository(h.dataSource), JdbcGroupSettingsRepository(h.dataSource), GroupAccessPolicy())
+        return UpdateGroupSettings(tx, JdbcGroupReadRepository(h.dataSource), JdbcGroupSettingsRepository(h.dataSource), GroupAccessPolicy(), gameFeePropagation = JdbcGameFeePropagation(h.dataSource))
             .execute(
                 h.dono, h.group, version,
                 UpdateGroupProfileInput(

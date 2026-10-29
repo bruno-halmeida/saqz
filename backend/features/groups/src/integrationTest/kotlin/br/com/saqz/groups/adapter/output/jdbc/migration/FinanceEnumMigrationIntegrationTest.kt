@@ -32,7 +32,8 @@ class FinanceEnumMigrationIntegrationTest {
                 "charge_paid_method" to listOf("PIX", "CASH", "OTHER"),
                 "charge_status" to listOf("PENDING", "PAID", "WAIVED", "CANCELLED"),
                 "expense_action" to listOf("CREATED", "EDITED", "VOIDED"),
-                "expense_category" to listOf("VENUE", "EQUIPMENT", "REFEREE", "RACHA", "OTHER"),
+                // SPONSORSHIP e SALE entram na V205 (DEB-148), só de entrada.
+                "expense_category" to listOf("VENUE", "EQUIPMENT", "REFEREE", "RACHA", "OTHER", "SPONSORSHIP", "SALE"),
                 "expense_direction" to listOf("IN", "OUT"),
                 "expense_status" to listOf("ACTIVE", "VOIDED"),
             ),

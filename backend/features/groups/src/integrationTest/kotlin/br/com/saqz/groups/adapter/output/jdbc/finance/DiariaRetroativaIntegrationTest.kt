@@ -58,7 +58,7 @@ class DiariaRetroativaIntegrationTest {
         val avulso = h.atleta(); h.presenca(avulso, "CONFIRMED")
         val mensalista = h.atleta("MENSALISTA"); h.presenca(mensalista, "CONFIRMED")
         val faltou = h.atleta(); h.presenca(faltou, "CONFIRMED")
-        h.execute("UPDATE game_attendance SET no_show_marked_at=now() WHERE member_user_id='$faltou'")
+        h.execute("UPDATE game_attendance SET no_show_marked_at=now(), no_show_marked_by='${h.dono}' WHERE member_user_id='$faltou'")
         val saiu = h.atleta(); h.presenca(saiu, "CONFIRMED")
         h.execute("UPDATE group_memberships SET active=false WHERE user_id='$saiu'")
         val espera = h.atleta(); h.presenca(espera, "WAITLISTED", 1)
