@@ -2,6 +2,7 @@ package br.com.saqz.androidapp
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import android.os.ParcelFileDescriptor
 import androidx.test.platform.app.InstrumentationRegistry
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -154,11 +155,52 @@ internal abstract class InstalledE2e(private val scenarioName: String) {
         return http("${BuildConfig.API_BASE_URL}$path", method, body, identity.getString("idToken"), status, headers)
     }
 
+    /**
+     * Print da tela inteira em `/data/local/tmp/saqz-e2e-shots/<cenário>/<NN>-<passo>.png`, numerado na ordem de
+     * execução do cenário; o runner limpa a pasta antes e a puxa no fim. Chame depois que a tela parou (texto ou tag
+     * esperados), nunca no meio de animação.
+     */
+    protected fun shot(step: String) {
+        ui.waitForIdle()
+        // Deixa a última animação curta (folha, troca de aba) assentar antes do quadro.
+        Thread.sleep(400)
+        val number = synchronized(shotCounters) { (shotCounters[scenarioName] ?: 0).plus(1).also { shotCounters[scenarioName] = it } }
+        val dir = "/data/local/tmp/saqz-e2e-shots/$scenarioName"
+        shell("mkdir -p $dir")
+        shell("screencap -p $dir/${number.toString().padStart(2, '0')}-$step.png")
+    }
+
+    /** Lê a saída até o fim: só assim o comando terminou (e o arquivo do print está completo). */
+    protected fun shell(command: String): String {
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes().decodeToString() }
+    }
+
+    /** Espera um texto que contém [text] (a tela usa espaço fino/inseparável em "R$ 20"). */
+    protected fun waitContains(text: String, count: Int = 1) {
+        val matcher = hasText(text, substring = true) and !hasSetTextAction()
+        try {
+            ui.waitUntil(20_000) { ui.onAllNodes(matcher, useUnmergedTree = true).fetchSemanticsNodes().size >= count }
+        } catch (failure: ComposeTimeoutException) {
+            ui.onRoot(useUnmergedTree = true).printToLog("E2eFailure[$text]")
+            throw failure
+        }
+    }
+
+    protected fun waitGone(tag: String) {
+        ui.waitUntil(20_000) { ui.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty() }
+    }
+
     protected fun membershipIds(role: String): Set<String> {
         val memberships = api(role, "/api/session", "PUT").getJSONArray("memberships")
         return (0 until memberships.length()).map { memberships.getJSONObject(it).getString("groupId") }.toSet()
     }
 }
+
+private val shotCounters = mutableMapOf<String, Int>()
+
+/** "R$ 20,00" com o espaço inseparável que a formatação do app usa. */
+internal fun brl(text: String) = "R$\u00A0$text"
 
 /** Independent HTTP oracle: validates persisted server state, never invokes app gateways. */
 private fun http(url: String, method: String, body: JSONObject?, token: String? = null, status: Int = 200, headers: Map<String, String> = emptyMap()): JSONObject {

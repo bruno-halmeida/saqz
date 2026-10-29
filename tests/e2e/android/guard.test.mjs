@@ -8,13 +8,17 @@ test('ENV: explicit scenario selection has exact classes/counts and rejects unkn
   const all = selectScenarios();
   assert.deepEqual(all.map(item => item.name), ['access', 'leave', 'attendance', 'attendance-order', 'attendance-guest', 'attendance-list', 'communication', 'finance',
     'notification-settings', 'reminders', 'sports-profile', 'member-privacy', 'monthly-history',
-    'payments', 'charge-lifecycle', 'settlement', 'past-games-no-show']);
-  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 18);
+    'payments', 'charge-lifecycle', 'settlement', 'past-games-no-show', 'game-fee', 'cashbox', 'uncharged-review',
+    'group-pix', 'advance-payment', 'group-list', 'receivables-off', 'app-update']);
+  assert.equal(all.reduce((sum, item) => sum + item.count, 0), 26);
   for (const [name, testClass] of [['notification-settings', 'NotificationsE2eTest'],
     ['reminders', 'ReminderE2eTest'],
     ['sports-profile', 'SportsProfileE2eTest'], ['member-privacy', 'MemberPrivacyE2eTest'], ['monthly-history', 'MonthlyHistoryE2eTest'],
     ['payments', 'PaymentE2eTest'], ['charge-lifecycle', 'ChargeLifecycleE2eTest'], ['settlement', 'SettlementE2eTest'],
-    ['past-games-no-show', 'PastGamesNoShowE2eTest']]) {
+    ['past-games-no-show', 'PastGamesNoShowE2eTest'], ['game-fee', 'GameFeeE2eTest'], ['cashbox', 'CashboxE2eTest'],
+    ['uncharged-review', 'UnchargedReviewE2eTest'], ['group-pix', 'GroupPixE2eTest'],
+    ['advance-payment', 'AdvancePaymentE2eTest'], ['group-list', 'GroupListE2eTest'],
+    ['receivables-off', 'ReceivablesOffE2eTest'], ['app-update', 'AppUpdateE2eTest']]) {
     assert.deepEqual(selectScenarios(name), [{ name, testClass, count: 1 }]);
   }
   assert.equal(selectScenarios('access')[0].count, 2);

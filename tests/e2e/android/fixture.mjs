@@ -5,6 +5,7 @@ import { seedExtra as seedCommunication } from './fixtures/communication-details
 import { seedExtra as seedProfile } from './fixtures/profile-flows.mjs';
 import { seedExtra as seedFinance } from './fixtures/financial-flows.mjs';
 import { seedExtra as seedPastGames } from './fixtures/past-games.mjs';
+import { seedExtra as seedDiariaCaixa } from './fixtures/diaria-caixa.mjs';
 
 const api = 'http://127.0.0.1:18080';
 const auth = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1';
@@ -108,7 +109,7 @@ export async function seed(sql, scenarioNames) {
       }
     }
     const context = { name, sql, request, user, publishedGame, api, runId, owner, athlete, other, group, secondGroup };
-    for (const extend of [seedCommunication, seedProfile, seedFinance, seedPastGames]) {
+    for (const extend of [seedCommunication, seedProfile, seedFinance, seedPastGames, seedDiariaCaixa]) {
       Object.assign(result.scenarios[name], await extend(context));
     }
   }

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile, readdir, readFile, stat, cp } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, readdir, readFile, stat, cp, rm } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,9 @@ const services = [];
 const cancellation = new AbortController();
 for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => cancellation.abort());
 const reports = path.join(root, 'mobile/android-app/build/outputs/androidTest-results/connected');
+// Prints dos passos (shot() no E2eSupport.kt): ficam no aparelho até o fim e saem do git, no build.
+const deviceShots = '/data/local/tmp/saqz-e2e-shots';
+const localShots = path.join(root, 'mobile/android-app/build/e2e-shots');
 let database;
 let testStarted = false;
 console.log(`E2E artifacts: ${artifacts}`);
@@ -48,6 +51,13 @@ async function until(check, label, timeout = 90000) {
     await delay(500);
   }
   throw new Error(`Timed out: ${label}. See ${artifacts}`);
+}
+
+async function pullShots() {
+  await mkdir(localShots, { recursive: true });
+  await command('adb', ['-s', serial, 'pull', `${deviceShots}/.`, localShots]);
+  await cp(localShots, path.join(artifacts, 'shots'), { recursive: true });
+  console.log(`E2E prints: ${localShots}`);
 }
 
 async function healthy(url) {
@@ -103,6 +113,8 @@ try {
   const assetDir = path.join(root, 'mobile/android-app/build/e2e-assets');
   await mkdir(assetDir, { recursive: true });
   await writeFile(path.join(assetDir, 'e2e-fixture.json'), JSON.stringify(fixture));
+  await command('adb', ['-s', serial, 'shell', 'rm', '-rf', deviceShots]);
+  await rm(localShots, { recursive: true, force: true });
   console.log('Running installed Android journeys...');
   const started = Date.now();
   testStarted = true;
@@ -124,5 +136,7 @@ try {
 } finally {
   // Keep diagnostics even when instrumentation fails; the next Gradle run replaces its reports.
   if (testStarted) await cp(reports, path.join(artifacts, 'junit'), { recursive: true }).catch(error => console.warn(error.message));
+  // Também com falha: o print do último passo é o que mostra onde parou.
+  if (testStarted) await pullShots().catch(error => console.warn(`Prints: ${error.message}`));
   await finishCleanup({ testStarted, cancelled: cancellation.signal.aborted, serial, services, database, command }, artifacts);
 }
