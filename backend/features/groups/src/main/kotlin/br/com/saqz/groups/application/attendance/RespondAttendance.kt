@@ -131,9 +131,13 @@ class RespondAttendance(
         )) {
             // Dois gestores tocando em "Colocar no jogo" na mesma pessoa: quem chega depois encontra o que pediu e
             // não leva erro. Sem evento nem cobrança novos; o jogo fechado continua negado antes daqui.
+            // Com "já pagou", quem chega depois ainda dá a baixa: a diária não fica pendente sem ninguém saber (PROM-010).
             is AttendancePromotionResult.Denied ->
                 scoped.current?.takeIf { result.reason == AttendanceDenial.NOT_WAITLISTED && it.status == AttendanceStatus.CONFIRMED }
-                    ?.let { AttendanceCommandResult.Success(it) }
+                    ?.let {
+                        if (markPaid) charges.settle(scoped, paidMethod ?: PaidMethod.PIX, actorId)
+                        AttendanceCommandResult.Success(it)
+                    }
                     ?: AttendanceCommandResult.Denied(result.reason)
             is AttendancePromotionResult.Success -> {
                 // A diária já existe (do "Vou") ou acabou de nascer na promoção; sem valor ou mensalista, não há o que baixar.

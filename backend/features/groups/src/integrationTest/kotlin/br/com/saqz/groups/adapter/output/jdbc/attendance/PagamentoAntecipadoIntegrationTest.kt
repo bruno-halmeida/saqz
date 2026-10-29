@@ -105,5 +105,21 @@ class PagamentoAntecipadoIntegrationTest {
         h.execute("UPDATE group_charges SET status='PAID', paid_method='PIX' WHERE member_user_id='$a'")
         assertIs<AttendanceCommandResult.Success>(h.respostas().execute(a, h.group, h.game, intent = AttendanceIntent.DECLINE, requestId = UUID.randomUUID()))
         assertEquals("DECLINED", h.status(a)); assertEquals("PAID", h.statusDaDiaria(a))
+        // O acerto mostra "Desistiu" também para quem pagou; dispensada e cancelada não ganham a etiqueta.
+        val dispensada = h.atleta(); vou(dispensada); val cancelada = h.atleta(); vou(cancelada)
+        listOf(dispensada, cancelada).forEach { h.respostas().execute(it, h.group, h.game, intent = AttendanceIntent.DECLINE, requestId = UUID.randomUUID()) }
+        h.execute("UPDATE group_charges SET status='WAIVED' WHERE member_user_id='$dispensada'")
+        h.execute("UPDATE group_charges SET status='CANCELLED' WHERE member_user_id='$cancelada'")
+        val charges = JdbcChargeManagementRepository(h.dataSource).list(h.group).associateBy { it.charge.memberId }
+        assertTrue(charges.getValue(a).charge.withdrew)
+        assertTrue(!charges.getValue(dispensada).charge.withdrew); assertTrue(!charges.getValue(cancelada).charge.withdrew)
+    }
+
+    @Test fun `o segundo gestor que coloca com ja pagou da a baixa mesmo com a pessoa ja confirmada`() {
+        val a = h.atleta(); vou(a)
+        assertIs<AttendanceCommandResult.Success>(colocar(a))
+        assertEquals("PENDING", h.statusDaDiaria(a))
+        assertIs<AttendanceCommandResult.Success>(colocar(a, markPaid = true, method = PaidMethod.CASH))
+        assertEquals("CONFIRMED", h.status(a)); assertEquals("PAID", h.statusDaDiaria(a)); assertEquals(1, h.diarias(a))
     }
 }

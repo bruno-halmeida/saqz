@@ -38,6 +38,19 @@ class JdbcSeriesBoundaryRepositoryIntegrationTest {
 
     @BeforeEach fun resetDatabase() { dataSource = TestPostgres.migrated(*allGroupFeatureMigrationLocations(), owner = this).dataSource }
 
+    @Test fun `only this edit sem valor e sem marca (app antigo) mantem o Sem diaria e o resto leva o padrao do grupo`() {
+        val fixture = fixture(); val semDiaria = game(fixture, DATE); val indefinido = game(fixture, DATE.plusWeeks(1))
+        execute("UPDATE access_groups SET default_game_fee_cents=2000 WHERE id='${fixture.group}'")
+        execute("UPDATE games SET game_fee_cents=NULL, no_game_fee=true WHERE id='$semDiaria'")
+        execute("UPDATE games SET game_fee_cents=NULL, no_game_fee=false WHERE id='$indefinido'")
+        val antigo = snapshot(DATE, "Sem valor").copy(gameFeeCents = null)
+        assertEquals(SeriesBoundaryResult.Applied, repository().applyOnlyThis(OnlyThisBoundaryCommand(fixture.group, semDiaria, 1, DATE.minusDays(1), SeriesBoundaryAction.EDIT, antigo)))
+        assertEquals("null|true", string("SELECT coalesce(game_fee_cents::text,'null')||'|'||no_game_fee FROM games WHERE id='$semDiaria'"))
+        val outro = snapshot(DATE.plusWeeks(1), "Sem valor").copy(gameFeeCents = null)
+        assertEquals(SeriesBoundaryResult.Applied, repository().applyOnlyThis(OnlyThisBoundaryCommand(fixture.group, indefinido, 1, DATE.minusDays(1), SeriesBoundaryAction.EDIT, outro)))
+        assertEquals("2000|false", string("SELECT coalesce(game_fee_cents::text,'null')||'|'||no_game_fee FROM games WHERE id='$indefinido'"))
+    }
+
     @Test fun `only this edit detaches selected identity and leaves sibling unchanged`() {
         val fixture = fixture(); val selected = game(fixture, DATE); val sibling = game(fixture, DATE.plusWeeks(1))
         val replacement = snapshot(DATE, "Treino alterado")

@@ -37,7 +37,7 @@ class JdbcSeriesBoundaryRepository(
         val moved = command.replacement?.takeIf { it.startsAt != row.startsAt }
         if (limit != null && moved != null && moved.startsAt >= limit) return@transaction SeriesBoundaryResult.AfterPlanEnd(limit)
         val updated = connection.prepareStatement(if (command.action == SeriesBoundaryAction.CANCEL) CANCEL_ONE else EDIT_ONE).use { statement ->
-            if (command.action == SeriesBoundaryAction.EDIT) statement.bindSnapshot(requireNotNull(command.replacement), 1)
+            if (command.action == SeriesBoundaryAction.EDIT) statement.bindSnapshot(connection.withFee(command, requireNotNull(command.replacement)), 1)
             val offset = if (command.action == SeriesBoundaryAction.EDIT) 17 else 1
             statement.setObject(offset, command.groupId)
             statement.setObject(offset + 1, command.gameId)
@@ -188,6 +188,25 @@ class JdbcSeriesBoundaryRepository(
         }
     }
 
+    /**
+     * Como o editor do jogo avulso (DEB-146): sem valor e sem marca (app antigo), o jogo Sem diária continua Sem diária
+     * e o resto leva o padrão do grupo; sem padrão, segue não definido.
+     */
+    private fun Connection.withFee(command: OnlyThisBoundaryCommand, snapshot: GameSnapshot): GameSnapshot {
+        if (snapshot.gameFeeCents != null || snapshot.noGameFee) return snapshot
+        return prepareStatement(FEE_DEFAULTS).use { statement ->
+            statement.setObject(1, command.gameId); statement.setObject(2, command.groupId)
+            statement.executeQuery().use { r ->
+                if (!r.next()) snapshot
+                else if (r.getBoolean("no_game_fee")) snapshot.copy(noGameFee = true)
+                else {
+                    val fee = r.getObject("default_game_fee_cents", java.lang.Long::class.java)?.toLong()
+                    snapshot.copy(gameFeeCents = fee, noGameFee = fee == null && r.getBoolean("default_no_game_fee"))
+                }
+            }
+        }
+    }
+
     private fun PreparedStatement.bindSnapshot(snapshot: GameSnapshot, start: Int) {
         setString(start, snapshot.title); setObject(start + 1, snapshot.localDate); setObject(start + 2, snapshot.localTime); setString(start + 3, snapshot.zoneId.value)
         setTimestamp(start + 4, Timestamp.from(snapshot.startsAt)); setInt(start + 5, snapshot.durationMinutes); setTimestamp(start + 6, Timestamp.from(snapshot.confirmationDeadline))
@@ -228,6 +247,7 @@ class JdbcSeriesBoundaryRepository(
     private data class LockedRevision(val version: Long, val start: java.time.LocalDate, val end: java.time.LocalDate?)
 
     private companion object {
+        const val FEE_DEFAULTS = "SELECT g.no_game_fee, ag.default_game_fee_cents, ag.default_no_game_fee FROM games g JOIN access_groups ag ON ag.id = g.group_id WHERE g.id = ? AND g.group_id = ?"
         const val LOCK_GAME = "SELECT version, local_date, status, detached_from_series, starts_at FROM games WHERE group_id = ? AND id = ? AND series_id IS NOT NULL FOR UPDATE"
         const val LOCK_REVISION = "SELECT version, local_start_date, local_end_date FROM game_series WHERE group_id = ? AND id = ? FOR UPDATE"
         const val EDIT_ONE = """UPDATE games SET title=?, local_date=?, local_time=?, zone_id=?, starts_at=?, duration_minutes=?, confirmation_deadline=?, venue_id=?, venue_name=?, venue_address=?, venue_court=?, capacity=?, game_fee_cents=?, notes=?, detached_from_series=?, no_game_fee=?, version=version+1, updated_at=now() WHERE group_id=? AND id=? AND version=?"""
