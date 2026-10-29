@@ -342,8 +342,13 @@ class GroupDetailsViewModel(
         }
     }
 
+    /** FIN-008: a chave do grupo; com recebimento pelo app a seção some (paga-se pelo "Pagar"). */
+    private fun Group.groupPix(): PixUi? = profile?.pixKey?.trim()
+        ?.takeIf { it.isNotEmpty() && !receivablesActive }
+        ?.let { PixUi(it, profile?.pixLabel) }
+
     private fun copyPix() {
-        val pix = state.value.ownCharges?.pix ?: return
+        val pix = state.value.ownCharges?.pix ?: state.value.groupPix?.takeIf { state.value.showGroupPix } ?: return
         emit(GroupDetailsEffect.CopyPix(pix.key))
         // Contador monotônico, não igualdade de valor: dois toques seguidos não podem deixar
         // o delay do primeiro apagar o estado do segundo (mesma regra da Início, VUL-220).
@@ -613,7 +618,7 @@ class GroupDetailsViewModel(
             is SaqzResult.Success -> result.value.charges.toOwnCharges(group)
         }
         if (generation != loadGeneration || ownGeneration != ownChargesGeneration) return
-        update { it.copy(ownCharges = ownCharges) }
+        update { it.copy(ownCharges = ownCharges, groupPix = group.groupPix()) }
     }
 
     /**

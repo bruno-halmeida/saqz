@@ -79,6 +79,7 @@ internal fun GroupDetailsScreen(
                     GroupMuralBlock(state = state, onIntent = onIntent)
                     GroupPeopleBlock(state = state, onIntent = onIntent)
                     GroupOwnChargesSettledBlock(state = state)
+                    GroupPixBlock(state = state, onIntent = onIntent)
                     GroupLeaveBlock(state = state, onIntent = onIntent)
                 }
                 GroupToastBlock(

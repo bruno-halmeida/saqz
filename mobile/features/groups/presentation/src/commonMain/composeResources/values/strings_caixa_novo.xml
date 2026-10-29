@@ -70,4 +70,6 @@
     <string name="entry_date_pick_save">Usar esta data</string>
     <string name="entry_description_in_hint">Ex.: venda de camisas</string>
     <string name="entry_description_out_hint">Ex.: quadra de terça</string>
+    <string name="group_pix_copy">Copiar</string>
+    <string name="group_pix_copy_a11y">Copiar a chave Pix do grupo</string>
 </resources>

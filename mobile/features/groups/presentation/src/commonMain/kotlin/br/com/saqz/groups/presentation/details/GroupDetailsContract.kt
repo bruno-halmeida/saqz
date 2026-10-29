@@ -68,6 +68,11 @@ data class GroupDetailsState(
     val toast: GroupDetailsToast? = null,
     /** A chave Pix acabou de ser copiada: o ticket troca o botão por "Chave copiada" por 2 s. */
     val pixCopied: Boolean = false,
+    /**
+     * FIN-008 (DEB-148): a chave do grupo para todo membro, na seção "Pix do grupo". `null` sem chave ou com
+     * recebimento pelo app ativo; a tela ainda esconde a seção com cobrança em aberto (a chave já está no cartão).
+     */
+    val groupPix: PixUi? = null,
     /** Próximos jogos do grupo SEM o jogo do hero, em ordem de início; no máximo 12. */
     val agenda: List<GroupAgendaRowUi> = emptyList(),
     /** JOGO-011: o gestor tem "Jogos anteriores" no rodapé da agenda; atleta nunca. */
@@ -81,6 +86,10 @@ data class GroupDetailsState(
     /** Cobrança pendente e grupo sem chave Pix (só gestor): o aviso toma o lugar do item Pix da checklist. */
     val pixKeyNotice: Boolean = false,
 ) {
+    /** A seção "Pix do grupo" aparece: há chave, nada em aberto e a seção de cobranças já carregou. */
+    val showGroupPix: Boolean
+        get() = groupPix != null && ownCharges?.isLoading != true && ownCharges?.pending.isNullOrEmpty()
+
     /**
      * Quem olha (gestor) também joga e entra na contagem de "sem resposta" do servidor, mas o
      * lembrete nunca vai para quem toca em "Avisar". Sem resposta registrada, ele é um dos pendentes.

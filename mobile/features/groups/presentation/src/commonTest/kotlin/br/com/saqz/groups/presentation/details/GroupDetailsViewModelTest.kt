@@ -2353,6 +2353,44 @@ class GroupDetailsViewModelTest {
         assertEquals(GroupDetailsEffect.OpenSchedule(GROUP_ID), viewModel.effects.first())
     }
 
+    @Test
+    fun `group pix goes to every member without charges and copies the group key FIN-008`() = runTest {
+        val viewModel = viewModel(groupGateway = pixGroupGateway())
+
+        assertEquals("ceret@volei.com.br", viewModel.state.value.groupPix?.key)
+        assertTrue(viewModel.state.value.showGroupPix)
+        viewModel.onIntent(GroupDetailsIntent.CopyPix)
+        assertEquals(GroupDetailsEffect.CopyPix("ceret@volei.com.br"), viewModel.effects.first())
+    }
+
+    @Test
+    fun `group pix hides with an open charge because the key is already on the charge card`() = runTest {
+        val viewModel = viewModel(
+            groupGateway = pixGroupGateway(),
+            athleteFinanceGateway = FakeAthleteFinanceGateway(
+                ownChargesResult = SaqzResult.Success(ChargeList(listOf(ownCharge("mensal", month = "2026-08")))),
+            ),
+        )
+
+        assertFalse(viewModel.state.value.showGroupPix)
+    }
+
+    @Test
+    fun `group pix is absent with receiving in the app and without a key`() = runTest {
+        val receiving = FakeGroupGateway(
+            readResult = SaqzResult.Success(
+                sampleVersionedGroup(
+                    sampleGroup(role = GroupRole.ATHLETE).let { group ->
+                        group.copy(profile = group.profile?.copy(pixKey = "ceret@volei.com.br"), receivablesActive = true)
+                    },
+                ),
+            ),
+        )
+
+        assertNull(viewModel(groupGateway = receiving).state.value.groupPix)
+        assertNull(viewModel(groupGateway = adminGroupWithPix(null)).state.value.groupPix)
+    }
+
     private fun adminGroupWithPix(pixKey: String?) = FakeGroupGateway(
         readResult = SaqzResult.Success(
             sampleVersionedGroup(

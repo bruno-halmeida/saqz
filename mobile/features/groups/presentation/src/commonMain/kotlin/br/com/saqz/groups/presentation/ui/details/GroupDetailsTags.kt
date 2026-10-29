@@ -66,6 +66,8 @@ internal object GroupDetailsTags {
     const val Checklist = "group-details-checklist"
     const val ChecklistSnooze = "group-details-checklist-snooze"
     const val PixKeyNotice = "group-details-pix-key-notice"
+    const val GroupPix = "group-details-group-pix"
+    const val GroupPixCopy = "group-details-group-pix-copy"
 
     fun checklistItem(item: GroupChecklistItem) = "group-details-checklist-${item.name.lowercase()}"
 
