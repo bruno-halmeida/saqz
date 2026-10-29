@@ -1219,27 +1219,31 @@ class GameDetailViewModel(
     }
 
     /**
-     * PROM-010: o avulso na espera de grupo com pagamento antecipado vê a caixa de pagar. A diária vem de Minhas
-     * cobranças (a nascida no Vou); sem ela, a caixa mostra o valor do jogo como pendente.
+     * PROM-010: o avulso na espera de grupo com pagamento antecipado vê a caixa de pagar só quando Minhas cobranças traz
+     * a diária daquele jogo (dele, sem convidado) pendente ou recebida. Quem já estava na espera quando a opção foi ligada
+     * não tem diária (ela nasce ao Colocar): sem ela, enquanto carrega, dispensada, cancelada ou com falha, sem caixa.
      */
     private fun loadAdvancePayment(generation: Int, game: Game, status: AttendanceStatus?) {
-        val fee = game.gameFeeCents
-        if (!advancePayment || fee == null || status != AttendanceStatus.Waitlisted ||
-            membershipType != AthleteMembershipType.AVULSO
-        ) {
-            update { it.copy(advancePayment = null) }
-            return
-        }
-        val pending = AdvancePaymentUi(formatBrlShort(fee), paid = false, pixKey = groupPixKey, payInApp = groupReceivablesActive)
-        update { it.copy(advancePayment = it.advancePayment ?: pending) }
+        update { it.copy(advancePayment = null) }
         val gateway = athleteFinance ?: return
+        if (!advancePayment || game.gameFeeCents == null || status != AttendanceStatus.Waitlisted ||
+            membershipType != AthleteMembershipType.AVULSO
+        ) return
         viewModelScope.launch {
             val charges = (gateway.ownCharges(GroupId(groupId)) as? SaqzResult.Success)?.value ?: return@launch
             if (generation != loadGeneration) return@launch
-            val own = charges.charges.firstOrNull { it.gameId == gameId && it.guestDisplayName == null }
-            val paid = own?.status == br.com.saqz.groups.domain.finance.ChargeStatus.Paid
+            val own = charges.charges.firstOrNull { it.gameId == gameId && it.guestDisplayName == null } ?: return@launch
+            val paid = when (own.status) {
+                br.com.saqz.groups.domain.finance.ChargeStatus.Pending -> false
+                br.com.saqz.groups.domain.finance.ChargeStatus.Paid -> true
+                else -> return@launch
+            }
             update {
-                it.copy(advancePayment = pending.copy(amount = formatBrlShort(own?.amountCents ?: fee), paid = paid))
+                it.copy(
+                    advancePayment = AdvancePaymentUi(
+                        formatBrlShort(own.amountCents), paid, pixKey = groupPixKey, payInApp = groupReceivablesActive,
+                    ),
+                )
             }
         }
     }

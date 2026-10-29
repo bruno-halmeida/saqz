@@ -181,6 +181,7 @@ class GameDetailAdvancePaymentTest {
         status: AttendanceStatus = AttendanceStatus.Waitlisted,
         type: AthleteMembershipType = AthleteMembershipType.AVULSO,
         receivables: Boolean = false,
+        failing: Boolean = false,
     ): GameDetailViewModel {
         val attendance = FakeAttendanceGateway(
             readResult = SaqzResult.Success(
@@ -207,7 +208,9 @@ class GameDetailAdvancePaymentTest {
                     ),
                 ),
             ),
-            athleteFinance = FakeAthleteFinanceGateway(SaqzResult.Success(ChargeList(charges))),
+            athleteFinance = FakeAthleteFinanceGateway(
+                if (failing) SaqzResult.Failure(FinanceError.Forbidden) else SaqzResult.Success(ChargeList(charges)),
+            ),
         )
     }
 
@@ -219,7 +222,7 @@ class GameDetailAdvancePaymentTest {
 
     @Test
     fun `with receivables active the box offers the existing Pagar`() = runTest {
-        assertEquals(true, avulso(receivables = true).state.value.advancePayment?.payInApp)
+        assertEquals(true, avulso(listOf(charge("c-1", ChargeStatus.Pending)), receivables = true).state.value.advancePayment?.payInApp)
     }
 
     @Test
@@ -228,9 +231,24 @@ class GameDetailAdvancePaymentTest {
     }
 
     @Test
+    fun `without a diária for this game there is no box - joined before the option was on`() = runTest {
+        assertNull(avulso().state.value.advancePayment)
+        assertNull(avulso(listOf(charge("c-1", ChargeStatus.Pending).copy(gameId = "outro-jogo"))).state.value.advancePayment)
+        assertNull(avulso(listOf(charge("c-1", ChargeStatus.Pending).copy(guestDisplayName = "Júlia"))).state.value.advancePayment)
+        assertNull(avulso(listOf(charge("c-1", ChargeStatus.Waived))).state.value.advancePayment)
+        assertNull(avulso(listOf(charge("c-1", ChargeStatus.Cancelled))).state.value.advancePayment)
+    }
+
+    @Test
+    fun `a failed read of Minhas cobranças shows no box`() = runTest {
+        assertNull(avulso(failing = true).state.value.advancePayment)
+    }
+
+    @Test
     fun `mensalistas and confirmed people see no box`() = runTest {
-        assertNull(avulso(type = AthleteMembershipType.MENSALISTA).state.value.advancePayment)
-        assertNull(avulso(status = AttendanceStatus.Confirmed).state.value.advancePayment)
+        val pending = listOf(charge("c-1", ChargeStatus.Pending))
+        assertNull(avulso(pending, type = AthleteMembershipType.MENSALISTA).state.value.advancePayment)
+        assertNull(avulso(pending, status = AttendanceStatus.Confirmed).state.value.advancePayment)
     }
 
     private fun charge(id: String, status: ChargeStatus) = Charge(
