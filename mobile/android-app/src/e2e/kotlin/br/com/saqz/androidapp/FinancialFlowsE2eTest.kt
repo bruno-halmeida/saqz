@@ -104,9 +104,15 @@ internal class PaymentE2eTest : InstalledE2e("payments") {
     }
 
     private fun recordCourtExpense() {
-        // Caixa novo (4782689be, DEB-148): "Saída" abre a tela da saída, com a data de hoje já escolhida.
+        // Caixa novo (4782689be, DEB-148): "Saída" abre a tela da saída com o hoje do aparelho. O emulador do CI fica em
+        // UTC e, depois das 21h de Brasília, o hoje dele já é amanhã: escolhe no calendário o dia de São Paulo.
         click("group-cashbox-expense", scroll = true)
         waitTag("finance-new-entry")
+        click("finance-new-entry-date", scroll = true)
+        waitTag("finance-new-entry-date-picker")
+        click("game-picker-day-${data.getString("financialToday")}", scroll = true)
+        click("finance-new-entry-date-save")
+        waitGone("finance-new-entry-date-save")
         input("finance-new-entry-amount", "120,00")
         input("finance-new-entry-description", expenseDescription)
         selectOption("finance-new-entry-category", "Quadra")
