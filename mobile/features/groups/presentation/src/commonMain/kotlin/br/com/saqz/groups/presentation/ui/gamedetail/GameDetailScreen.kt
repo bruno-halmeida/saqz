@@ -49,6 +49,7 @@ import br.com.saqz.groups.presentation.gamedetail.GameDetailResponseUi
 import br.com.saqz.groups.presentation.gamedetail.GameGuestRowUi
 import br.com.saqz.groups.presentation.gamedetail.GamePositionUi
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.PixCopiedToast
 import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.groups.resources.Res
 import br.com.saqz.groups.resources.game_detail_cancel
@@ -173,6 +174,11 @@ internal fun GameDetailScreen(
         RefreshFailedToast(
             visible = state.refreshFailed,
             onDismiss = { onIntent(GameDetailIntent.DismissRefreshFailed) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+        PixCopiedToast(
+            visible = state.pixCopied,
+            onDismiss = { onIntent(GameDetailIntent.DismissPixCopied) },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }

@@ -127,6 +127,18 @@ class DiariaCaixaScreenshotTest {
 
     @Test fun revisaoMenu() = capture("revisao-menu") { UnchargedReviewScreen(revisao.copy(menuKey = "duda/0"), {}, {}) }
 
+    @Test fun revisaoComoPagou() = capture("revisao-como-pagou") {
+        UnchargedReviewScreen(revisao.copy(methodMenuKey = revisao.rows.first { it.decision == ReviewDecision.Paid }.key), {}, {})
+    }
+
+    @Test fun revisaoSoCobrancas() = capture("revisao-so-cobrancas") {
+        UnchargedReviewScreen(revisao.copy(rows = revisao.rows.map { it.copy(decision = ReviewDecision.Charge) }), {}, {})
+    }
+
+    @Test fun caixaPixCopiado() = capture("caixa-pix-copiado") { GroupCashboxScreen(caixa.copy(pixCopied = true), {}, {}) }
+
+    @Test fun acertoPixCopiado() = capture("acerto-pix-copiado") { GameSettlementScreen(acerto.copy(pixCopied = true), {}, {}) }
+
     @Test fun revisao360FonteGrande() = capture("revisao-360-fonte-grande", narrow = true, bigFont = true) {
         UnchargedReviewScreen(revisao, {}, {})
     }

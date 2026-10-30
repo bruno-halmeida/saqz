@@ -30,6 +30,12 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalTestApi::class)
 class GameDetailScreenTest {
     @Test
+    fun `copied group Pix shows the notice DEB-151`() = runComposeUiTest {
+        setScreen(state = GameDetailPreviewData.admin.copy(pixCopied = true))
+        onNodeWithText("Pix do grupo copiado.").assertExists()
+    }
+
+    @Test
     fun `cancel action is hidden for cancelled games`() = runComposeUiTest {
         setScreen(GameDetailStatusTone.Cancelled, menuOpen = true)
 

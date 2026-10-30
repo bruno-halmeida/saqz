@@ -141,7 +141,6 @@
     <string name="home_own_charge_competence_monthly">Mensalidade de %1$s</string>
     <string name="home_own_charge_pix_receiver">Pix de %1$s</string>
     <string name="home_own_charge_copied">Chave copiada</string>
-    <string name="home_toast_pix_copied">Chave copiada. Depois de pagar, o admin dá baixa.</string>
     <!-- Primeiro acesso · onboarding da Início, só até o primeiro grupo existir -->
     <string name="home_first_access_subtitle">Boas-vindas ao Saqz</string>
     <string name="home_first_access_kicker">COMECE POR AQUI</string>

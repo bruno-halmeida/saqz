@@ -14,6 +14,8 @@ data class GroupCashboxState(
     val isRefreshing: Boolean = false,
     /** O último puxar falhou: o caixa fica e o aviso aparece. */
     val refreshFailed: Boolean = false,
+    /** DEB-151: o Pix do grupo acabou de ser copiado; a UI mostra o aviso e manda `DismissPixCopied`. */
+    val pixCopied: Boolean = false,
     val loadFailed: Boolean = false,
     val groupName: String = "",
     val monthKey: String = "",
@@ -196,6 +198,8 @@ sealed interface GroupCashboxIntent {
     data object PullRefresh : GroupCashboxIntent
 
     data object DismissRefreshFailed : GroupCashboxIntent
+
+    data object DismissPixCopied : GroupCashboxIntent
     data object ChargeMissing : GroupCashboxIntent
     data class ChargeIndividual(val chargeId: String) : GroupCashboxIntent
     data object Register : GroupCashboxIntent

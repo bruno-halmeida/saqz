@@ -85,6 +85,16 @@ class GroupCashboxViewModelTest {
     }
 
     @Test
+    fun `copying the group Pix emits the key and shows the notice until dismissed DEB-151`() = runTest {
+        val viewModel = viewModel()
+        viewModel.onIntent(GroupCashboxIntent.CopyPix)
+        assertEquals(GroupCashboxEffect.CopyPix("pix@saqz.com"), viewModel.effects.first())
+        assertTrue(viewModel.state.value.pixCopied)
+        viewModel.onIntent(GroupCashboxIntent.DismissPixCopied)
+        assertFalse(viewModel.state.value.pixCopied)
+    }
+
+    @Test
     fun `overdue banner uses generic copy when debtors span multiple months`() = runTest {
         val julyCamila = defaultCharges[3].copy(
             id = "monthly-july-camila",

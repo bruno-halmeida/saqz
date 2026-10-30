@@ -50,6 +50,12 @@ class GroupCashboxScreenTest {
     }
 
     @Test
+    fun `copied group Pix shows the notice DEB-151`() = runComposeUiTest {
+        setScreen(loadedState.copy(pixCopied = true), {})
+        onNodeWithText("Pix do grupo copiado.").assertExists()
+    }
+
+    @Test
     fun `debtor menu has charge waive only for who withdrew and cancel`() = runComposeUiTest {
         val intents = mutableListOf<GroupCashboxIntent>()
         setScreen(loadedState.copy(debtorMenuChargeId = "charge-1"), intents::add)

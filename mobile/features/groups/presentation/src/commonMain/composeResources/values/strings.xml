@@ -292,4 +292,6 @@
     <string name="group_setup_currency_prefix">R$</string>
     <!-- Puxar para atualizar (GER-002) que falhou: o que estava na tela fica. -->
     <string name="refresh_failed">Não foi possível atualizar. Verifique sua conexão e tente de novo.</string>
+    <!-- DEB-151: toda cópia do Pix (jogo, grupo, Início, caixa, acerto) avisa na tela; é sempre a chave do grupo. -->
+    <string name="pix_copied">Pix do grupo copiado.</string>
 </resources>

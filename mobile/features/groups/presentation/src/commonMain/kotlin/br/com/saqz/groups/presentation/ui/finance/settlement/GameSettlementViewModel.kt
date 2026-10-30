@@ -93,7 +93,9 @@ class GameSettlementViewModel(
             GameSettlementIntent.DismissReceiptSheet -> update { it.copy(receiptSheetChargeId = null) }
             GameSettlementIntent.CopyPix -> state.value.pix?.let { pix ->
                 emit(GameSettlementEffect.CopyPix(pix.key))
+                update { it.copy(pixCopied = true) }
             }
+            GameSettlementIntent.DismissPixCopied -> update { it.copy(pixCopied = false) }
             GameSettlementIntent.OpenCourtExpense -> if (!state.value.isLoading) {
                 emit(GameSettlementEffect.OpenNewEntry(groupId, state.value.gameLocalDate))
             }

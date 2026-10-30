@@ -54,6 +54,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -179,6 +180,17 @@ class GameSettlementViewModelTest {
         assertEquals(0, finance.expensesCalls)
         assertEquals(listOf("member-avulso-paid", "member-avulso-pending"), state.diarists.map { it.memberId })
         assertFalse(state.isSummary)
+    }
+
+    @Test
+    fun `copying the group Pix emits the key and shows the notice until dismissed DEB-151`() = runTest {
+        val viewModel = viewModel(SettlementFinanceGateway(charges = charges(), expenses = expenses()))
+        val key = assertNotNull(viewModel.state.value.pix).key
+        viewModel.onIntent(GameSettlementIntent.CopyPix)
+        assertEquals(GameSettlementEffect.CopyPix(key), viewModel.effects.first())
+        assertTrue(viewModel.state.value.pixCopied)
+        viewModel.onIntent(GameSettlementIntent.DismissPixCopied)
+        assertFalse(viewModel.state.value.pixCopied)
     }
 
     @Test

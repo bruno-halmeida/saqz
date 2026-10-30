@@ -69,6 +69,7 @@ class GroupCashboxViewModel(
             GroupCashboxIntent.Refresh -> refresh()
             GroupCashboxIntent.PullRefresh -> pullRefresh()
             GroupCashboxIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
+            GroupCashboxIntent.DismissPixCopied -> update { it.copy(pixCopied = false) }
             GroupCashboxIntent.ChargeMissing -> openChargeSheet()
             is GroupCashboxIntent.ChargeIndividual -> openChargeSheet(intent.chargeId)
             GroupCashboxIntent.Register, GroupCashboxIntent.NewIncome -> emit(GroupCashboxEffect.OpenNewEntry(groupId))
@@ -120,6 +121,7 @@ class GroupCashboxViewModel(
             GroupCashboxIntent.OpenPixSetup -> emit(GroupCashboxEffect.OpenGroupSettings(groupId))
             GroupCashboxIntent.CopyPix -> state.value.pix?.let {
                 emit(GroupCashboxEffect.CopyPix(it.key))
+                update { s -> s.copy(pixCopied = true) }
             }
             is GroupCashboxIntent.MarkReceived -> markReceived(intent.chargeId, intent.paidMethod)
         }

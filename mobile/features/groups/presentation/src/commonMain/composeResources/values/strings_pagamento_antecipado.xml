@@ -10,7 +10,6 @@
     <string name="advance_payment_box_title">Pague %1$s para entrar</string>
     <string name="advance_payment_box_body">A vaga é liberada pelo organizador depois do pagamento.</string>
     <string name="advance_payment_copy_pix">Copiar o Pix do grupo</string>
-    <string name="advance_payment_pix_copied">Pix do grupo copiado.</string>
     <string name="advance_payment_paid">Pagamento recebido. O organizador libera a vaga.</string>
     <string name="advance_payment_roster_footer">O organizador coloca quem já pagou.</string>
     <!-- Espera do organizador -->

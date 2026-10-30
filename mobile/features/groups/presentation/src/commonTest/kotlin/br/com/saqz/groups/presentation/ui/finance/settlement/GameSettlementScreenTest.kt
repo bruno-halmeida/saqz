@@ -29,6 +29,12 @@ class GameSettlementScreenTest {
     }
 
     @Test
+    fun `copied group Pix shows the notice DEB-151`() = runComposeUiTest {
+        setScreen(progressState.copy(pixCopied = true), {})
+        onNodeWithText("Pix do grupo copiado.").assertExists()
+    }
+
+    @Test
     fun `blue header with played paid and due then diaries monthly line exits and charge footer`() = runComposeUiTest {
         val intents = mutableListOf<GameSettlementIntent>()
         setScreen(progressState, intents::add)

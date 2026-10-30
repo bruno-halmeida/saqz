@@ -652,7 +652,7 @@ class HomeScreenTest {
     fun `pix copied toast renders the manual settlement hint`() = runComposeUiTest {
         setScreen(nextGameState().copy(toast = br.com.saqz.groups.presentation.home.HomeToast.PixCopied))
 
-        onNodeWithText("Chave copiada. Depois de pagar, o admin dá baixa.").assertIsDisplayed()
+        onNodeWithText("Pix do grupo copiado.").assertIsDisplayed()
     }
 
     @Test

@@ -175,6 +175,7 @@ class GameDetailViewModel(
             GameDetailIntent.Retry, GameDetailIntent.Refresh -> reload(intent)
             GameDetailIntent.PullRefresh -> pullRefresh()
             GameDetailIntent.DismissRefreshFailed -> update { it.copy(refreshFailed = false) }
+            GameDetailIntent.DismissPixCopied -> update { it.copy(pixCopied = false) }
             GameDetailIntent.Edit -> {
                 update { it.copy(gameMenuOpen = false) }
                 emit(GameDetailEffect.OpenEditor)
@@ -204,7 +205,10 @@ class GameDetailViewModel(
             }
             GameDetailIntent.DismissAdvancePlace -> update { it.copy(advancePlaceRowId = null) }
             is GameDetailIntent.ConfirmAdvancePlace -> confirmAdvancePlace(intent.markPaid, intent.reason)
-            GameDetailIntent.CopyGroupPix -> state.value.advancePayment?.pixKey?.let { emit(GameDetailEffect.CopyPix(it)) }
+            GameDetailIntent.CopyGroupPix -> state.value.advancePayment?.pixKey?.let {
+                emit(GameDetailEffect.CopyPix(it))
+                update { s -> s.copy(pixCopied = true) }
+            }
             GameDetailIntent.PayAdvance -> if (state.value.advancePayment?.payInApp == true) {
                 emit(GameDetailEffect.OpenPayment(groupId, groupName.orEmpty()))
             }

@@ -91,7 +91,7 @@ import br.com.saqz.groups.resources.home_toast_confirmed
 import br.com.saqz.groups.resources.home_toast_declined
 import br.com.saqz.groups.resources.home_toast_entry_request_cancel_failed
 import br.com.saqz.groups.resources.home_toast_entry_request_canceled
-import br.com.saqz.groups.resources.home_toast_pix_copied
+import br.com.saqz.groups.resources.pix_copied
 import br.com.saqz.groups.presentation.ui.components.lateNoticeText
 import br.com.saqz.groups.resources.home_toast_waitlisted
 import br.com.saqz.groups.resources.home_toast_waitlisted_late
@@ -321,7 +321,7 @@ private fun HomeContent(
                             HomeToast.Waitlisted -> Res.string.home_toast_waitlisted
                             HomeToast.WaitlistedManual -> Res.string.home_toast_waitlisted_manual
                             HomeToast.WaitlistedAfterDeadline -> Res.string.home_toast_waitlisted_late
-                            HomeToast.PixCopied -> Res.string.home_toast_pix_copied
+                            HomeToast.PixCopied -> Res.string.pix_copied
                             HomeToast.EntryRequestCanceled -> Res.string.home_toast_entry_request_canceled
                             HomeToast.EntryRequestCancelFailed -> Res.string.home_toast_entry_request_cancel_failed
                             HomeToast.RefreshFailed -> Res.string.refresh_failed

@@ -28,6 +28,8 @@ data class GameSettlementState(
     val diarists: List<GameSettlementDiaristUi> = emptyList(),
     val debtors: List<DebtorUi> = emptyList(),
     val pix: PixUi? = null,
+    /** DEB-151: o Pix do grupo acabou de ser copiado; a UI mostra o aviso e manda `DismissPixCopied`. */
+    val pixCopied: Boolean = false,
     val updatingChargeId: String? = null,
     val operationFailed: Boolean = false,
     val chargeSheetOpen: Boolean = false,
@@ -147,6 +149,7 @@ sealed interface GameSettlementIntent {
     data object DismissChargeSheet : GameSettlementIntent
     data object DismissReceiptSheet : GameSettlementIntent
     data object CopyPix : GameSettlementIntent
+    data object DismissPixCopied : GameSettlementIntent
     data object OpenCourtExpense : GameSettlementIntent
     data object EndSettlement : GameSettlementIntent
     data object OpenCashbox : GameSettlementIntent

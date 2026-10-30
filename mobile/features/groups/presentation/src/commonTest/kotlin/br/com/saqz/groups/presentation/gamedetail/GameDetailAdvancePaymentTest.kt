@@ -34,6 +34,7 @@ import br.com.saqz.groups.presentation.sampleVersionedGame
 import br.com.saqz.groups.presentation.sampleVersionedGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -218,6 +219,16 @@ class GameDetailAdvancePaymentTest {
     fun `the avulso on the waitlist sees the pending box with the group Pix`() = runTest {
         val box = assertNotNull(avulso(listOf(charge("c-1", ChargeStatus.Pending))).state.value.advancePayment)
         assertEquals(AdvancePaymentUi("R$ 20", paid = false, pixKey = "pix@grupo.com"), box)
+    }
+
+    @Test
+    fun `copying the group Pix emits the key and shows the notice until dismissed DEB-151`() = runTest {
+        val viewModel = avulso(listOf(charge("c-1", ChargeStatus.Pending)))
+        viewModel.onIntent(GameDetailIntent.CopyGroupPix)
+        assertEquals(GameDetailEffect.CopyPix("pix@grupo.com"), viewModel.effects.first())
+        assertEquals(true, viewModel.state.value.pixCopied)
+        viewModel.onIntent(GameDetailIntent.DismissPixCopied)
+        assertEquals(false, viewModel.state.value.pixCopied)
     }
 
     @Test

@@ -40,6 +40,7 @@ import br.com.saqz.designsystem.SaqzStatusChip
 import br.com.saqz.designsystem.SaqzTopAppBar
 import br.com.saqz.designsystem.theme.SaqzTheme
 import br.com.saqz.groups.presentation.photo.avatarSlot
+import br.com.saqz.groups.presentation.ui.PixCopiedToast
 import br.com.saqz.groups.presentation.ui.RefreshFailedToast
 import br.com.saqz.groups.presentation.ui.finance.CashGroupHeader
 import br.com.saqz.groups.presentation.ui.finance.CashLedgerRow
@@ -166,6 +167,11 @@ internal fun GroupCashboxScreen(
         RefreshFailedToast(
             visible = state.refreshFailed,
             onDismiss = { onIntent(GroupCashboxIntent.DismissRefreshFailed) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+        PixCopiedToast(
+            visible = state.pixCopied,
+            onDismiss = { onIntent(GroupCashboxIntent.DismissPixCopied) },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
         CashboxMenuSheet(state, onIntent)

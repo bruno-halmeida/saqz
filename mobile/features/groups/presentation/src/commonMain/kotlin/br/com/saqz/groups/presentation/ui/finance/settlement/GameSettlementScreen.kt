@@ -37,6 +37,7 @@ import br.com.saqz.groups.domain.finance.AppPaymentMethod
 import br.com.saqz.groups.domain.finance.ChargeStatus
 import br.com.saqz.groups.presentation.photo.avatarSlot
 import br.com.saqz.groups.presentation.ui.GroupLoadFailure
+import br.com.saqz.groups.presentation.ui.PixCopiedToast
 import br.com.saqz.groups.presentation.ui.finance.CashGroupHeader
 import br.com.saqz.groups.presentation.ui.finance.CashIconTile
 import br.com.saqz.groups.presentation.ui.finance.CashListRow
@@ -122,6 +123,11 @@ internal fun GameSettlementScreen(
                 else -> LoadedContent(state, onIntent)
             }
         }
+        PixCopiedToast(
+            visible = state.pixCopied,
+            onDismiss = { onIntent(GameSettlementIntent.DismissPixCopied) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
         DiaryMenuSheet(state, onIntent)
         ChargeSheet(
             open = state.chargeSheetOpen,

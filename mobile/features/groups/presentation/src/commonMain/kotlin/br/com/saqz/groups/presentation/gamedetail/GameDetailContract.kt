@@ -19,6 +19,8 @@ data class GameDetailState(
     val isRefreshing: Boolean = false,
     /** O último puxar falhou: o jogo fica e o aviso aparece. */
     val refreshFailed: Boolean = false,
+    /** DEB-151: o Pix do grupo acabou de ser copiado; a UI mostra o aviso e manda [GameDetailIntent.DismissPixCopied]. */
+    val pixCopied: Boolean = false,
     val loadFailed: Boolean = false,
     val error: GroupUiError? = null,
     val header: GameDetailHeaderUi? = null,
@@ -473,6 +475,8 @@ sealed interface GameDetailIntent {
     data object PullRefresh : GameDetailIntent
 
     data object DismissRefreshFailed : GameDetailIntent
+
+    data object DismissPixCopied : GameDetailIntent
     /** "Vou" / "Não vou" (e "Sair da lista", que é um "Não vou"): a resposta de quem olha. */
     data class Respond(val intent: AttendanceIntent) : GameDetailIntent
 
