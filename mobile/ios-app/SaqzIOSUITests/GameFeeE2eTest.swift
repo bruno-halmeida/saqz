@@ -100,14 +100,14 @@ final class GameFeeE2eTest: InstalledE2E {
         login("athlete")
         openGroup()
         waitTag("group-details-hero")
-        XCTAssertFalse(exists("group-details-game-fee-card"))
+        assertAbsent("group-details-game-fee-card")
         shot("atleta-grupo-sem-cartao")
 
         // O J1 (20h) é o próximo jogo, no topo do grupo; o J2 (22h) fica na agenda.
         tap("group-details-view-game")
         waitTag("game-detail")
         waitTag("game-detail-attendance-going")
-        XCTAssertFalse(exists("game-detail-fee-note"))
+        assertAbsent("game-detail-fee-note")
         shot("atleta-jogo-sem-diaria")
         back()
 

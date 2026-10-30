@@ -185,6 +185,33 @@ class InstalledE2E: XCTestCase {
         }
     }
 
+    /**
+     * Ausência de verdade: no iOS a árvore só traz o que está na tela, então `exists` falso pode ser só "abaixo da
+     * dobra". Vai ao topo e rola até o fim conferindo a cada passo que nenhum identificador de [tags] nem botão com o
+     * rótulo exato de [buttons] existe; no fim volta ao topo.
+     */
+    func assertAbsent(_ tags: [String], buttons: [String] = [], file: StaticString = #filePath, line: UInt = #line) {
+        let check = { (step: String) in
+            for tag in tags where self.element(tag).exists {
+                XCTFail("\(tag) está na tela (\(step))", file: file, line: line)
+            }
+            for label in buttons where self.app.buttons.matching(NSPredicate(format: "label == %@", label)).firstMatch.exists {
+                XCTFail("Botão \"\(label)\" está na tela (\(step))", file: file, line: line)
+            }
+        }
+        for _ in 0..<6 { app.swipeDown(velocity: .fast) }
+        check("topo")
+        for index in 1...12 {
+            app.swipeUp(velocity: .slow)
+            check("rolagem \(index)")
+        }
+        for _ in 0..<12 { app.swipeDown(velocity: .fast) }
+    }
+
+    func assertAbsent(_ tag: String, file: StaticString = #filePath, line: UInt = #line) {
+        assertAbsent([tag], file: file, line: line)
+    }
+
     func exists(_ tag: String, timeout: TimeInterval = 0) -> Bool {
         timeout > 0 ? element(tag).waitForExistence(timeout: timeout) : element(tag).exists
     }

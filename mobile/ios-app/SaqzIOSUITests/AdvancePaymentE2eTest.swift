@@ -16,7 +16,7 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         login("owner")
         openGroup()
         openEditGroup()
-        XCTAssertFalse(exists("group-game-config-advance-payment"))
+        assertAbsent("group-game-config-advance-payment")
         shot("ordem-de-chegada-sem-opcao")
         tapOption("group-game-config-promotion-mode", "Escolha manual")
         waitTag("group-game-config-advance-payment")
@@ -85,7 +85,7 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         tap("game-tab-waiting")
         lineContains(athleteId, "Falta pagar")
         lineContains("\(mensalId)#1", "não pagou")
-        XCTAssertFalse(exists("game-detail-advance-line-\(mensalId)"))
+        assertAbsent("game-detail-advance-line-\(mensalId)")
         waitText("Você escolhe quem entra. Pix e dinheiro chegam por fora: marque Recebi.")
         shot("gestor-espera-falta-pagar")
 

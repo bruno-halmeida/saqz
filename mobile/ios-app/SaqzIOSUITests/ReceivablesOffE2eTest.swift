@@ -32,14 +32,13 @@ final class ReceivablesOffE2eTest: InstalledE2E {
         login("athlete")
         openGroup()
         reveal(waitTag("group-details-own-charge-\(string(data["charge"]))"))
-        XCTAssertFalse(exists("group-details-own-charges-pay"))
-        XCTAssertFalse(app.buttons["Pagar"].exists)
+        assertAbsent(["group-details-own-charges-pay"], buttons: ["Pagar"])
         // A área de transferência é conferida pelo runner no fim (simctl pbpaste): o teste não lê o que o app copiou.
         tap("group-details-own-charges-pix-copy")
         shot("atleta-copia-pix-sem-pagar")
     }
 
     private func assertNoReceiving() {
-        for tag in receivingTags { XCTAssertFalse(exists(tag), "Recebimento pelo app à vista: \(tag)") }
+        assertAbsent(receivingTags)
     }
 }

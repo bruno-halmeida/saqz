@@ -14,7 +14,7 @@ final class GroupPixE2eTest: InstalledE2E {
         login("athlete")
         openGroup()
         reveal(waitTag("group-details-own-charge-\(charge)"))
-        XCTAssertFalse(exists("group-details-group-pix"))
+        assertAbsent("group-details-group-pix")
         waitContains(pixKey)
         shot("atleta-com-cobranca-sem-secao")
         backToShell()
@@ -60,7 +60,7 @@ final class GroupPixE2eTest: InstalledE2E {
         // Sem chave Pix (o grupo de praia), a seção não existe.
         openGroup(secondGroup)
         waitTag("group-details-people")
-        XCTAssertFalse(exists("group-details-group-pix"))
+        assertAbsent("group-details-group-pix")
         shot("grupo-sem-chave-sem-secao")
     }
 
