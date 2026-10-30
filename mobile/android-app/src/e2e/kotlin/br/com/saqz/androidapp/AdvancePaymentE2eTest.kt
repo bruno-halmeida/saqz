@@ -124,16 +124,34 @@ internal class AdvancePaymentE2eTest : InstalledE2e("advance-payment") {
         assertEquals("PAID", paid.getString("status"))
         assertTrue(paid.getBoolean("withdrew"))
         assertTrue(charges().single { it.getString("memberId") == actor("other").getString("id") }.getBoolean("waitlisted"))
-        val groupVersion = api("owner", "/api/groups/$group").getLong("version")
-        // Diferença registrada: o roteiro (A14) espera 403; o corpo parcial do roteiro volta 400 (a validação vem antes
-        // da permissão). Em qualquer caso a regra do grupo não muda.
-        api("athlete", "/api/groups/$group", "PUT", JSONObject().put("advancePaymentRequired", false), status = 400,
-            headers = mapOf("If-Match" to "\"$groupVersion\""))
-        assertTrue(api("owner", "/api/groups/$group").getJSONObject("gameConfig").getBoolean("advancePaymentRequired"))
+        // O atleta não dá Recebi: a rota de status com If-Match válido volta 403 e a cobrança não muda.
+        val otherCharge = charges().single { it.getString("memberId") == actor("other").getString("id") }
+        api("athlete", "/api/groups/$group/charges/${otherCharge.getString("id")}/status", "POST",
+            JSONObject().put("status", "PAID").put("paidMethod", "PIX"), status = 403,
+            headers = mapOf("If-Match" to "\"${otherCharge.getLong("version")}\""))
+        assertEquals(otherCharge.toString(), charges().single { it.getString("id") == otherCharge.getString("id") }.toString())
+
+        // Encerrado pela API, o acerto mostra quem desistiu e quem ficou na espera.
+        val version = api("owner", gamePath).getLong("version")
+        api("owner", "$gamePath/complete", "POST", headers = mapOf("If-Match" to "\"$version\""))
+        // Encerrado antes do horário, o jogo não está em "Jogos anteriores" nem no topo: a tela do jogo, ainda aberta,
+        // relê ao voltar ao primeiro plano e passa a oferecer o acerto.
+        ui.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+        ui.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        waitTag("game-detail")
+        ui.waitUntil(20_000) {
+            ui.onAllNodesWithTag("game-detail-settle").fetchSemanticsNodes().isNotEmpty() ||
+                ui.onAllNodesWithTag("game-detail-settle-view").fetchSemanticsNodes().isNotEmpty()
+        }
+        tap(if (ui.onAllNodesWithTag("game-detail-settle").fetchSemanticsNodes().isNotEmpty()) "game-detail-settle" else "game-detail-settle-view")
+        waitTag("game-settlement")
+        settlementRow(paid.getString("id"), "Desistiu")
+        settlementRow(otherCharge.getString("id"), "Na espera", "Não liberado")
+        shot("acerto-desistiu-e-na-espera")
+        backToShell()
 
         // Ordem de chegada desliga a opção, com o aviso.
         val before = charges().map { it.getString("id") to it.getString("status") }.toSet()
-        backToShell()
         openGroup()
         openEditGroup()
         selectOption("group-game-config-promotion-mode", "Ordem de chegada")
@@ -146,6 +164,17 @@ internal class AdvancePaymentE2eTest : InstalledE2e("advance-payment") {
         assertFalse(after.getBoolean("advancePaymentRequired"))
         assertEquals("FIFO", after.getString("promotionMode"))
         assertEquals(before, charges().map { it.getString("id") to it.getString("status") }.toSet())
+    }
+
+    /** Linha de "Não jogaram" no acerto com uma das etiquetas. */
+    private fun settlementRow(chargeId: String, vararg labels: String) {
+        val tag = "game-settlement-not-played-$chargeId"
+        waitTag(tag)
+        ui.onNodeWithTag(tag).performScrollTo()
+        val inRow = hasTestTag(tag) or hasAnyAncestor(hasTestTag(tag))
+        ui.waitUntil(20_000) {
+            labels.any { ui.onAllNodes(hasText(it) and inRow, true).fetchSemanticsNodes().isNotEmpty() }
+        }
     }
 
     private fun openEditGroup() {
