@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { deflateSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 
 /**
  * Roteiro 13 (DEB-146/147/148/150) e o adendo do dono (DEB-117, DEB-145, recebimento desligado): só precondições,
@@ -160,7 +160,9 @@ async function advance(ctx) {
 async function groupList(ctx) {
   const { sql, request, api, group, secondGroup, owner, athlete } = ctx;
   const third = randomUUID();
-  const png = solidPng(64, 64);
+  // GER-003 pede foto de verdade: a mesma quadra da landing, com as medidas lidas do próprio JPEG.
+  const photo = readFileSync(new URL('../../../../landing-page/assets/img/quadra-900.jpg', import.meta.url));
+  const { width, height } = jpegSize(photo);
   await sql(`BEGIN;
     INSERT INTO access_groups (id,owner_user_id,creation_key,name,time_zone,profile_status,modality,composition,
       default_capacity,default_game_fee_cents,mensalista_priority,auto_confirm_enabled,created_at,updated_at) VALUES
@@ -170,8 +172,8 @@ async function groupList(ctx) {
       ('${third}','${owner.id}','ADMIN','AVULSO',now(),now()),
       ('${third}','${athlete.id}','ATHLETE','MENSALISTA',now(),now());
     INSERT INTO group_photos (group_id,photo_bytes,media_type,byte_size,width,height,sha256_digest,updated_by,created_at,updated_at)
-      VALUES ('${group}',decode('${png.toString('hex')}','hex'),'image/png',${png.length},64,64,
-        decode('${createHash('sha256').update(png).digest('hex')}','hex'),'${owner.id}',now(),now());
+      VALUES ('${group}',decode('${photo.toString('hex')}','hex'),'image/jpeg',${photo.length},${width},${height},
+        decode('${createHash('sha256').update(photo).digest('hex')}','hex'),'${owner.id}',now(),now());
     COMMIT;`);
   const first = await game(ctx, { days: 2, time: '19:30', venue: 'Quadra Lista' });
   await confirm(ctx, first.id, owner);
@@ -188,28 +190,16 @@ async function appUpdate({ sql, owner }) {
   return {};
 }
 
-/** PNG RGB de uma cor só (azul da marca), montado à mão para não depender de arquivo. */
-function solidPng(width, height) {
-  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array(width).fill([0x1f, 0x4f, 0xd8]).flat())]);
-  const raw = Buffer.concat(Array(height).fill(row));
-  const chunk = (type, data) => {
-    const length = Buffer.alloc(4); length.writeUInt32BE(data.length);
-    const body = Buffer.concat([Buffer.from(type), data]);
-    const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body));
-    return Buffer.concat([length, body, crc]);
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4);
-  header[8] = 8; header[9] = 2;
-  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', header),
-    chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
-}
-
-function crc32(buffer) {
-  let crc = 0xffffffff;
-  for (const byte of buffer) {
-    crc ^= byte;
-    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+/** Largura e altura do JPEG, do primeiro marcador SOF (C0–CF, menos C4, C8 e CC). */
+function jpegSize(buffer) {
+  let offset = 2;
+  while (offset < buffer.length) {
+    const marker = buffer[offset + 1];
+    const length = buffer.readUInt16BE(offset + 2);
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { height: buffer.readUInt16BE(offset + 5), width: buffer.readUInt16BE(offset + 7) };
+    }
+    offset += 2 + length;
   }
-  return (crc ^ 0xffffffff) >>> 0;
+  throw new Error('JPEG sem SOF');
 }

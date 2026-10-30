@@ -30,6 +30,17 @@ automatiza os recortes abaixo; a contagem de testes não significa features inte
 | `SettlementE2eTest` | APP-AC01/R12, pendência e reabertura | Cobrança de jogo R$70 bloqueia encerrar; recebimento pela UI habilita conclusão; dois acionamentos não criam nova escrita; reabrir mostra acerto encerrado, mantendo pagamento único, elenco, jogo e extrato. Não induz resposta perdida. |
 | `PastGamesNoShowE2eTest` | JOGO-011 + PRES-016, jogos anteriores e faltou | Gestor abre o grupo → "Jogos anteriores" → jogo encerrado com "Acerto pendente"; ⋮ do avulso → "Marcar falta" leva-o à aba Faltaram (`noShow` no elenco); o acerto mostra "Faltou" e "Dispensar"; dispensar deixa a cobrança `WAIVED` e a linha da lista perde o "Acerto pendente"; o atleta, logado, segue em Jogaram, sem aba, marca ou ⋮, o elenco dele não traz a marca e a rota de anteriores responde 403; "Desfazer" devolve a Jogaram sem ressuscitar a diária. O jogo é levado ao passado por SQL na fixture. Não cobre o prazo de 7 dias nem convidado. |
 
+| `GameFeeE2eTest` (`game-fee`) | JOGO-008, roteiro 13 V1–V10 | Cartão "Defina o valor por jogo" só para o dono; editor sem escolha não salva ("Escolha o valor ou Sem diária."); Cobrar diária vazio ou 0 não salva; Sem diária cria o jogo e o grupo sem valor passa a Sem diária (cartão some); o avulso não vê a linha no jogo Sem diária e vê "Diária de R$ 20, cobrada ao confirmar" no de R$ 20, cujo Vou gera a diária pendente vencendo no dia do jogo. Não cobre o link de presença (V11), a sugestão da mensalidade (V12) nem Editar grupo (V8). |
+| `CashboxE2eTest` (`cashbox`) | FIN-006, roteiro 13 C1–C13 | Caixa zerado pergunta o saldo inicial → R$ 250 → ⋯ Saldo inicial → R$ 300; Saída de Quadra com o atalho R$ 120 e ontem pelo calendário; Entrada de Patrocínio sem atalhos; placar Entrou/Saiu/Falta receber troca a lista; extrato com o saldo inicial fixo e o filtro Saídas; Racha antigo aceito e Patrocínio com OUT recusado; saldo inicial negativo 400 e atleta 403. |
+| `UnchargedReviewE2eTest` (`uncharged-review`) | FIN-016, roteiro 13 R2–R11 | Jogo Sem diária que passou a R$ 20 (fixture) mostra "3 jogaram sem cobrança" no caixa e no acerto; revisão com R$ 10, Já pagou em Dinheiro e Não cobrar; cobranças certas pela API (vence hoje; CASH); reabrir cobra a convidada; mesmo requestId sem segundo efeito (`ignored` 1); atleta 403 e sem aviso novo; atleta vê a diária em Minhas cobranças. |
+| `GroupPixE2eTest` (`group-pix`) | FIN-008, roteiro 13 X2–X7 | Com diária em aberto, sem a seção (chave no cartão da cobrança); Recebi do gestor; seção "Pix do grupo" depois de Minhas cobranças com chave, tipo e Copiar (área de transferência conferida); gestor vê depois da Galera; grupo sem chave sem a seção. |
+| `AdvancePaymentE2eTest` (`advance-payment`) | PROM-010, roteiro 13 A1–A14, A17 | Opção só na Escolha manual; Vou do avulso → espera com "Pague R$ 20 para entrar", Pix copiado e diária pendente; gestor: Falta pagar → Recebi → Pagou → Colocar sem segunda diária; convidada pela folha "Colocar, já pagou", convidado por "Colocar e cobrar depois", mensalista sem folha; Não vou depois de pagar mantém PAID; Ordem de chegada desliga com o aviso. Não cobre o acerto depois do início ("Não liberado", A16): o teste não move o jogo para o passado. |
+| `GroupListE2eTest` (`group-list`) | GER-003 / DEB-145 | Três grupos em ordem (foto e sem resposta, sem foto com Vou, sem jogo) sob "3 grupos · 1 esperando sua resposta"; tocar fora da folha fecha sem responder; Vou → "Você vai"; Não vou pela API → "Não vai"; "Admin" só para o dono. |
+| `ReceivablesOffE2eTest` (`receivables-off`) | DEB-141/142/149, recebimento desligado | Gestor sem oferta, carteira ou revisão do recebimento no grupo, no caixa e em Editar grupo; atleta com diária copia a chave Pix, sem "Pagar". |
+| `AppUpdateE2eTest` (`app-update`) | DEB-117 / FLG-007, roteiro 11 F5 | Mínima acima do build → "Atualize o Saqz" com Google Play, que voltar e toque fora não fecham (na tela de entrada); recomendada fecha com "Agora não" e não volta; sem versão, nada. Devolve as versões a vazio no fim. |
+
+Os testes acima salvam prints de cada passo em `mobile/android-app/build/e2e-shots/<cenário>/` (e na pasta de artefatos).
+
 Fontes dos resultados esperados: [regressão](../../acceptance/app-regressao.feature),
 [ligações](../../acceptance/app-ligacoes.feature) e [financeiro](../../acceptance/financeiro-final.feature).
 Testes: [fontes Kotlin](../../../mobile/android-app/src/e2e/kotlin/br/com/saqz/androidapp).
@@ -58,7 +69,8 @@ Não configure credenciais de produção. A primeira execução pode baixar depe
 Para repetir apenas um recorte, use `--scenario NOME`. Nomes disponíveis:
 `access`, `leave`, `attendance`, `attendance-order`, `attendance-guest`, `attendance-list`, `communication`, `finance`,
 `notification-settings`, `reminders`, `sports-profile`, `member-privacy`,
-`monthly-history`, `payments`, `charge-lifecycle`, `settlement` e `past-games-no-show`. Exemplo:
+`monthly-history`, `payments`, `charge-lifecycle`, `settlement`, `past-games-no-show`, `game-fee`, `cashbox`,
+`uncharged-review`, `group-pix`, `advance-payment`, `group-list`, `receivables-off` e `app-update`. Exemplo:
 
 ```sh
 node tests/e2e/android/run.mjs --serial emulator-5554 --scenario finance
@@ -78,7 +90,7 @@ Nenhum teste de criação de grupo/plano é inferido do seed.
 
 ## Resultado e evidências
 
-Na execução completa, sucesso exige 18 casos executados, sem falhas, erros ou skips, em XML novo.
+Na execução completa, sucesso exige 26 casos executados, sem falhas, erros ou skips, em XML novo.
 Na execução focal, exige a contagem exata do recorte (dois em `access`, um nos demais). Build verde sem
 testes não conta. O processo retorna código diferente de zero em falha de preparação, teste ou limpeza.
 

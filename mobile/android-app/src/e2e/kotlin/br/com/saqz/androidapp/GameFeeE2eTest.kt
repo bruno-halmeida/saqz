@@ -65,8 +65,49 @@ internal class GameFeeE2eTest : InstalledE2e("game-fee") {
         waitGone("group-details-game-fee-card")
         shot("grupo-sem-cartao")
 
-        // J2 com R$ 20 (precondição pela API: o valor no editor já foi coberto acima).
+        // V8: Editar grupo → Valor por jogo (em Sem diária) → Cobrar diária R$ 20 → salva.
+        // Logo depois de marcar, o aviso "jogo marcado" ainda cobre o topo e pode engolir o primeiro toque.
+        waitGone("group-details-toast")
+        tap("group-details-edit-group")
+        try {
+            ui.waitUntil(5_000) { ui.onAllNodesWithTag("group-setup-submit").fetchSemanticsNodes().isNotEmpty() }
+        } catch (_: ComposeTimeoutException) {
+            tap("group-details-edit-group")
+        }
+        waitTag("group-setup-submit")
+        waitTag("group-setup-game-fee")
+        ui.onNodeWithTag("group-setup-game-fee").performScrollTo()
+        ui.onNodeWithTag("game-fee-choice-none", useUnmergedTree = true).assertIsSelected()
+        tap("game-fee-choice-charge")
+        input("game-fee-amount", "20,00")
+        shot("editar-grupo-cobrar-20")
+        tap("group-setup-submit")
+        waitGone("group-setup-submit")
+        ui.waitUntil(20_000) {
+            api("owner", "/api/groups/$group").getJSONObject("financeDefaults").optLong("defaultGameFeeCents") == 2000L
+        }
+        assertFalse(api("owner", "/api/groups/$group").getJSONObject("financeDefaults").getBoolean("defaultNoGameFee"))
+        // O J1 continua Sem diária.
+        assertTrue(api("owner", "$gamesPath/${noFee.getString("id")}").getBoolean("noGameFee"))
+
+        // J2 com R$ 20 (precondição pela API: o valor no editor já foi coberto acima). Com dois jogos, a agenda do
+        // grupo ganha o "Marcar jogo" (com um só, o topo mostra o jogo e não oferece marcar outro).
         val withFee = publishGame(data.getString("tomorrow"), "22:00", 2000, "Quadra J2")
+
+        // V9: o jogo novo já vem em Cobrar diária com R$ 20; sai sem salvar.
+        backToShell()
+        openGroup()
+        openEditor()
+        waitTag("game-editor-game-fee")
+        ui.onNodeWithTag("game-editor-game-fee").performScrollTo()
+        ui.onNodeWithTag("game-fee-choice-charge", useUnmergedTree = true).assertIsSelected()
+        ui.onNode(hasSetTextAction() and hasText("20,00", substring = true) and
+            (hasTestTag("game-fee-amount") or hasAnyAncestor(hasTestTag("game-fee-amount"))), true).assertExists()
+        shot("marcar-jogo-ja-com-20")
+        back()
+        if (ui.onAllNodesWithTag("game-editor").fetchSemanticsNodes().isNotEmpty()) back()
+        waitGone("game-editor")
+        assertEquals(2, games().length())
         backToShell()
         logout()
 
@@ -103,6 +144,7 @@ internal class GameFeeE2eTest : InstalledE2e("game-fee") {
     }
 
     private fun openEditor() {
+        waitTag("group-details")
         ui.waitUntil(20_000) {
             ui.onAllNodesWithTag("group-details-agenda-create").fetchSemanticsNodes().isNotEmpty() ||
                 ui.onAllNodesWithTag("group-details-create-next-game").fetchSemanticsNodes().isNotEmpty()
@@ -110,7 +152,9 @@ internal class GameFeeE2eTest : InstalledE2e("game-fee") {
         if (ui.onAllNodesWithTag("group-details-create-next-game").fetchSemanticsNodes().isNotEmpty()) {
             tap("group-details-create-next-game")
         } else {
-            tap("group-details-agenda-create")
+            // A tag fica no cabeçalho da agenda; o clicável ("Marcar jogo") é descendente dele.
+            ui.onNodeWithTag("group-details-agenda-create").performScrollTo()
+            ui.onNode(hasClickAction() and hasAnyAncestor(hasTestTag("group-details-agenda-create"))).performClick()
         }
         waitTag("game-editor")
     }
