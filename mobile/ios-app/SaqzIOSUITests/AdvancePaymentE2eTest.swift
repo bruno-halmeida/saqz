@@ -21,7 +21,12 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         tapOption("group-game-config-promotion-mode", "Escolha manual")
         waitTag("group-game-config-advance-payment")
         waitText("O avulso paga antes de entrar.")
-        tap("group-game-config-advance-payment")
+        // O identificador fica na linha; o interruptor é irmão dela, no mesmo retângulo.
+        let row = waitTag("group-game-config-advance-payment")
+        reveal(row)
+        let area = row.frame.insetBy(dx: -4, dy: -4)
+        let toggle = app.switches.allElementsBoundByIndex.first { area.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+        (toggle ?? row).tap()
         waitText("Vale para avulso e convidado. A diária nasce no Vou, com o Pix do grupo.")
         shot("escolha-manual-antecipado-ligado")
         tap("group-setup-submit")
@@ -114,15 +119,31 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         XCTAssertEqual(string(paid["status"]), "PAID")
         XCTAssertEqual(paid["withdrew"] as? Bool, true)
         XCTAssertEqual(charges().first { string($0["memberId"]) == string(actor("other")["id"]) }?["waitlisted"] as? Bool, true)
-        let groupVersion = int(api("owner", "/api/groups/\(group)")["version"])
-        // Como no Android: o corpo parcial do roteiro (A14) volta 400, não 403; a regra do grupo não muda.
-        api("athlete", "/api/groups/\(group)", method: "PUT", body: ["advancePaymentRequired": false], status: 400,
-            headers: ["If-Match": "\"\(groupVersion)\""])
-        XCTAssertEqual((api("owner", "/api/groups/\(group)")["gameConfig"] as? [String: Any])?["advancePaymentRequired"] as? Bool, true)
+        // O atleta não dá Recebi: a rota de status com If-Match válido volta 403 e a cobrança não muda.
+        let otherCharge = charges().first { string($0["memberId"]) == string(actor("other")["id"]) } ?? [:]
+        api("athlete", "/api/groups/\(group)/charges/\(string(otherCharge["id"]))/status", method: "POST",
+            body: ["status": "PAID", "paidMethod": "PIX"], status: 403, headers: ["If-Match": "\"\(int(otherCharge["version"]))\""])
+        XCTAssertEqual(NSDictionary(dictionary: charges().first { string($0["id"]) == string(otherCharge["id"]) } ?? [:]),
+                       NSDictionary(dictionary: otherCharge))
+
+        // Encerrado pela API, o acerto mostra quem desistiu e quem ficou na espera. Encerrado antes do horário, o jogo
+        // não está em "Jogos anteriores": a tela do jogo, ainda aberta, relê ao voltar ao primeiro plano.
+        let version = int(api("owner", gamePath)["version"])
+        api("owner", "\(gamePath)/complete", method: "POST", headers: ["If-Match": "\"\(version)\""])
+        XCUIDevice.shared.press(.home)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        app.activate()
+        waitTag("game-detail")
+        eventually("botão do acerto") { exists("game-detail-settle") || exists("game-detail-settle-view") }
+        tap(exists("game-detail-settle") ? "game-detail-settle" : "game-detail-settle-view")
+        waitTag("game-settlement")
+        settlementRow(string(paid["id"]), ["Desistiu"])
+        settlementRow(string(otherCharge["id"]), ["Na espera", "Não liberado"])
+        shot("acerto-desistiu-e-na-espera")
+        backToShell()
 
         // Ordem de chegada desliga a opção, com o aviso.
         let before = Set(charges().map { "\(string($0["id"]))=\(string($0["status"]))" })
-        backToShell()
         openGroup()
         openEditGroup()
         tapOption("group-game-config-promotion-mode", "Ordem de chegada")
@@ -135,6 +156,20 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         XCTAssertEqual(after["advancePaymentRequired"] as? Bool, false)
         XCTAssertEqual(string(after["promotionMode"]), "FIFO")
         XCTAssertEqual(Set(charges().map { "\(string($0["id"]))=\(string($0["status"]))" }), before)
+    }
+
+    /** Linha de "Não jogaram" no acerto com uma das etiquetas. */
+    private func settlementRow(_ chargeId: String, _ labels: [String]) {
+        let row = waitTag("game-settlement-not-played-\(chargeId)")
+        reveal(row)
+        let area = row.frame.insetBy(dx: -4, dy: -4)
+        eventually("\(labels) na linha \(chargeId)") {
+            labels.contains { label in
+                row.label.contains(label) ||
+                    app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", label)).allElementsBoundByIndex
+                        .contains { area.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+            }
+        }
     }
 
     private func openEditGroup() {

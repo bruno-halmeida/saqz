@@ -58,8 +58,42 @@ final class GameFeeE2eTest: InstalledE2E {
         waitGone("group-details-game-fee-card")
         shot("grupo-sem-cartao")
 
-        // J2 com R$ 20 (precondição pela API: o valor no editor já foi coberto acima).
+        // V8: Editar grupo → Valor por jogo (em Sem diária) → Cobrar diária R$ 20 → salva.
+        // Logo depois de marcar, o aviso "jogo marcado" ainda cobre o topo e pode engolir o primeiro toque.
+        waitGone("group-details-toast")
+        tap("group-details-edit-group")
+        if !exists("group-setup-submit", timeout: 5) { tap("group-details-edit-group") }
+        waitTag("group-setup-submit")
+        reveal(waitTag("group-setup-game-fee"))
+        XCTAssertTrue(isSelected("game-fee-choice-none"), "Editar grupo devia vir em Sem diária")
+        tap("game-fee-choice-charge")
+        type("game-fee-amount", "20,00")
+        shot("editar-grupo-cobrar-20")
+        tap("group-setup-submit")
+        waitGone("group-setup-submit")
+        eventually("grupo em R$ 20") {
+            int((api("owner", "/api/groups/\(group)")["financeDefaults"] as? [String: Any])?["defaultGameFeeCents"]) == 2000
+        }
+        XCTAssertEqual((api("owner", "/api/groups/\(group)")["financeDefaults"] as? [String: Any])?["defaultNoGameFee"] as? Bool, false)
+        // O J1 continua Sem diária.
+        XCTAssertEqual(api("owner", "\(gamesPath)/\(string(noFee["id"]))")["noGameFee"] as? Bool, true)
+
+        // J2 com R$ 20 (precondição pela API: o valor no editor já foi coberto acima). Com dois jogos, a agenda do
+        // grupo ganha o "Marcar jogo".
         let withFee = publishGame("22:00", fee: 2000)
+
+        // V9: o jogo novo já vem em Cobrar diária com R$ 20; sai sem salvar.
+        backToShell()
+        openGroup()
+        openEditor()
+        reveal(waitTag("game-editor-game-fee"))
+        XCTAssertTrue(isSelected("game-fee-choice-charge"), "Marcar jogo devia vir em Cobrar diária")
+        XCTAssertTrue(fieldValue("game-fee-amount").contains("20,00"), "Valor do editor: \(fieldValue("game-fee-amount"))")
+        shot("marcar-jogo-ja-com-20")
+        back()
+        if exists("game-editor", timeout: 2) { back() }
+        waitGone("game-editor")
+        XCTAssertEqual(games().count, 2)
         backToShell()
         logout()
 
@@ -97,8 +131,14 @@ final class GameFeeE2eTest: InstalledE2E {
     }
 
     private func openEditor() {
+        waitTag("group-details")
         eventually("botão de marcar jogo") { exists("group-details-agenda-create") || exists("group-details-create-next-game") }
-        tap(exists("group-details-create-next-game") ? "group-details-create-next-game" : "group-details-agenda-create")
+        if exists("group-details-create-next-game") {
+            tap("group-details-create-next-game")
+        } else {
+            // A tag fica no cabeçalho da agenda; o clicável ("Marcar jogo") é irmão dele, no mesmo retângulo.
+            tapOption("group-details-agenda-create", "Marcar jogo")
+        }
         waitTag("game-editor")
     }
 

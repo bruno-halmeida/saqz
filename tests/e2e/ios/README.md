@@ -15,12 +15,12 @@ que a conta logada é a do papel pedido.
 | `--scenario` | Classe | Cobre | Não cobre |
 | --- | --- | --- | --- |
 | `attendance-list` | `GroupListConfirmE2eTest` | GER-003: Confirmar na foto do grupo, Vou no jogo lotado → "Na espera", API WAITLISTED posição 1 | Jogo com posições, falha de rede |
-| `game-fee` | `GameFeeE2eTest` | JOGO-008 (V1–V10): cartão do valor só para o dono; editor sem escolha / Cobrar 0 não salva; Sem diária salva; avulso vê "Diária de R$ 20, cobrada ao confirmar" e o Vou gera a diária | Editar grupo (V8), link de presença (V11), sugestão ÷ 4 (V12) |
+| `game-fee` | `GameFeeE2eTest` | JOGO-008 (V1–V10): cartão do valor só para o dono; editor sem escolha / Cobrar 0 não salva; Sem diária salva; Editar grupo para Cobrar R$ 20 (V8) e o editor já com R$ 20 (V9); avulso vê "Diária de R$ 20, cobrada ao confirmar" e o Vou gera a diária | Link de presença (V11), sugestão ÷ 4 (V12) |
 | `cashbox` | `CashboxE2eTest` | FIN-006 (C1–C13): saldo inicial 250 → 300, saída de ontem com atalho R$ 120, entrada de patrocínio, placar, extrato e filtro, 400/403 da API | "Começar do zero" |
 | `uncharged-review` | `UnchargedReviewE2eTest` | FIN-016 (R2–R11): faixa no caixa e no acerto, revisão R$ 10 / Já pagou em dinheiro / Não cobrar, reabrir e cobrar a convidada, mesmo requestId, 403, sem aviso ao atleta | Central de avisos pela tela |
 | `group-pix` | `GroupPixE2eTest` | FIN-008 (X2–X7): sem a seção com cobrança aberta; Recebi; seção depois de Minhas cobranças (atleta) e da Galera (gestor); Copiar; grupo sem chave sem seção | Menu ⋮ do devedor (X3) |
 | `receivables-off` | `ReceivablesOffE2eTest` | DEB-141/142/149: gestor sem oferta/tela de recebimento no grupo, caixa e editar grupo; atleta copia o Pix sem "Pagar" | Recebimento ligado |
-| `advance-payment` | `AdvancePaymentE2eTest` | PROM-010 (A1–A14, A17): opção só na Escolha manual; espera com "Pague R$ 20 para entrar"; Falta pagar → Recebi → Colocar; folha do convidado; Não vou mantém a baixa; Ordem de chegada desliga | Acerto do jogo encerrado (A15–A16) |
+| `advance-payment` | `AdvancePaymentE2eTest` | PROM-010 (A1–A14, A17): opção só na Escolha manual; espera com "Pague R$ 20 para entrar"; Falta pagar → Recebi → Colocar; folha do convidado; Não vou mantém a baixa; Recebi do atleta pela API → 403; acerto com Desistiu e Na espera/Não liberado; Ordem de chegada desliga | Jogo levado ao passado (o acerto é aberto com o jogo encerrado antes do horário) |
 | `group-list` | `GroupListE2eTest` | DEB-145: três grupos em ordem, cabeçalho, tocar fora fecha sem responder, Vou → "Você vai", Não vou → "Não vai", Admin só do dono | Foto conferida só pela fixture (o print mostra) |
 | `app-update` | `AppUpdateE2eTest` | DEB-117 (F5): mínima do iOS acima → folha que não fecha ("Atualizar na App Store"; voltar e tocar fora não fecham); recomendada fecha uma vez; sem versão nada | O botão não abre a App Store no simulador: só se confere que existe |
 

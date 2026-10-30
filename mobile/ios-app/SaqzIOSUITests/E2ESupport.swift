@@ -155,6 +155,20 @@ class InstalledE2E: XCTestCase {
         return containing(label, in: container)
     }
 
+    /** Selecionado (traço de acessibilidade): no próprio elemento com o identificador ou no irmão dentro do retângulo. */
+    func isSelected(_ tag: String) -> Bool {
+        let container = waitTag(tag)
+        if container.isSelected { return true }
+        let area = container.frame.insetBy(dx: -4, dy: -4)
+        return app.descendants(matching: .any).matching(NSPredicate(format: "selected == true")).allElementsBoundByIndex
+            .contains { area.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+    }
+
+    /** Valor do campo editável que está no retângulo do identificador. */
+    func fieldValue(_ tag: String) -> String {
+        string(editable(in: waitTag(tag)).value)
+    }
+
     func tapOption(_ tag: String, _ label: String, file: StaticString = #filePath, line: UInt = #line) {
         let target = option(tag, label)
         XCTAssertTrue(target.waitForExistence(timeout: Self.timeout), "Sem a opção \(label) em \(tag)", file: file, line: line)
