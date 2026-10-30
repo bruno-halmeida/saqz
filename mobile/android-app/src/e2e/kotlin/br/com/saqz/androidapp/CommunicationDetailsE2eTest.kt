@@ -187,9 +187,11 @@ internal class ReminderE2eTest : InstalledE2e("reminders") {
         assertEquals(1, message.getInt("recipientCount"))
         val body = message.getString("body")
         assertTrue(body, body.startsWith("Jogo: "))
-        // DEB-022: o aviso manual traz o prazo ("dia da semana + hora", 2 h antes das 20h) e as vagas (2 de 4).
+        // DEB-022 + 7afc345e9: o aviso manual traz as vagas (2 de 4); a linha do prazo só aparece com a prioridade dos
+        // mensalistas ligada ("Prioridade dos mensalistas até …"), e o grupo do cenário tem a prioridade desligada.
         val details = body.substringAfter("\n")
-        assertTrue(details, Regex("^Local: Arena QA\n(?:Confirmações até [a-zç]{3} 18h00\nVagas: 2/4\n)").containsMatchIn(details))
+        assertTrue(details, Regex("^Local: Arena QA\nVagas: 2/4\n").containsMatchIn(details))
+        assertFalse(details, details.contains("Confirmações até") || details.contains("Prioridade dos mensalistas"))
         assertEquals(
             "✅ Confirmados:\nE2E reminders-admin\nE2E reminders-athlete\n\n❌ Fora:\nE2E reminders-declined",
             details.substringAfter("Vagas: 2/4\n\n"),

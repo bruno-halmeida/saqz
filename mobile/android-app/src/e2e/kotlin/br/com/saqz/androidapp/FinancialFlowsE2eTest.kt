@@ -1,7 +1,6 @@
 package br.com.saqz.androidapp
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -41,12 +40,14 @@ internal class PaymentE2eTest : InstalledE2e("payments") {
         backFromCashbox()
         waitText("Saldo $amount")
         click("group-details-cashbox", scroll = true)
-        waitTag("group-cashbox-generate-monthly")
+        waitTag("group-cashbox-menu")
         ui.onNodeWithText("Recebi").assertDoesNotExist()
         assertEquals(paid.toString(), assertPaidCharge(original).toString())
         recordCourtExpense()
         val expense = assertExpense()
         assertStatement(2, 12345, 12000)
+        // "Ver extrato" fica embaixo da lista de lançamentos (abas Entrou e Saiu).
+        click("group-cashbox-tab-out")
         click("group-cashbox-statement", scroll = true)
         waitText(expenseDescription)
         ui.onNodeWithText(expenseDescription).assertIsDisplayed()
@@ -103,16 +104,14 @@ internal class PaymentE2eTest : InstalledE2e("payments") {
     }
 
     private fun recordCourtExpense() {
-        click("group-cashbox-register", scroll = true)
-        waitTag("finance-new-entry-direction")
-        ui.onNode(hasText("Saída") and isSelectable()).performScrollTo().performClick()
+        // Caixa novo (4782689be, DEB-148): "Saída" abre a tela da saída, com a data de hoje já escolhida.
+        click("group-cashbox-expense", scroll = true)
+        waitTag("finance-new-entry")
         input("finance-new-entry-amount", "120,00")
         input("finance-new-entry-description", expenseDescription)
-        ui.onNode(hasText("Quadra") and isSelectable()).performScrollTo().performClick()
-        val date = data.getString("financialToday").split('-')
-        input("finance-new-entry-date", "${date[2]}/${date[1]}/${date[0]}")
-        click("finance-new-entry-save")
-        waitTag("group-cashbox-generate-monthly")
+        selectOption("finance-new-entry-category", "Quadra")
+        tap("finance-new-entry-save")
+        waitTag("group-cashbox-menu")
     }
 
     private fun assertExpense(): JSONObject {
@@ -245,17 +244,16 @@ internal class SettlementE2eTest : InstalledE2e("settlement") {
         assertLedger(api("owner", "/api/groups/$group/finance/statement"), 0, 0, 0)
         openCompletedGame()
         openSettlement()
-        waitTag("game-settlement-end")
-        ui.onNodeWithTag("game-settlement-end").performScrollTo().assertIsNotEnabled()
-        ui.onNodeWithTag("game-settlement-summary").assertDoesNotExist()
-        ui.onNodeWithText("0 de 1 avulso acertou · faltam R$\u00A070,00").performScrollTo().assertIsDisplayed()
+        // Acerto novo (966c2e769, DEB-147/150): sem "Encerrar acerto" nem resumo; a diária pendente tem Recebi na linha.
+        waitTag("game-settlement-receipt-${original.getString("id")}")
+        ui.onNodeWithTag("game-settlement-paid-${original.getString("id")}").assertDoesNotExist()
         assertEquals(before.toString(), api("owner", chargesPath).toString())
         click("game-settlement-receipt-${original.getString("id")}", scroll = true)
         waitTag("finance-receipt-amount")
         ui.onNode(hasText("R$\u00A070,00") and hasAnyAncestor(hasTestTag("finance-receipt-amount")), true).assertIsDisplayed()
         click("finance-receipt-confirm")
-        waitTag("game-settlement-summary")
-        waitEnabled("game-settlement-end")
+        waitTag("game-settlement-paid-${original.getString("id")}")
+        waitGone("game-settlement-receipt-${original.getString("id")}")
         val paid = api("owner", chargesPath)
         assertEquals(1, paid.getJSONArray("charges").length())
         assertEquals(0L, paid.getLong("pendingTotalCents"))
@@ -270,17 +268,14 @@ internal class SettlementE2eTest : InstalledE2e("settlement") {
         assertEquals("IN", item.getString("direction"))
         assertEquals(7000L, item.getLong("amountCents"))
         assertEquals("Cobrança · E2E settlement-athlete", item.getString("title"))
-        ui.onNodeWithTag("game-settlement-end").performScrollTo().assertIsEnabled()
-            .performSemanticsAction(SemanticsActions.OnClick) { close -> close(); close() }
+        // Sair e reabrir mostra a diária recebida, sem nova escrita.
+        back()
         waitTag("game-detail")
         ui.onNodeWithTag("game-settlement").assertDoesNotExist()
         openSettlement()
-        waitTag("game-settlement-summary")
-        waitEnabled("game-settlement-end")
-        ui.onNodeWithText("ENCERRADO").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("Recebido").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("1 avulso × R$\u00A070,00").performScrollTo().assertIsDisplayed()
-        assertSettlementReceived()
+        waitText("JOGO ENCERRADO")
+        waitTag("game-settlement-paid-${original.getString("id")}")
+        ui.onNodeWithTag("game-settlement-receipt-${original.getString("id")}").assertDoesNotExist()
         assertEquals(paid.toString(), api("owner", chargesPath).toString())
         assertEquals(statement.toString(), api("owner", "/api/groups/$group/finance/statement").toString())
         assertEquals(game.toString(), api("owner", gamePath).toString())
@@ -289,21 +284,6 @@ internal class SettlementE2eTest : InstalledE2e("settlement") {
         assertEquals(0, api("owner", "/api/groups/$group/expenses").getJSONArray("expenses").length())
         assertEquals(0, api("owner", "/api/groups/$secondGroup/charges").getJSONArray("charges").length())
         assertLedger(api("owner", "/api/groups/$secondGroup/finance/statement"), 0, 0, 0)
-    }
-
-    private fun assertSettlementReceived() {
-        val inSummary = hasAnyAncestor(hasTestTag("game-settlement-summary"))
-        val label = ui.onNode(hasText("1 avulso × R$\u00A070,00") and inSummary, true)
-            .performScrollTo().assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        // SummaryLine rows have no semantics node, so all summary values share a parent.
-        val besideReceived = SemanticsMatcher("value to the right of the diarist line on the same visible row") {
-            val value = it.boundsInRoot
-            value.left >= label.right && value.top < label.bottom && value.bottom > label.top
-        }
-        ui.onNode(hasText("R$\u00A070,00") and inSummary and hasAnySibling(hasText("1 avulso × R$\u00A070,00")) and besideReceived, true)
-            .assertIsDisplayed()
-        ui.onNode(hasText("Falta receber") and inSummary, true).performScrollTo().assertIsDisplayed()
-        ui.onNode(hasText("Resultado") and inSummary, true).assertDoesNotExist()
     }
 
     private fun openCompletedGame() {
@@ -317,8 +297,24 @@ internal class SettlementE2eTest : InstalledE2e("settlement") {
     }
 
     private fun openSettlement() {
-        waitText("Encerrar jogo e acertar")
-        ui.onNode(hasText("Encerrar jogo e acertar") and hasClickAction()).performScrollTo().performClick()
+        // Antes de acertar o botão é "Encerrar jogo e acertar"; depois, "Ver acerto".
+        ui.waitUntil(20_000) {
+            ui.onAllNodesWithTag("game-detail-settle").fetchSemanticsNodes().isNotEmpty() ||
+                ui.onAllNodesWithTag("game-detail-settle-view").fetchSemanticsNodes().isNotEmpty()
+        }
+        // A tela do jogo relê ao voltar do acerto e troca o botão: espera assentar e tenta de novo se ele sumir no toque.
+        ui.waitForIdle()
+        Thread.sleep(1_000)
+        repeat(3) {
+            val tag = if (ui.onAllNodesWithTag("game-detail-settle").fetchSemanticsNodes().isNotEmpty()) "game-detail-settle" else "game-detail-settle-view"
+            try {
+                tap(tag)
+                waitTag("game-settlement")
+                return
+            } catch (_: AssertionError) {
+                Thread.sleep(1_000)
+            }
+        }
         waitTag("game-settlement")
     }
 }

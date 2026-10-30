@@ -39,7 +39,7 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
 
         review("200,00")
         click("monthly-generation-confirm", scroll = true)
-        waitTag("group-cashbox-generate-monthly")
+        waitTag("group-cashbox-menu")
         val repeated = assertCharge()
         assertEquals(original.getString("id"), repeated.getString("id"))
         assertEquals(original.getLong("version"), repeated.getLong("version"))
@@ -64,7 +64,9 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
     }
 
     private fun review(value: String) {
-        click("group-cashbox-generate-monthly", scroll = true)
+        // Caixa novo (4782689be, DEB-148): "Criar cobranças do mês" fica no ⋯ do caixa.
+        click("group-cashbox-menu")
+        click("group-cashbox-generate-monthly")
         val selected = "monthly-generation-member-${actor("athlete").getString("id")}"
         val unselected = "monthly-generation-member-${actor("other").getString("id")}"
         waitTag(selected)
@@ -92,7 +94,7 @@ internal class MonthlyGenerationE2eTest : InstalledE2e("finance") {
 
     private fun confirm() {
         click("monthly-generation-confirm", scroll = true)
-        waitTag("group-cashbox-generate-monthly")
+        waitTag("group-cashbox-menu")
     }
 
     private fun charges(role: String) = api(role, "/api/groups/$group/charges${if (role == "owner") "" else "/me"}")

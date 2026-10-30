@@ -42,7 +42,11 @@ internal class PastGamesNoShowE2eTest : InstalledE2e("past-games-no-show") {
         val before = api("owner", chargesPath).getJSONArray("charges").getJSONObject(0)
         assertTrue(before.getBoolean("noShow"))
         assertEquals("PENDING", before.getString("status"))
-        click("game-settlement-waive-$charge", scroll = true)
+        // Acerto novo (966c2e769, DEB-147/150): na linha das Diárias, Dispensar fica no ⋮ da pessoa.
+        if (ui.onAllNodesWithTag("game-settlement-waive-$charge").fetchSemanticsNodes().isEmpty()) {
+            click("game-settlement-more-$charge", scroll = true)
+        }
+        tap("game-settlement-waive-$charge")
         click("finance-waive-confirm")
         ui.waitUntil(20_000) { ui.onAllNodesWithTag("game-settlement-waive-$charge").fetchSemanticsNodes().isEmpty() }
         val waived = api("owner", chargesPath)

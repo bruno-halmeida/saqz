@@ -43,10 +43,13 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         login("athlete")
         openGroup()
         click("group-details-view-game", scroll = true)
+        // DEB-116 (850770064): quem está na espera abre na aba Na espera; "Levar convidado" fica na lista de Vão.
+        click("game-tab-going")
         click("game-guest-add", scroll = true)
         input("game-guest-name", "Rafa Moreira")
         click("game-guest-submit")
         waitText("Rafa Moreira entrou na lista de espera.")
+        click("game-tab-waiting")
         waitTag("game-guest-row-$host#1")
         ui.onNodeWithText("Convidado seu").performScrollTo().assertIsDisplayed()
         var roster = api("athlete", "$attendancePath/roster")
@@ -60,9 +63,11 @@ internal class GameGuestE2eTest : InstalledE2e("attendance-guest") {
         assertEquals(0, api("athlete", attendancePath).getInt("declinedCount"))
 
         // 2) segundo convidado → guestSeq 2; sem limite
+        click("game-tab-going")
         click("game-guest-add", scroll = true)
         input("game-guest-name", "Ju Andrade")
         click("game-guest-submit")
+        click("game-tab-waiting")
         waitTag("game-guest-row-$host#2")
         back(); back()
         logout()

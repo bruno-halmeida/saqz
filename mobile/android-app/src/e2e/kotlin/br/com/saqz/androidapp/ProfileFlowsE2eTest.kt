@@ -68,7 +68,8 @@ internal class SportsProfileE2eTest : ProfileFlowE2e("sports-profile") {
 
     private fun assertCourtRegistration(position: String) {
         fieldText("athlete-registration-nickname", "Atleta Quadra")
-        fieldText("athlete-registration-height", "181")
+        // b94b57c04 (DEB-103): a altura virou seletor de toque e aparece como "1,81 m".
+        ui.onNode(hasText("1,81 m") and hasAnyAncestor(hasTestTag("athlete-registration-height")), useUnmergedTree = true).assertExists()
         ui.onNodeWithTag("athlete-registration-position-$position").assertIsSelected()
         ui.onNodeWithTag("athlete-registration-level-INTERMEDIARIO").assertIsSelected()
         ui.onNodeWithTag("athlete-registration-position-LEVANTADOR").assertIsNotSelected()
@@ -171,6 +172,7 @@ internal class MemberPrivacyE2eTest : ProfileFlowE2e("member-privacy") {
         ui.onNodeWithText("E2E member-privacy-athlete").assertDoesNotExist()
         ui.onNodeWithText("Atleta Quadra").assertDoesNotExist()
         ui.onNodeWithText("181 cm").assertDoesNotExist()
+        ui.onNodeWithText("1,81 m").assertDoesNotExist()
         ui.onNodeWithTag("group-details-own-charge-${data.getString("privateCharge")}").assertDoesNotExist()
         ui.onNodeWithText("R$\u00A0987,65").assertDoesNotExist()
         ui.onNodeWithText("Minhas cobranças").assertDoesNotExist()
