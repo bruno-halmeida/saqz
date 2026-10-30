@@ -17,6 +17,8 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         openGroup()
         openEditGroup()
         assertAbsent("group-game-config-advance-payment")
+        // A varredura volta ao topo: o seletor precisa estar de novo na tela, longe do botão fixo de salvar.
+        reveal(waitTag("group-game-config-promotion-mode"))
         shot("ordem-de-chegada-sem-opcao")
         tapOption("group-game-config-promotion-mode", "Escolha manual")
         waitTag("group-game-config-advance-payment")
