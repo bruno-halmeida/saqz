@@ -121,7 +121,8 @@ try {
   const classes = selected.map(scenario => `br.com.saqz.androidapp.${scenario.testClass}`).join(',');
   await command('./mobile/gradlew', ['-p', 'mobile', ':android-app:connectedDevDebugAndroidTest',
     '-Psaqz.e2e=true', `-Pandroid.testInstrumentationRunnerArguments.class=${classes}`,
-    '--console=plain'], { stdio: 'inherit', env: { ...process.env, ANDROID_SERIAL: serial } });
+    // 26 jornadas passam dos 15 min do limite geral: a etapa das jornadas tem 60 min.
+    '--console=plain'], { stdio: 'inherit', timeout: 3600000, env: { ...process.env, ANDROID_SERIAL: serial } });
   const entries = await readdir(reports, { recursive: true });
   const fresh = [];
   for (const entry of entries.filter(entry => entry.endsWith('.xml'))) {
