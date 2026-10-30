@@ -100,6 +100,15 @@ class GroupSettingsEndpointIntegrationTest {
     }
 
     @Test
+    fun `athlete sending only part of the profile receives access forbidden, not validation`() {
+        read.snapshot = snapshot(GroupRole.ATHLETE)
+
+        // DEB-155: era 400 porque o corpo era validado antes da permissão.
+        assertProblem(putProfile("""{"advancePaymentRequired":false}"""), 403, "ACCESS_FORBIDDEN")
+        assertTrue(write.commands.isEmpty())
+    }
+
+    @Test
     fun `nonmember receives group not found without write`() {
         read.snapshot = snapshot(role = null)
 

@@ -38,24 +38,17 @@ class UpdateGroupSettings(
         groupId: UUID,
         expectedVersion: Long,
         input: UpdateGroupProfileInput,
-    ): UpdateGroupSettingsResult {
-        val profileValidation = GroupProfileDefaultsValidator.validate(input.profile)
-        if (profileValidation is GroupProfileDefaultsValidation.Invalid) {
-            return UpdateGroupSettingsResult.InvalidProfile(profileValidation.errors)
-        }
-
-        return updateProfile(actor, groupId, expectedVersion, input, profileValidation).also {
+    ): UpdateGroupSettingsResult =
+        updateProfile(actor, groupId, expectedVersion, input).also {
             // Fora da transação: os repositórios de série abrem a própria conexão e só enxergam o commit.
             if (it is UpdateGroupSettingsResult.Success) scheduleSeries.sync(groupId)
         }
-    }
 
     private fun updateProfile(
         actor: UUID,
         groupId: UUID,
         expectedVersion: Long,
         input: UpdateGroupProfileInput,
-        profileValidation: GroupProfileDefaultsValidation,
     ): UpdateGroupSettingsResult =
         transactionRunner.inTransaction {
             val current = readRepository.find(GroupReadKey(actor, groupId))
@@ -65,6 +58,12 @@ class UpdateGroupSettings(
                 GroupAccessDecision.Forbidden -> return@inTransaction UpdateGroupSettingsResult.AccessForbidden
                 GroupAccessDecision.Allowed -> Unit
             }
+            // A permissão vem antes do corpo (DEB-155): o atleta recebe 403 mesmo com o perfil incompleto.
+            val validProfile = when (val validation = GroupProfileDefaultsValidator.validate(input.profile)) {
+                is GroupProfileDefaultsValidation.Invalid ->
+                    return@inTransaction UpdateGroupSettingsResult.InvalidProfile(validation.errors)
+                is GroupProfileDefaultsValidation.Valid -> validation.value
+            }
             if (current.version != expectedVersion) {
                 return@inTransaction UpdateGroupSettingsResult.VersionConflict
             }
@@ -73,7 +72,6 @@ class UpdateGroupSettings(
             if (input.attendanceUpdatesMode != null && input.attendanceUpdatesMode != currentMode && current.role != GroupRole.OWNER) {
                 return@inTransaction UpdateGroupSettingsResult.AccessForbidden
             }
-            val validProfile = (profileValidation as GroupProfileDefaultsValidation.Valid).value
             // A opção vale só com Escolha manual no resultado (DEB-150); ir para Ordem de chegada desliga no repositório.
             val resultingMode = validProfile.promotionMode ?: current.gameConfig?.promotionMode ?: PromotionMode.FIFO
             if (validProfile.advancePaymentRequired == true && resultingMode != PromotionMode.MANUAL) {
@@ -136,7 +134,6 @@ class UpdateGroupSettings(
             if (validName == null || ObjectionableText.contains(validName.value)) add(UpdateGroupSettingsField.NAME)
             if (validTimeZone == null) add(UpdateGroupSettingsField.TIME_ZONE)
         }
-        if (invalidFields.isNotEmpty()) return UpdateGroupSettingsResult.Invalid(invalidFields)
 
         return transactionRunner.inTransaction {
             val current = readRepository.find(GroupReadKey(actor, groupId))
@@ -146,6 +143,8 @@ class UpdateGroupSettings(
                 GroupAccessDecision.Forbidden -> return@inTransaction UpdateGroupSettingsResult.AccessForbidden
                 GroupAccessDecision.Allowed -> Unit
             }
+            // A permissão vem antes dos campos (DEB-155), como no perfil.
+            if (invalidFields.isNotEmpty()) return@inTransaction UpdateGroupSettingsResult.Invalid(invalidFields)
             if (current.version != expectedVersion) {
                 return@inTransaction UpdateGroupSettingsResult.VersionConflict
             }

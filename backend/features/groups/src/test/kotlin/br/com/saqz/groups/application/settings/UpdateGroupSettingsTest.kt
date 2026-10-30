@@ -86,18 +86,31 @@ class UpdateGroupSettingsTest {
     }
 
     @Test
-    fun `invalid name does not open a transaction`() {
+    fun `invalid name is reported without a write`() {
         assertInvalid(" ", "UTC", setOf(UpdateGroupSettingsField.NAME))
     }
 
     @Test
-    fun `invalid timezone does not open a transaction`() {
+    fun `invalid timezone is reported without a write`() {
         assertInvalid("New Group", "Mars/Olympus", setOf(UpdateGroupSettingsField.TIME_ZONE))
     }
 
     @Test
-    fun `all invalid fields are reported without opening a transaction`() {
+    fun `all invalid fields are reported without a write`() {
         assertInvalid("\n", "", setOf(UpdateGroupSettingsField.NAME, UpdateGroupSettingsField.TIME_ZONE))
+    }
+
+    @Test
+    fun `athlete with invalid fields is forbidden before validation`() {
+        val fixture = fixture(GroupRole.ATHLETE)
+
+        assertSame(UpdateGroupSettingsResult.AccessForbidden, fixture.useCase.execute(actor, groupId, 3, " ", "Mars/Olympus"))
+        assertTrue(fixture.settings.commands.isEmpty())
+    }
+
+    @Test
+    fun `nonmember with invalid fields receives group not found`() {
+        assertSame(UpdateGroupSettingsResult.GroupNotFound, fixture(role = null).useCase.execute(actor, groupId, 3, " ", "UTC"))
     }
 
     @Test
@@ -204,27 +217,33 @@ class UpdateGroupSettingsTest {
     }
 
     @Test
-    fun `profile validation completes before transaction`() {
+    fun `invalid profile reports every error without a write`() {
         val fixture = fixture(GroupRole.OWNER)
 
-        val result = fixture.useCase.execute(
-            actor,
-            groupId,
-            3,
-            UpdateGroupProfileInput(
-                GroupProfileDefaultsInput(
-                    name = "",
-                    modality = GroupModality.BEACH_VOLLEYBALL,
-                    composition = null,
-                    playStyle = CourtPlayStyle.FIVE_ONE,
-                ),
-            ),
-        )
+        val result = fixture.useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(invalidProfile()))
 
         assertTrue(result is UpdateGroupSettingsResult.InvalidProfile)
         assertEquals(setOf("name", "composition", "playStyle"), result.errors.map { it.field }.toSet())
-        assertEquals(0, fixture.transaction.calls)
         assertTrue(fixture.settings.commands.isEmpty())
+        assertTrue(fixture.sync.groups.isEmpty())
+    }
+
+    @Test
+    fun `athlete with an incomplete profile is forbidden before validation`() {
+        val fixture = fixture(GroupRole.ATHLETE)
+
+        assertSame(
+            UpdateGroupSettingsResult.AccessForbidden,
+            fixture.useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(invalidProfile())),
+        )
+        assertTrue(fixture.settings.commands.isEmpty())
+    }
+
+    @Test
+    fun `invalid profile is checked before the expected version`() {
+        val result = fixture(GroupRole.OWNER, currentVersion = 4).useCase.execute(actor, groupId, 3, UpdateGroupProfileInput(invalidProfile()))
+
+        assertTrue(result is UpdateGroupSettingsResult.InvalidProfile)
     }
 
     @Test
@@ -252,9 +271,15 @@ class UpdateGroupSettingsTest {
         val fixture = fixture(GroupRole.OWNER)
 
         assertEquals(UpdateGroupSettingsResult.Invalid(fields), fixture.useCase.execute(actor, groupId, 3, name, timeZone))
-        assertEquals(0, fixture.transaction.calls)
         assertTrue(fixture.settings.commands.isEmpty())
     }
+
+    private fun invalidProfile() = GroupProfileDefaultsInput(
+        name = "",
+        modality = GroupModality.BEACH_VOLLEYBALL,
+        composition = null,
+        playStyle = CourtPlayStyle.FIVE_ONE,
+    )
 
     private fun fixture(
         role: GroupRole?,
