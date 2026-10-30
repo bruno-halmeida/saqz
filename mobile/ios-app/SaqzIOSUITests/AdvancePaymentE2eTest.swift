@@ -21,12 +21,15 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         tapOption("group-game-config-promotion-mode", "Escolha manual")
         waitTag("group-game-config-advance-payment")
         waitText("O avulso paga antes de entrar.")
-        // O identificador fica na linha; o interruptor é irmão dela, no mesmo retângulo.
-        let row = waitTag("group-game-config-advance-payment")
-        reveal(row)
-        let area = row.frame.insetBy(dx: -4, dy: -4)
-        let toggle = app.switches.allElementsBoundByIndex.first { area.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
-        (toggle ?? row).tap()
+        // O interruptor é o próprio elemento identificado, mas o toque no centro cai no título e não liga: toca na
+        // ponta direita (o botão) e confirma pelo apoio que só aparece ligado.
+        let toggle = waitTag("group-game-config-advance-payment")
+        let on = containing("Vale para avulso e convidado.")
+        for _ in 0..<3 where !on.exists {
+            reveal(toggle)
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+            _ = on.waitForExistence(timeout: 3)
+        }
         waitText("Vale para avulso e convidado. A diária nasce no Vou, com o Pix do grupo.")
         shot("escolha-manual-antecipado-ligado")
         tap("group-setup-submit")
