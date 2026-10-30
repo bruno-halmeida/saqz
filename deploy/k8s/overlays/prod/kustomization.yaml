@@ -41,3 +41,6 @@ configMapGenerator:
       # Cupom de campanha: cria as ofertas no Google Play e os códigos na App Store (docs/subscriptions, seção Cupons).
       # Só produção liga: dev usa as mesmas lojas. A chave da App Store Connect fica no backend.env (Secret).
       - SAQZ_COUPON_STORE_SYNC=true
+      # Aviso único a dono e admins dos grupos sem valor por jogo (DEB-146); o toque leva ao "Valor por jogo" da 1.0.16.
+      # Decisão do dono em 30/10: ligado com a 1.0.16 já no Google Play e ainda em revisão na Apple.
+      - SAQZ_GROUPS_GAME_FEE_NOTICE_ENABLED=true
