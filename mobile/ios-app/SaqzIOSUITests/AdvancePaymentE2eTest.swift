@@ -57,9 +57,11 @@ final class AdvancePaymentE2eTest: InstalledE2E {
         waitContains("Pague R$ 20 para entrar")
         waitText("A vaga é liberada pelo organizador depois do pagamento.")
         shot("avulso-espera-pague-para-entrar")
-        // O roteiro (A4) espera "Pix do grupo copiado."; o app não mostra aviso (registrado também no Android).
-        // A área de transferência é conferida pelo runner no fim (simctl pbpaste): o teste não lê o que o app copiou.
+        // A4: o aviso na tela. A área de transferência é conferida pelo runner no fim (simctl pbpaste): o teste não
+        // lê o que o app copiou.
         tap("game-detail-advance-payment-copy-pix")
+        // O aviso some sozinho: espera logo depois do toque, sem rolar a tela.
+        XCTAssertTrue(containing("Pix do grupo copiado.").waitForExistence(timeout: 10), "Sem o aviso de Pix copiado")
         shot("avulso-pix-copiado")
         let own = api("athlete", "\(gamePath)/attendance")["ownAttendance"] as? [String: Any] ?? [:]
         XCTAssertEqual(string(own["status"]), "WAITLISTED")

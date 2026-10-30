@@ -54,6 +54,8 @@ final class GroupPixE2eTest: InstalledE2E {
         shot("atleta-secao-pix-do-grupo")
         // A área de transferência é conferida pelo runner no fim (simctl pbpaste): o teste não lê o que o app copiou.
         tap("group-details-group-pix-copy")
+        // O aviso some sozinho: espera logo depois do toque, sem rolar a tela.
+        XCTAssertTrue(containing("Pix do grupo copiado.").waitForExistence(timeout: 10), "Sem o aviso de Pix copiado")
         shot("atleta-pix-copiado")
         backToShell()
 

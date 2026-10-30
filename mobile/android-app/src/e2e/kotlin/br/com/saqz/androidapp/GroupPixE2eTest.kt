@@ -63,6 +63,7 @@ internal class GroupPixE2eTest : InstalledE2e("group-pix") {
         assertBelow("group-details-group-pix", checkNotNull(ownSection))
         shot("atleta-secao-pix-do-grupo")
         tap("group-details-group-pix-copy")
+        waitText("Pix do grupo copiado.")
         assertEquals(pixKey, clipboard())
         shot("atleta-pix-copiado")
         backToShell()

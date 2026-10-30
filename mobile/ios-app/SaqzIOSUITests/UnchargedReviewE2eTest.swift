@@ -39,6 +39,9 @@ final class UnchargedReviewE2eTest: InstalledE2E {
         waitText("Mensalistas ficam de fora: já pagam a mensalidade.")
         waitContains("Convite · paga")
         waitContains("3 cobranças")
+        // R5: o resumo só com as partes diferentes de zero.
+        XCTAssertFalse(containing("0 já pagou").exists, "O resumo mostrou \"0 já pagou\"")
+        XCTAssertFalse(containing("0 sem cobrança").exists, "O resumo mostrou \"0 sem cobrança\"")
         for key in ["\(athleteId)/0", "\(otherId)/0", "\(mensalId)/1"] { waitTag("uncharged-review-pill-\(key)") }
         shot("revisao-aberta")
 
@@ -46,8 +49,12 @@ final class UnchargedReviewE2eTest: InstalledE2E {
         choose("\(otherId)/0", "Já pagou")
         waitTag("uncharged-review-method-\(otherId)/0")
         waitContains("Entra no caixa em")
-        // O meio troca no toque (Pix → Dinheiro); o roteiro descreve um menu "Como pagou".
+        // R6: o toque no meio abre o menu "Como pagou".
         tap("uncharged-review-method-\(otherId)/0")
+        waitText("Como pagou")
+        shot("revisao-como-pagou")
+        tap("uncharged-review-method-option-Cash")
+        waitGone("uncharged-review-method-option-Cash")
         waitContains("Dinheiro")
         choose("\(mensalId)/1", "Não cobrar")
         waitContains("1 cobrança")

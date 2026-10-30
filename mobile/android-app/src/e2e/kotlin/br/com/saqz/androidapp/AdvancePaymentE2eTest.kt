@@ -58,8 +58,8 @@ internal class AdvancePaymentE2eTest : InstalledE2e("advance-payment") {
         waitText("A vaga é liberada pelo organizador depois do pagamento.")
         shot("avulso-espera-pague-para-entrar")
         tap("game-detail-advance-payment-copy-pix")
-        // Diferença registrada: o roteiro (A4) espera "Pix do grupo copiado.", mas o app não mostra aviso nenhum
-        // (a string advance_payment_pix_copied não é usada). A cópia em si é conferida na área de transferência.
+        // A4: o aviso na tela e a chave na área de transferência.
+        waitText("Pix do grupo copiado.")
         assertEquals(data.getString("pixKey"), clipboard())
         shot("avulso-pix-copiado")
         val own = api("athlete", "$gamePath/attendance").getJSONObject("ownAttendance")

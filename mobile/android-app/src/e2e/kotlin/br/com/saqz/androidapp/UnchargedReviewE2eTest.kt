@@ -48,6 +48,8 @@ internal class UnchargedReviewE2eTest : InstalledE2e("uncharged-review") {
         waitText("Mensalistas ficam de fora: já pagam a mensalidade.")
         waitContains("Convite · paga")
         waitContains("3 cobranças")
+        // R5: o resumo só com as partes diferentes de zero.
+        ui.onNodeWithTag("uncharged-review-summary").assertTextEquals("3 cobranças")
         for (key in listOf("$athleteId/0", "$otherId/0", "$mensalId/1")) waitTag("uncharged-review-pill-$key")
         shot("revisao-aberta")
 
@@ -55,8 +57,13 @@ internal class UnchargedReviewE2eTest : InstalledE2e("uncharged-review") {
         choose("$otherId/0", "PAID")
         waitTag("uncharged-review-method-$otherId/0")
         waitContains("Entra no caixa em")
-        // O meio troca no toque (Pix → Dinheiro); o roteiro descreve um menu "Como pagou".
+        // R6: o toque no meio abre o menu "Como pagou".
         tap("uncharged-review-method-$otherId/0")
+        waitText("Como pagou")
+        waitTag("uncharged-review-method-option-Cash")
+        shot("revisao-como-pagou")
+        tap("uncharged-review-method-option-Cash")
+        waitGone("uncharged-review-method-option-Cash")
         ui.waitUntil(20_000) {
             ui.onAllNodes(hasText("Dinheiro") and hasAnyAncestor(hasTestTag("uncharged-review-method-$otherId/0")) or
                 (hasText("Dinheiro") and hasTestTag("uncharged-review-method-$otherId/0")), true).fetchSemanticsNodes().isNotEmpty()

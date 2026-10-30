@@ -35,6 +35,8 @@ final class ReceivablesOffE2eTest: InstalledE2E {
         assertAbsent(["group-details-own-charges-pay"], buttons: ["Pagar"])
         // A área de transferência é conferida pelo runner no fim (simctl pbpaste): o teste não lê o que o app copiou.
         tap("group-details-own-charges-pix-copy")
+        // O aviso some sozinho: espera logo depois do toque, sem rolar a tela.
+        XCTAssertTrue(containing("Pix do grupo copiado.").waitForExistence(timeout: 10), "Sem o aviso de Pix copiado")
         shot("atleta-copia-pix-sem-pagar")
     }
 

@@ -44,6 +44,7 @@ internal class ReceivablesOffE2eTest : InstalledE2e("receivables-off") {
         ui.onNodeWithTag("group-details-own-charges-pay").assertDoesNotExist()
         ui.onNodeWithText("Pagar").assertDoesNotExist()
         tap("group-details-own-charges-pix-copy")
+        waitText("Pix do grupo copiado.")
         assertEquals(data.getString("pixKey"), clipboard())
         shot("atleta-copia-pix-sem-pagar")
     }
