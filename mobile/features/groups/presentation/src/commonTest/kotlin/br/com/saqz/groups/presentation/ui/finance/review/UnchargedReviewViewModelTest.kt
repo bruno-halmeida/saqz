@@ -70,15 +70,18 @@ class UnchargedReviewViewModelTest {
     }
 
     @Test
-    fun `menu choice and the method tap change the summary`() = runTest {
+    fun `menu choice and the Como pagou menu change the summary DEB-152`() = runTest {
         val viewModel = viewModel()
         viewModel.onIntent(UnchargedReviewIntent.OpenMenu("caio/0"))
         assertEquals("caio/0", viewModel.state.value.menuKey)
         viewModel.onIntent(UnchargedReviewIntent.Choose("caio/0", ReviewDecision.Paid))
-        viewModel.onIntent(UnchargedReviewIntent.CycleMethod("caio/0"))
+        viewModel.onIntent(UnchargedReviewIntent.OpenMethodMenu("caio/0"))
+        assertEquals("caio/0", viewModel.state.value.methodMenuKey)
+        viewModel.onIntent(UnchargedReviewIntent.ChooseMethod("caio/0", PaidMethod.Cash))
         val state = viewModel.state.value
 
         assertNull(state.menuKey)
+        assertNull(state.methodMenuKey)
         assertEquals(PaidMethod.Cash, state.rows.first().method)
         assertEquals(1, state.chargeCount)
         assertEquals(1, state.paidCount)
@@ -90,7 +93,7 @@ class UnchargedReviewViewModelTest {
         val cashbox = FakeCashboxGateway(unchargedResult = SaqzResult.Success(list()))
         val viewModel = viewModel(cashbox)
         viewModel.onIntent(UnchargedReviewIntent.Choose("caio/0", ReviewDecision.Paid))
-        viewModel.onIntent(UnchargedReviewIntent.CycleMethod("caio/0"))
+        viewModel.onIntent(UnchargedReviewIntent.ChooseMethod("caio/0", PaidMethod.Cash))
         viewModel.onIntent(UnchargedReviewIntent.AmountChanged("10,00"))
         viewModel.onIntent(UnchargedReviewIntent.Confirm)
 

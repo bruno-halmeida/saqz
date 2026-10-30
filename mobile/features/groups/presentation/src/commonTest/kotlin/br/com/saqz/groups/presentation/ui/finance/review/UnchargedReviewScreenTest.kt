@@ -2,11 +2,13 @@ package br.com.saqz.groups.presentation.ui.finance.review
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import br.com.saqz.designsystem.theme.SaqzTheme
+import br.com.saqz.groups.domain.finance.PaidMethod
 import br.com.saqz.groups.domain.finance.ReviewDecision
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,7 +31,7 @@ class UnchargedReviewScreenTest {
 
         assertEquals(
             listOf(
-                UnchargedReviewIntent.CycleMethod("b/0"),
+                UnchargedReviewIntent.OpenMethodMenu("b/0"),
                 UnchargedReviewIntent.OpenMenu("a/0"),
                 UnchargedReviewIntent.Confirm,
             ),
@@ -48,6 +50,35 @@ class UnchargedReviewScreenTest {
         onNodeWithTag(UnchargedReviewTags.option(ReviewDecision.Skip)).performClick()
 
         assertEquals(listOf<UnchargedReviewIntent>(UnchargedReviewIntent.Choose("b/0", ReviewDecision.Skip)), intents)
+    }
+
+    @Test
+    fun `Como pagou menu marks the current method and chooses DEB-152`() = runComposeUiTest {
+        val intents = mutableListOf<UnchargedReviewIntent>()
+        setContent { SaqzTheme { UnchargedReviewScreen(state.copy(methodMenuKey = "b/0"), onBack = {}, onIntent = intents::add) } }
+
+        onNodeWithText("Como pagou").assertExists()
+        onNodeWithTag(UnchargedReviewTags.methodOption(PaidMethod.Pix)).assertExists()
+        onNodeWithTag(UnchargedReviewTags.methodOption(PaidMethod.Other)).assertExists()
+        onNodeWithTag(UnchargedReviewTags.methodOption(PaidMethod.Cash)).performClick()
+
+        assertEquals(listOf<UnchargedReviewIntent>(UnchargedReviewIntent.ChooseMethod("b/0", PaidMethod.Cash)), intents)
+    }
+
+    @Test
+    fun `summary leaves out the zero parts`() = runComposeUiTest {
+        val charges = state.rows.map { it.copy(decision = ReviewDecision.Charge) }
+        setContent { SaqzTheme { UnchargedReviewScreen(state.copy(rows = charges), onBack = {}, onIntent = {}) } }
+
+        onNodeWithTag(UnchargedReviewTags.Summary).assertTextEquals("5 cobranças")
+    }
+
+    @Test
+    fun `summary starts at the first non zero part`() = runComposeUiTest {
+        val noCharges = state.rows.filter { it.decision != ReviewDecision.Charge }
+        setContent { SaqzTheme { UnchargedReviewScreen(state.copy(rows = noCharges), onBack = {}, onIntent = {}) } }
+
+        onNodeWithTag(UnchargedReviewTags.Summary).assertTextEquals("1 já pagou · 2 sem cobrança")
     }
 
     @Test

@@ -201,7 +201,7 @@ A página do grupo (`GroupDetailsScreen`) é tocada pelas duas, em blocos difere
   "Aluguel da quadra" e a data do jogo, **sem valor**: o "R$ 160" do canvas é só exemplo, o Saqz não guarda o preço da quadra
   e o acerto não mostra custo por jogo (FIN-007, 18/10).
 - **Revisão** (pranchas `Revisao-B-lista` e `Revisao-B`): um valor para o lote, uma linha por pessoa com o estado num botão
-  que abre o menu (Cobrar · Já pagou · Não cobrar), a linha "Entra no caixa em 20/10 · Pix" no Já pagou (o toque troca o meio),
+  que abre o menu (Cobrar · Já pagou · Não cobrar), a linha "Entra no caixa em 20/10 · Pix" no Já pagou (o toque no meio abre o menu "Como pagou": Pix, Dinheiro, Outro, com a marca no atual),
   o resumo e Confirmar.
 - **Pix do grupo na página do grupo** (prancha `Grupo-pix`): a seção "Pix do grupo" depois de Minhas cobranças, com a chave,
   o tipo ("Chave Pix · E-mail", como no cartão da cobrança) e Copiar; para quem nunca teve cobrança, depois da Galera. Some com

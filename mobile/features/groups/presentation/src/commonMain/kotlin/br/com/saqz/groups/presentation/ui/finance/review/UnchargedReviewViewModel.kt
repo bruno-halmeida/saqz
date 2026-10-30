@@ -58,8 +58,13 @@ class UnchargedReviewViewModel(
                     rows = current.rows.map { if (it.key == intent.key) it.copy(decision = intent.decision) else it },
                 )
             }
-            is UnchargedReviewIntent.CycleMethod -> if (!state.value.saving) update { current ->
-                current.copy(rows = current.rows.map { if (it.key == intent.key) it.copy(method = it.method.next()) else it })
+            is UnchargedReviewIntent.OpenMethodMenu -> if (!state.value.saving) update { it.copy(methodMenuKey = intent.key) }
+            UnchargedReviewIntent.DismissMethodMenu -> update { it.copy(methodMenuKey = null) }
+            is UnchargedReviewIntent.ChooseMethod -> if (!state.value.saving) update { current ->
+                current.copy(
+                    methodMenuKey = null,
+                    rows = current.rows.map { if (it.key == intent.key) it.copy(method = intent.method) else it },
+                )
             }
             UnchargedReviewIntent.Confirm -> confirm()
         }
@@ -149,9 +154,3 @@ class UnchargedReviewViewModel(
 /** Regra da FIN-016: Faltou, saiu do grupo ou "Não cobrar" já decidido abrem em Não cobrar; o resto em Cobrar. */
 internal fun initialDecision(noShow: Boolean, leftGroup: Boolean, skipped: Boolean): ReviewDecision =
     if (noShow || leftGroup || skipped) ReviewDecision.Skip else ReviewDecision.Charge
-
-private fun PaidMethod.next() = when (this) {
-    PaidMethod.Pix -> PaidMethod.Cash
-    PaidMethod.Cash -> PaidMethod.Other
-    PaidMethod.Other -> PaidMethod.Pix
-}

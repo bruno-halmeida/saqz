@@ -57,6 +57,7 @@ internal object UnchargedReviewTags {
     fun pill(key: String) = "uncharged-review-pill-$key"
     fun method(key: String) = "uncharged-review-method-$key"
     fun option(decision: ReviewDecision) = "uncharged-review-option-${decision.name}"
+    fun methodOption(method: PaidMethod) = "uncharged-review-method-option-${method.name}"
 }
 
 @Composable
@@ -122,6 +123,7 @@ internal fun UnchargedReviewScreen(
             }
         }
         DecisionMenu(state, onIntent)
+        MethodMenu(state, onIntent)
     }
 }
 
@@ -165,7 +167,7 @@ private fun ReviewRow(
                 )
                 SaqzTextLink(
                     label = stringResource(row.method.label()),
-                    onClick = { onIntent(UnchargedReviewIntent.CycleMethod(row.key)) },
+                    onClick = { onIntent(UnchargedReviewIntent.OpenMethodMenu(row.key)) },
                     style = SaqzTheme.typography.support.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier.testTag(UnchargedReviewTags.method(row.key)),
                 )
@@ -198,21 +200,25 @@ private fun ReviewRowUi.meta(): String = when {
     ).joinToString(" · ")
 }
 
-/** O resumo antes de confirmar: "2 cobranças · 1 já pagou · 2 sem cobrança", com Confirmar. */
+/**
+ * O resumo antes de confirmar: "2 cobranças · 1 já pagou · 2 sem cobrança", com Confirmar.
+ * Só as partes diferentes de zero (roteiro 13, R5); a primeira que aparece fica em destaque.
+ */
 @Composable
 private fun BottomBar(state: UnchargedReviewState, onIntent: (UnchargedReviewIntent) -> Unit) {
     val metrics = SaqzTheme.metrics
-    val charges = if (state.chargeCount == 1) {
-        stringResource(Res.string.retro_summary_charge_one)
-    } else {
-        stringResource(Res.string.retro_summary_charges, state.chargeCount)
+    val charges = when (state.chargeCount) {
+        0 -> null
+        1 -> stringResource(Res.string.retro_summary_charge_one)
+        else -> stringResource(Res.string.retro_summary_charges, state.chargeCount)
     }
-    val paid = if (state.paidCount > 1) {
-        stringResource(Res.string.retro_summary_paid_many, state.paidCount)
-    } else {
-        stringResource(Res.string.retro_summary_paid, state.paidCount)
+    val paid = when (state.paidCount) {
+        0 -> null
+        1 -> stringResource(Res.string.retro_summary_paid, state.paidCount)
+        else -> stringResource(Res.string.retro_summary_paid_many, state.paidCount)
     }
-    val skip = stringResource(Res.string.retro_summary_skip, state.skipCount)
+    val skip = state.skipCount.takeIf { it > 0 }?.let { stringResource(Res.string.retro_summary_skip, it) }
+    val parts = listOfNotNull(charges, paid, skip)
     SaqzDivider()
     Column(
         modifier = Modifier
@@ -231,8 +237,13 @@ private fun BottomBar(state: UnchargedReviewState, onIntent: (UnchargedReviewInt
         }
         Text(
             text = buildAnnotatedString {
-                withStyle(SpanStyle(color = SaqzTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)) { append(charges) }
-                append(" · $paid · $skip")
+                parts.forEachIndexed { index, part ->
+                    if (index == 0) {
+                        withStyle(SpanStyle(color = SaqzTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)) { append(part) }
+                    } else {
+                        append(" · $part")
+                    }
+                }
             },
             style = SaqzTheme.typography.support,
             color = SaqzTheme.colors.textSecondary,
@@ -279,6 +290,28 @@ private fun DecisionMenu(state: UnchargedReviewState, onIntent: (UnchargedReview
     }
 }
 
+/** O menu "Como pagou" do Já pagou (DEB-152), no mesmo desenho do menu do estado: a marca na opção atual. */
+@Composable
+private fun MethodMenu(state: UnchargedReviewState, onIntent: (UnchargedReviewIntent) -> Unit) {
+    val row = state.rows.firstOrNull { it.key == state.methodMenuKey }
+    SaqzBottomSheet(
+        open = row != null,
+        onClose = { onIntent(UnchargedReviewIntent.DismissMethodMenu) },
+        title = stringResource(Res.string.retro_method_title),
+    ) {
+        if (row == null) return@SaqzBottomSheet
+        PaidMethod.entries.forEachIndexed { index, method ->
+            SaqzSheetAction(
+                icon = if (method == row.method) SaqzIcons.Check else method.icon(),
+                label = stringResource(method.label()),
+                onClick = { onIntent(UnchargedReviewIntent.ChooseMethod(row.key, method)) },
+                divider = index > 0,
+                modifier = Modifier.testTag(UnchargedReviewTags.methodOption(method)),
+            )
+        }
+    }
+}
+
 private fun ReviewDecision.label() = when (this) {
     ReviewDecision.Charge -> Res.string.retro_state_charge
     ReviewDecision.Paid -> Res.string.retro_state_paid
@@ -289,6 +322,12 @@ private fun ReviewDecision.icon() = when (this) {
     ReviewDecision.Charge -> SaqzIcons.Clock
     ReviewDecision.Paid -> SaqzIcons.Banknote
     ReviewDecision.Skip -> SaqzIcons.Ban
+}
+
+private fun PaidMethod.icon() = when (this) {
+    PaidMethod.Pix -> SaqzIcons.Wallet
+    PaidMethod.Cash -> SaqzIcons.Banknote
+    PaidMethod.Other -> SaqzIcons.MoreHorizontal
 }
 
 private fun PaidMethod.label() = when (this) {
