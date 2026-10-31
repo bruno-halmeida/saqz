@@ -10,7 +10,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Modo "a cada confirmação": lista no grupo do WhatsApp quando ela muda, com freio de 15 min e 12 por dia. */
+/** Modo "a cada confirmação": lista no grupo do WhatsApp quando ela muda, com freio de 15 min e 12 por dia e mínimo de 1 por dia. */
 class OnChangeReminderTest {
     private val group = UUID.randomUUID()
     private val owner = UUID.randomUUID()
@@ -133,6 +133,38 @@ class OnChangeReminderTest {
         roster(confirmed = listOf("Ana"))
         assertEquals(0, pass(Instant.parse("2026-09-19T05:00:00Z")))
         assertTrue(repository.digests.isEmpty())
+    }
+
+    @Test fun `a day without a list gets one at 9h even without a change, and only one`() {
+        roster(confirmed = listOf("Ana"))
+        pass(noon)
+        // Dia seguinte, sem mudança: 8h55 nada, 9h sai, a passada seguinte não repete.
+        assertEquals(0, pass(Instant.parse("2026-09-19T11:55:00Z")))
+        assertEquals(1, pass(Instant.parse("2026-09-19T12:00:00Z")))
+        assertEquals(0, pass(Instant.parse("2026-09-19T12:05:00Z")))
+        assertEquals(0, pass(Instant.parse("2026-09-19T20:00:00Z")))
+        assertEquals(2, repository.published.size)
+        assertEquals(AttendanceUpdatesMode.ON_CHANGE, repository.published.last().reminderOrigin)
+    }
+
+    @Test fun `a list that already went out today counts as the minimum and changes keep going out after it`() {
+        roster(confirmed = listOf("Ana"))
+        pass(noon)
+        roster(confirmed = listOf("Ana", "Bia"))
+        // 8h do dia seguinte: a mudança segurada sai, e às 9h não há mínimo a cumprir.
+        assertEquals(1, pass(Instant.parse("2026-09-19T11:00:00Z")))
+        assertEquals(0, pass(Instant.parse("2026-09-19T12:00:00Z")))
+        roster(confirmed = listOf("Ana", "Bia", "Caio"))
+        assertEquals(1, pass(Instant.parse("2026-09-19T12:05:00Z")))
+    }
+
+    @Test fun `the minimum starts 4 days before the game`() {
+        roster(confirmed = listOf("Ana"))
+        // Jogo em 20/09: 15/09 é a 5 dias.
+        pass(Instant.parse("2026-09-14T15:00:00Z"))
+        assertEquals(0, pass(Instant.parse("2026-09-15T12:00:00Z")))
+        // 16/09 é a 4 dias.
+        assertEquals(1, pass(Instant.parse("2026-09-16T12:00:00Z")))
     }
 
     private fun roster(confirmed: List<String> = emptyList(), declined: List<String> = emptyList()) {

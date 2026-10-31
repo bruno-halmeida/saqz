@@ -37,7 +37,8 @@ class AutomaticAttendanceReminder(private val reminders: GroupCommunicationServi
 
     /**
      * Grupos no modo "a cada confirmação": a cada 5 min a lista do próximo jogo é comparada com a última publicada e,
-     * se mudou, vai ao grupo do WhatsApp (freio de 15 min e 12 por dia no [GroupCommunicationService.remindOnChanges]).
+     * se mudou, vai ao grupo do WhatsApp (freio de 15 min e 12 por dia no [GroupCommunicationService.remindOnChanges]). O dia
+     * que chega às 9h sem lista ganha uma mesmo sem mudança, a partir de 4 dias antes do jogo.
      */
     @Scheduled(
         cron = "\${saqz.notifications.reminder.on-change-cron:0 */5 * * * *}",

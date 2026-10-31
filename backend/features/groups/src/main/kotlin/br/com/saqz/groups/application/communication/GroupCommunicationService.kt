@@ -24,14 +24,24 @@ const val ON_CHANGE_QUIET_FROM_HOUR = 22
 const val ON_CHANGE_QUIET_UNTIL_HOUR = 8
 
 /**
- * Publica quando a lista mudou (sem assinatura gravada também é mudança), fora do silêncio e com o freio livre. A mudança
- * segurada sai na primeira passada livre, porque a assinatura só é gravada quando publica.
+ * Mínimo do modo ON_CHANGE (decisão do dono, 30/10): a partir de 4 dias antes do jogo, o dia que chega às 9h de São Paulo sem
+ * lista ganha uma, mesmo sem mudança. Jogo publicado com mais antecedência não entra, para o grupo não receber lista todo dia.
+ */
+const val ON_CHANGE_DAILY_MINIMUM_HOUR = 9
+const val ON_CHANGE_DAILY_MINIMUM_DAYS = 4L
+
+/**
+ * Publica quando a lista mudou (sem assinatura gravada também é mudança) ou quando o dia pede o mínimo, fora do silêncio e
+ * com o freio livre. A mudança segurada sai na primeira passada livre, porque a assinatura só é gravada quando publica.
  */
 fun shouldPublishChange(
-    stored: String?, digest: String, activity: OnChangeActivity, now: Instant, quietHours: Boolean = true,
+    stored: String?, digest: String, activity: OnChangeActivity, now: Instant, gameDate: LocalDate, quietHours: Boolean = true,
 ): Boolean {
-    if (stored == digest) return false
-    val hour = now.atZone(SAO_PAULO).hour
+    val local = now.atZone(SAO_PAULO)
+    val hour = local.hour
+    val dailyMinimum = activity.today == 0 && hour >= ON_CHANGE_DAILY_MINIMUM_HOUR &&
+        !gameDate.isAfter(local.toLocalDate().plusDays(ON_CHANGE_DAILY_MINIMUM_DAYS))
+    if (stored == digest && !dailyMinimum) return false
     if (quietHours && (hour >= ON_CHANGE_QUIET_FROM_HOUR || hour < ON_CHANGE_QUIET_UNTIL_HOUR)) return false
     val last = activity.lastMessageAt
     if (last != null && now.isBefore(last.plusSeconds(ON_CHANGE_DEBOUNCE_MINUTES * 60))) return false
@@ -106,8 +116,8 @@ class GroupCommunicationService(
     /**
      * Lista no grupo do WhatsApp a cada mudança (modo ON_CHANGE, a cada 5 min): mesmos candidatos e mesmo corpo do
      * [remindAutomatically], só dos grupos nesse modo e sem central nem push, e só quando a lista mudou desde a última publicada (a primeira
-     * passada de um jogo publica). Freio anti-spam: 15 min entre mensagens e 12 por dia (São Paulo) por grupo, contando todos
-     * os jogos; a assinatura é por jogo. A mudança
+     * passada de um jogo publica) ou quando o dia chegou às 9h sem lista ([ON_CHANGE_DAILY_MINIMUM_HOUR]). Freio anti-spam: 15 min
+     * entre mensagens e 12 por dia (São Paulo) por grupo, contando todos os jogos; a assinatura é por jogo. A mudança
      * segurada pelo freio sai na próxima passada livre, porque a assinatura só é gravada quando publica.
      */
     fun remindOnChanges(now: Instant = Instant.now()): Int = logPublished("attendance_updates", "reminder_published", transaction.inTransaction {
@@ -116,7 +126,8 @@ class GroupCommunicationService(
             val digest = rosterDigest(roster)
             val stored = repository.attendanceDigest(candidate.gameId)
             val dayStart = now.atZone(SAO_PAULO).toLocalDate().atStartOfDay(SAO_PAULO).toInstant()
-            if (!shouldPublishChange(stored, digest, repository.onChangeActivity(candidate.groupId, dayStart), now, quietHours)) {
+            val activity = repository.onChangeActivity(candidate.groupId, dayStart)
+            if (!shouldPublishChange(stored, digest, activity, now, candidate.game.localDate, quietHours)) {
                 return@mapNotNull null
             }
             repository.saveAttendanceDigest(candidate.gameId, digest)

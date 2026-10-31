@@ -141,6 +141,9 @@ _Decidida em 22/10/2026; vale depois da entrega do DEB-127 (app 1.0.12 onde houv
 | 13ª mudança no dia | Não sai; o contador zera no dia seguinte | ☐ | ☐ |
 | Mudança às 23h | Não sai; vai às 8h se a lista ainda mudou | ☐ | ☐ |
 | A cada confirmação, 9h/12h30/18h | Push e central como sempre; nada no grupo do WhatsApp por horário | ☐ | ☐ |
+| A cada confirmação, chega 9h sem lista no dia, faltando até 4 dias para o jogo | Sai 1 lista no grupo mesmo sem mudança | ☐ | ☐ |
+| A cada confirmação, já saiu lista no dia antes das 9h | Nada a mais às 9h; mudanças seguem saindo | ☐ | ☐ |
+| A cada confirmação, jogo a mais de 4 dias, sem mudança | Nada no grupo | ☐ | ☐ |
 | "Avisar" do organizador | Vai ao grupo nos dois modos | ☐ | ☐ |
 | Jogo 6-0 com 6 de 12 | Linhas 1 a 6 com nomes, 7 a 12 só com o número | ☐ | ☐ |
 | Jogo 5-1 | Uma seção por posição, vagas numeradas dentro dela | ☐ | ☐ |
