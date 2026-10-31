@@ -51,17 +51,18 @@ class SyncScheduleSeries(
     private val release: SeriesOccurrenceRelease = SeriesOccurrenceRelease.None,
 ) : ScheduleSeriesSync {
     override fun sync(groupId: UUID) {
-        syncSeries(groupId)
-        // A série recém-criada ou editada já sai com o próximo jogo de cada horário liberado.
-        release.release(groupId)
+        // Só a série recém-criada ou editada sai com o próximo jogo de cada horário liberado na hora. A rotina de hora em
+        // hora também passa aqui: sem mudança, quem libera é o `releaseAll`, com a antecedência.
+        if (syncSeries(groupId)) release.release(groupId)
     }
 
-    private fun syncSeries(groupId: UUID) {
-        val group = defaults.seriesDefaults(groupId) ?: return
+    /** True quando a série foi criada ou editada. */
+    private fun syncSeries(groupId: UUID): Boolean {
+        val group = defaults.seriesDefaults(groupId) ?: return false
         // Pausa = "para de criar novos jogos; os já criados continuam" (group_schedule_pause_help).
-        if (group.paused) return
+        if (group.paused) return false
         // A série exige local (venue_name/venue_address NOT NULL); sem quadra padrão não há o que gerar.
-        val venue = group.venue ?: return
+        val venue = group.venue ?: return false
         val now = clock.instant()
         val today = LocalDate.ofInstant(now, ZoneId.of(group.zoneId))
 
@@ -101,9 +102,9 @@ class SyncScheduleSeries(
             )
         }
         when {
-            current == null && slots.isEmpty() -> Unit
+            current == null && slots.isEmpty() -> return false
             current == null -> create(groupId, generation, group.zoneId, start, slots, until ?: now, occupied, ranges, adoptable)
-            current.rule.slots.toSet() == slots.toSet() -> Unit
+            current.rule.slots.toSet() == slots.toSet() -> return false
             // Vale a partir de agora: a fronteira é hoje e o repositório não toca em jogo que já começou.
             else -> boundary.thisAndFuture(
                 groupId = groupId,
@@ -123,6 +124,7 @@ class SyncScheduleSeries(
                 adoptStartsAt = adoptable,
             )
         }
+        return true
     }
 
     @Suppress("LongParameterList")

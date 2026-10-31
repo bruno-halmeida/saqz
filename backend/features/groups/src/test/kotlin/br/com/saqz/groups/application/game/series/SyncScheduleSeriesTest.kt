@@ -53,10 +53,27 @@ class SyncScheduleSeriesTest {
         assertTrue(boundaryRepository.future.isEmpty())
     }
 
-    @Test fun `depois de sincronizar libera o próximo jogo do grupo, mesmo quando nada mudou`() {
-        defaults = null
+    @Test fun `série criada ou editada libera o próximo jogo do grupo na hora`() {
         sync.sync(group)
         assertEquals(listOf(group), released)
+        defaults = defaultsFor(capacity = 30)
+        sync.sync(group)
+        assertEquals(listOf(group, group), released)
+    }
+
+    /** A rotina de hora em hora também sincroniza: sem isto, o próximo jogo saía logo depois de o anterior começar. */
+    @Test fun `sincronizar sem mudança na série não libera, vale a antecedência da rotina`() {
+        defaults = null
+        sync.sync(group)
+        defaults = defaultsFor()
+        sync.sync(group)
+        released.clear()
+
+        sync.sync(group)
+        defaults = defaultsFor(paused = true)
+        sync.sync(group)
+
+        assertTrue(released.isEmpty())
     }
 
     @Test fun `sem horário regular e sem série nada nasce`() {

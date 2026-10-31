@@ -58,17 +58,34 @@ class ReleaseSeriesOccurrencesIntegrationTest {
         assertEquals(0, int("SELECT count(*) FROM games WHERE group_id='$group' AND status NOT IN ('DRAFT','PUBLISHED')"))
     }
 
-    @Test fun `the routine releases each slot five days ahead and never twice`() {
+    @Test fun `the routine releases each slot four days ahead and never twice`() {
         sync(CLOCK)
 
-        // Domingo 20/09: quinta 24/09 entra na janela de 5 dias; sábado 26/09 ainda não.
-        val sunday = Clock.fixed(Instant.parse("2026-09-20T15:00:00Z"), ZoneOffset.UTC)
-        release(sunday).releaseAll(); release(sunday).releaseAll()
+        // Segunda 21/09: quinta 24/09 entra na janela de 4 dias; sábado 26/09 ainda não.
+        val monday = Clock.fixed(Instant.parse("2026-09-21T15:00:00Z"), ZoneOffset.UTC)
+        release(monday).releaseAll(); release(monday).releaseAll()
         assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00", "2026-09-24 20:00"), published())
 
         // Terça 22/09: sábado 26/09 entra na janela.
         release(Clock.fixed(Instant.parse("2026-09-22T15:00:00Z"), ZoneOffset.UTC)).releaseAll()
         assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00", "2026-09-24 20:00", "2026-09-26 10:00"), published())
+    }
+
+    @Test fun `the hourly sync after a game starts does not release the next one ahead of the window`() {
+        slots(4 to "21:00")
+        sync(CLOCK)
+        assertEquals(listOf("2026-09-17 21:00"), published())
+
+        // Quinta 17/09, 22h: o jogo das 21h começou e o de 24/09 fica a 7 dias.
+        sync(Clock.fixed(Instant.parse("2026-09-18T01:00:00Z"), ZoneOffset.UTC))
+        assertEquals(listOf("2026-09-17 21:00"), published())
+
+        // Domingo 20/09, 22h: entrou na janela de 4 dias, e quem libera é a rotina.
+        val sunday = Clock.fixed(Instant.parse("2026-09-21T01:00:00Z"), ZoneOffset.UTC)
+        sync(sunday)
+        assertEquals(listOf("2026-09-17 21:00"), published())
+        release(sunday).releaseAll()
+        assertEquals(listOf("2026-09-17 21:00", "2026-09-24 21:00"), published())
     }
 
     @Test fun `a one-off draft and a group without a plan are not released`() {
@@ -84,10 +101,10 @@ class ReleaseSeriesOccurrencesIntegrationTest {
 
         // Trial expirado sem assinatura: nada é liberado até o plano voltar.
         until = null
-        release(Clock.fixed(Instant.parse("2026-09-20T15:00:00Z"), ZoneOffset.UTC)).releaseAll()
+        release(Clock.fixed(Instant.parse("2026-09-21T15:00:00Z"), ZoneOffset.UTC)).releaseAll()
         assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00"), published())
         until = Instant.parse("2026-10-17T15:00:00Z")
-        release(Clock.fixed(Instant.parse("2026-09-20T15:00:00Z"), ZoneOffset.UTC)).releaseAll()
+        release(Clock.fixed(Instant.parse("2026-09-21T15:00:00Z"), ZoneOffset.UTC)).releaseAll()
         assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00", "2026-09-24 20:00"), published())
     }
 
@@ -109,19 +126,19 @@ class ReleaseSeriesOccurrencesIntegrationTest {
 
         // Fim do plano em 24/09 0h (São Paulo): quinta 24/09 20h já não cabe, nem pela sincronização nem pela rotina.
         until = Instant.parse("2026-09-24T03:00:00Z")
-        val sunday = Clock.fixed(Instant.parse("2026-09-20T15:00:00Z"), ZoneOffset.UTC)
-        release(sunday).release(group)
-        release(sunday).releaseAll()
+        val monday = Clock.fixed(Instant.parse("2026-09-21T15:00:00Z"), ZoneOffset.UTC)
+        release(monday).release(group)
+        release(monday).releaseAll()
         assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00"), published())
         assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-24'"))
 
         // O plano renova: o rascunho que ficou sai sozinho na rotina seguinte.
         until = Instant.parse("2026-10-17T15:00:00Z")
-        release(sunday).releaseAll()
+        release(monday).releaseAll()
         assertEquals(listOf("2026-09-17 20:00", "2026-09-19 10:00", "2026-09-24 20:00"), published())
     }
 
-    @Test fun `a new slot is born with its next game published even beyond the five day window`() {
+    @Test fun `a new slot is born with its next game published even beyond the four day window`() {
         // Só quarta 20h: com o relógio na quinta 17/09, a próxima quarta (23/09) fica a 6 dias.
         execute("DELETE FROM group_regular_slots WHERE group_id='$group'")
         execute("INSERT INTO group_regular_slots (id,group_id,weekday,start_time,duration_minutes,position,version,created_at,updated_at) VALUES ('${UUID.randomUUID()}','$group',3,TIME '20:00',120,0,1,now(),now())")
@@ -130,7 +147,7 @@ class ReleaseSeriesOccurrencesIntegrationTest {
 
         assertEquals(listOf("2026-09-23 20:00"), published())
         assertEquals("DRAFT", string("SELECT status::text FROM games WHERE group_id='$group' AND local_date='2026-09-30'"))
-        // A rotina continua com a janela: 30/09 só sai a 5 dias de começar.
+        // A rotina continua com a janela: 30/09 só sai a 4 dias de começar.
         release(CLOCK).releaseAll()
         assertEquals(listOf("2026-09-23 20:00"), published())
     }
@@ -213,7 +230,7 @@ class ReleaseSeriesOccurrencesIntegrationTest {
         JdbcSeriesReleaseRepository(dataSource),
         ChangeGameLifecycle(JdbcTransactionRunner(dataSource), JdbcGameOccurrenceRepository(dataSource), GameSideEffectPort { _, _, _ -> }),
         horizon,
-        Duration.ofDays(5),
+        Duration.ofDays(4),
         clock,
     ) { what, failure -> throw AssertionError("release failed for $what", failure) }
 

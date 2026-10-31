@@ -116,10 +116,10 @@ JG11 é criado logo no começo da rodada.
 
 **Conferir**
 - O editor explica "Vira horário fixo do grupo: os próximos jogos entram na agenda sozinhos." e "cada um é
-  liberado 5 dias antes."
+  liberado 4 dias antes."
 - O jogo marcado sai publicado e vira o primeiro jogo do horário fixo (o dia aparece em Gestão → "Jogos e
   horários"). Os das semanas seguintes não aparecem para ninguém, nem para ORG, até serem liberados
-  sozinhos 5 dias antes: rascunhos da série são invisíveis por desenho (09/10).
+  sozinhos 4 dias antes: rascunhos da série são invisíveis por desenho (09/10).
 
 ## PROD-JG09 · Editar um jogo · P1
 

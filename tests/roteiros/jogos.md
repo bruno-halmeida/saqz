@@ -123,7 +123,8 @@ _Linhas novas decididas em 28/10/2026 (DEB-146, valor por jogo obrigatório): ro
 | Situação | Resultado | iOS | Android |
 | --- | --- | --- | --- |
 | Organizador cria o horário "terça 19h30" | Próximo jogo da terça publicado na hora; os seguintes nascem em rascunho invisível | ☐ | ☐ |
-| 5 dias antes do jogo seguinte | A rotina publica | ☐ | ☐ |
+| 4 dias antes do jogo seguinte | A rotina publica | ☐ | ☐ |
+| Jogo do horário começa e o seguinte está a 7 dias | O seguinte continua em rascunho até faltarem 4 dias | ☐ | ☐ |
 | Organizador edita o horário para 20h | Vale daqui para frente | ☐ | ☐ |
 | Avulso publicado na terça 19h30 antes do horário | O avulso vira o jogo da série | ☐ | ☐ |
 | Horários pausados | Nenhum jogo novo; os existentes continuam | ☐ | ☐ |

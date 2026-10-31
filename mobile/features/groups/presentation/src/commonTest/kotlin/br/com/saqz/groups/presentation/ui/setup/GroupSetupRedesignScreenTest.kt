@@ -50,7 +50,7 @@ class GroupSetupRedesignScreenTest {
         setContent { SaqzTheme { GroupSetupScreen(state, { intents += it }, {}) } }
 
         onNodeWithText("Sim, toda semana").assertIsSelected()
-        onNodeWithText("O jogo de cada semana sai sozinho, 5 dias antes.").assertExists()
+        onNodeWithText("O jogo de cada semana sai sozinho, 4 dias antes.").assertExists()
         onNodeWithText("Adicionar dia e horário").assertExists()
         onNodeWithTag(GroupSetupTags.VenueName).assertExists()
         onNodeWithText("Endereço (opcional)").assertExists()

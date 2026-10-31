@@ -964,7 +964,7 @@ class AccessSessionConfiguration {
         repository: br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesReleaseRepository,
         lifecycle: ChangeGameLifecycle,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
-        @Value("\${saqz.games.series-release-lead-days:5}") leadDays: Long,
+        @Value("\${saqz.games.series-release-lead-days:4}") leadDays: Long,
     ) = br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences(
         repository, lifecycle, horizon, java.time.Duration.ofDays(leadDays), Clock.systemUTC(),
     ) { what, failure ->

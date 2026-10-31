@@ -120,7 +120,7 @@
     <string name="venue_search_powered_by_google">powered by Google</string>
     <string name="group_setup_venue_address_hint">Ex.: R. Canuto Abreu, s/n · Tatuapé</string>
     <string name="group_setup_recurrence_label">Repetir toda semana</string>
-    <string name="group_setup_recurrence_hint">Os jogos acontecem nos mesmos dias e horários. O próximo de cada horário é liberado 5 dias antes.</string>
+    <string name="group_setup_recurrence_hint">Os jogos acontecem nos mesmos dias e horários. O próximo de cada horário é liberado 4 dias antes.</string>
     <string name="group_setup_recurring_off">Você marca cada jogo quando quiser.</string>
     <string name="group_setup_games_no_hint">Você marca cada jogo depois de criar o grupo.</string>
     <string name="group_setup_add_slot">Adicionar dia e horário</string>
@@ -281,7 +281,7 @@
     <string name="group_setup_games_title">Vocês jogam sempre no mesmo dia?</string>
     <string name="group_setup_games_yes">Sim, toda semana</string>
     <string name="group_setup_games_no">Não, varia</string>
-    <string name="group_setup_games_yes_hint">O jogo de cada semana sai sozinho, 5 dias antes.</string>
+    <string name="group_setup_games_yes_hint">O jogo de cada semana sai sozinho, 4 dias antes.</string>
     <string name="group_setup_slots_label">Dia e horário</string>
     <string name="group_setup_add_another_slot">Adicionar outro dia</string>
     <string name="group_setup_more_details">Mais detalhes (opcional)</string>
