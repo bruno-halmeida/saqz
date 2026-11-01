@@ -35,9 +35,9 @@ class NotificationWhatsAppWiringTest {
         )
 
     @Test
-    fun `whatsapp ligado sobe a aba Mensagens sem job, rede nem banco`() {
+    fun `aba ligada como em producao sobe sem job, rede nem banco`() {
         dataSourceUses.set(0)
-        runner.withPropertyValues("saqz.notifications.whatsapp.enabled=true").run { context ->
+        runner.withPropertyValues("saqz.notifications.whatsapp.enabled=true", "saqz.admin.inbox.enabled=true").run { context ->
             assertNull(context.startupFailure)
             assertEquals(1, context.getBeansOfType(AdminWhatsAppController::class.java).size)
             assertEquals(1, context.getBeansOfType(AdminWhatsAppMessages::class.java).size)
@@ -46,9 +46,19 @@ class NotificationWhatsAppWiringTest {
         assertEquals(0, dataSourceUses.get())
     }
 
+    /** Dev: WhatsApp ligado com a instância real e admin de seed. A aba não pode existir aí. */
     @Test
-    fun `whatsapp desligado nao registra a aba Mensagens`() {
-        runner.withPropertyValues("saqz.notifications.whatsapp.enabled=false").run { context ->
+    fun `whatsapp ligado sem a chave da aba nao registra a aba Mensagens`() {
+        runner.withPropertyValues("saqz.notifications.whatsapp.enabled=true").run { context ->
+            assertNull(context.startupFailure)
+            assertEquals(0, context.getBeansOfType(AdminWhatsAppController::class.java).size)
+            assertEquals(0, context.getBeansOfType(AdminWhatsAppMessages::class.java).size)
+        }
+    }
+
+    @Test
+    fun `whatsapp desligado nao registra a aba Mensagens mesmo com a chave`() {
+        runner.withPropertyValues("saqz.notifications.whatsapp.enabled=false", "saqz.admin.inbox.enabled=true").run { context ->
             assertNull(context.startupFailure)
             assertEquals(0, context.getBeansOfType(AdminWhatsAppController::class.java).size)
             assertEquals(0, context.getBeansOfType(AdminWhatsAppMessages::class.java).size)

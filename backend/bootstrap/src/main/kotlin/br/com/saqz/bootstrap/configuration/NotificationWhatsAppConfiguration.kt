@@ -100,14 +100,20 @@ class NotificationWhatsAppConfiguration {
 
     @Bean fun whatsAppGroupDirectory(client: UazapiClient): WhatsAppGroupDirectory = UazapiGroupDirectory(client)
 
-    @Bean fun adminWhatsAppMessages(
+    /**
+     * A aba Mensagens lê e envia pelo número real. Dev usa a mesma instância da Uazapi, e o admin de dev é conta
+     * de seed com senha padrão em repositório público: a chave fica ligada só no overlay de produção.
+     */
+    @Bean @ConditionalOnProperty(prefix = "saqz.admin.inbox", name = ["enabled"], havingValue = "true")
+    fun adminWhatsAppMessages(
         client: UazapiClient,
         directory: WhatsAppGroupDirectory,
         dataSource: DataSource,
         sender: NotificationWhatsAppSender,
     ) = AdminWhatsAppMessages(UazapiWhatsAppInbox(client), directory, JdbcAdminWhatsAppBindings(dataSource), sender)
 
-    @Bean fun adminWhatsAppController(messages: AdminWhatsAppMessages, admins: PlatformAdminLookup) =
+    @Bean @ConditionalOnProperty(prefix = "saqz.admin.inbox", name = ["enabled"], havingValue = "true")
+    fun adminWhatsAppController(messages: AdminWhatsAppMessages, admins: PlatformAdminLookup) =
         AdminWhatsAppController(messages, admins)
 
     @Bean fun linkGroupWhatsApp(

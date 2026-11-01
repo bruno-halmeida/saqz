@@ -31,6 +31,9 @@ configMapGenerator:
       # (adm.saqz.app) chamam a API pelo navegador. Lista separada por vírgula: tirar saqz.app quebra o site.
       - SAQZ_ADMINWEB_ORIGINS=https://saqz.app,https://adm.saqz.app
       - SAQZ_NOTIFICATIONS_WHATSAPP_ENABLED=true
+      # Aba Mensagens do adm (DEB-160): lê e envia pelo número real. Só em produção: dev usa a mesma instância
+      # da Uazapi e o admin de dev é conta de seed. Nunca ligar em dev.
+      - SAQZ_ADMIN_INBOX_ENABLED=true
       # Imagem no topo do lembrete do grupo. A Uazapi/WhatsApp guarda a imagem pelo endereço: ao trocar
       # a imagem, publique com nome novo em links-page/assets e aponte aqui (design/whatsapp/render.sh).
       - SAQZ_NOTIFICATIONS_WHATSAPP_GROUP_REMINDER_IMAGE_URL=https://links.saqz.app/assets/whatsapp-lembrete-v2.jpg
