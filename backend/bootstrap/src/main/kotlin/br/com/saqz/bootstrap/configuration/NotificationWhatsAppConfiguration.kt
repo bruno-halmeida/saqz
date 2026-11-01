@@ -1,22 +1,27 @@
 package br.com.saqz.bootstrap.configuration
 
+import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.access.application.flags.FeatureFlags
 import br.com.saqz.access.application.flags.FeatureKeys
+import br.com.saqz.adminweb.http.AdminWhatsAppController
 import br.com.saqz.groups.adapter.input.http.GroupWhatsAppBindingController
 import br.com.saqz.groups.adapter.input.http.VerifiedGroupActorResolver
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsApp
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsAppGroup
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcAdminWhatsAppBindings
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupDirectory
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupNotificationSender
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiNumberCheck
+import br.com.saqz.groups.adapter.output.whatsapp.UazapiWhatsAppInbox
 import br.com.saqz.groups.application.communication.WhatsAppNumberCheck
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiNotificationSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppGroupSender
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
+import br.com.saqz.groups.application.whatsapp.AdminWhatsAppMessages
 import br.com.saqz.groups.application.whatsapp.GroupWhatsAppBindingRepository
 import br.com.saqz.groups.application.whatsapp.LinkGroupWhatsApp
 import br.com.saqz.groups.application.whatsapp.ManageGroupWhatsAppBinding
@@ -94,6 +99,16 @@ class NotificationWhatsAppConfiguration {
         JdbcGroupWhatsAppBindingRepository(dataSource)
 
     @Bean fun whatsAppGroupDirectory(client: UazapiClient): WhatsAppGroupDirectory = UazapiGroupDirectory(client)
+
+    @Bean fun adminWhatsAppMessages(
+        client: UazapiClient,
+        directory: WhatsAppGroupDirectory,
+        dataSource: DataSource,
+        sender: NotificationWhatsAppSender,
+    ) = AdminWhatsAppMessages(UazapiWhatsAppInbox(client), directory, JdbcAdminWhatsAppBindings(dataSource), sender)
+
+    @Bean fun adminWhatsAppController(messages: AdminWhatsAppMessages, admins: PlatformAdminLookup) =
+        AdminWhatsAppController(messages, admins)
 
     @Bean fun linkGroupWhatsApp(
         transaction: JdbcTransactionRunner,
