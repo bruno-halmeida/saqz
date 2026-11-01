@@ -46,3 +46,12 @@ test("privacy describes the Brazil launch and both account deletion channels", (
   assert.match(page, /href="\/excluir-conta\/"/);
   assert.doesNotMatch(page, /<strong>Branch:/);
 });
+
+test("privacy page declares the WhatsApp messages read by the admin team", () => {
+  assert.match(page, /Atualizada em 1º de novembro de 2026 \(mensagens no WhatsApp\)\./);
+  assert.match(page, /<strong>Mensagens no WhatsApp:<\/strong> as mensagens enviadas ao número do Saqz/);
+  assert.match(page, /inclusive de pessoas sem conta no app\. Não copiamos essas mensagens para o nosso banco de dados\./);
+  assert.match(page, /<strong>Atender quem escreve para o número do Saqz<\/strong> e acompanhar as mensagens desse número: legítimo interesse/);
+  assert.match(page, /<strong>Uazapi \(WhatsApp\):<\/strong> envio dos avisos do grupo, quando ativado pelo organizador, e recebimento e armazenamento das mensagens enviadas ao número do Saqz\./);
+  assert.match(page, /<p>As mensagens do número do Saqz ficam guardadas na Uazapi por até 7 dias\.<\/p>/);
+});
