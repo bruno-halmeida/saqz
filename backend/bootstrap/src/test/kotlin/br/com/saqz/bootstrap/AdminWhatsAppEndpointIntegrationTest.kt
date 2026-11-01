@@ -109,6 +109,13 @@ class AdminWhatsAppEndpointIntegrationTest {
     }
 
     @Test
+    fun `json malformado responde 400 INVALID_INPUT`() {
+        val response = call(port, "POST", "/admin/whatsapp/messages", "admin-token", "{nao e json")
+        assertEquals(400, response.statusCode())
+        assertTrue(response.body().contains("INVALID_INPUT"))
+    }
+
+    @Test
     fun `log mostra so os quatro ultimos digitos da privada`() {
         assertEquals("7777", logChat(PRIVATE))
         assertEquals(GROUP, logChat(GROUP))

@@ -1424,6 +1424,10 @@ class Component extends DCLogic {
     return { AUDIO: ["Áudio", "mic"], IMAGE: ["Imagem", "image"], VIDEO: ["Vídeo", "videocam"], STICKER: ["Figurinha", "sticky_note_2"],
       DOCUMENT: ["Documento", "description"], CONTACT: ["Contato", "person"], OTHER: ["Mensagem", "chat"] }[kind] || null;
   }
+  mgIniciais(c) {
+    if (!c.name) return String(this.mgFone(c.phone)).slice(1, 3);
+    return c.name.split(/\s+/).map(p => Array.from(p).find(ch => /[\p{L}\p{N}]/u.test(ch))).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  }
   mgNomeConversa(c) { return c.name || this.mgFone(c.phone) || c.chatId; }
   mgLista(st, tipo) { const d = st.mgData; return d && d.connected ? (tipo === "grupos" ? d.groups : d.privates) : []; }
   mgAtual(st) { return this.mgLista(st, st.mgTipo).find(c => c.chatId === st.mgSel) || null; }
@@ -1513,7 +1517,7 @@ class Component extends DCLogic {
       this._mgEnviando = { ...this._mgEnviando, [chatId]: false };
       this.setState(aplica);
     };
-    const naoConfirmado = () => encerra(st => marca(st, { msg: "Não foi possível confirmar o envio. Tentar de novo não duplica a mensagem.", retry: true }));
+    const naoConfirmado = () => encerra(st => marca(st, { msg: "Não foi possível confirmar o envio. Confira a conversa antes de tentar de novo.", retry: true }));
     let timer;
     const limite = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), 60000); });
     const envio = window.saqzAdmin.fetchAdmin("/admin/whatsapp/messages", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -1548,7 +1552,7 @@ class Component extends DCLogic {
     const filtradas = this.mgFiltradas(st);
     const mgRows = filtradas.map(c => {
       const midia = this.mgMidia(c.previewKind);
-      return { nome: this.mgNomeConversa(c), ini: c.name ? c.name.split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase() : String(this.mgFone(c.phone)).slice(1, 3),
+      return { nome: this.mgNomeConversa(c), ini: this.mgIniciais(c),
         saqz: !!c.saqzGroup, quando: this.mgQuandoLinha(c.lastMessageAt), previa: c.preview || (midia ? midia[0] : ""), atual: c.chatId === chatId ? "true" : "false",
         abrir: () => this.mgSelecionar(c.chatId) };
     });

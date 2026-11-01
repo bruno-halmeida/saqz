@@ -68,6 +68,15 @@ test('privadas abrem em Todas; sem nome mostra telefone e aviso', async () => {
   assert.equal(s.vals().mgResponderA, 'Responder a (21) 90000-5678');
 });
 
+test('iniciais ignoram emoji e símbolos', async () => {
+  const { app } = await entrar();
+  assert.equal(app.mgIniciais({ name: '🏐 Vôlei da Firma' }), 'VD');
+  assert.equal(app.mgIniciais({ name: '🔥Rede Alta' }), 'RA');
+  assert.equal(app.mgIniciais({ name: 'Quadra 7' }), 'Q7');
+  assert.equal(app.mgIniciais({ name: '🏐 🔥' }), '');
+  assert.equal(app.mgIniciais({ name: null, phone: '5521900005678' }), '21');
+});
+
 test('vínculo quebrado fica em alerta e busca filtra por nome ou telefone', async () => {
   const s = await entrar();
   s.vals().mgRows[1].abrir(); await flush();
@@ -148,7 +157,7 @@ test('não confirmado mantém texto e requestId; mudar o texto gera outro', asyn
   const s = await privadas({ 'POST /admin/whatsapp/messages': json({ error: 'SEND_UNCONFIRMED' }, 503) });
   digitar(s, 'oi');
   await enviar(s);
-  assert.equal(s.vals().mgEnvioMsg, 'Não foi possível confirmar o envio. Tentar de novo não duplica a mensagem.');
+  assert.equal(s.vals().mgEnvioMsg, 'Não foi possível confirmar o envio. Confira a conversa antes de tentar de novo.');
   assert.equal(s.vals().mgEnviarRotulo, 'Tentar de novo');
   assert.equal(s.vals().mgRascunho, 'oi');
   await enviar(s);
