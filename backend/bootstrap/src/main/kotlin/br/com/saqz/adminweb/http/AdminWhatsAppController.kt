@@ -1,5 +1,6 @@
 package br.com.saqz.adminweb.http
 
+import br.com.saqz.access.adapter.output.jdbc.flags.FeatureJson
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.groups.application.whatsapp.AdminWhatsAppMessages
 import br.com.saqz.groups.application.whatsapp.DirectoryError
@@ -94,8 +95,13 @@ class AdminWhatsAppController(private val messages: AdminWhatsAppMessages, priva
     }
 
     @PostMapping("/admin/whatsapp/messages")
-    fun reply(@AuthenticationPrincipal identity: RequestIdentity, @RequestBody body: AdminWhatsAppReplyBody): ResponseEntity<*> =
+    fun reply(@AuthenticationPrincipal identity: RequestIdentity, @RequestBody raw: String): ResponseEntity<*> =
         admin(identity) { actor ->
+            val body = try {
+                FeatureJson.read(raw, AdminWhatsAppReplyBody::class.java)
+            } catch (_: Exception) {
+                return@admin error(400, "INVALID_INPUT")
+            }
             val result = messages.reply(body.chatId, body.text, body.requestId)
             if (body.chatId != null && AdminWhatsAppMessages.validChat(body.chatId)) {
                 record("reply", actor, body.chatId, result::class.simpleName.orEmpty().lowercase())
