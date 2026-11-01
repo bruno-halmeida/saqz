@@ -349,6 +349,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 .pagination button:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}
 </style>
 <style>.flags{overflow:auto;padding:24px 28px;font-size:14px}.flags h1{margin-top:0}.flags h2{font-size:18px}.flags h3{font-size:15px;margin:18px 0 8px}.flags section{background:white;border:1px solid var(--saqz-border);border-radius:16px;padding:20px;margin:18px 0;display:grid;gap:12px}.flags p{line-height:1.5;color:var(--saqz-muted);margin:0;overflow-wrap:anywhere}.flags>p{margin-top:6px}.flags pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.flags textarea{min-height:60px;resize:vertical}.flags .rec-actions button,.flags .flg-row>button,.flags .flg-item button,.flags .flg-line>button,.flags article>button{font:600 13px Inter,sans-serif;padding:9px 14px;border:1px solid var(--saqz-border);border-radius:20px;background:white;color:var(--saqz-blue);cursor:pointer;white-space:nowrap}.flags button:disabled{opacity:.5;cursor:default}.flags .rec-toggle{display:inline-flex;align-items:center;border:0;background:none;padding:6px 0;cursor:pointer}.flg-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--saqz-border);padding:14px 0}.flg-row[aria-current="true"]{box-shadow:inset 3px 0 0 var(--saqz-blue);padding-left:12px}.flg-row strong{display:block;margin:4px 0 2px}.flg-line{display:flex;align-items:center;gap:14px}.flg-item{display:flex;align-items:center;gap:10px;border-top:1px solid var(--saqz-border);padding:8px 0}.flg-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.flg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.flags article{border-top:1px solid var(--saqz-border);padding:12px 0;display:grid;gap:6px;justify-items:start}@media(max-width:650px){.flg-grid{grid-template-columns:1fr}.flags{padding:20px 16px}}</style>
+<style>.mg{flex:1;min-height:0;display:flex;flex-direction:column;font-size:14px}.mg-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 28px;background:#fff;border-bottom:1px solid var(--saqz-border)}.mg-top h1{margin:0 10px 0 0;font-size:20px;line-height:26px;font-weight:800;letter-spacing:-.02em}.mg-top small{font-size:13px;color:var(--saqz-muted)}.mg-top .mg-when{margin-left:auto}.mg-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(23,178,106,.12);color:#0E7A4B}.mg-pill.off{background:rgba(245,166,35,.14);color:#8F5600}.mg-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#17B26A}.mg-pill.off::before{background:#F5A623}.mg-btn{font:600 13px var(--font-ui);min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--saqz-border);background:#fff;color:var(--saqz-blue);cursor:pointer}.mg-btn:disabled{cursor:default;color:var(--saqz-disabled-fg)}.mg-primary{font:600 13px var(--font-ui);min-height:44px;padding:8px 18px;border-radius:999px;border:0;background:var(--saqz-blue);color:#fff;cursor:pointer}.mg-primary:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}.mg-body{flex:1;min-height:0;display:flex;gap:16px;padding:20px 28px;box-sizing:border-box}.mg-panel{min-height:0;min-width:0;background:#fff;border:1px solid var(--saqz-border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}.mg-list{flex:1 1 320px}.mg-chat{flex:999 1 560px}.mg-state{flex:1;display:grid;place-items:center;padding:32px}.mg-state div{max-width:460px;text-align:center;display:grid;gap:8px;justify-items:center}.mg-state h2{margin:0;font-size:17px;line-height:22px}.mg-state p{margin:0;line-height:20px;color:var(--saqz-muted)}.mg-tools{display:grid;gap:10px;padding:14px 14px 12px;border-bottom:1px solid var(--saqz-border)}.mg-tools label,.mg-reply label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)}.mg-tools input,.mg-reply textarea{box-sizing:border-box;width:100%;border:1px solid var(--saqz-border);border-radius:10px;padding:8px 12px;font:400 14px/20px var(--font-ui);color:var(--saqz-navy)}.mg-tools input{min-height:40px}.mg-reply textarea{min-height:64px;resize:vertical}.mg-reply textarea:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}.mg-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:3px;border-radius:999px;background:var(--saqz-ice)}.mg-seg button{border:0;border-radius:999px;min-height:38px;padding:8px 14px;font:600 13px var(--font-ui);cursor:pointer;background:transparent;color:var(--saqz-muted)}.mg-seg button[aria-pressed="true"]{background:#fff;color:var(--saqz-blue);box-shadow:0 0 0 1px var(--saqz-border)}.mg-rows{flex:1;min-height:0;overflow-y:auto}.mg-row{display:flex;gap:10px;align-items:center;width:100%;min-height:64px;box-sizing:border-box;padding:10px 14px;border:0;border-bottom:1px solid #EEF0F5;text-align:left;cursor:pointer;font-family:inherit;color:inherit;background:#fff}.mg-row[aria-current="true"]{background:var(--saqz-ice)}.mg-ini{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:var(--saqz-ice);box-shadow:inset 0 0 0 1px var(--saqz-border);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--saqz-blue)}.mg-rowtxt{flex:1;min-width:0;display:grid;gap:2px}.mg-rowtop{display:flex;align-items:center;gap:6px}.mg-rowtop strong{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;line-height:20px;font-weight:600}.mg-tag{flex:0 0 auto;padding:1px 6px;border-radius:999px;background:rgba(6,56,223,.08);color:var(--saqz-blue);font-size:11px;line-height:16px;font-weight:700}.mg-rowtop small{margin-left:auto;flex:0 0 auto;font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-prev{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;line-height:18px;color:var(--saqz-muted)}.mg-note{margin:0;padding:10px 14px;font-size:12px;line-height:16px;color:var(--saqz-muted);border-top:1px solid var(--saqz-border)}.mg-none{margin:0;padding:24px 16px;line-height:20px;color:var(--saqz-muted)}.mg-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 20px;border-bottom:1px solid var(--saqz-border)}.mg-head>div:first-child{flex:1 1 240px;min-width:0;display:grid;gap:2px}.mg-head h2{margin:0;font-size:17px;line-height:22px;font-weight:700}.mg-head p{margin:0;font-size:13px;line-height:18px;color:var(--saqz-muted)}.mg-head p.warn{color:#8F5600}.mg-link{border:0;background:none;padding:0;font:inherit;color:var(--saqz-blue);text-decoration:underline;cursor:pointer}.mg-head .mg-seg{display:inline-grid}.mg-feed{flex:1;min-height:0;overflow-y:auto;background:var(--saqz-ice);padding:16px 20px;display:flex;flex-direction:column;gap:10px}.mg-feed>.mg-btn{align-self:center}.mg-day{align-self:center;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--saqz-border);font-size:12px;line-height:16px;font-weight:600;color:var(--saqz-muted)}.mg-msg{align-self:flex-start;max-width:72%;box-sizing:border-box;background:#fff;border:1px solid var(--saqz-border);border-radius:12px;padding:10px 12px;display:grid;gap:4px}.mg-msg.me{align-self:flex-end;background:#E7EBFC;border-color:transparent}.mg-who{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}.mg-who strong{font-size:13px;line-height:18px}.mg-msg.me .mg-who strong{color:var(--saqz-blue)}.mg-who span,.mg-time{font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-time{justify-self:end}.mg-media{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;font-weight:600;color:var(--saqz-muted)}.mg-text{margin:0;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere}.mg-empty{margin:auto;max-width:360px;text-align:center;display:grid;gap:6px}.mg-empty strong{font-size:15px;line-height:20px}.mg-empty p{margin:0;line-height:20px;color:var(--saqz-muted)}.mg-reply{display:grid;gap:8px;padding:12px 20px;border-top:1px solid var(--saqz-border)}.mg-replyfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.mg-replyfoot span{flex:1 1 240px;font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-err{margin:0;font-size:13px;line-height:18px;color:var(--saqz-error)}.mg-ro{margin:0;padding:10px 20px;border-top:1px solid var(--saqz-border);font-size:12px;line-height:16px;color:var(--saqz-muted)}@media (max-width:900px){.mg-body{flex-direction:column;overflow:auto}.mg-list,.mg-chat{flex:0 0 auto;height:70vh}}</style>
 </helmet>
 <div style="width:100vw;height:100vh;min-height:740px;display:grid;grid-template-columns:64px 1fr;background:var(--saqz-canvas);font-family:var(--font-ui);color:var(--saqz-navy);box-sizing:border-box;overflow:hidden">
   <aside style="background:var(--saqz-white);border-right:1px solid var(--saqz-border);display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;box-sizing:border-box">
@@ -356,6 +357,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
     <button type="button" aria-label="Visão geral" title="Visão geral" sc-camel-on-click="{{ goVis }}" style="{{ sVis }}"><span style="{{ bVis }}"></span><span class="msr" style="font-size:20px">monitoring</span></button>
     <button type="button" aria-label="Usuários" title="Usuários" sc-camel-on-click="{{ goUsu }}" style="{{ sUsu }}"><span style="{{ bUsu }}"></span><span class="msr" style="font-size:20px">group</span></button>
     <button type="button" aria-label="Grupos" title="Grupos" sc-camel-on-click="{{ goGru }}" style="{{ sGru }}"><span style="{{ bGru }}"></span><span class="msr" style="font-size:20px">sports_volleyball</span></button>
+<button type="button" aria-label="Mensagens" title="Mensagens" sc-camel-on-click="{{ goMensagens }}" style="{{ sMensagens }}"><span style="{{ bMensagens }}"></span><span class="msr" style="font-size:20px">chat</span></button>
 <button type="button" aria-label="Flags" title="Flags" sc-camel-on-click="{{ goFlags }}" style="{{ sFlags }}"><span style="{{ bFlags }}"></span><span class="msr" style="font-size:20px">toggle_on</span></button>
 <button type="button" aria-label="Recebimentos" title="Recebimentos" sc-camel-on-click="{{ goRecebimentos }}" style="{{ sRecebimentos }}"><span style="{{ bRecebimentos }}"></span><span class="msr" style="font-size:20px">account_balance</span></button>
     <button type="button" aria-label="Receita" title="Receita" sc-camel-on-click="{{ goRec }}" style="{{ sRec }}"><span style="{{ bRec }}"></span><span class="msr" style="font-size:20px">payments</span></button>
@@ -416,6 +418,21 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   </div>
   </sc-if>
 
+<sc-if value="{{ isMensagens }}"><div class="mg">
+<header class="mg-top"><h1>Mensagens</h1><sc-if value="{{ mgConectado }}"><span class="mg-pill">Conectado</span><small>{{ mgNumero }}</small></sc-if><sc-if value="{{ mgDesconectado }}"><span class="mg-pill off">Desconectado</span></sc-if><small class="mg-when">{{ mgQuando }}</small><button type="button" class="mg-btn" disabled="{{ mgBusy }}" sc-camel-on-click="{{ onMgAtualizar }}">Atualizar</button></header>
+<sc-if value="{{ mgCarregando }}"><div class="mg-body"><section class="mg-panel mg-chat"><div class="mg-state"><p role="status">Carregando conversas…</p></div></section></div></sc-if>
+<sc-if value="{{ mgFalha }}"><div class="mg-body"><section class="mg-panel mg-chat"><div class="mg-state"><div><h2>{{ mgFalhaTitulo }}</h2><sc-if value="{{ mgFalhaTexto }}"><p>{{ mgFalhaTexto }}</p></sc-if><sc-if value="{{ mgFalhaRetry }}"><button type="button" class="mg-primary" sc-camel-on-click="{{ onMgAtualizar }}">Tentar de novo</button></sc-if></div></div></section></div></sc-if>
+<sc-if value="{{ mgPronto }}"><div class="mg-body">
+<section class="mg-panel mg-list" aria-label="Conversas"><div class="mg-tools"><label>Buscar por nome ou telefone<input type="search" aria-label="Buscar por nome ou telefone" value="{{ mgQ }}" sc-camel-on-change="{{ onMgQ }}"></label><div class="mg-seg" role="group" aria-label="Tipo de conversa"><button type="button" aria-pressed="{{ mgGruposOn }}" sc-camel-on-click="{{ onMgGrupos }}">Grupos · {{ mgNGrupos }}</button><button type="button" aria-pressed="{{ mgPrivadasOn }}" sc-camel-on-click="{{ onMgPrivadas }}">Privadas · {{ mgNPrivadas }}</button></div></div>
+<div class="mg-rows"><sc-for list="{{ mgRows }}" as="c"><button type="button" class="mg-row" aria-current="{{ c.atual }}" sc-camel-on-click="{{ c.abrir }}"><span class="mg-ini" aria-hidden="true">{{ c.ini }}</span><span class="mg-rowtxt"><span class="mg-rowtop"><strong>{{ c.nome }}</strong><sc-if value="{{ c.saqz }}"><span class="mg-tag">Saqz</span></sc-if><small>{{ c.quando }}</small></span><span class="mg-prev">{{ c.previa }}</span></span></button></sc-for><sc-if value="{{ mgSemResultado }}"><p class="mg-none">{{ mgSemResultado }}</p></sc-if></div>
+<sc-if value="{{ mgTruncado }}"><p class="mg-note">A lista mostra as 1.000 conversas mais recentes.</p></sc-if><p class="mg-note">A Uazapi guarda até 7 dias e até 2.000 mensagens por conversa.</p></section>
+<section class="mg-panel mg-chat" aria-label="Mensagens da conversa"><sc-if value="{{ mgSemConversa }}"><div class="mg-state"><p>Nenhuma conversa para mostrar.</p></div></sc-if><sc-if value="{{ mgTemConversa }}">
+<div class="mg-head"><div><h2>{{ mgNome }}</h2><p class="{{ mgSubClasse }}">{{ mgSub }}<sc-if value="{{ mgTemGrupo }}"> · <button type="button" class="mg-link" sc-camel-on-click="{{ onMgVerGrupo }}">Abrir grupo no adm</button></sc-if></p></div><div class="mg-seg" role="group" aria-label="Quais mensagens mostrar"><button type="button" aria-pressed="{{ mgRecOn }}" sc-camel-on-click="{{ onMgRecebidas }}">Recebidas</button><button type="button" aria-pressed="{{ mgTodasOn }}" sc-camel-on-click="{{ onMgTodas }}">Todas</button></div></div>
+<div class="mg-feed"><sc-if value="{{ mgPodeCarregar }}"><button type="button" class="mg-btn" disabled="{{ mgCarregandoMais }}" sc-camel-on-click="{{ onMgAnteriores }}">Carregar anteriores</button></sc-if><sc-for list="{{ mgLinhas }}" as="l"><sc-if value="{{ l.ehDia }}"><div class="mg-day">{{ l.dia }}</div></sc-if><sc-if value="{{ l.ehMsg }}"><article class="{{ l.classe }}"><sc-if value="{{ l.mostraNome }}"><div class="mg-who"><strong>{{ l.nome }}</strong><span>{{ l.fone }}</span></div></sc-if><sc-if value="{{ l.midia }}"><span class="mg-media"><span class="msr" style="font-size:16px" aria-hidden="true">{{ l.icone }}</span>{{ l.midia }}</span></sc-if><sc-if value="{{ l.texto }}"><p class="mg-text">{{ l.texto }}</p></sc-if><span class="mg-time">{{ l.hora }}</span></article></sc-if></sc-for><sc-if value="{{ mgVazioTitulo }}"><div class="mg-empty"><strong>{{ mgVazioTitulo }}</strong><p>{{ mgVazioTexto }}</p><sc-if value="{{ mgConvErro }}"><button type="button" class="mg-btn" sc-camel-on-click="{{ onMgReabrir }}">Tentar de novo</button></sc-if></div></sc-if></div>
+<sc-if value="{{ mgPodeResponder }}"><div class="mg-reply"><label>{{ mgResponderA }}<textarea rows="2" maxlength="2000" aria-label="{{ mgResponderA }}" value="{{ mgRascunho }}" sc-camel-on-change="{{ onMgRascunho }}"></textarea></label><sc-if value="{{ mgEnvioMsg }}"><p class="mg-err" role="alert">{{ mgEnvioMsg }}</p></sc-if><div class="mg-replyfoot"><span>Sai pelo número do Saqz. Abrir a conversa não marca nada como lido no WhatsApp.</span><button type="button" class="mg-primary" disabled="{{ mgEnvioBloqueado }}" sc-camel-on-click="{{ onMgEnviar }}">{{ mgEnviarRotulo }}</button></div></div></sc-if>
+<sc-if value="{{ mgSoLeitura }}"><p class="mg-ro">Grupos são somente leitura. Abrir uma conversa aqui não marca nada como lido no WhatsApp.</p></sc-if>
+</sc-if></section></div></sc-if>
+</div></sc-if>
 <sc-if value="{{ isFlags }}"><div class="flags"><h1>Flags</h1><p>Cada mudança pede motivo, vai para o histórico e chega ao app em segundos. As flags nascem no código do backend: aqui só se edita a regra.</p>
 <section><h2>Flags do app</h2><p role="status">{{ flgListMsg }}</p><sc-for list="{{ flgRows }}" as="f"><article class="flg-row" aria-current="{{ f.sel }}"><div><span style="{{ f.alertStyle }}">{{ f.alertTxt }}</span><strong>{{ f.key }}</strong><p>{{ f.desc }}</p><p>{{ f.resumo }} · {{ f.barra }}</p></div><button type="button" sc-camel-on-click="{{ f.onOpen }}">Editar</button></article></sc-for></section>
 <sc-if value="{{ flgTemSel }}"><section><h2>{{ flgTitulo }}</h2><p>{{ flgDesc }}</p><sc-if value="{{ flgCarregada }}">
@@ -1093,7 +1110,7 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;receita&quot;, &quot;recebimentos&quot;, &quot;flags&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;paginaInicial&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;visao&quot;, &quot;usuarios&quot;, &quot;grupos&quot;, &quot;mensagens&quot;, &quot;receita&quot;, &quot;recebimentos&quot;, &quot;flags&quot;, &quot;cupons&quot;, &quot;suporte&quot;], &quot;default&quot;: &quot;visao&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Comportamento&quot;}}">
 class Component extends DCLogic {
   state = {
     page: this.props.paginaInicial ?? "visao",
@@ -1105,6 +1122,7 @@ class Component extends DCLogic {
     // Dados vindos da API /admin (null = carregando; {erro:true} = falhou)
     ...this.recebimentosInitial(),
     ...this.flagsInitial(),
+    ...this.mgInitial(),
     ...this.trialInitial(),
     ...this.analyticsInitial(),
     overview: null, atrasadas: null,
@@ -1134,6 +1152,7 @@ class Component extends DCLogic {
         this._epoca = (this._epoca || 0) + 1;
         this._recebimentosPending = {};
         this._conditionsPending = {};
+        this._mgEnviando = {};
         this.setState({...this.conditionsInitial(), ...this.analyticsInitial()});
         // Timers pendentes não disparam depois da transição de sessão.
         clearTimeout(this._ud);
@@ -1147,6 +1166,7 @@ class Component extends DCLogic {
           this.setState({
             ...this.recebimentosInitial(),
             ...this.flagsInitial(),
+            ...this.mgInitial(),
     ...this.trialInitial(),
     overview: null, atrasadas: null,
             usersPage: null, userDetail: null, userReceipts: null,
@@ -1372,6 +1392,215 @@ class Component extends DCLogic {
       recHistoryStatus: !h ? "Carregando histórico…" : h.erro ? "Não foi possível carregar o histórico." : h.total + " alterações · página " + st.recHistoryPage + " de " + Math.max(1, Math.ceil(h.total / 25)),
       recHistoryBusy: !h, recHistoryPrevDisabled: !h || st.recHistoryPage <= 1, recHistoryNextDisabled: !h || h.erro || st.recHistoryPage * 25 >= h.total,
       recHistoryReload: () => this.recHistory(st.recHistoryPage), recHistoryPrev: () => this.recHistory(Math.max(1, st.recHistoryPage - 1)), recHistoryNext: () => this.recHistory(st.recHistoryPage + 1) };
+  }
+
+  // Mensagens (DEB-160): leitura ao vivo da Uazapi. Nada fica guardado além da memória desta sessão; o
+  // rascunho e o requestId são por chatId, para o texto nunca ir de uma conversa para outra.
+  mgInitial() {
+    return { mgData: null, mgAt: null, mgBusy: false, mgTipo: "grupos", mgSel: null, mgQ: "", mgEscopo: "recebidas",
+      mgConv: null, mgLocais: {}, mgRascunhos: {}, mgPedidos: {}, mgEnvio: {} };
+  }
+  mgFone(digitos) {
+    const d = String(digitos || "").replace(/\D/g, "");
+    const n = d.startsWith("55") && d.length >= 12 ? d.slice(2) : d;
+    if (n.length === 11) return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`;
+    if (n.length === 10) return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
+    return d ? "+" + d : "";
+  }
+  mgPar(n) { return String(n).padStart(2, "0"); }
+  mgHora(d) { return this.mgPar(d.getHours()) + ":" + this.mgPar(d.getMinutes()); }
+  mgDataCurta(d) { return this.mgPar(d.getDate()) + "/" + this.mgPar(d.getMonth() + 1); }
+  mgMesmoDia(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  mgQuandoLinha(iso) { const d = new Date(iso); return this.mgMesmoDia(d, new Date()) ? this.mgHora(d) : this.mgDataCurta(d); }
+  mgDia(iso) {
+    const d = new Date(iso), hoje = new Date(), ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1);
+    if (this.mgMesmoDia(d, hoje)) return "Hoje";
+    if (this.mgMesmoDia(d, ontem)) return "Ontem";
+    const dias = ["Dom.", "Seg.", "Ter.", "Qua.", "Qui.", "Sex.", "Sáb."];
+    const meses = ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."];
+    return `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]}`;
+  }
+  mgMidia(kind) {
+    return { AUDIO: ["Áudio", "mic"], IMAGE: ["Imagem", "image"], VIDEO: ["Vídeo", "videocam"], STICKER: ["Figurinha", "sticky_note_2"],
+      DOCUMENT: ["Documento", "description"], CONTACT: ["Contato", "person"], OTHER: ["Mensagem", "chat"] }[kind] || null;
+  }
+  mgNomeConversa(c) { return c.name || this.mgFone(c.phone) || c.chatId; }
+  mgLista(st, tipo) { const d = st.mgData; return d && d.connected ? (tipo === "grupos" ? d.groups : d.privates) : []; }
+  mgAtual(st) { return this.mgLista(st, st.mgTipo).find(c => c.chatId === st.mgSel) || null; }
+  mgFiltradas(st) {
+    const termo = st.mgQ.trim().toLowerCase(), digitos = termo.replace(/\D/g, "");
+    const lista = this.mgLista(st, st.mgTipo);
+    if (!termo) return lista;
+    return lista.filter(c => (c.name || "").toLowerCase().includes(termo) || this.mgFone(c.phone).toLowerCase().includes(termo) ||
+      (digitos && String(c.phone || "").includes(digitos)));
+  }
+  mgLoad() {
+    const seq = this._mgListaSeq = (this._mgListaSeq || 0) + 1, epoca = this._epoca;
+    const vale = () => seq === this._mgListaSeq && epoca === this._epoca;
+    this.setState({ mgBusy: true });
+    const fim = dados => {
+      if (!vale()) return;
+      this.setState(st => {
+        const conectado = !!dados.connected;
+        const lista = conectado ? (st.mgTipo === "grupos" ? dados.groups : dados.privates) : [];
+        const mgSel = lista.some(c => c.chatId === st.mgSel) ? st.mgSel : (lista[0] ? lista[0].chatId : null);
+        return { mgData: dados, mgAt: new Date(), mgBusy: false, mgSel };
+      }, () => { if (this.state.mgSel) this.mgAbrirConversa(this.state.mgSel); else this.mgInvalidaConversa(); });
+    };
+    return window.saqzAdmin.fetchAdmin("/admin/whatsapp/conversations").then(r => {
+      if (r.status === 404) return fim({ falha: "desligado" });
+      if (!r.ok) return fim({ falha: "indisponivel" });
+      return r.json().then(fim);
+    }).catch(() => fim({ falha: "indisponivel" }));
+  }
+  mgInvalidaConversa() { this._mgConvSeq = (this._mgConvSeq || 0) + 1; this.setState({ mgConv: null }); }
+  mgRota(chatId, offset) { return `/admin/whatsapp/messages?chatId=${encodeURIComponent(chatId)}&offset=${offset}&limit=50`; }
+  mgAbrirConversa(chatId) {
+    const seq = this._mgConvSeq = (this._mgConvSeq || 0) + 1, epoca = this._epoca;
+    const vale = () => seq === this._mgConvSeq && epoca === this._epoca;
+    this.setState(st => ({ mgConv: st.mgConv && st.mgConv.chatId === chatId ? { ...st.mgConv, carregando: true, erro: false } : { chatId, itens: [], hasMore: false, nextOffset: null, carregando: true, erro: false } }));
+    return window.saqzAdmin.fetchAdmin(this.mgRota(chatId, 0)).then(r => {
+      if (!r.ok) throw new Error("falha");
+      return r.json();
+    }).then(p => {
+      if (vale()) this.setState({ mgConv: { chatId, itens: p.messages, hasMore: p.hasMore, nextOffset: p.nextOffset, carregando: false, erro: false } });
+    }).catch(() => {
+      if (vale()) this.setState({ mgConv: { chatId, itens: [], hasMore: false, nextOffset: null, carregando: false, erro: true } });
+    });
+  }
+  mgAnteriores() {
+    const conv = this.state.mgConv;
+    if (!conv || !conv.hasMore || conv.nextOffset == null || conv.maisCarregando) return;
+    const seq = this._mgConvSeq = (this._mgConvSeq || 0) + 1, epoca = this._epoca;
+    const vale = () => seq === this._mgConvSeq && epoca === this._epoca;
+    this.setState({ mgConv: { ...conv, maisCarregando: true } });
+    return window.saqzAdmin.fetchAdmin(this.mgRota(conv.chatId, conv.nextOffset)).then(r => {
+      if (!r.ok) throw new Error("falha");
+      return r.json();
+    }).then(p => {
+      if (!vale()) return;
+      const ids = new Set(conv.itens.map(m => m.id));
+      this.setState({ mgConv: { ...conv, itens: p.messages.filter(m => !ids.has(m.id)).concat(conv.itens), hasMore: p.hasMore, nextOffset: p.nextOffset, maisCarregando: false } });
+    }).catch(() => { if (vale()) { this.setState({ mgConv: { ...conv, maisCarregando: false } }); this.aviso("Não deu para carregar as mensagens anteriores."); } });
+  }
+  mgSelecionar(chatId, tipo) {
+    const t = tipo || this.state.mgTipo;
+    this.setState({ mgSel: chatId, mgTipo: t, mgEscopo: t === "grupos" ? "recebidas" : "todas" });
+    if (chatId) this.mgAbrirConversa(chatId); else this.mgInvalidaConversa();
+  }
+  mgTrocarTipo(tipo) {
+    if (tipo === this.state.mgTipo) return;
+    const lista = this.mgLista(this.state, tipo);
+    this.setState({ mgQ: "" });
+    this.mgSelecionar(lista[0] ? lista[0].chatId : null, tipo);
+  }
+  mgEditarRascunho(chatId, texto) {
+    const envio = this.state.mgEnvio[chatId];
+    this.setState({ mgRascunhos: { ...this.state.mgRascunhos, [chatId]: texto },
+      mgEnvio: envio && !envio.ocupado && !envio.retry ? { ...this.state.mgEnvio, [chatId]: null } : this.state.mgEnvio });
+  }
+  mgEnviar(chatId) {
+    const texto = (this.state.mgRascunhos[chatId] || "").trim();
+    if (!texto || this._mgEnviando?.[chatId]) return;
+    this._mgEnviando = { ...(this._mgEnviando || {}), [chatId]: true };
+    const pedido = this.state.mgPedidos[chatId];
+    const requestId = pedido && pedido.texto === texto ? pedido.requestId : this.flgId();
+    const epoca = this._epoca;
+    const marca = (st, envio) => ({ mgEnvio: { ...st.mgEnvio, [chatId]: envio } });
+    this.setState(st => ({ ...marca(st, { ocupado: true }), mgPedidos: { ...st.mgPedidos, [chatId]: { texto, requestId } } }));
+    const encerra = aplica => {
+      if (epoca !== this._epoca) return;
+      this._mgEnviando = { ...this._mgEnviando, [chatId]: false };
+      this.setState(aplica);
+    };
+    const naoConfirmado = () => encerra(st => marca(st, { msg: "Não foi possível confirmar o envio. Tentar de novo não duplica a mensagem.", retry: true }));
+    let timer;
+    const limite = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), 60000); });
+    const envio = window.saqzAdmin.fetchAdmin("/admin/whatsapp/messages", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, text: texto, requestId }) });
+    return Promise.race([envio, limite]).then(r => r.ok
+      ? encerra(st => {
+          const { [chatId]: _r, ...mgRascunhos } = st.mgRascunhos, { [chatId]: _p, ...mgPedidos } = st.mgPedidos;
+          const local = { id: "local-" + requestId, fromMe: true, at: new Date().toISOString(), senderName: null, senderPhone: null, text: texto, kind: "TEXT" };
+          return { ...marca(st, null), mgRascunhos, mgPedidos, mgLocais: { ...st.mgLocais, [chatId]: (st.mgLocais[chatId] || []).concat([local]) },
+            mgEscopo: st.mgSel === chatId ? "todas" : st.mgEscopo };
+        })
+      : r.json().catch(() => ({})).then(b => {
+          if (b.error === "SEND_FAILED") encerra(st => marca(st, { msg: "O envio falhou. Nada foi enviado." }));
+          else if (b.error === "CHAT_NOT_FOUND") encerra(st => marca(st, { msg: "Esta conversa não existe mais." }));
+          else if (b.error === "WHATSAPP_UNAVAILABLE") encerra(st => marca(st, { msg: "A Uazapi não respondeu. Tente de novo em instantes." }));
+          else naoConfirmado();
+        })).catch(naoConfirmado).finally(() => clearTimeout(timer));
+  }
+  mgMensagens(st, chatId) {
+    const conv = st.mgConv && st.mgConv.chatId === chatId ? st.mgConv : null;
+    const itens = conv ? conv.itens : [];
+    // A mensagem local some quando /message/find passa a trazer a mesma resposta.
+    const locais = (st.mgLocais[chatId] || []).filter(l => !itens.some(m => m.fromMe && m.text === l.text && Date.parse(m.at) >= Date.parse(l.at) - 120000));
+    return itens.concat(locais);
+  }
+  mensagensVals() {
+    const st = this.state, d = st.mgData, falha = d && d.falha;
+    const desconectado = !!d && !falha && !d.connected, pronto = !!d && !falha && d.connected;
+    const atual = pronto ? this.mgAtual(st) : null, grupos = st.mgTipo === "grupos";
+    const chatId = atual ? atual.chatId : null;
+    const conv = st.mgConv && st.mgConv.chatId === chatId ? st.mgConv : null;
+    const filtradas = this.mgFiltradas(st);
+    const mgRows = filtradas.map(c => {
+      const midia = this.mgMidia(c.previewKind);
+      return { nome: this.mgNomeConversa(c), ini: c.name ? c.name.split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase() : String(this.mgFone(c.phone)).slice(1, 3),
+        saqz: !!c.saqzGroup, quando: this.mgQuandoLinha(c.lastMessageAt), previa: c.preview || (midia ? midia[0] : ""), atual: c.chatId === chatId ? "true" : "false",
+        abrir: () => this.mgSelecionar(c.chatId) };
+    });
+    const todas = chatId ? this.mgMensagens(st, chatId) : [];
+    const visiveis = st.mgEscopo === "recebidas" ? todas.filter(m => !m.fromMe) : todas;
+    const mgLinhas = [];
+    let dia = null;
+    visiveis.forEach(m => {
+      const rotulo = this.mgDia(m.at);
+      if (rotulo !== dia) { dia = rotulo; mgLinhas.push({ ehDia: true, dia: rotulo, ehMsg: false }); }
+      const midia = this.mgMidia(m.kind), fone = this.mgFone(m.senderPhone);
+      mgLinhas.push({ ehDia: false, ehMsg: true, classe: m.fromMe ? "mg-msg me" : "mg-msg", mostraNome: m.fromMe || grupos,
+        nome: m.fromMe ? "Saqz" : m.senderName || fone || "Sem nome no WhatsApp", fone: m.fromMe || !m.senderName ? "" : fone,
+        midia: midia ? midia[0] : "", icone: midia ? midia[1] : "", texto: m.text || "", hora: this.mgHora(new Date(m.at)) });
+    });
+    const carregada = !!conv && !conv.carregando;
+    let vazioT = "", vazioX = "";
+    if (conv && conv.carregando && !conv.itens.length) vazioT = "Carregando mensagens…";
+    else if (conv && conv.erro) { vazioT = "Não foi possível ler as mensagens"; vazioX = "A Uazapi não respondeu. Tente de novo em instantes."; }
+    else if (carregada && !todas.length) { vazioT = "Nenhuma mensagem guardada"; vazioX = `A última mensagem foi em ${this.mgDataCurta(new Date(atual.lastMessageAt))}, e a Uazapi só guarda até 7 dias.`; }
+    else if (carregada && !visiveis.length) { vazioT = "Nenhuma mensagem recebida"; vazioX = "Aqui só há mensagens enviadas pelo Saqz. Escolha Todas para vê-las."; }
+    const link = atual && atual.saqzGroup;
+    const sub = !atual ? "" : grupos ? (!link ? "Sem vínculo com nenhum grupo do Saqz" : link.broken ? `Vínculo quebrado com o grupo ${link.name}` : `Vinculado ao grupo ${link.name}`)
+      : atual.name ? this.mgFone(atual.phone) : "Sem nome no WhatsApp";
+    const rascunho = chatId ? st.mgRascunhos[chatId] || "" : "";
+    const envio = (chatId && st.mgEnvio[chatId]) || {};
+    const pedido = chatId && st.mgPedidos[chatId];
+    const repetir = !!envio.retry && !!pedido && pedido.texto === rascunho.trim();
+    const quando = st.mgAt ? `${falha || desconectado ? "Última tentativa às" : "Atualizado às"} ${this.mgHora(st.mgAt)}` : "";
+    return {
+      isMensagens: st.page === "mensagens", goMensagens: () => this.go("mensagens"),
+      mgConectado: pronto, mgDesconectado: desconectado, mgNumero: pronto ? this.mgFone(d.phone) : "", mgQuando: quando, mgBusy: st.mgBusy,
+      onMgAtualizar: () => this.mgLoad(), mgCarregando: !d, mgPronto: pronto,
+      mgFalha: !!falha || desconectado, mgFalhaRetry: falha !== "desligado",
+      mgFalhaTitulo: falha === "desligado" ? "O WhatsApp está desligado neste ambiente." : "Não foi possível ler as mensagens",
+      mgFalhaTexto: falha === "desligado" ? "" : desconectado ? "O número do Saqz está desconectado da Uazapi. Reconecte a instância no painel da Uazapi e atualize esta tela." : "A Uazapi não respondeu. Tente de novo em instantes.",
+      mgQ: st.mgQ, onMgQ: e => this.setState({ mgQ: e.target.value }),
+      mgGruposOn: grupos ? "true" : "false", mgPrivadasOn: grupos ? "false" : "true", onMgGrupos: () => this.mgTrocarTipo("grupos"), onMgPrivadas: () => this.mgTrocarTipo("privadas"),
+      mgNGrupos: pronto ? d.groups.length : 0, mgNPrivadas: pronto ? d.privates.length : 0, mgRows,
+      mgSemResultado: !mgRows.length ? (st.mgQ.trim() ? "Nenhuma conversa com esse nome ou telefone." : "Nenhuma conversa.") : "",
+      mgTruncado: pronto && d.truncated, mgSemConversa: !atual, mgTemConversa: !!atual,
+      mgNome: atual ? this.mgNomeConversa(atual) : "", mgSub: sub, mgSubClasse: link && link.broken ? "warn" : "", mgTemGrupo: !!link,
+      onMgVerGrupo: () => link && this.go("grupo", { selG: link.id }),
+      mgRecOn: st.mgEscopo === "recebidas" ? "true" : "false", mgTodasOn: st.mgEscopo === "todas" ? "true" : "false",
+      onMgRecebidas: () => this.setState({ mgEscopo: "recebidas" }), onMgTodas: () => this.setState({ mgEscopo: "todas" }),
+      mgPodeCarregar: !!conv && !!conv.hasMore && conv.nextOffset != null, mgCarregandoMais: !!(conv && conv.maisCarregando), onMgAnteriores: () => this.mgAnteriores(),
+      mgLinhas, mgVazioTitulo: vazioT, mgVazioTexto: vazioX, mgConvErro: !!(conv && conv.erro), onMgReabrir: () => chatId && this.mgAbrirConversa(chatId),
+      mgPodeResponder: !!atual && !grupos, mgSoLeitura: !!atual && grupos, mgResponderA: atual ? `Responder a ${this.mgNomeConversa(atual)}` : "",
+      mgRascunho: rascunho, onMgRascunho: e => this.mgEditarRascunho(chatId, e.target.value),
+      mgEnvioMsg: envio.msg || "", mgEnvioBloqueado: !rascunho.trim() || !!envio.ocupado, mgEnviarRotulo: repetir ? "Tentar de novo" : "Enviar",
+      onMgEnviar: () => this.mgEnviar(chatId)
+    };
   }
 
   // Flags (DEB-119, FLG-002/004/007): regra de cada flag, grupos com nome, versões do app e histórico.
@@ -1646,6 +1875,7 @@ class Component extends DCLogic {
   carregarPagina(page, force) {
     const st = this.state;
     if (page === "flags") this.flgLoad();
+    if (page === "mensagens") this.mgLoad();
     if (page === "recebimentos") { this.recLoad("global"); this.recHistory(1); if (st.recUserId) this.recLoad("user"); }
     if (page === "visao" && (force || !st.overview)) this.carregarVisao();
     if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
@@ -2763,6 +2993,8 @@ class Component extends DCLogic {
     return {
       ...this.recebimentosVals(),
       ...this.flagsVals(),
+      ...this.mensagensVals(),
+      sMensagens: navS(st.page === "mensagens"), bMensagens: navB(st.page === "mensagens"),
       sFlags: navS(st.page === "flags"), bFlags: navB(st.page === "flags"),
       ...this.conditionsVals(),
       sRecebimentos: navS(st.page === "recebimentos"), bRecebimentos: navB(st.page === "recebimentos"),

@@ -18,6 +18,7 @@ HTML + React UMD + `dc-runtime.js` + `saqz-design-system.js`; não há etapa de 
 - Visão geral: métricas e período consultados na API.
 - Usuários: busca/filtros, detalhe, suspensão e reativação.
 - Grupos: busca/filtros e detalhe.
+- Mensagens: conversas do número do Saqz lidas ao vivo da Uazapi (grupos e privadas, até 7 dias, nada copiado para o banco). Grupo é somente leitura; privada aceita resposta, com rascunho por conversa e reenvio que não duplica. Atualização só pelo botão; abrir ou responder não marca nada como lido.
 - Assinaturas: lista, detalhe e cancelamento.
 - Cupons: consulta, criação e desativação.
 - Usuários, grupos e assinaturas: páginas de 25, Anterior/Próxima, atualização e retentativa; controles bloqueados durante carga. Filtros são preservados na navegação, e o índice volta a 1 quando mudam. Se o total encolher, consulta a última página válida.
