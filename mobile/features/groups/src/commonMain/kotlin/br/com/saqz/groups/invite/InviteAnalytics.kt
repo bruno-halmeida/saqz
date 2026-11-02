@@ -6,6 +6,24 @@ import br.com.saqz.groups.domain.membership.InviteError
 /** Em que chamada o convite falhou: a prévia ou o resgate. */
 enum class InviteStep(internal val value: String) { Preview("preview"), Redeem("redeem") }
 
+/** Por onde o convite saiu do app. O valor é texto fixo, que o R8 não troca como faz com nome de classe. */
+enum class InviteShareMethod(internal val value: String) {
+    CopyLink("copy_link"),
+    CopyCode("copy_code"),
+    Message("message"),
+    Qr("qr"),
+    QrSaved("qr_saved"),
+    MonthlyLink("monthly_link"),
+}
+
+/**
+ * Evento `invite_shared` (Firebase): o convite foi copiado ou entregue ao compartilhamento do aparelho. Confirma que
+ * saiu do app, não que a mensagem chegou. Sem código de convite e sem id de grupo: só a forma usada.
+ */
+fun trackInviteShared(method: InviteShareMethod) {
+    SaqzAnalytics.event("invite_shared", "method" to method.value)
+}
+
 /**
  * Evento `invite_invalid` (Firebase): por que um convite foi recusado por regra do servidor. Falha de rede não
  * entra. Sem código de convite, sem id de grupo ou de usuário: só o motivo, o `code` do backend e o passo.

@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.monthlyinvite
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.SaqzResult
 import br.com.saqz.groups.domain.athlete.AthleteMembershipType
 import br.com.saqz.groups.domain.membership.MonthlyInviteError
@@ -246,6 +247,22 @@ class MonthlyInviteViewModelTest {
         vm.onIntent(MonthlyInviteIntent.CopyLink)
         assertEquals(MonthlyInviteEffect.Copy("https://saqz.app/?saqz_invite=44DF8SA8"), vm.effects.first())
         assertEquals(listOf("copyLink", "copyLink"), gateway.calls)
+    }
+
+    @Test fun `copying the link reports invite_shared and a failed copy does not`() = runTest {
+        val recorded = mutableListOf<Map<String, String>>()
+        SaqzAnalytics.track = { name, params -> if (name == "invite_shared") recorded += params }
+        try {
+            val vm = viewModel()
+            vm.onIntent(MonthlyInviteIntent.CopyLink)
+            vm.effects.first()
+            gateway.linkResult = SaqzResult.Failure(MonthlyInviteError.DataFailure(br.com.saqz.domain.DataError.Server))
+            vm.onIntent(MonthlyInviteIntent.CopyLink)
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(listOf(mapOf("method" to "monthly_link")), recorded)
     }
 
     @Test fun `load failure shows retry`() {

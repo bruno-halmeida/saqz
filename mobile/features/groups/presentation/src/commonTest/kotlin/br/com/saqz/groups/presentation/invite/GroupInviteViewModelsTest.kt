@@ -1,5 +1,6 @@
 package br.com.saqz.groups.presentation.invite
 
+import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.domain.DataError
 import br.com.saqz.domain.EmptyResult
 import br.com.saqz.domain.GroupId
@@ -772,6 +773,44 @@ class GroupInviteViewModelsTest {
         )
         failure.onIntent(InvitePreviewIntent.Share)
         assertEquals(InvitePreviewError.Share, failure.state.value.error)
+    }
+
+    @Test
+    fun `invite_shared reports how the invite left the app and only on success`() = runTest {
+        val recorded = mutableListOf<Map<String, String>>()
+        SaqzAnalytics.track = { name, params -> if (name == "invite_shared") recorded += params }
+        try {
+            val group = groupViewModel()
+            advanceUntilIdle()
+            group.onIntent(GroupInviteIntent.CopyLink)
+            group.onIntent(GroupInviteIntent.CopyCode)
+            group.onIntent(GroupInviteIntent.ShareImage)
+            val preview = InvitePreviewMessageViewModel("CERET", "url", FakeShare())
+            preview.onIntent(InvitePreviewIntent.Share)
+            preview.effects.first()
+            val qr = InviteQrViewModel("CERET", "https://saqz.app/invite/1", FakeShare())
+            qr.onIntent(InviteQrIntent.Share)
+            qr.onIntent(InviteQrIntent.Save)
+
+            val failed = InviteNativeOperationResult.Failure(InviteNativeFailureCode.PROVIDER_UNAVAILABLE)
+            val brokenGroup = groupViewModel(clipboard = FakeClipboard(failed), share = FakeShare(failed))
+            advanceUntilIdle()
+            brokenGroup.onIntent(GroupInviteIntent.CopyLink)
+            brokenGroup.onIntent(GroupInviteIntent.CopyCode)
+            brokenGroup.onIntent(GroupInviteIntent.ShareImage)
+            InvitePreviewMessageViewModel("CERET", "url", FakeShare(failed)).onIntent(InvitePreviewIntent.Share)
+            val brokenQr = InviteQrViewModel("CERET", "url", FakeShare(failed))
+            brokenQr.onIntent(InviteQrIntent.Share)
+            brokenQr.onIntent(InviteQrIntent.Save)
+            advanceUntilIdle()
+        } finally {
+            SaqzAnalytics.reset()
+        }
+
+        assertEquals(
+            listOf("copy_link", "copy_code", "qr", "message", "qr", "qr_saved").map { mapOf("method" to it) },
+            recorded,
+        )
     }
 
     @Test

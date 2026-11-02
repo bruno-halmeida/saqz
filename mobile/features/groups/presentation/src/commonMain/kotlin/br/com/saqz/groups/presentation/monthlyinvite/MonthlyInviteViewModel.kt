@@ -16,6 +16,8 @@ import br.com.saqz.groups.domain.membership.MonthlyInviteGateway
 import br.com.saqz.groups.domain.membership.MonthlyInviteLinkState
 import br.com.saqz.groups.domain.membership.MonthlyInvitePerson
 import br.com.saqz.groups.domain.membership.MonthlyInvitePhoneCheck
+import br.com.saqz.groups.invite.InviteShareMethod
+import br.com.saqz.groups.invite.trackInviteShared
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
@@ -274,6 +276,7 @@ class MonthlyInviteViewModel(
                 is SaqzResult.Success -> {
                     val s = state.value
                     val url = result.value.url
+                    trackInviteShared(InviteShareMethod.MonthlyLink)
                     emit(MonthlyInviteEffect.Copy(if (withMessage) monthlyInviteMessage(null, s.senderName, s.groupName, url) else url))
                     update { it.copy(copying = false, linkUrl = url, toast = MonthlyInviteToast.Copied) }
                 }

@@ -16,6 +16,8 @@ import br.com.saqz.groups.domain.membership.EntryRequestError
 import br.com.saqz.groups.domain.membership.GroupEntryRequest
 import br.com.saqz.groups.domain.membership.GroupEntryRequestGateway
 import br.com.saqz.groups.domain.membership.GroupMembershipGateway
+import br.com.saqz.groups.invite.InviteShareMethod
+import br.com.saqz.groups.invite.trackInviteShared
 import br.com.saqz.groups.port.InviteNativeOperationResult
 import br.com.saqz.groups.port.InviteShareImage
 import br.com.saqz.groups.port.NativeInviteClipboardPort
@@ -375,6 +377,7 @@ class GroupInviteViewModel(
             if (!isCurrent(operation, requestGeneration)) return@copyText
             when (result) {
                 InviteNativeOperationResult.Success -> {
+                    trackInviteShared(InviteShareMethod.CopyLink)
                     update { it.copy(toast = GroupInviteToast.LinkCopied) }
                     emit(GroupInviteEffect.LinkCopied)
                 }
@@ -393,6 +396,7 @@ class GroupInviteViewModel(
             if (!isCurrent(operation, requestGeneration)) return@copyText
             when (result) {
                 InviteNativeOperationResult.Success -> {
+                    trackInviteShared(InviteShareMethod.CopyCode)
                     update { it.copy(toast = GroupInviteToast.CodeCopied) }
                     emit(GroupInviteEffect.CodeCopied)
                 }
@@ -419,7 +423,11 @@ class GroupInviteViewModel(
         val requestGeneration = nextGeneration(operation)
         sharePort.shareImage(InviteShareImage(renderQr(url))) { result ->
             if (!isCurrent(operation, requestGeneration)) return@shareImage
-            if (result !is InviteNativeOperationResult.Success) update { it.copy(error = GroupInviteError.Operation) }
+            if (result is InviteNativeOperationResult.Success) {
+                trackInviteShared(InviteShareMethod.Qr)
+            } else {
+                update { it.copy(error = GroupInviteError.Operation) }
+            }
         }
     }
 
@@ -485,6 +493,7 @@ class InvitePreviewMessageViewModel(
                 if (requestGeneration != shareGeneration) return@shareText
                 when (result) {
                     InviteNativeOperationResult.Success -> {
+                        trackInviteShared(InviteShareMethod.Message)
                         update { it.copy(isSharing = false) }
                         emit(InvitePreviewEffect.Shared)
                     }
@@ -526,6 +535,7 @@ class InviteQrViewModel(
             if (requestGeneration != shareGeneration) return@shareImage
             when (result) {
                 InviteNativeOperationResult.Success -> {
+                    trackInviteShared(InviteShareMethod.Qr)
                     update { it.copy(isSharing = false) }
                     emit(InviteQrEffect.Shared)
                 }
@@ -545,6 +555,7 @@ class InviteQrViewModel(
             if (requestGeneration != saveGeneration) return@saveImage
             when (result) {
                 InviteNativeOperationResult.Success -> {
+                    trackInviteShared(InviteShareMethod.QrSaved)
                     update { it.copy(isSaving = false) }
                     emit(InviteQrEffect.Saved)
                 }
