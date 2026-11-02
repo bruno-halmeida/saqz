@@ -47,5 +47,14 @@ object SaqzAnalytics {
 fun analyticsName(value: Any?): String {
     if (value == null) return "null"
     val qualified = value::class.qualifiedName ?: return value::class.simpleName ?: "Unknown"
-    return qualified.split('.').takeLastWhile { it.first().isUpperCase() }.joinToString(".")
+    return classSegments(qualified)
 }
+
+/**
+ * Tira o pacote de um nome de classe. No Android de release o R8 remove o vínculo de classe interna e o nome vem como
+ * `AccessRoute$Login`: sai com ponto, igual ao iOS, para a mesma tela não virar duas linhas no Google Analytics.
+ */
+fun classSegments(qualified: String): String =
+    qualified.replace('$', '.').split('.')
+        .takeLastWhile { it.firstOrNull()?.isUpperCase() == true }
+        .joinToString(".")

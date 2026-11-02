@@ -115,7 +115,7 @@ android {
             signingConfig = signingConfigs.findByName("upload")
             // R8 enxuga o código e gera o mapa de desofuscação, que vai dentro do AAB e para o Crashlytics.
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 

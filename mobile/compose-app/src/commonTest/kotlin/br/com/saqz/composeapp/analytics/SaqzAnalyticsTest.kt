@@ -4,6 +4,7 @@ import br.com.saqz.access.navigation.AccessRoute
 import br.com.saqz.composeapp.navigation.SaqzShellDestination
 import br.com.saqz.core.common.analytics.SaqzAnalytics
 import br.com.saqz.core.common.analytics.analyticsName
+import br.com.saqz.core.common.analytics.classSegments
 import br.com.saqz.core.common.mvi.MviViewModel
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -36,6 +37,14 @@ class SaqzAnalyticsTest {
         assertEquals("SaqzShellDestination", analyticsName(SaqzShellDestination.Home))
         assertEquals("ProbeIntent.Tap", analyticsName(ProbeIntent.Tap))
         assertEquals("null", analyticsName(null))
+    }
+
+    @Test
+    fun `class names read the same on android release and on ios`() {
+        assertEquals("AccessRoute.Login", classSegments("br.com.saqz.access.navigation.AccessRoute.Login"))
+        assertEquals("AccessRoute.Login", classSegments("br.com.saqz.access.navigation.AccessRoute\$Login"))
+        assertEquals("GroupInviteIntent.CopyLink", classSegments("br.com.saqz.groups.GroupInviteIntent\$CopyLink"))
+        assertEquals("", classSegments("tj2"))
     }
 
     @Test
