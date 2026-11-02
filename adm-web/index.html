@@ -354,6 +354,29 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 /* Celular e tablet em pé. No desktop só estas 4 regras valem e a tela fica como sempre foi. */
 .adm-nav-extra{display:contents}
 .adm-nav-rotulo,.adm-nav-sair,.adm-nav-fundo{display:none}
+.adm-rola{overflow-x:auto}
+.adm-seg{display:inline-grid;grid-auto-flow:column;padding:3px;border-radius:999px;background:#E9EDF4}
+.adm-seg button{border:0;border-radius:999px;min-height:38px;padding:8px 16px;font:600 13px var(--font-ui);cursor:pointer;background:transparent;color:#5B6478;white-space:nowrap}
+.adm-seg button[aria-pressed="true"]{background:#fff;color:var(--saqz-blue);box-shadow:0 0 0 1px var(--saqz-border)}
+.adm-seg-4{display:grid;grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr))}
+.adm-seg-4 button{min-height:40px;padding:6px 4px;font-size:12.5px}
+.adm-rot-curto{display:none}
+.adm-ini{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--saqz-ice);font-size:11px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)}
+.adm-pessoa{display:flex;align-items:center;gap:10px;min-width:0;width:100%;border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.adm-pessoa strong{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-pessoa small{display:block;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-link{display:block;margin-top:6px;border:0;background:none;padding:0;font:700 15px var(--font-ui);color:var(--saqz-navy);text-align:left;cursor:pointer}
+.ct-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;box-sizing:border-box;min-height:38px;padding:7px 12px;border-radius:999px;border:1px solid var(--saqz-blue);background:#fff;color:var(--saqz-blue);font:700 13px var(--font-ui);text-decoration:none;white-space:nowrap;cursor:pointer}
+.ct-btn:hover{background:var(--saqz-ice);color:var(--saqz-blue)}
+.ct-btn.sec{border-color:var(--saqz-border);font-weight:600}
+.ct-btn.pri{min-height:44px;padding:8px 18px;border-color:var(--saqz-blue);background:var(--saqz-blue);color:#fff;font-size:14px}
+.ct-btn.pri:hover{background:#052BB3;color:#fff}
+.ct-btn.pri:disabled{border-color:var(--saqz-disabled-bg);background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}
+.ct-btn.gr{min-height:44px;padding:8px 18px;font-size:14px;font-weight:700}
+.ct-res{min-height:38px;padding:6px 12px;border-radius:999px;border:1px solid var(--saqz-border);background:#fff;color:var(--saqz-navy);font:600 13px var(--font-ui);white-space:nowrap;cursor:pointer}
+.ct-res[aria-pressed="true"]{border-color:var(--saqz-blue);background:var(--saqz-blue);color:#fff}
+.ct-texto{box-sizing:border-box;width:100%;resize:vertical;border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font:400 14px/20px var(--font-ui);color:var(--saqz-navy)}
+.ct-texto:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}
 .adm-nav-mais{display:none!important}
 @media (min-width:821px) and (max-height:520px){.adm-shell{min-height:0!important}.adm-nav{overflow-y:auto}}
 @media (max-width:820px){
@@ -457,6 +480,17 @@ html,body{overscroll-behavior:none}
 .adm-lin-lote>:nth-child(1){grid-column:1/-1}
 
 /* Componentes com classe própria */
+.adm-largo{min-width:0!important}
+.adm-largo>.adm-cab{display:none!important}
+.adm-seg{display:grid;margin-bottom:12px}
+.adm-seg button{padding:6px 10px}
+.adm-seg-4 button{padding:6px 2px;min-width:0}
+.adm-rot-longo{display:none}
+.adm-rot-curto{display:inline}
+.adm-lin-ap{grid-template-columns:auto minmax(0,1fr)!important;gap:2px 12px!important;padding:12px 16px!important}
+.adm-lin-ap>:nth-child(3){grid-column:1/-1;text-align:left!important}
+.adm-body label>input,.adm-body label>select{min-width:0;width:100%;box-sizing:border-box}
+.adm-acoes .ct-btn{min-height:44px}
 .pagination{padding:12px 16px}
 .pagination button{min-height:40px}
 .pt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -637,7 +671,8 @@ html,body{overscroll-behavior:none}
   <div class="adm-tela" style="flex:1;min-height:0;display:flex;flex-direction:column">
     <div class="adm-top" style="display:flex;align-items:center;gap:10px;padding:16px 28px;background:var(--saqz-white);border-bottom:1px solid var(--saqz-border);flex-wrap:wrap">
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-right:10px">Usuários</strong>
-      <input value="{{ uBusca }}" sc-camel-on-change="{{ onUBusca }}" placeholder="Buscar por nome ou e-mail" style="border:1px solid var(--saqz-border);border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:inherit;color:var(--saqz-navy);width:240px;box-sizing:border-box">
+      <input value="{{ uBusca }}" sc-camel-on-change="{{ onUBusca }}" placeholder="Buscar por nome, e-mail ou telefone" style="border:1px solid var(--saqz-border);border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:inherit;color:var(--saqz-navy);width:280px;max-width:100%;box-sizing:border-box">
+      <sc-if value="{{ uEmTodos }}" hint-placeholder-val="{{ true }}">
       <sc-raw-select value="{{ uPlano }}" sc-camel-on-change="{{ onUPlano }}" style="appearance:none;border:1px solid var(--saqz-border);background:var(--saqz-white);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--saqz-navy);font-family:inherit;cursor:pointer">
         <option value="todos">Plano: todos</option><option value="FREE">Grátis</option><option value="TITULAR">Titular</option><option value="ORGANIZADOR">Organizador</option><option value="ILIMITADO">Ilimitado</option>
       </sc-raw-select>
@@ -645,14 +680,20 @@ html,body{overscroll-behavior:none}
         <option value="todos">Status: todos</option><option value="active">Ativo</option><option value="suspended">Suspenso</option>
       </sc-raw-select>
       <span sc-camel-on-click="{{ onLoteAbrir }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;border-radius:999px;padding:9px 16px;border:1px solid var(--saqz-border);color:var(--saqz-blue);background:var(--saqz-white)" style-hover="background:var(--saqz-ice)">Dar cortesia a todos os donos de grupo</span>
+      </sc-if>
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">{{ uCount }}</span>
     </div>
     <div class="adm-body" style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px">
+      <div class="adm-seg" role="group" aria-label="Filtrar por momento do teste" style="margin-bottom:14px">
+        <sc-for list="{{ uAbas }}" as="a" hint-placeholder-count="3"><button type="button" aria-pressed="{{ a.on }}" sc-camel-on-click="{{ a.onClick }}"><span class="adm-rot-longo">{{ a.rotulo }}</span><span class="adm-rot-curto">{{ a.curto }}</span></button></sc-for>
+      </div>
       <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-        <span class="adm-cab-sort" style="display:grid;grid-template-columns:2.4fr 1.1fr 0.7fr 1.1fr 1fr 0.9fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span role="columnheader" aria-sort="{{ uSort.name.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.name.disabled }}" sc-camel-on-click="{{ uSort.name.onClick }}">USUÁRIO<span aria-hidden="true">{{ uSort.name.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.city.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.city.disabled }}" sc-camel-on-click="{{ uSort.city.onClick }}">CIDADE<span aria-hidden="true">{{ uSort.city.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.groups.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.groups.disabled }}" sc-camel-on-click="{{ uSort.groups.onClick }}">GRUPOS<span aria-hidden="true">{{ uSort.groups.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.plan.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.plan.disabled }}" sc-camel-on-click="{{ uSort.plan.onClick }}">PLANO<span aria-hidden="true">{{ uSort.plan.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.status.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.status.disabled }}" sc-camel-on-click="{{ uSort.status.onClick }}">STATUS<span aria-hidden="true">{{ uSort.status.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.lastSeen.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.lastSeen.disabled }}" sc-camel-on-click="{{ uSort.lastSeen.onClick }}">ÚLTIMO ACESSO<span aria-hidden="true">{{ uSort.lastSeen.seta }}</span></button></span><span></span></span>
+        <sc-if value="{{ uEmTodos }}" hint-placeholder-val="{{ true }}">
+        <span class="adm-cab-sort" style="display:grid;grid-template-columns:2.4fr 150px 1.1fr 0.7fr 1.1fr 1fr 0.9fr 24px;gap:10px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span role="columnheader" aria-sort="{{ uSort.name.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.name.disabled }}" sc-camel-on-click="{{ uSort.name.onClick }}">USUÁRIO<span aria-hidden="true">{{ uSort.name.seta }}</span></button></span><span role="columnheader">TELEFONE</span><span role="columnheader" aria-sort="{{ uSort.city.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.city.disabled }}" sc-camel-on-click="{{ uSort.city.onClick }}">CIDADE<span aria-hidden="true">{{ uSort.city.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.groups.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.groups.disabled }}" sc-camel-on-click="{{ uSort.groups.onClick }}">GRUPOS<span aria-hidden="true">{{ uSort.groups.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.plan.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.plan.disabled }}" sc-camel-on-click="{{ uSort.plan.onClick }}">PLANO<span aria-hidden="true">{{ uSort.plan.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.status.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.status.disabled }}" sc-camel-on-click="{{ uSort.status.onClick }}">STATUS<span aria-hidden="true">{{ uSort.status.seta }}</span></button></span><span role="columnheader" aria-sort="{{ uSort.lastSeen.aria }}"><button type="button" class="col-sort" disabled="{{ uSort.lastSeen.disabled }}" sc-camel-on-click="{{ uSort.lastSeen.onClick }}">ÚLTIMO ACESSO<span aria-hidden="true">{{ uSort.lastSeen.seta }}</span></button></span><span></span></span>
         <sc-for list="{{ usuariosRows }}" as="u" hint-placeholder-count="8">
-          <button type="button" class="adm-lin adm-flex" sc-camel-on-click="{{ u.onOpen }}" style="display:grid;grid-template-columns:2.4fr 1.1fr 0.7fr 1.1fr 1fr 0.9fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
+          <button type="button" class="adm-lin adm-flex" sc-camel-on-click="{{ u.onOpen }}" style="display:grid;grid-template-columns:2.4fr 150px 1.1fr 0.7fr 1.1fr 1fr 0.9fr 24px;gap:10px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:11px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
             <span class="adm-t" style="display:flex;align-items:center;gap:10px;min-width:0"><span style="flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--saqz-ice);font-size:11px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)">{{ u.ini }}</span><span style="min-width:0"><strong style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.email }}</span></span></span>
+            <span class="adm-meta" style="color:var(--saqz-muted);white-space:nowrap">{{ u.telefone }}</span>
             <span class="adm-meta" style="color:var(--saqz-muted)">{{ u.cidade }}</span>
             <span class="adm-meta" data-p="Grupos: " style="color:var(--saqz-muted)">{{ u.grupos }}</span>
             <span><span style="{{ u.planoStyle }}">{{ u.plano }}</span><span class="adm-plano-origem" style="display:block;margin-top:2px;font-size:11.5px;color:var(--saqz-muted)">{{ u.planoOrigem }}</span></span>
@@ -661,6 +702,29 @@ html,body{overscroll-behavior:none}
             <span class="msr adm-seta" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
           </button>
         </sc-for>
+        </sc-if>
+        <sc-if value="{{ uEmFila }}" hint-placeholder-val="{{ false }}">
+          <div class="adm-rola">
+            <div class="adm-largo" style="min-width:1060px">
+              <span class="adm-cab" style="display:grid;grid-template-columns:minmax(0,2.1fr) 146px 124px minmax(0,1.4fr) 92px 92px 124px 124px;gap:12px;padding:12px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>USUÁRIO</span><span>TELEFONE</span><span>{{ uColunaTeste }}</span><span>GRUPO</span><span>USO</span><span>ACESSO</span><span>CONTATO</span><span></span></span>
+              <sc-for list="{{ filaRows }}" as="u" hint-placeholder-count="5">
+                <div class="adm-lin" style="display:grid;grid-template-columns:minmax(0,2.1fr) 146px 124px minmax(0,1.4fr) 92px 92px 124px 124px;gap:12px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px">
+                  <button type="button" class="adm-t adm-pessoa" sc-camel-on-click="{{ u.onOpen }}"><span class="adm-ini">{{ u.ini }}</span><span style="min-width:0"><strong>{{ u.nome }}</strong><small>{{ u.email }}</small></span></button>
+                  <span data-l="Telefone"><span style="display:block">{{ u.tel }}</span><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ u.telNota }}</span></span>
+                  <span data-l="{{ uRotuloTeste }}"><strong style="display:block;font-weight:600">{{ u.quando }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ u.data }}</span></span>
+                  <span data-l="Grupo" style="min-width:0"><span style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.grupo }}</span><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ u.grupoNota }}</span></span>
+                  <span data-l="Uso" style="color:var(--saqz-muted)"><span style="display:block">{{ u.jogos }}</span><span style="display:block;font-size:12px">{{ u.membros }}</span></span>
+                  <span data-l="Acesso" style="color:var(--saqz-muted)">{{ u.acesso }}</span>
+                  <span data-l="Contato" style="{{ u.contatoStyle }}">{{ u.contato }}</span>
+                  <span class="adm-acoes">
+                    <sc-if value="{{ u.temWhats }}" hint-placeholder-val="{{ true }}"><a class="ct-btn" href="{{ u.whatsUrl }}" target="_blank" rel="noopener noreferrer"><span class="msr" style="font-size:16px">chat</span>WhatsApp</a></sc-if>
+                    <sc-if value="{{ u.semWhats }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:var(--saqz-muted)">{{ u.semWhatsTxt }}</span></sc-if>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
         <nav class="pagination" aria-label="Paginação de usuários">
           <span aria-live="polite">{{ uPager.rodape }}</span>
           <button type="button" disabled="{{ uPager.carregando }}" sc-camel-on-click="{{ uPager.onRecarregar }}">{{ uPager.recarregarLabel }}</button>
@@ -678,41 +742,95 @@ html,body{overscroll-behavior:none}
       <button type="button" sc-camel-on-click="{{ goUsu }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Usuários</button>
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ ud.nome }}</strong><button type="button" disabled="{{ recChooseDisabled }}" sc-camel-on-click="{{ recSelectCurrent }}">Controles de recebimentos</button>
       <span class="adm-top-st" style="{{ udStatusStyle }}">{{ udStatusTxt }}</span>
+      <sc-if value="{{ udTesteChip }}" hint-placeholder-val="{{ false }}"><span class="adm-top-st" style="{{ udTesteChipStyle }}">{{ udTesteChip }}</span></sc-if>
       <span style="margin-left:auto"></span>
       <span sc-camel-on-click="{{ onSuspender }}" style="display:inline-block;white-space:nowrap;cursor:pointer;font-size:13.5px;font-weight:700;border-radius:999px;padding:10px 18px;border:1px solid var(--saqz-border);color:var(--saqz-error);background:var(--saqz-white)" style-hover="background:rgba(229,72,77,.06)">{{ udBtnLabel }}</span>
     </div>
     <div class="adm-body" style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-content:start">
-      <div style="display:grid;gap:16px;align-content:start">
-        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:18px 20px;display:grid;gap:12px">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-content:start;min-width:0">
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:18px 20px;display:grid;gap:14px">
           <div style="display:flex;align-items:center;gap:14px">
-            <span style="width:52px;height:52px;border-radius:50%;background:var(--saqz-ice);font-size:16px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)">{{ ud.ini }}</span>
-            <span style="min-width:0"><strong style="display:block;font-size:17px;font-weight:700">{{ ud.nome }}</strong><span style="display:block;margin-top:2px;font-size:13px;color:var(--saqz-muted)">{{ ud.email }}</span></span>
+            <span style="flex:0 0 auto;width:52px;height:52px;border-radius:50%;background:var(--saqz-ice);font-size:16px;font-weight:700;display:grid;place-items:center;box-shadow:inset 0 0 0 1px var(--saqz-border)">{{ ud.ini }}</span>
+            <span style="min-width:0"><strong style="display:block;font-size:17px;font-weight:700">{{ ud.nome }}</strong><span style="display:block;margin-top:2px;font-size:13px;color:var(--saqz-muted)">{{ ud.papelResumo }}</span></span>
           </div>
-          <div class="adm-dois" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;border-top:1px solid var(--saqz-border);padding-top:12px">
-            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Cidade</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.cidade }}</strong></span>
-            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">No Saqz desde</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.desde }}</strong></span>
-            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Último acesso</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.acesso }}</strong></span>
-            <span><span style="display:block;font-size:12px;color:var(--saqz-muted)">Telefone</span><strong style="display:block;margin-top:3px;font-size:14px;font-weight:600">{{ ud.telefone }}</strong></span>
+          <div style="display:grid;gap:10px;border-top:1px solid var(--saqz-border);padding-top:14px">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px">
+              <span style="flex:1 1 200px;min-width:0"><span style="display:block;font-size:12px;color:var(--saqz-muted)">Telefone</span><strong style="display:block;margin-top:2px;font-size:15px;font-weight:600">{{ ct.telefone }} <span style="{{ ct.telChipStyle }}">{{ ct.telChip }}</span></strong></span>
+              <sc-if value="{{ ct.temTelefone }}" hint-placeholder-val="{{ true }}"><button type="button" class="ct-btn sec" sc-camel-on-click="{{ ct.onCopiarTel }}">Copiar</button></sc-if>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px">
+              <span style="flex:1 1 200px;min-width:0"><span style="display:block;font-size:12px;color:var(--saqz-muted)">E-mail</span><strong style="display:block;margin-top:2px;font-size:15px;font-weight:600;overflow-wrap:anywhere">{{ ct.email }}</strong></span>
+              <sc-if value="{{ ct.temEmail }}" hint-placeholder-val="{{ true }}"><button type="button" class="ct-btn sec" sc-camel-on-click="{{ ct.onCopiarEmail }}">Copiar</button></sc-if>
+            </div>
+            <sc-if value="{{ ct.emailApple }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;line-height:18px;color:#8A5A00">E-mail privado da Apple: só recebe de remetentes cadastrados lá. Escrever do seu e-mail pessoal pode não chegar.</span></sc-if>
+          </div>
+          <sc-if value="{{ ct.bloqueado }}" hint-placeholder-val="{{ false }}">
+            <div style="border-top:1px solid var(--saqz-border);padding-top:14px;display:grid;gap:4px"><strong style="font-size:14px;font-weight:700;color:#B3261E">Esta pessoa pediu para não ser procurada.</strong><span style="font-size:13px;line-height:19px;color:var(--saqz-muted)">Se ela mesma voltar a falar com o Saqz, registre o novo contato.</span></div>
+          </sc-if>
+          <sc-if value="{{ ct.podeFalar }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;gap:10px;border-top:1px solid var(--saqz-border);padding-top:14px">
+              <strong style="font-size:15px;font-weight:700">Mensagem</strong>
+              <div class="adm-seg adm-seg-4" role="group" aria-label="Modelo de mensagem">
+                <sc-for list="{{ ct.modelos }}" as="m" hint-placeholder-count="4"><button type="button" aria-pressed="{{ m.on }}" aria-label="{{ m.rotulo }}" sc-camel-on-click="{{ m.onClick }}"><span class="adm-rot-longo">{{ m.rotulo }}</span><span class="adm-rot-curto">{{ m.curto }}</span></button></sc-for>
+              </div>
+              <label style="display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)">Texto, você pode editar antes de abrir<textarea class="ct-texto" rows="5" maxlength="2000" value="{{ ct.texto }}" sc-camel-on-change="{{ ct.onTexto }}"></textarea></label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-if value="{{ ct.temTelefone }}" hint-placeholder-val="{{ true }}"><a class="ct-btn pri" href="{{ ct.whatsUrl }}" target="_blank" rel="noopener noreferrer"><span class="msr" style="font-size:16px">chat</span>Abrir no WhatsApp</a></sc-if>
+                <sc-if value="{{ ct.temEmail }}" hint-placeholder-val="{{ true }}"><a class="ct-btn sec gr" href="{{ ct.emailUrl }}">Abrir no e-mail</a></sc-if>
+              </div>
+              <span style="font-size:12.5px;line-height:18px;color:var(--saqz-muted)">Abre o seu WhatsApp ou e-mail com o texto pronto. Nada é enviado pelo número do Saqz.</span>
+            </div>
+          </sc-if>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Cadastro</strong></div>
+          <div style="padding:14px 20px;display:grid;gap:10px">
+            <sc-for list="{{ udCadastro }}" as="c" hint-placeholder-count="10">
+              <span style="display:flex;justify-content:space-between;gap:16px;font-size:13.5px"><span style="flex:0 0 auto;color:var(--saqz-muted)">{{ c.k }}</span><strong style="font-weight:600;text-align:right;overflow-wrap:anywhere">{{ c.v }}</strong></span>
+            </sc-for>
           </div>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
-          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Grupos</strong></div>
-          <sc-for list="{{ udGrupos }}" as="g" hint-placeholder-count="2">
-            <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:flex;align-items:center;gap:10px;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:12px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left;box-sizing:border-box" style-hover="background:var(--saqz-ice)">
-              <span style="flex:1;min-width:0"><strong style="display:block;font-weight:600">{{ g.nome }}</strong><span style="display:block;font-size:12px;color:var(--saqz-muted)">{{ g.sub }}</span></span>
-              <span style="font-size:12.5px;color:var(--saqz-muted)">{{ g.papel }}</span>
-              <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
-            </button>
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Aparelhos</strong></div>
+          <sc-for list="{{ udApps }}" as="a" hint-placeholder-count="1">
+            <span class="adm-lin-ap" style="display:grid;grid-template-columns:90px minmax(0,1fr) 150px;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><strong style="font-weight:600">{{ a.sistema }}</strong><span style="color:var(--saqz-muted)">{{ a.versao }}</span><span style="color:var(--saqz-muted);text-align:right">{{ a.visto }}</span></span>
           </sc-for>
+          <sc-if value="{{ udSemApps }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:14px 20px;font-size:13.5px;color:var(--saqz-muted)">Nenhum aparelho registrado.</p></sc-if>
         </div>
       </div>
-      <div style="display:grid;gap:16px;align-content:start">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-content:start;min-width:0">
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Contatos</strong></div>
+          <div style="padding:14px 20px;display:grid;gap:10px;border-bottom:1px solid var(--saqz-border)">
+            <span style="font-size:12px;font-weight:600;color:var(--saqz-muted)">Como foi</span>
+            <div role="group" aria-label="Resultado do contato" style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ ct.resultados }}" as="r" hint-placeholder-count="6"><button type="button" class="ct-res" aria-pressed="{{ r.on }}" sc-camel-on-click="{{ r.onClick }}">{{ r.rotulo }}</button></sc-for>
+            </div>
+            <label style="display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)">O que a pessoa disse<textarea class="ct-texto" rows="2" maxlength="1000" value="{{ ct.nota }}" sc-camel-on-change="{{ ct.onNota }}"></textarea></label>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+              <button type="button" class="ct-btn pri" disabled="{{ ct.naoPodeSalvar }}" sc-camel-on-click="{{ ct.onSalvar }}">{{ ct.salvarLabel }}</button>
+              <span style="font-size:12.5px;color:var(--saqz-muted)">Só a equipe do Saqz vê.</span>
+            </div>
+          </div>
+          <sc-for list="{{ ct.contatos }}" as="c" hint-placeholder-count="1">
+            <div style="padding:12px 20px;border-bottom:1px solid var(--saqz-border);display:grid;gap:4px;font-size:13.5px">
+              <span style="display:flex;justify-content:space-between;gap:12px"><strong style="font-weight:600">{{ c.resultado }}</strong><span style="font-size:12.5px;color:var(--saqz-muted);white-space:nowrap">{{ c.quando }}</span></span>
+              <span style="line-height:20px;color:var(--saqz-muted);overflow-wrap:anywhere;white-space:pre-wrap">{{ c.texto }}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ ct.semContatos }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:14px 20px;font-size:13.5px;color:var(--saqz-muted)">Ninguém da equipe falou com esta pessoa ainda.</p></sc-if>
+        </div>
         <div style="background:var(--saqz-ice);border-radius:20px;padding:18px 20px;display:grid;gap:10px">
-          <span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--saqz-blue)">ASSINATURA</span>
+          <span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--saqz-blue)">TESTE E ASSINATURA</span>
           <strong style="font-size:19px;font-weight:800;letter-spacing:-0.02em">{{ ud.planoTitulo }}</strong>
           <span style="font-size:13.5px;color:var(--saqz-muted)">{{ ud.planoSub }}</span>
+          <div style="display:grid;gap:8px;border-top:1px solid var(--saqz-border);padding-top:10px">
+            <sc-for list="{{ udTeste }}" as="c" hint-placeholder-count="5">
+              <span style="display:flex;justify-content:space-between;gap:16px;font-size:13.5px"><span style="flex:0 0 auto;color:var(--saqz-muted)">{{ c.k }}</span><strong style="font-weight:600;text-align:right;overflow-wrap:anywhere">{{ c.v }}</strong></span>
+            </sc-for>
+          </div>
           <sc-if value="{{ udTemAssin }}" hint-placeholder-val="{{ false }}">
-            <span sc-camel-on-click="{{ onVerAssin }}" style="display:inline-block;justify-self:start;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-blue);background:var(--saqz-white);border-radius:999px;padding:9px 16px" style-hover="background:#fff;box-shadow:0 0 0 3px rgba(6,56,223,.11)">Ver assinatura e cobranças</span>
+            <span sc-camel-on-click="{{ onVerAssin }}" style="display:inline-block;justify-self:start;white-space:nowrap;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-blue);background:var(--saqz-white);border-radius:999px;padding:9px 16px">Ver assinatura</span>
           </sc-if>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:16px 20px;display:grid;gap:12px">
@@ -729,7 +847,7 @@ html,body{overscroll-behavior:none}
                   <span sc-camel-on-click="{{ onCortRevogar }}" style="justify-self:start;margin-top:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--saqz-error)">Revogar</span>
                 </div>
               </sc-if>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
                 <label style="display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--saqz-navy)">Plano
                   <sc-raw-select value="{{ cortPlano }}" sc-camel-on-change="{{ onCortPlano }}" style="border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--saqz-navy)"><option value="TITULAR">Titular</option><option value="ORGANIZADOR">Organizador</option><option value="ILIMITADO">Ilimitado</option></sc-raw-select>
                 </label>
@@ -749,10 +867,21 @@ html,body{overscroll-behavior:none}
           </sc-if>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Grupos</strong></div>
+          <sc-for list="{{ udGrupos }}" as="g" hint-placeholder-count="2">
+            <button type="button" sc-camel-on-click="{{ g.onOpen }}" style="display:flex;align-items:center;gap:10px;width:100%;border:0;border-bottom:1px solid var(--saqz-border);background:none;padding:12px 20px;font-family:inherit;font-size:13.5px;color:var(--saqz-navy);cursor:pointer;text-align:left">
+              <span style="flex:1;min-width:0"><strong style="display:block;font-weight:600">{{ g.nome }}</strong><span style="display:block;margin-top:2px;font-size:12px;color:var(--saqz-muted)">{{ g.sub }}</span><span style="display:block;margin-top:2px;font-size:12px;color:var(--saqz-muted)">{{ g.perfil }}</span></span>
+              <span style="font-size:12.5px;color:var(--saqz-muted)">{{ g.papel }}</span>
+              <span class="msr" style="font-size:18px;color:var(--saqz-muted)">chevron_right</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
           <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Últimos pagamentos</strong></div>
           <sc-for list="{{ udPagtos }}" as="p" hint-placeholder-count="3">
             <span class="adm-lin-pg" style="display:grid;grid-template-columns:70px 1fr 90px 100px;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span style="color:var(--saqz-muted)">{{ p.data }}</span><span style="font-weight:600">{{ p.desc }}</span><span style="color:var(--saqz-muted)">{{ p.valor }}</span><span style="justify-self:end"><span style="{{ p.statusStyle }}">{{ p.statusTxt }}</span></span></span>
           </sc-for>
+          <sc-if value="{{ udSemPagtos }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:14px 20px;font-size:13.5px;color:var(--saqz-muted)">Nenhum pagamento confirmado.</p></sc-if>
         </div>
       </div>
     </div>
@@ -800,28 +929,93 @@ html,body{overscroll-behavior:none}
       <button type="button" sc-camel-on-click="{{ goGru }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--saqz-blue);cursor:pointer"><span class="msr" style="font-size:16px">arrow_back</span>Grupos</button>
       <strong style="font-size:20px;font-weight:800;letter-spacing:-0.02em">{{ gd.nome }}</strong>
       <span class="adm-top-st" style="{{ gdStatusStyle }}">{{ gdStatusTxt }}</span>
+      <sc-if value="{{ gdCongelado }}" hint-placeholder-val="{{ false }}"><span class="adm-top-st" style="{{ gdCongeladoStyle }}">Congelado</span></sc-if>
       <span style="margin-left:auto;font-size:13px;color:var(--saqz-muted)">Criado em {{ gd.criado }}</span>
     </div>
     <div class="adm-body" style="flex:1;min-height:0;overflow-y:auto;padding:22px 28px;display:grid;gap:16px;align-content:start">
-      <div class="adm-kpis adm-kpis-1" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Organizador</span><strong style="display:block;margin-top:6px;font-size:15px;font-weight:700">{{ gd.organizador }}</strong><span style="display:block;margin-top:3px;font-size:12px;color:var(--saqz-muted)">{{ gd.planoOrg }}</span></div>
+      <div class="adm-kpis adm-kpis-1" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px">
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px">
+          <span style="flex:1 1 200px;min-width:0"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Organizador</span><button type="button" class="adm-link" sc-camel-on-click="{{ gd.onOrganizador }}">{{ gd.organizador }}</button><span style="display:block;margin-top:2px;font-size:12.5px;color:var(--saqz-muted)">{{ gd.organizadorSub }}</span></span>
+          <sc-if value="{{ gd.temWhats }}" hint-placeholder-val="{{ false }}"><a class="ct-btn" href="{{ gd.whatsUrl }}" target="_blank" rel="noopener noreferrer"><span class="msr" style="font-size:16px">chat</span>WhatsApp</a></sc-if>
+          <sc-if value="{{ gd.semWhats }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:var(--saqz-muted)">{{ gd.semWhatsTxt }}</span></sc-if>
+        </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Membros</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.membros }}</strong></div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Jogos realizados</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.jogos }}</strong></div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Último jogo</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.ultimoJogo }}</strong></div>
       </div>
-      <div class="adm-um" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="adm-um" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start">
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
           <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Sobre o grupo</strong></div>
           <div style="padding:14px 20px;display:grid;gap:10px">
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Plano do organizador</span><strong style="font-weight:600">{{ gd.planoOrg }}</strong></span>
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Fuso horário</span><strong style="font-weight:600">{{ gd.fuso }}</strong></span>
-            <span style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--saqz-muted)">Criado em</span><strong style="font-weight:600">{{ gd.criado }}</strong></span>
+            <sc-for list="{{ gdSobre }}" as="c" hint-placeholder-count="11">
+              <span style="display:flex;justify-content:space-between;gap:16px;font-size:13.5px"><span style="flex:0 0 auto;color:var(--saqz-muted)">{{ c.k }}</span><strong style="font-weight:600;text-align:right;overflow-wrap:anywhere">{{ c.v }}</strong></span>
+            </sc-for>
+            <sc-if value="{{ gd.temDescricao }}" hint-placeholder-val="{{ false }}"><span style="display:block;border-top:1px solid var(--saqz-border);padding-top:10px;font-size:13.5px;line-height:20px;color:var(--saqz-muted);overflow-wrap:anywhere">{{ gd.descricao }}</span></sc-if>
           </div>
         </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Jogos e presença</strong></div>
+          <div style="padding:14px 20px;display:grid;gap:10px">
+            <sc-for list="{{ gdJogosCfg }}" as="c" hint-placeholder-count="11">
+              <span style="display:flex;justify-content:space-between;gap:16px;font-size:13.5px"><span style="flex:0 0 auto;color:var(--saqz-muted)">{{ c.k }}</span><strong style="font-weight:600;text-align:right;overflow-wrap:anywhere">{{ c.v }}</strong></span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Dinheiro</strong></div>
+          <div style="padding:14px 20px;display:grid;gap:10px">
+            <sc-for list="{{ gdDinheiro }}" as="c" hint-placeholder-count="8">
+              <span style="display:flex;justify-content:space-between;gap:16px;font-size:13.5px"><span style="flex:0 0 auto;color:var(--saqz-muted)">{{ c.k }}</span><strong style="font-weight:600;text-align:right;overflow-wrap:anywhere">{{ c.v }}</strong></span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 20px;border-bottom:1px solid var(--saqz-border)">
+          <strong style="font-size:15px;font-weight:700">Membros</strong>
+          <input value="{{ gmBusca }}" sc-camel-on-change="{{ onGmBusca }}" aria-label="Buscar membro por nome ou telefone" placeholder="Buscar por nome ou telefone" style="border:1px solid var(--saqz-border);border-radius:999px;padding:8px 14px;font-size:13px;font-family:inherit;color:var(--saqz-navy);width:240px;max-width:100%;box-sizing:border-box">
+        </div>
+        <div class="adm-rola">
+          <div class="adm-largo" style="min-width:920px">
+            <span class="adm-cab" style="display:grid;grid-template-columns:minmax(0,2fr) 90px 104px minmax(0,1.5fr) 150px 96px 116px;gap:12px;padding:10px 20px;border-bottom:1px solid var(--saqz-border);font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--saqz-muted)"><span>MEMBRO</span><span>PAPEL</span><span>TIPO</span><span>PERFIL DE ATLETA</span><span>TELEFONE</span><span>ACESSO</span><span></span></span>
+            <sc-for list="{{ gmRows }}" as="m" hint-placeholder-count="6">
+              <div class="adm-lin" style="display:grid;grid-template-columns:minmax(0,2fr) 90px 104px minmax(0,1.5fr) 150px 96px 116px;gap:12px;align-items:center;padding:9px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px">
+                <button type="button" class="adm-t adm-pessoa" sc-camel-on-click="{{ m.onOpen }}"><span class="adm-ini">{{ m.ini }}</span><strong>{{ m.nome }}</strong></button>
+                <span data-l="Papel" style="color:var(--saqz-muted)">{{ m.papel }}</span>
+                <span data-l="Tipo" style="color:var(--saqz-muted)">{{ m.tipo }}</span>
+                <span data-l="Perfil de atleta" style="color:var(--saqz-muted)">{{ m.perfil }}</span>
+                <span data-l="Telefone">{{ m.tel }}</span>
+                <span data-l="Acesso" style="color:var(--saqz-muted)">{{ m.acesso }}</span>
+                <span class="adm-acoes">
+                  <sc-if value="{{ m.temWhats }}" hint-placeholder-val="{{ true }}"><a class="ct-btn sec" href="{{ m.whatsUrl }}" target="_blank" rel="noopener noreferrer">WhatsApp</a></sc-if>
+                  <sc-if value="{{ m.semWhats }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:var(--saqz-muted)">{{ m.semWhatsTxt }}</span></sc-if>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <nav class="pagination" aria-label="Paginação de membros">
+          <span aria-live="polite">{{ gmPager.rodape }}</span>
+          <button type="button" disabled="{{ gmPager.carregando }}" sc-camel-on-click="{{ gmPager.onRecarregar }}">{{ gmPager.recarregarLabel }}</button>
+          <button type="button" disabled="{{ gmPager.anteriorDesabilitado }}" sc-camel-on-click="{{ gmPager.onAnterior }}">Anterior</button>
+          <button type="button" disabled="{{ gmPager.proximaDesabilitada }}" sc-camel-on-click="{{ gmPager.onProxima }}">Próxima</button>
+        </nav>
+      </div>
+      <div class="adm-um" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
           <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">Últimos jogos</strong></div>
           <sc-for list="{{ gdJogos }}" as="j" hint-placeholder-count="4">
             <span class="adm-lin-jg" style="display:grid;grid-template-columns:70px 1fr 110px;gap:10px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--saqz-border);font-size:13.5px"><span style="color:var(--saqz-muted)">{{ j.data }}</span><span style="font-weight:600">{{ j.desc }}</span><span style="color:var(--saqz-muted);text-align:right">{{ j.presenca }}</span></span>
           </sc-for>
+        </div>
+        <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid var(--saqz-border)"><strong style="font-size:15px;font-weight:700">WhatsApp do grupo</strong></div>
+          <div style="padding:14px 20px;display:grid;gap:10px">
+            <sc-for list="{{ gdWhats }}" as="c" hint-placeholder-count="3">
+              <span style="display:flex;justify-content:space-between;gap:16px;font-size:13.5px"><span style="flex:0 0 auto;color:var(--saqz-muted)">{{ c.k }}</span><strong style="font-weight:600;text-align:right;overflow-wrap:anywhere">{{ c.v }}</strong></span>
+            </sc-for>
+            <sc-if value="{{ gdTemWhats }}" hint-placeholder-val="{{ false }}"><button type="button" class="ct-btn sec" style="justify-self:start" sc-camel-on-click="{{ onGdMensagens }}">Abrir em Mensagens</button></sc-if>
+          </div>
         </div>
       </div>
     </div>
@@ -1281,9 +1475,11 @@ class Component extends DCLogic {
     page: this.props.paginaInicial ?? "visao",
     selU: null, selG: null, selA: null, selD: null,
     periodo: "30d",
-    uBusca: "", uPlano: "todos", uStatus: "todos",
+    uBusca: "", uPlano: "todos", uStatus: "todos", uTeste: "todos", testeCounts: null,
     gBusca: "", gStatus: "todos",
     rTab: "ass",
+    ct: this.contatoInicial(),
+    membersPage: null, membersPageNumber: 1, gmBusca: "",
     // Dados vindos da API /admin (null = carregando; {erro:true} = falhou)
     ...this.recebimentosInitial(),
     ...this.flagsInitial(),
@@ -1347,8 +1543,10 @@ class Component extends DCLogic {
             nc: { campanha: "", cod: "", desc: 10, meses: 3, plano: "ALL", ciclo: "ALL", quem: "AMBOS", limite: "", val: "", parceiro: "", parceiroNovo: "" }, ncPrev: null, partnersData: null, partnerSel: null, partnerReport: null, prDe: "", prAte: "", prErroTxt: "", commission: null, comRegra: null, comPago: null, parceiroOpen: false, np: { nome: "", contato: "", telefone: "", email: "", obs: "" },
             page: this.props.paginaInicial ?? "visao", selU: null, selG: null, selA: null, selD: null,
             periodo: "30d", rTab: "ass",
-            uBusca: "", uPlano: "todos", uStatus: "todos",
-            gBusca: "", gStatus: "todos"
+            uBusca: "", uPlano: "todos", uStatus: "todos", uTeste: "todos", testeCounts: null,
+            gBusca: "", gStatus: "todos",
+            ct: this.contatoInicial(),
+            membersPage: null, membersPageNumber: 1, gmBusca: ""
           });
         }
       });
@@ -2051,6 +2249,7 @@ class Component extends DCLogic {
     if (page === "recebimentos") { this.recLoad("global"); this.recHistory(1); if (st.recUserId) this.recLoad("user"); }
     if (page === "visao" && (force || !st.overview)) this.carregarVisao();
     if (page === "usuarios" && (force || !st.usersPage)) this.carregarUsuarios();
+    if (page === "usuarios" && (force || !st.testeCounts)) this.carregarContagensTeste();
     if (page === "grupos" && (force || !st.groupsPage)) this.carregarGrupos();
     if (page === "receita" && (force || !st.subsPage)) this.carregarAssinaturas();
     if (page === "receita" && (force || !st.revenueData)) this.carregarReceita();
@@ -2080,10 +2279,13 @@ class Component extends DCLogic {
   carregarUsuarios(page = this.state.usersPageNumber) {
     const st = this.state;
     const q = [];
+    const emFila = st.uTeste !== "todos";
     if (st.uBusca.trim()) q.push("query=" + encodeURIComponent(st.uBusca.trim()));
-    if (st.uPlano !== "todos") q.push("plan=" + st.uPlano);
-    if (st.uStatus !== "todos") q.push("status=" + st.uStatus);
-    q.push("page=" + page, "size=25", ...this.ordemQuery("users"));
+    // A fila tem filtro e ordem próprios: plano, status e coluna valem só em Todos.
+    if (emFila) q.push("trial=" + st.uTeste);
+    if (!emFila && st.uPlano !== "todos") q.push("plan=" + st.uPlano);
+    if (!emFila && st.uStatus !== "todos") q.push("status=" + st.uStatus);
+    q.push("page=" + page, "size=25", ...(emFila ? [] : this.ordemQuery("users")));
     const req = (this._usersReq = (this._usersReq || 0) + 1);
     const atual = () => this._usersReq === req;
     this.setState({ usersPage: null, usersPageNumber: page });
@@ -2092,8 +2294,17 @@ class Component extends DCLogic {
       .catch(() => { if (atual()) this.setState({ usersPage: { erro: true, items: [], total: 0 } }); });
   }
 
+  carregarContagensTeste() {
+    const total = (trial) => this.api(`/admin/users?trial=${trial}&page=1&size=1`).then((p) => p.total);
+    Promise.all([total("active"), total("ended")])
+      .then(([active, ended]) => this.setState({ testeCounts: { active, ended } }))
+      .catch(() => {});
+  }
+
   carregarUsuario(id) {
-    this.setState({ userDetail: null, userReceipts: null });
+    // Resposta de outra época nunca chega: o envio pendente não pode travar a próxima ficha.
+    this._ctEnviando = false;
+    this.setState({ userDetail: null, userReceipts: null, ct: this.contatoInicial() });
     const atual = () => this.state.selU === id;
     this.carregarCortesia(id);
     this.api(`/admin/users/${id}`)
@@ -2293,11 +2504,217 @@ class Component extends DCLogic {
   }
 
   carregarGrupo(id) {
-    this.setState({ groupDetail: null });
+    this.setState({ groupDetail: null, gmBusca: "" });
     const atual = () => this.state.selG === id;
     this.api(`/admin/groups/${id}`)
       .then((groupDetail) => { if (atual()) this.setState({ groupDetail }); })
       .catch(() => { if (atual()) this.setState({ groupDetail: { erro: true } }); });
+    this.carregarMembros(1, id, "");
+  }
+
+  carregarMembros(page = this.state.membersPageNumber, id = this.state.selG, busca = this.state.gmBusca) {
+    const q = ["page=" + page, "size=25"];
+    if (busca.trim()) q.unshift("query=" + encodeURIComponent(busca.trim()));
+    const req = (this._membersReq = (this._membersReq || 0) + 1);
+    const atual = () => this._membersReq === req;
+    this.setState({ membersPage: null, membersPageNumber: page });
+    this.api(`/admin/groups/${id}/members?` + q.join("&"))
+      .then((membersPage) => { if (atual()) this.aplicarPagina("members", membersPage, "carregarMembros"); })
+      .catch(() => { if (atual()) this.setState({ membersPage: { erro: true, items: [], total: 0 } }); });
+  }
+
+  // ---- Contato com a pessoa (DEB-162) ----
+  CONTATO_RESULTADOS = { NO_ANSWER: "Sem resposta", WILL_SUBSCRIBE: "Vai assinar", TOO_EXPENSIVE: "Achou caro", DID_NOT_USE: "Não usou", OTHER: "Outro motivo", DO_NOT_CONTACT: "Não quer contato" };
+  CONTATO_MODELOS = [["acabou", "Teste acabou", "Acabou"], ["acabando", "Teste acabando", "Acabando"], ["duvida", "Dúvida", "Dúvida"], ["branco", "Em branco", "Vazio"]];
+  contatoInicial() { return { modelo: null, texto: null, resultado: null, nota: "", salvando: false }; }
+  telefoneNacional(phone) {
+    const digitos = String(phone || "").replace(/\D/g, "");
+    return digitos.length === 13 && digitos.startsWith("55") ? digitos.slice(2) : digitos;
+  }
+  telefoneBr(phone) {
+    const n = this.telefoneNacional(phone);
+    return n.length === 11 ? `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}` : phone || "";
+  }
+  linkWhatsApp(phone, texto) {
+    const base = "https://wa.me/55" + this.telefoneNacional(phone);
+    return texto ? `${base}?text=${encodeURIComponent(texto)}` : base;
+  }
+  linkEmail(email, texto) {
+    const assunto = "subject=" + encodeURIComponent("Saqz");
+    return `mailto:${email}?${assunto}` + (texto ? "&body=" + encodeURIComponent(texto) : "");
+  }
+  emailPrivadoApple(email) { return /@privaterelay\.appleid\.com$/i.test(email || ""); }
+  // Dias de calendário em São Paulo: "há 2 dias" não depende da hora em que o painel foi aberto.
+  diasAte(iso) {
+    const dia = (d) => {
+      const [dd, mm, aa] = new Date(d).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }).split("/");
+      return Date.UTC(+aa, +mm - 1, +dd);
+    };
+    return Math.round((dia(iso) - dia(Date.now())) / 86400000);
+  }
+  quandoRelativo(iso) {
+    if (!iso) return "—";
+    const d = this.diasAte(iso), n = Math.abs(d);
+    if (d === 0) return "Hoje";
+    return `${d > 0 ? "Em" : "Há"} ${n} dia${n === 1 ? "" : "s"}`;
+  }
+  textoContato(modelo, nome, grupo) {
+    const eu = (window.saqzAdmin?.me?.displayName || "").trim().split(/\s+/)[0];
+    const primeiro = (nome || "").trim().split(/\s+/)[0];
+    const abertura = `Oi${primeiro ? `, ${primeiro}` : ""}! Aqui é ${eu ? `${eu}, do Saqz` : "a equipe do Saqz"}.`;
+    const teste = grupo ? `o teste do ${grupo}` : "o seu teste";
+    switch (modelo) {
+      case "acabou": return `${abertura} Vi que ${teste} acabou e queria entender como foi para vocês. Faltou alguma coisa ou ficou alguma dúvida?`;
+      case "acabando": return `${abertura} ${teste[0].toUpperCase() + teste.slice(1)} acaba em breve. Quer ajuda com alguma coisa antes disso?`;
+      case "duvida": return `${abertura} Vi que você teve uma dúvida e queria te ajudar. Como posso ajudar?`;
+      default: return "";
+    }
+  }
+  modeloContatoPadrao(fimTeste, origemPlano) {
+    if (!fimTeste || (origemPlano && origemPlano !== "TRIAL")) return "duvida";
+    return new Date(fimTeste).getTime() > Date.now() ? "acabando" : "acabou";
+  }
+  copiar(texto, aviso) {
+    const pronto = navigator.clipboard ? navigator.clipboard.writeText(texto) : Promise.reject(new Error("sem área de transferência"));
+    pronto.then(() => this.aviso(aviso), () => this.aviso("Não deu para copiar. Selecione o texto."));
+  }
+  registrarContato() {
+    const id = this.state.selU, c = this.state.ct;
+    if (!c.resultado || this._ctEnviando) return;
+    this._ctEnviando = true;
+    this.setState({ ct: { ...c, salvando: true } });
+    const atual = () => this.state.selU === id;
+    this.mutacao(`/admin/users/${id}/contacts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ result: c.resultado, note: c.nota }) })
+      .then((r) => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then((contato) => {
+        if (!atual()) return;
+        const det = this.state.userDetail;
+        // A fila mostra a situação nova quando voltar a ela.
+        this.setState({
+          ct: { ...this.state.ct, resultado: null, nota: "", salvando: false }, usersPage: null,
+          userDetail: det && !det.erro ? { ...det, contacts: [contato, ...(det.contacts || [])], doNotContact: contato.result === "DO_NOT_CONTACT" } : det,
+        });
+        this.aviso("Contato registrado.");
+      })
+      .catch(() => {
+        if (!atual()) return;
+        this.setState({ ct: { ...this.state.ct, salvando: false } });
+        this.aviso("Não deu para registrar agora. Tente de novo.");
+      })
+      .finally(() => { this._ctEnviando = false; });
+  }
+  contatoVals(det) {
+    const c = this.state.ct;
+    const mudar = (patch) => this.setState({ ct: { ...this.state.ct, ...patch } });
+    const dono = det ? det.groups.find((g) => g.role === "OWNER") : null;
+    // Quem já pagou e saiu não acabou um teste: a conversa é outra.
+    const modelo = c.modelo || (det ? this.modeloContatoPadrao(det.subscription ? null : det.trial?.endsAt, det.planSource) : "duvida");
+    const texto = c.texto ?? (det ? this.textoContato(modelo, det.displayName, dono?.name) : "");
+    const tel = det ? this.telefoneBr(det.phone) : "";
+    const bloqueado = !!det?.doNotContact;
+    return {
+      telefone: tel || "Sem telefone",
+      telChip: !tel ? "" : det.phoneVerified ? "Verificado" : "Não verificado",
+      telChipStyle: !tel ? "display:none" : det.phoneVerified ? this.chip("rgba(23,178,106,.12)", "#0E7A4B") : this.chip("#F5F5F7", "#667085"),
+      temTelefone: !!tel, temEmail: !!det?.email, email: det?.email || "Sem e-mail", emailApple: this.emailPrivadoApple(det?.email),
+      onCopiarTel: () => this.copiar(tel, "Telefone copiado."), onCopiarEmail: () => this.copiar(det?.email || "", "E-mail copiado."),
+      bloqueado, podeFalar: !!det && !bloqueado,
+      modelos: this.CONTATO_MODELOS.map(([id, rotulo, curto]) => ({ rotulo, curto, on: id === modelo ? "true" : "false", onClick: () => mudar({ modelo: id, texto: null }) })),
+      texto, onTexto: (e) => mudar({ texto: e.target.value }),
+      whatsUrl: det?.phone ? this.linkWhatsApp(det.phone, texto) : "", emailUrl: det?.email ? this.linkEmail(det.email, texto) : "",
+      resultados: Object.entries(this.CONTATO_RESULTADOS).map(([id, rotulo]) => ({ rotulo, on: id === c.resultado ? "true" : "false", onClick: () => mudar({ resultado: id }) })),
+      nota: c.nota, onNota: (e) => mudar({ nota: e.target.value }),
+      naoPodeSalvar: !c.resultado || c.salvando, salvarLabel: c.salvando ? "Registrando…" : "Registrar contato", onSalvar: () => this.registrarContato(),
+      contatos: (det?.contacts || []).map((x) => ({ resultado: this.CONTATO_RESULTADOS[x.result] || x.result, quando: `${this.dataBr(x.createdAt)} · ${x.authorName || "Equipe"}`, texto: x.note || "Sem observação." })),
+      semContatos: !!det && !det.contacts?.length,
+    };
+  }
+
+  // ---- Rótulos do cadastro, com os textos do app ----
+  ROTULOS_GRUPO = {
+    modalidade: { COURT_VOLLEYBALL: "Vôlei de quadra", BEACH_VOLLEYBALL: "Vôlei de areia", FOOTVOLLEY: "Futevôlei" },
+    publico: { WOMEN: "Feminino", MEN: "Masculino", MIXED: "Misto" },
+    nivel: { BEGINNER: "Iniciante", INTERMEDIATE: "Intermediário", ADVANCED: "Avançado", MIXED_LEVELS: "Níveis mistos" },
+    sistema: { SIX_ZERO: "6-0", FOUR_TWO: "4-2", FIVE_ONE: "5-1" },
+    vaga: { FIFO: "Ordem de chegada", MANUAL: "Escolha manual" },
+    lista: { SCHEDULED: "Por horário", ON_CHANGE: "A cada confirmação" },
+    mesEntrada: { GROUP_DUE_DATE: "Vencimento do grupo", JOIN_DATE: "Dia da entrada", NEXT_MONTH: "Só no mês seguinte" },
+  };
+  ROTULOS_ATLETA = {
+    tipo: { MENSALISTA: "Mensalista", AVULSO: "Avulso" },
+    posicao: { LIBERO: "Líbero", PONTA: "Ponteiro(a)", CENTRAL: "Central", OPOSTO: "Oposto(a)", LEVANTADOR: "Levantador(a)" },
+    nivel: { INICIANTE: "Iniciante", INTERMEDIARIO: "Intermediário", AVANCADO: "Avançado" },
+    lado: { DIREITA: "Direita", ESQUERDA: "Esquerda", TANTO_FAZ: "Tanto faz" },
+  };
+  VISIBILIDADE_TELEFONE = { EVERYONE: "Todos", ADMINS: "Só dono e admin", NOBODY: "Ninguém" };
+  PLATAFORMAS = { IOS: "iOS", ANDROID: "Android", WEB: "Web" };
+  DIAS_SEMANA = ["", "Segundas", "Terças", "Quartas", "Quintas", "Sextas", "Sábados", "Domingos"];
+  sn(v) { return v ? "Sim" : "Não"; }
+  plural(n, um, varios) { return `${n} ${n === 1 ? um : varios}`; }
+  perfilAtleta(a) {
+    if (!a) return "";
+    const r = this.ROTULOS_ATLETA;
+    return [r.posicao[a.position], r.posicao[a.secondaryPosition], r.nivel[a.level], r.lado[a.preferredSide], a.heightCm ? `${a.heightCm} cm` : ""].filter(Boolean).join(" · ");
+  }
+  tipoAtleta(a) {
+    const tipo = this.ROTULOS_ATLETA.tipo[a.membershipType] || "—";
+    return a.monthlyFeeExempt ? `${tipo} · isento` : tipo;
+  }
+  papelNoGrupo(role) { return role === "OWNER" ? "Organiza" : role === "ADMIN" ? "Admin" : "Membro"; }
+  duracao(min) {
+    if (min == null) return "—";
+    return min % 60 === 0 ? `${min / 60} h` : `${min} min`;
+  }
+  cadastroGrupo(g) {
+    const p = g.profile, r = this.ROTULOS_GRUPO;
+    if (!p) return { sobre: [], jogos: [], dinheiro: [], whats: [] };
+    const valor = (cents) => (cents == null ? "—" : this.money(cents));
+    return {
+      sobre: [
+        { k: "Cidade", v: p.city || "—" },
+        { k: "Modalidade", v: r.modalidade[p.modality] || "—" },
+        { k: "Público", v: r.publico[p.composition] || "—" },
+        { k: "Nível", v: p.customLevel || r.nivel[p.level] || "—" },
+        { k: "Sistema de jogo", v: p.customPlayStyle || r.sistema[p.playStyle] || "—" },
+        { k: "Vagas por posição", v: r.sistema[p.gameSystem] || "Não usa" },
+        { k: "Privacidade", v: p.privacy === "PRIVATE" ? "Privado" : p.privacy },
+        { k: "Entrada", v: p.entryRequiresApproval ? "Com aprovação" : "Direta pelo convite" },
+        { k: "Cadastro do grupo", v: p.profileStatus === "COMPLETE" ? "Completo" : "Incompleto" },
+        { k: "Fuso horário", v: g.timeZone },
+        { k: "Foto do grupo", v: p.hasPhoto ? "Enviada" : "Sem foto" },
+      ],
+      jogos: [
+        { k: "Horário regular", v: g.slots.length ? g.slots.map((s) => `${this.DIAS_SEMANA[s.weekday]}, ${s.startTime}`).join(" · ") : "Sem horário" },
+        { k: "Horário regular pausado", v: this.sn(p.schedulePaused) },
+        { k: "Local", v: g.venue ? [g.venue.name, g.venue.court].filter(Boolean).join(" · ") : "—" },
+        { k: "Endereço", v: g.venue ? g.venue.address : "—" },
+        { k: "Duração", v: this.duracao(p.defaultDurationMinutes) },
+        { k: "Vagas por jogo", v: p.defaultCapacity ?? "—" },
+        { k: "Prazo de prioridade", v: p.defaultConfirmationLeadMinutes == null ? "—" : `${this.duracao(p.defaultConfirmationLeadMinutes)} antes` },
+        { k: "Prioridade de mensalista", v: this.sn(p.mensalistaPriority) },
+        { k: "Quem entra quando surge vaga", v: r.vaga[p.promotionMode] || p.promotionMode },
+        { k: "Confirmação automática", v: this.sn(p.autoConfirmEnabled) },
+        { k: "Lista no grupo do WhatsApp", v: r.lista[p.attendanceUpdatesMode] || p.attendanceUpdatesMode },
+      ],
+      dinheiro: [
+        { k: "Valor por jogo", v: p.defaultNoGameFee ? "Sem cobrança" : valor(p.defaultGameFeeCents) },
+        { k: "Mensalidade", v: valor(p.monthlyFeeCents) },
+        { k: "Vencimento", v: p.monthlyDueDay ? `Dia ${p.monthlyDueDay}` : "—" },
+        { k: "Quem entra no meio do mês", v: r.mesEntrada[p.monthlyLateJoinPolicy] || p.monthlyLateJoinPolicy },
+        { k: "Pagamento antecipado", v: p.advancePaymentRequired ? "Exigido" : "Não exigido" },
+        { k: "Pix", v: p.pixKey || "—" },
+        { k: "Nome no Pix", v: p.pixLabel || "—" },
+        { k: "Saldo inicial do caixa", v: valor(p.openingBalanceCents) },
+      ],
+      whats: g.whatsApp ? [
+        { k: "Grupo vinculado", v: g.whatsApp.name },
+        { k: "Situação", v: g.whatsApp.broken ? "Vínculo quebrado" : g.whatsApp.enabled ? "Funcionando" : "Desligado" },
+        { k: "Vinculado em", v: this.dataBr(g.whatsApp.linkedAt) },
+      ] : [{ k: "Grupo vinculado", v: "Não" }],
+    };
   }
 
   carregarAssinaturas(page = this.state.subsPageNumber) {
@@ -2421,7 +2838,7 @@ class Component extends DCLogic {
     const o = this.state[key + "Sort"];
     const dir = o && o.col === col ? o.dir : null;
     const reqs = { users: "_usersReq", groups: "_groupsReq", subs: "_subsReq" };
-    const methods = { users: "carregarUsuarios", groups: "carregarGrupos", subs: "carregarAssinaturas" };
+    const methods = { users: "carregarUsuarios", groups: "carregarGrupos", subs: "carregarAssinaturas", members: "carregarMembros" };
     return {
       aria: dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none",
       seta: dir === "asc" ? " ▲" : dir === "desc" ? " ▼" : "",
@@ -2450,7 +2867,7 @@ class Component extends DCLogic {
     const pages = Math.max(1, Math.ceil((data?.total || 0) / 25));
     const anteriorDesabilitado = carregando || page <= 1;
     const proximaDesabilitada = carregando || erro || page >= pages;
-    const methods = { users: "carregarUsuarios", groups: "carregarGrupos", subs: "carregarAssinaturas" };
+    const methods = { users: "carregarUsuarios", groups: "carregarGrupos", subs: "carregarAssinaturas", members: "carregarMembros" };
     // Reconsulta o estado no clique: duas ações antes de um render não disparam duas cargas.
     const mover = (delta) => {
       const atual = this.paginacao(key);
@@ -3070,20 +3487,80 @@ class Component extends DCLogic {
     const up = st.usersPage;
     const usuariosRows = up && !up.erro ? up.items.map(u => {
       const cs = this.chipStatus(u.suspended ? "suspenso" : "ativo");
-      return { ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", cidade: u.city || "—", grupos: String(u.memberships), plano: this.planoNome(u.plan) || "Grátis", planoOrigem: this.planoOrigem(u.planSource, u.planEndsAt), planoStyle: this.chipPlano(u.plan), statusTxt: cs.txt, statusStyle: cs.style, acesso: this.dataBr(u.lastSeenAt), onOpen: () => this.go("usuario", { selU: u.userId }) };
+      return { ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", telefone: this.telefoneBr(u.phone) || "Sem telefone", cidade: u.city || "—", grupos: String(u.memberships), plano: this.planoNome(u.plan) || "Grátis", planoOrigem: this.planoOrigem(u.planSource, u.planEndsAt), planoStyle: this.chipPlano(u.plan), statusTxt: cs.txt, statusStyle: cs.style, acesso: this.dataBr(u.lastSeenAt), onOpen: () => this.go("usuario", { selU: u.userId }) };
     }) : [];
-    const uCount = up ? (up.erro ? "erro ao carregar" : `${up.total} usuário${up.total === 1 ? "" : "s"}`) : "carregando…";
+    const uEmFila = st.uTeste !== "todos";
+    const corContato = (cor) => `font-size:12.5px;line-height:17px;font-weight:600;color:${cor}`;
+    const filaRows = uEmFila && up && !up.erro ? up.items.map(u => {
+      const g = u.ownedGroup, tel = this.telefoneBr(u.phone), c = u.lastContact;
+      const modelo = this.modeloContatoPadrao(u.trialEndsAt, u.planSource);
+      const cor = !c ? "#667085" : u.doNotContact ? "#B3261E" : c.result === "WILL_SUBSCRIBE" ? "#0E7A4B" : "var(--saqz-navy)";
+      return {
+        ini: ini(u.displayName), nome: u.displayName || "—", email: u.email || "—", onOpen: () => this.go("usuario", { selU: u.userId }),
+        tel: tel || "Sem telefone", telNota: tel ? (u.phoneVerified ? "Verificado" : "Não verificado") : this.emailPrivadoApple(u.email) ? "E-mail privado da Apple" : "",
+        quando: this.quandoRelativo(u.trialEndsAt), data: this.dataBr(u.trialEndsAt),
+        grupo: g ? g.name : "Sem grupo", grupoNota: !g ? "" : g.deleted ? "Apagado" : g.frozen ? "Congelado" : "Ativo",
+        jogos: g ? this.plural(g.gamesPlayed, "jogo", "jogos") : "—", membros: g ? this.plural(g.members, "membro", "membros") : "",
+        acesso: this.dataBr(u.lastSeenAt),
+        contato: c ? `${this.CONTATO_RESULTADOS[c.result] || c.result} · ${this.dataCurta(c.at)}` : "Sem contato", contatoStyle: corContato(cor),
+        temWhats: !!tel && !u.doNotContact, semWhats: !tel || u.doNotContact, semWhatsTxt: u.doNotContact ? "Não procurar" : "Sem telefone",
+        whatsUrl: tel ? this.linkWhatsApp(u.phone, this.textoContato(modelo, u.displayName, g && !g.deleted ? g.name : "")) : "",
+      };
+    }) : [];
+    const tc = st.testeCounts;
+    const comTotal = (rotulo, n) => (n == null ? rotulo : `${rotulo} · ${n}`);
+    const uAbas = [["todos", "Todos", "Todos"], ["active", comTotal("Em teste", tc?.active), comTotal("Em teste", tc?.active)], ["ended", comTotal("Teste acabou sem assinar", tc?.ended), comTotal("Acabou", tc?.ended)]]
+      .map(([id, rotulo, curto]) => ({ rotulo, curto, on: id === st.uTeste ? "true" : "false", onClick: () => { if (id !== st.uTeste) this.filtroUsuarios("uTeste")({ target: { value: id } }); } }));
+    const uCount = up ? (up.erro ? "erro ao carregar" : `${up.total} usuário${up.total === 1 ? "" : "s"}${uEmFila ? " · fim do teste mais perto primeiro" : ""}`) : "carregando…";
 
     const det = st.userDetail && !st.userDetail.erro ? st.userDetail : null;
     const udStatus = this.chipStatus(det && det.suspendedAt ? "suspenso" : "ativo");
     const sub = det ? det.subscription : null;
+    const udDono = det ? det.groups.find(g => g.role === "OWNER") : null;
+    const udEmTeste = det?.planSource === "TRIAL";
+    const udTesteAcabou = !!det?.trial && !det.plan && !sub;
+    const udTesteChip = udEmTeste ? `Teste acaba ${this.quandoRelativo(det.trial?.endsAt).toLowerCase()}` : udTesteAcabou ? `Teste acabou ${this.quandoRelativo(det.trial.endsAt).toLowerCase()}` : "";
     const ud = det ? {
       ini: ini(det.displayName), nome: det.displayName || "—", email: det.email || "—",
-      cidade: det.city || "—", desde: this.dataBr(det.createdAt), acesso: this.dataBr(det.lastSeenAt), telefone: det.phone || "—",
-      planoTitulo: sub ? `${sub.plan} · ${sub.cycle === "ANNUAL" ? "anual" : "mensal"}` : "Grátis",
-      planoSub: sub ? `${sub.status === "ACTIVE" ? "em dia" : sub.status === "PAST_DUE" ? "pagamento atrasado" : "cancelada"} · desde ${this.dataBr(sub.since)}` : "Sem assinatura ativa."
-    } : { ini: "…", nome: st.userDetail && st.userDetail.erro ? "Não deu para carregar" : "Carregando…", email: "", cidade: "—", desde: "—", acesso: "—", telefone: "—", planoTitulo: "—", planoSub: "" };
-    const udGrupos = det ? det.groups.map(g => ({ nome: g.name, sub: `${g.members} membro${g.members === 1 ? "" : "s"}`, papel: g.role === "OWNER" ? "Organiza" : g.role === "ADMIN" ? "Admin" : "Membro", onOpen: () => this.go("grupo", { selG: g.groupId }) })) : [];
+      papelResumo: udDono ? `Organiza o ${udDono.name}` : det.groups.length ? this.plural(det.groups.length, "grupo como membro", "grupos como membro") : "Sem grupo",
+      planoTitulo: sub ? `${sub.plan} · ${sub.cycle === "ANNUAL" ? "anual" : "mensal"}` : udEmTeste ? `Em teste até ${this.dataBr(det.trial.endsAt)}` : det.plan ? this.planoNome(det.plan) : udTesteAcabou ? "Teste acabou sem assinar" : "Grátis",
+      planoSub: sub ? `${sub.status === "ACTIVE" ? "em dia" : sub.status === "PAST_DUE" ? "pagamento atrasado" : "cancelada"} · desde ${this.dataBr(sub.since)}`
+        : det.plan ? this.planoOrigem(det.planSource, det.planEndsAt)
+        : udDono?.frozen ? `${udDono.name} está congelado.` : "Sem assinatura ativa."
+    } : { ini: "…", nome: st.userDetail && st.userDetail.erro ? "Não deu para carregar" : "Carregando…", papelResumo: "", planoTitulo: "—", planoSub: "" };
+    const udCadastro = det ? [
+      { k: "Nome", v: det.displayName || "—" },
+      { k: "Apelido", v: det.nickname || "—" },
+      { k: "Cidade", v: det.city || "—" },
+      { k: "Quem vê o telefone", v: this.VISIBILIDADE_TELEFONE[det.phoneVisibility] || "—" },
+      { k: "E-mail confirmado", v: this.sn(det.emailVerified) },
+      { k: "Foto de perfil", v: det.hasPhoto ? "Enviada" : "Sem foto" },
+      { k: "No Saqz desde", v: this.dataBr(det.createdAt) },
+      { k: "Primeiro acesso concluído", v: this.dataBr(det.onboardingCompletedAt) },
+      { k: "Último acesso", v: this.dataBr(det.lastSeenAt) },
+      ...(det.platformAdmin ? [{ k: "Admin do painel", v: "Sim" }] : []),
+      { k: "Id da conta", v: det.userId },
+    ] : [];
+    const udApps = det ? (det.apps || []).map(a => ({
+      sistema: this.PLATAFORMAS[a.platform] || a.platform,
+      versao: a.appVersion ? `App ${a.appVersion}${a.appBuild ? ` (${a.appBuild})` : ""}` : "Versão não informada",
+      visto: `Visto em ${this.dataBr(a.lastSeenAt)}`,
+    })) : [];
+    const o = det?.origin;
+    const udTeste = det ? [
+      ...(det.trial ? [
+        { k: "Começou", v: this.dataBr(det.trial.startedAt) },
+        { k: udEmTeste ? "Acaba" : "Acabou", v: this.dataBr(det.trial.endsAt) },
+        { k: "Avisos do fim do teste", v: `${det.trial.noticesSent} de 3 enviados` },
+      ] : [{ k: "Teste", v: "Não usou" }]),
+      { k: "Origem", v: o ? [o.couponCode ? `Cupom ${o.couponCode}` : "Cupom", o.campaign].filter(Boolean).join(" · ") : "Sem cupom" },
+      { k: "Plano hoje", v: det.plan ? [this.planoNome(det.plan), this.planoOrigem(det.planSource, det.planEndsAt)].filter(Boolean).join(" · ") : "Grátis" },
+    ] : [];
+    const udGrupos = det ? det.groups.map(g => ({
+      nome: g.name, sub: [this.plural(g.members, "membro", "membros"), this.plural(g.gamesPlayed, "jogo", "jogos"), g.frozen ? "congelado" : ""].filter(Boolean).join(" · "),
+      perfil: g.athlete ? [this.tipoAtleta(g.athlete), this.perfilAtleta(g.athlete)].filter(Boolean).join(" · ") : "",
+      papel: this.papelNoGrupo(g.role), onOpen: () => this.go("grupo", { selG: g.groupId }),
+    })) : [];
     const udPagtos = (st.userReceipts || []).map(r => {
       const cs = this.chipStatus("paga");
       return { data: this.dataCurta(r.processedAt), desc: "Pagamento confirmado", valor: this.money(r.valueCents), statusTxt: cs.txt, statusStyle: cs.style };
@@ -3099,10 +3576,29 @@ class Component extends DCLogic {
 
     const gdet = st.groupDetail && !st.groupDetail.erro ? st.groupDetail : null;
     const gdStatus = this.chipStatus(gdet && gdet.deletedAt ? "apagado" : "ativo");
+    const gc = gdet?.ownerContact;
+    const gOrgTel = gc ? this.telefoneBr(gc.phone) : "";
+    const gPlanoOrg = gdet ? [this.planoNome(gdet.ownerPlan) || "Sem plano", this.planoOrigem(gdet.ownerPlanSource, gdet.ownerPlanEndsAt)].filter(Boolean).join(" · ") : "";
+    const gOrgModelo = gdet?.ownerPlanSource === "TRIAL" ? "acabando" : gdet?.frozen ? "acabou" : "duvida";
     const gd = gdet ? {
-      nome: gdet.name, organizador: gdet.ownerName || "—", planoOrg: [this.planoNome(gdet.ownerPlan) || "Sem plano", this.planoOrigem(gdet.ownerPlanSource, gdet.ownerPlanEndsAt)].filter(Boolean).join(" · "),
-      membros: String(gdet.members), jogos: String(gdet.gamesPlayed), criado: this.dataBr(gdet.createdAt), fuso: gdet.timeZone
-    } : { nome: st.groupDetail && st.groupDetail.erro ? "Não deu para carregar" : "Carregando…", organizador: "—", planoOrg: "", membros: "—", jogos: "—", criado: "—", fuso: "—" };
+      nome: gdet.name, organizador: gdet.ownerName || "—", organizadorSub: [gOrgTel || "Sem telefone", gPlanoOrg].filter(Boolean).join(" · "),
+      onOrganizador: () => this.go("usuario", { selU: gdet.ownerUserId }),
+      temWhats: !!gOrgTel && !gc?.doNotContact, semWhats: !gOrgTel || !!gc?.doNotContact, semWhatsTxt: gc?.doNotContact ? "Não procurar" : "Sem telefone",
+      whatsUrl: gOrgTel ? this.linkWhatsApp(gc.phone, this.textoContato(gOrgModelo, gdet.ownerName, gdet.name)) : "",
+      membros: String(gdet.members), jogos: String(gdet.gamesPlayed), ultimoJogo: gdet.lastGameAt ? this.dataCurta(gdet.lastGameAt) : "—", criado: this.dataBr(gdet.createdAt),
+      temDescricao: !!gdet.profile?.description, descricao: gdet.profile?.description || "",
+    } : { nome: st.groupDetail && st.groupDetail.erro ? "Não deu para carregar" : "Carregando…", organizador: "—", organizadorSub: "", membros: "—", jogos: "—", ultimoJogo: "—", criado: "—", temWhats: false, semWhats: false };
+    const gCad = gdet ? this.cadastroGrupo(gdet) : { sobre: [], jogos: [], dinheiro: [], whats: [] };
+    const mp = st.membersPage;
+    const gmRows = mp && !mp.erro ? mp.items.map(m => {
+      const tel = this.telefoneBr(m.phone);
+      return {
+        ini: ini(m.displayName), nome: m.displayName || "—", papel: this.papelNoGrupo(m.role), tipo: this.tipoAtleta(m), perfil: this.perfilAtleta(m) || "Sem perfil",
+        tel: tel || "Sem telefone", acesso: this.dataBr(m.lastSeenAt), onOpen: () => this.go("usuario", { selU: m.userId }),
+        temWhats: !!tel && !m.doNotContact, semWhats: !tel || m.doNotContact, semWhatsTxt: m.doNotContact ? "Não procurar" : "",
+        whatsUrl: tel ? this.linkWhatsApp(m.phone) : "",
+      };
+    }) : [];
     const gdJogos = gdet ? gdet.lastGames.map(j => ({ data: this.dataCurta(j.startsAt), desc: j.title + (j.status === "CANCELLED" ? " · cancelado" : ""), presenca: `${j.confirmed} confirmado${j.confirmed === 1 ? "" : "s"}` })) : [];
 
     // ---- Receita (API) ----
@@ -3186,10 +3682,24 @@ class Component extends DCLogic {
       perNota, atualizadoEm,
       kpis, cohort, planoBars, pendAtraso,
       uBusca: st.uBusca, onUBusca: this.filtroUsuarios("uBusca"), uPlano: st.uPlano, onUPlano: this.filtroUsuarios("uPlano"), uStatus: st.uStatus, onUStatus: this.filtroUsuarios("uStatus"),
-      usuariosRows, uCount, uPager: this.paginacao("users"),
+      usuariosRows, filaRows, uEmFila, uEmTodos: !uEmFila, uAbas, uCount, uPager: this.paginacao("users"),
+      uColunaTeste: st.uTeste === "active" ? "TESTE ACABA" : "TESTE ACABOU", uRotuloTeste: st.uTeste === "active" ? "Teste acaba" : "Teste acabou",
       uSort: this.ordenacoes("users", ["name", "city", "groups", "plan", "status", "lastSeen"]),
       ...this.cortVals(det),
       ud, udStatusTxt: udStatus.txt, udStatusStyle: udStatus.style, udGrupos, udPagtos, udTemAssin: !!sub,
+      ct: this.contatoVals(det), udSemPagtos: !!det && st.userReceipts != null && udPagtos.length === 0, udCadastro, udApps, udSemApps: !!det && !det.apps?.length, udTeste,
+      udTesteChip, udTesteChipStyle: this.chip(udEmTeste ? "#F4F8FB" : "rgba(245,166,35,.16)", udEmTeste ? "#0638DF" : "#8a5a00"),
+      gmRows, gmPager: this.paginacao("members"), gmBusca: st.gmBusca,
+      onGmBusca: (e) => {
+        this._membersReq = (this._membersReq || 0) + 1;
+        this.setState({ gmBusca: e.target.value, membersPage: null, membersPageNumber: 1 }, () => {
+          clearTimeout(this._gmd);
+          this._gmd = setTimeout(() => this.carregarMembros(1), 350);
+        });
+      },
+      gdSobre: gCad.sobre, gdJogosCfg: gCad.jogos, gdDinheiro: gCad.dinheiro, gdWhats: gCad.whats, gdTemWhats: !!gdet?.whatsApp,
+      gdCongelado: !!gdet?.frozen, gdCongeladoStyle: this.chip("rgba(245,166,35,.16)", "#8a5a00"),
+      onGdMensagens: () => this.setState({ mgSel: gdet.whatsApp.chatId, mgTipo: "grupos", mgEscopo: "recebidas" }, () => this.go("mensagens")),
       udBtnLabel: suspenso ? "Reativar usuário" : "Suspender usuário",
       onSuspender: !det ? () => {} : suspenso
         ? () => {
