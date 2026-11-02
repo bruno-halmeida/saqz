@@ -80,13 +80,14 @@
   };
   window.saqzConsentState = readConsent;
 
-  var BAR_CSS = '.saqz-consent{position:fixed;z-index:2147483000;left:16px;right:16px;bottom:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px;max-width:860px;margin:0 auto;padding:14px 18px;border:1px solid #d2d2d7;border-radius:14px;background:rgba(255,255,255,.98);box-shadow:0 12px 40px rgba(0,0,0,.18);font-family:Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}' +
+  var BAR_CSS = '.saqz-consent{position:fixed;z-index:2147483000;left:10px;right:10px;bottom:10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 16px;max-width:880px;margin:0 auto;padding:9px 12px;border:1px solid #d2d2d7;border-radius:14px;background:rgba(255,255,255,.98);box-shadow:0 6px 24px rgba(0,0,0,.16);font-family:Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}' +
     '.saqz-consent[hidden]{display:none}' +
-    '.saqz-consent p{flex:1 1 380px;margin:0;color:#1d1d1f;font-size:13px;line-height:1.45}' +
+    '.saqz-consent p{flex:1 1 300px;margin:0;color:#1d1d1f;font-size:12px;line-height:1.35}' +
     '.saqz-consent a{color:#0638DF}' +
-    '.saqz-consent-actions{display:flex;flex-wrap:wrap;gap:8px}' +
-    '.saqz-consent button{padding:9px 14px;border-radius:980px;font:600 13px Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;cursor:pointer;border:1px solid #c8c8cc;background:#fff;color:#1d1d1f}' +
-    '.saqz-consent button.saqz-accept{border:0;background:#0638DF;color:#fff}';
+    '.saqz-consent-actions{display:flex;flex-wrap:wrap;gap:6px}' +
+    '.saqz-consent button{padding:6px 10px;border-radius:980px;font:600 12px Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;cursor:pointer;border:1px solid #c8c8cc;background:#fff;color:#1d1d1f}' +
+    '.saqz-consent button.saqz-accept{border:0;background:#0638DF;color:#fff}' +
+    '@media (max-width:340px){.saqz-consent{padding:8px 10px}.saqz-consent button{padding:5px 8px;font-size:11px}}';
   function buildBar() {
     var bar = document.getElementById('consent');
     if (bar) return bar;
@@ -95,7 +96,7 @@
     bar = document.createElement('div');
     bar.id = 'consent'; bar.className = 'saqz-consent'; bar.hidden = true;
     bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Aviso de cookies');
-    bar.innerHTML = '<p>Usamos cookies para medir o uso do site (Google Analytics e Microsoft Clarity, com campos mascarados) e, se você deixar, para medir campanhas da Meta. Nada disso carrega antes da sua escolha. <a href="/privacidade/">Política de privacidade</a></p>' +
+    bar.innerHTML = '<p>Usamos cookies para medir o site e as campanhas da Meta, só com a sua escolha. <a href="/privacidade/">Privacidade</a></p>' +
       '<div class="saqz-consent-actions">' +
       '<button type="button" class="saqz-accept" data-saqz-choice="all">Aceitar todos</button>' +
       '<button type="button" data-saqz-choice="stats">Só estatísticas</button>' +
@@ -167,16 +168,28 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var a = ev.target.closest && ev.target.closest('a[href="/comecar/"], a[href="/assinar/"]');
+    var a = ev.target.closest && ev.target.closest('a[href="/comecar/"], a[href="/assinar/"], a[href^="/baixar"], a[href="/indicar"]');
     if (!a) return;
     var card = a.closest('.plan-card');
+    var href = a.getAttribute('href');
     send('cta_click', {
       cta_position: position(a),
       cta_label: (a.textContent || '').replace(/\s+/g, ' ').trim(),
-      cta_target: a.getAttribute('href') === '/assinar/' ? 'assinar' : 'comecar',
+      cta_target: href === '/assinar/' ? 'assinar' : href === '/comecar/' ? 'comecar' : href === '/indicar' ? 'indicar' : 'baixar',
       plan: card ? (card.querySelector('h3') || {}).textContent : undefined,
     });
   });
+
+  // Leva a campanha da URL ao /baixar: o nginx conta por utm_content e, no Android, repassa ao Play no referrer.
+  // Só parâmetros de campanha, nunca o fbclid; não usa cookie nem depende da escolha no aviso.
+  var campaign = new URLSearchParams(location.search), utm = [];
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(function (key) {
+    var value = campaign.get(key);
+    if (value) utm.push(key + '=' + encodeURIComponent(value));
+  });
+  if (utm.length) {
+    document.querySelectorAll('a[href="/baixar"]').forEach(function (a) { a.setAttribute('href', '/baixar?' + utm.join('&')); });
+  }
 
   document.addEventListener('toggle', function (ev) {
     var d = ev.target;

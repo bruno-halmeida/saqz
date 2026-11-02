@@ -3,17 +3,19 @@
 Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela. Desde 07/10/2026,
 `saqz.app/comecar/` e `saqz.app/assinar/` rodam contra produção (Firebase `saquz-app`, `api.saqz.app`).
 
-## PROD-WEB01 · saqz.app leva ao cadastro com os preços certos · P0
+## PROD-WEB01 · saqz.app leva à loja com os preços certos · P0
 
 **Quem:** visitante, no computador e no celular.
 
 1. Abrir `https://saqz.app`.
-2. Tocar "Criar meu grupo grátis"; voltar e, no plano Titular, tocar "Assinar o Titular".
+2. Tocar "Baixar grátis"; voltar, tocar "Não organiza o grupo? Mande para quem organiza"; voltar e, no plano Titular, tocar "Assinar o Titular".
 3. No rodapé, abrir "Termos de uso", "Política de privacidade" e "Excluir conta".
 
 **Conferir**
-- "Criar meu grupo grátis" abre `saqz.app/comecar/`, e "Assinar o Titular" abre `saqz.app/assinar/`.
-  Nada aponta para `brunoalmeida.dev`.
+- "Baixar grátis" abre a loja do aparelho: Google Play no Android, App Store no iPhone e, no computador,
+  `links.saqz.app` com o QR. Vale também tocando no link da bio, dentro do navegador do Instagram.
+- "Mande para quem organiza" abre o WhatsApp com o texto pronto e o link de `saqz.app`.
+- "Assinar o Titular" abre `saqz.app/assinar/`. Nada aponta para `brunoalmeida.dev`.
 - A prévia do link no WhatsApp mostra a imagem do Saqz (celular azul com o título), não a foto de banco.
 - Preços: Titular R$ 39,90/mês (R$ 359,10/ano), Organizador R$ 59,90 (R$ 539,10), Ilimitado R$ 89,90
   (R$ 809,10).

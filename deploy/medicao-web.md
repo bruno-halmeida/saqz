@@ -25,7 +25,7 @@ quando há consentimento; os demais vão como evento customizado.
 | # | Evento | Página | Quando dispara | Meta |
 |---|---|---|---|---|
 | 1 | `page_view` | landing | visita | PageView |
-| 2 | `cta_click` | landing | clique em botão para `/comecar/` ou `/assinar/`; `cta_position`, `cta_label`, `plan` | |
+| 2 | `cta_click` | landing | clique em botão para `/baixar`, `/indicar`, `/comecar/` ou `/assinar/`; `cta_position`, `cta_label`, `cta_target`, `plan` | |
 | 3 | `signup_start` | comecar | tocou "Criar minha conta" ou "Continuar com o Google"; `method` | |
 | 4 | `sign_up` ou `login` | comecar | o Firebase aceitou a conta; `method` | CompleteRegistration |
 | 5 | `account_ready` | comecar | o backend criou a sessão; `phone_required` | |
@@ -42,6 +42,12 @@ quando há consentimento; os demais vão como evento customizado.
 | 16 | `store_click` | assinar | no computador, selo da loja depois do pagamento ou em "já é assinante"; `store`, `origem` | |
 | — | `plan_change_requested` / `plan_changed` | assinar | troca de plano de quem já assina | |
 | — | `faq_open` | landing | abriu uma pergunta | |
+
+Desde 02/11/2026 os botões da landing vão à loja, e não ao `/comecar/`: o cadastro acontece no app, onde os eventos de
+3 a 9 não disparam. Para contar quem foi à loja sem depender do aviso de cookies, use o log da landing no servidor:
+`docker logs saqz-landing-page-1 2>&1 | grep -E '"GET /baixar'`. Cada linha traz `utm_content` e o navegador. `/indicar`
+conta os toques em "Mande para quem organiza", e `utm_source=indicacao` marca quem chegou por essa mensagem. No Android,
+a campanha segue ao Play no `referrer`, que o Firebase registra no `first_open`.
 
 O passo seguinte do funil, criar o primeiro grupo, acontece no app: o Android já manda `group_created`
 para a mesma propriedade do GA4. Por isso o `user_id` da web é o id interno da conta (o mesmo que o app
