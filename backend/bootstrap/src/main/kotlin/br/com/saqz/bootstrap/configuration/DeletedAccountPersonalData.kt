@@ -28,7 +28,7 @@ internal fun removeDeletedAccountPersonalData(jdbc: JdbcClient, userId: UUID) {
     listOf("notification_devices", "group_notification_preferences", "group_memberships",
         "group_membership_removals", "group_entry_requests", "subscription_checkout_login_tokens",
         "subscription_purchase_information_emails", "subscription_purchase_information_email_successes",
-        "invite_redemption_limits", "attendance_link_resolution_limits").forEach {
+        "invite_redemption_limits", "attendance_link_resolution_limits", "admin_user_contacts").forEach {
         execute("DELETE FROM $it WHERE user_id = :id")
     }
     execute("DELETE FROM trial_coupon_selections WHERE owner_user_id = :id")

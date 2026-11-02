@@ -49,6 +49,11 @@ class AccountDeletionPersistenceTest {
             billing_month, amount_cents, due_date, status, created_by_user_id, changed_by_user_id, created_at, updated_at)
             VALUES ('$charge', '$group', '$user', 'Private Name', 'MONTHLY', '2026-09-01', 4500,
                 '2026-09-27', 'PAID', '$user', '$user', now(), now())""")
+        // Anotação da equipe sobre a pessoa sai com a conta; a que a pessoa escreveu sobre outra fica.
+        execute("""INSERT INTO admin_user_contacts(id, user_id, result, note, created_by)
+            VALUES ('${UUID.randomUUID()}', '$user', 'OTHER', 'Anotacao sobre a pessoa', '$peer')""")
+        execute("""INSERT INTO admin_user_contacts(id, user_id, result, note, created_by)
+            VALUES ('${UUID.randomUUID()}', '$peer', 'NO_ANSWER', 'Anotacao sobre outra pessoa', '$user')""")
 
         val transaction = TransactionTemplate(DataSourceTransactionManager(db))
         transaction.executeWithoutResult {
@@ -64,6 +69,8 @@ class AccountDeletionPersistenceTest {
         assertEquals(0, jdbc.sql("SELECT count(*) FROM group_memberships WHERE user_id = '$user'").query(Int::class.java).single())
         assertEquals(0, jdbc.sql("SELECT count(*) FROM access_user_app_versions WHERE user_id = '$user'").query(Int::class.java).single())
         assertEquals(1, jdbc.sql("SELECT count(*) FROM access_user_app_versions WHERE user_id = '$peer'").query(Int::class.java).single())
+        assertEquals(0, jdbc.sql("SELECT count(*) FROM admin_user_contacts WHERE user_id = '$user'").query(Int::class.java).single())
+        assertEquals(1, jdbc.sql("SELECT count(*) FROM admin_user_contacts WHERE user_id = '$peer'").query(Int::class.java).single())
         assertEquals("Private Name", jdbc.sql("SELECT display_name FROM access_users WHERE id = '$peer'").query(String::class.java).single())
         assertEquals("Conta excluída", jdbc.sql("SELECT member_display_name FROM group_charges WHERE id = '$charge'").query(String::class.java).single())
         assertEquals(4500L, jdbc.sql("SELECT amount_cents FROM group_charges WHERE id = '$charge'").query(Long::class.java).single())

@@ -226,6 +226,155 @@ class JdbcAdminGroupDirectoryRepositoryIntegrationTest {
         assertNull(repository.find(UUID.randomUUID()))
     }
 
+    @Test
+    fun `detalhe traz o cadastro inteiro, o local, os horarios, o whatsapp e o contato do dono`() {
+        val dona = insertUser("dona", name = "Camila Rocha")
+        execute("UPDATE access_users SET email = 'camila@saqz.test', phone = '+5511900001234', verified_phone = '+5511900001234' WHERE id = '$dona'")
+        val grupo = insertGroup(dona, name = "Volei do Parque", createdAt = now)
+        val venue = UUID.randomUUID()
+        execute(
+            "INSERT INTO group_venues (id, group_id, name, address, court, created_at, updated_at) " +
+                "VALUES ('$venue', '$grupo', 'Quadra Parque', 'Rua das Arvores, 10', 'Quadra 2', now(), now())",
+        )
+        execute(
+            """
+            UPDATE access_groups SET city = 'Sao Paulo', description = 'Volei misto de quinta', modality = 'COURT_VOLLEYBALL',
+                composition = 'MIXED', default_capacity = 18, default_duration_minutes = 120,
+                default_confirmation_lead_minutes = 1440, default_game_fee_cents = 2500, monthly_fee_cents = 9000,
+                monthly_due_day = 10, pix_key = 'camila@saqz.test', pix_label = 'Camila', opening_balance_cents = 32000,
+                entry_requires_approval = true, default_venue_id = '$venue'
+            WHERE id = '$grupo'
+            """.trimIndent(),
+        )
+        execute(
+            "INSERT INTO group_regular_slots (id, group_id, venue_id, weekday, start_time, duration_minutes, created_at, updated_at) " +
+                "VALUES ('${UUID.randomUUID()}', '$grupo', '$venue', 4, '19:00', 120, now(), now())",
+        )
+        execute(
+            "INSERT INTO group_whatsapp_bindings (group_id, whatsapp_jid, invite_code, group_name, instance_jid, created_by) " +
+                "VALUES ('$grupo', '120363000@g.us', 'codigo-secreto', 'Volei do Parque WhatsApp', '5511@s.whatsapp.net', '$dona')",
+        )
+        val jogoAntes = now.minusSeconds(86_400)
+        insertGame(grupo, startsAt = jogoAntes, status = "COMPLETED")
+
+        val detail = assertNotNull(repository.find(grupo))
+
+        val profile = assertNotNull(detail.profile)
+        assertEquals("Sao Paulo", profile.city)
+        assertEquals("Volei misto de quinta", profile.description)
+        assertEquals("COURT_VOLLEYBALL", profile.modality)
+        assertEquals("MIXED", profile.composition)
+        assertEquals(18, profile.defaultCapacity)
+        assertEquals(1440, profile.defaultConfirmationLeadMinutes)
+        assertEquals(2500L, profile.defaultGameFeeCents)
+        assertEquals(9000L, profile.monthlyFeeCents)
+        assertEquals(10, profile.monthlyDueDay)
+        assertEquals("camila@saqz.test", profile.pixKey)
+        assertEquals(32000L, profile.openingBalanceCents)
+        assertEquals(true, profile.entryRequiresApproval)
+        assertEquals("Quadra Parque", detail.venue?.name)
+        assertEquals("Quadra 2", detail.venue?.court)
+        val slot = detail.slots.single()
+        assertEquals(4, slot.weekday)
+        assertEquals("19:00", slot.startTime)
+        assertEquals("Quadra Parque", slot.venueName)
+        assertEquals("Volei do Parque WhatsApp", detail.whatsApp?.name)
+        assertEquals("120363000@g.us", detail.whatsApp?.chatId)
+        assertEquals(false, detail.whatsApp?.broken)
+        assertEquals(jogoAntes, detail.lastGameAt)
+        assertEquals("+5511900001234", detail.ownerContact?.phone)
+        assertEquals(true, detail.ownerContact?.phoneVerified)
+        assertEquals("camila@saqz.test", detail.ownerContact?.email)
+        assertEquals(false, detail.frozen)
+    }
+
+    @Test
+    fun `grupo congela so quando o dono teve teste e ficou sem plano`() {
+        val semTeste = insertUser("sem", name = "Nunca Testou")
+        val acabou = insertUser("acabou", name = "Teste Acabou")
+        val pagante = insertUser("paga", name = "Assinante")
+        val apagou = insertUser("apagou", name = "Apagou O Grupo")
+        val fim = Instant.now().minusSeconds(86_400)
+        for (dono in listOf(acabou, pagante, apagou)) {
+            execute("INSERT INTO organizer_trials (owner_user_id, started_at, ends_at) VALUES ('$dono', '${fim.minusSeconds(1_209_600)}', '$fim')")
+        }
+        insertSubscription(pagante, plan = "ORGANIZADOR")
+        val apagado = insertGroup(apagou, "Apagado", now)
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$apagado'")
+
+        assertEquals(false, repository.find(insertGroup(semTeste, "Grupo A", now))?.frozen)
+        assertEquals(true, repository.find(insertGroup(acabou, "Grupo B", now))?.frozen)
+        assertEquals(false, repository.find(insertGroup(pagante, "Grupo C", now))?.frozen)
+        assertEquals(false, repository.find(apagado)?.frozen)
+    }
+
+    @Test
+    fun `dono que pediu para nao ser procurado aparece bloqueado na ficha e na lista de membros`() {
+        val dona = insertUser("dona", name = "Camila Rocha")
+        val equipe = insertUser("equipe", name = "Equipe Saqz")
+        val grupo = insertGroup(dona, "Volei", now)
+        insertMembership(grupo, dona)
+        fun contato(result: String) = execute(
+            "INSERT INTO admin_user_contacts (id, user_id, result, created_by) VALUES ('${UUID.randomUUID()}', '$dona', '$result', '$equipe')",
+        )
+
+        contato("DO_NOT_CONTACT")
+        assertEquals(true, repository.find(grupo)?.ownerContact?.doNotContact)
+        assertEquals(true, repository.members(grupo, null, 1, 10)?.items?.single()?.doNotContact)
+
+        contato("OTHER")
+        assertEquals(false, repository.find(grupo)?.ownerContact?.doNotContact)
+        assertEquals(false, repository.members(grupo, null, 1, 10)?.items?.single()?.doNotContact)
+    }
+
+    @Test
+    fun `membros vem com contato e perfil, dono e admin primeiro, com busca e paginacao`() {
+        val dona = insertUser("dona", name = "Zelia Dona")
+        val admin = insertUser("admin", name = "Xavier Admin")
+        val atleta = insertUser("atleta", name = "Bruna Atleta")
+        val avulso = insertUser("avulso", name = "Caio Avulso")
+        val grupo = insertGroup(dona, "Volei", now)
+        for (id in listOf(dona, admin, atleta, avulso)) insertMembership(grupo, id)
+        execute("UPDATE group_memberships SET role = 'ADMIN' WHERE user_id = '$admin'")
+        execute(
+            "UPDATE group_memberships SET membership_type = 'MENSALISTA', position = 'LEVANTADOR', level = 'AVANCADO', " +
+                "preferred_side = 'DIREITA', height_cm = 172, monthly_fee_exempt = true, mensalista_since = '2026-10-01' " +
+                "WHERE user_id = '$atleta'",
+        )
+        execute("UPDATE access_users SET phone = '+5511900001234', verified_phone = '+5511900001234' WHERE id = '$atleta'")
+        execute("UPDATE access_users SET phone = '+5521900005678' WHERE id = '$avulso'")
+        val noApp = Instant.now().plusSeconds(3_600).truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
+        execute(
+            "INSERT INTO access_user_app_versions (user_id, platform, app_version, app_build, first_seen_at, last_seen_at) " +
+                "VALUES ('$atleta', 'ANDROID', '1.0.16', 33, '$noApp', '$noApp')",
+        )
+
+        val pagina = assertNotNull(repository.members(grupo, null, 1, 10))
+
+        assertEquals(4, pagina.total)
+        assertEquals(listOf("Zelia Dona", "Xavier Admin", "Bruna Atleta", "Caio Avulso"), pagina.items.map { it.displayName })
+        assertEquals(listOf("OWNER", "ADMIN", "ATHLETE", "ATHLETE"), pagina.items.map { it.role })
+        val bruna = pagina.items[2]
+        assertEquals("+5511900001234", bruna.phone)
+        assertEquals(true, bruna.phoneVerified)
+        assertEquals("MENSALISTA", bruna.membershipType)
+        assertEquals("LEVANTADOR", bruna.position)
+        assertEquals("AVANCADO", bruna.level)
+        assertEquals("DIREITA", bruna.preferredSide)
+        assertEquals(172, bruna.heightCm)
+        assertEquals(true, bruna.monthlyFeeExempt)
+        assertEquals(noApp, bruna.lastSeenAt)
+        assertEquals(false, pagina.items[3].phoneVerified)
+
+        assertEquals(listOf("Caio Avulso"), repository.members(grupo, "(21) 90000", 1, 10)?.items?.map { it.displayName })
+        assertEquals(listOf("Bruna Atleta"), repository.members(grupo, "bruna", 1, 10)?.items?.map { it.displayName })
+        assertEquals(listOf("Xavier Admin"), repository.members(grupo, null, 2, 1)?.items?.map { it.displayName })
+        // Fora da última página, a contagem ainda bate.
+        assertEquals(4, repository.members(grupo, null, 9, 10)?.total)
+        assertEquals(1, repository.members(grupo, "bruna", 9, 10)?.total)
+        assertNull(repository.members(UUID.randomUUID(), null, 1, 10))
+    }
+
     private fun insertUser(subject: String, name: String): UUID {
         val id = UUID.randomUUID()
         execute(

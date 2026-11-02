@@ -1,6 +1,7 @@
 package br.com.saqz.bootstrap
 
 import br.com.saqz.access.adapter.input.http.AccessSessionController
+import br.com.saqz.access.application.admin.AdminUserContact
 import br.com.saqz.access.application.admin.AdminUserDetail
 import br.com.saqz.access.application.admin.AdminUserDirectory
 import br.com.saqz.access.application.admin.AdminUserPage
@@ -77,6 +78,35 @@ class AdminUsersEndpointIntegrationTest {
     }
 
     @Test
+    fun `filtro de teste aceita em teste e acabado e recusa o resto`() {
+        assertEquals(200, exchange("GET", "/admin/users?trial=active", "admin-token").statusCode())
+        assertEquals(200, exchange("GET", "/admin/users?trial=ended", "admin-token").statusCode())
+        assertEquals(400, exchange("GET", "/admin/users?trial=expired", "admin-token").statusCode())
+    }
+
+    @Test
+    fun `registra contato com resultado da lista e recusa o que nao cabe`() {
+        val path = "/admin/users/$USER_ID/contacts"
+
+        val created = postJson(path, """{"result":"TOO_EXPENSIVE","note":"  Achou caro  "}""", "admin-token")
+        val body = objectMapper.readTree(created.body())
+        assertEquals(201, created.statusCode())
+        assertEquals("TOO_EXPENSIVE", body["result"].stringValue())
+        assertEquals("Achou caro", body["note"].stringValue())
+
+        val semNota = objectMapper.readTree(postJson(path, """{"result":"NO_ANSWER","note":"   "}""", "admin-token").body())
+        assertEquals(true, semNota["note"] == null || semNota["note"].isNull)
+
+        assertEquals(400, postJson(path, """{"result":"INVENTADO"}""", "admin-token").statusCode())
+        assertEquals(400, postJson(path, """{"note":"sem resultado"}""", "admin-token").statusCode())
+        val nota = "x".repeat(1001)
+        assertEquals(400, postJson(path, """{"result":"OTHER","note":"$nota"}""", "admin-token").statusCode())
+        assertEquals(201, postJson(path, """{"result":"OTHER","note":"${"x".repeat(1000)}"}""", "admin-token").statusCode())
+        assertEquals(404, postJson("/admin/users/${UUID.randomUUID()}/contacts", """{"result":"OTHER"}""", "admin-token").statusCode())
+        assertEquals(403, postJson(path, """{"result":"OTHER"}""", "user-token").statusCode())
+    }
+
+    @Test
     fun `ordenacao conhecida e aceita`() {
         assertEquals(200, exchange("GET", "/admin/users?sort=lastSeen&dir=desc", "admin-token").statusCode())
         assertEquals(200, exchange("GET", "/admin/users?sort=name", "admin-token").statusCode())
@@ -131,6 +161,14 @@ class AdminUsersEndpointIntegrationTest {
         assertEquals("ACCOUNT_SUSPENDED", objectMapper.readTree(response.body())["code"].stringValue())
     }
 
+    private fun postJson(path: String, json: String, token: String): HttpResponse<String> {
+        val builder = HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer $token")
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+    }
+
     private fun exchange(method: String, path: String, token: String): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI.create("http://localhost:$port$path"))
             .method(method, HttpRequest.BodyPublishers.noBody())
@@ -147,6 +185,7 @@ class AdminUsersEndpointIntegrationTest {
             size: Int,
             sort: String?,
             descending: Boolean,
+            trial: String?,
         ) = AdminUserPage(
             items = listOf(
                 AdminUserSummary(
@@ -170,6 +209,9 @@ class AdminUsersEndpointIntegrationTest {
         )
 
         override fun find(userId: UUID): AdminUserDetail? = null
+
+        override fun addContact(userId: UUID, authorId: UUID, result: String, note: String?) =
+            if (userId == USER_ID) AdminUserContact(UUID.randomUUID(), result, note, "Ana Admin", Instant.parse("2026-11-02T12:00:00Z")) else null
 
         override fun suspend(userId: UUID) = userId == USER_ID
 

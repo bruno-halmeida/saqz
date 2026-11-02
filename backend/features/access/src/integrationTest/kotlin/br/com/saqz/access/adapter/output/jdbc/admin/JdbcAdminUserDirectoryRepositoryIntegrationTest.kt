@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.sql.DriverManager
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -261,6 +262,182 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
         assertEquals(first, repository.find(user)!!.suspendedAt)
     }
 
+    @Test
+    fun `fila em teste traz quem so tem o teste, com o fim mais perto primeiro`() {
+        val depois = insertUser("depois", name = "Acaba Depois", email = "depois@saqz.test")
+        val logo = insertUser("logo", name = "Acaba Logo", email = "logo@saqz.test")
+        val assinou = insertUser("assinou", name = "Assinou No Teste", email = "assinou@saqz.test")
+        insertUser("nunca", name = "Nunca Testou", email = "nunca@saqz.test")
+        insertTrial(depois, Instant.now().plus(9, ChronoUnit.DAYS))
+        insertTrial(logo, Instant.now().plus(1, ChronoUnit.DAYS))
+        insertTrial(assinou, Instant.now().plus(2, ChronoUnit.DAYS))
+        insertSubscription(assinou, plan = "TITULAR")
+
+        val fila = repository.list(null, null, null, 1, 10, trial = "active")
+
+        assertEquals(listOf("Acaba Logo", "Acaba Depois"), fila.items.map { it.displayName })
+        assertEquals(2, fila.total)
+        assertNotNull(fila.items.first().trialEndsAt)
+    }
+
+    @Test
+    fun `fila de teste acabado deixa de fora quem assinou, mesmo tendo cancelado depois`() {
+        val antigo = insertUser("antigo", name = "Acabou Faz Tempo", email = "antigo@saqz.test")
+        val recente = insertUser("recente", name = "Acabou Agora", email = "recente@saqz.test")
+        val cancelou = insertUser("cancelou", name = "Assinou E Cancelou", email = "cancelou@saqz.test")
+        val cortesia = insertUser("cortesia", name = "Tem Cortesia", email = "cortesia@saqz.test")
+        val emTeste = insertUser("teste", name = "Ainda Em Teste", email = "teste@saqz.test")
+        insertTrial(antigo, Instant.now().minus(10, ChronoUnit.DAYS))
+        insertTrial(recente, Instant.now().minus(2, ChronoUnit.DAYS))
+        insertTrial(cancelou, Instant.now().minus(20, ChronoUnit.DAYS))
+        insertSubscription(cancelou, plan = "TITULAR", status = "CANCELED")
+        insertTrial(cortesia, Instant.now().minus(3, ChronoUnit.DAYS))
+        insertCourtesy(cortesia, plan = "ORGANIZADOR", endsAt = "NULL")
+        insertTrial(emTeste, Instant.now().plus(5, ChronoUnit.DAYS))
+
+        val fila = repository.list(null, null, null, 1, 10, trial = "ended")
+
+        assertEquals(listOf("Acabou Agora", "Acabou Faz Tempo"), fila.items.map { it.displayName })
+        assertEquals(2, fila.total)
+        // A contagem sem linhas na página usa os mesmos filtros.
+        assertEquals(2, repository.list(null, null, null, 9, 10, trial = "ended").total)
+    }
+
+    @Test
+    fun `fila mostra o grupo ativo mais antigo, se congelou, e a situacao do contato`() {
+        val admin = insertUser("admin", name = "Equipe Saqz", email = "equipe@saqz.test")
+        val dono = insertUser("dono", name = "Dono Sem Plano", email = "dono@saqz.test")
+        insertTrial(dono, Instant.now().minus(2, ChronoUnit.DAYS))
+        val apagado = insertGroup(dono, "Grupo Apagado")
+        execute("UPDATE access_groups SET deleted_at = now() WHERE id = '$apagado'")
+        val grupo = insertGroup(dono, "Volei do Parque")
+        insertMembership(grupo, dono, "ADMIN")
+        insertMembership(grupo, admin, "ATHLETE")
+        insertGame(grupo, Instant.now().minus(1, ChronoUnit.DAYS), "COMPLETED")
+        insertGame(grupo, Instant.now().plus(1, ChronoUnit.DAYS), "PUBLISHED")
+
+        fun item() = repository.list(null, null, null, 1, 10, trial = "ended").items.single()
+
+        val inicial = item()
+        assertEquals("Volei do Parque", inicial.ownedGroup?.name)
+        assertEquals(true, inicial.ownedGroup?.frozen)
+        assertEquals(2, inicial.ownedGroup?.members)
+        assertEquals(1, inicial.ownedGroup?.gamesPlayed)
+        assertNull(inicial.lastContact)
+        assertFalse(inicial.doNotContact)
+
+        repository.addContact(dono, admin, "NO_ANSWER", null)
+        assertEquals("NO_ANSWER", item().lastContact?.result)
+
+        repository.addContact(dono, admin, "DO_NOT_CONTACT", "Pediu para nao receber mensagem")
+        assertTrue(item().doNotContact)
+
+        // Só a própria pessoa voltando a falar reabre: um novo registro muda a situação.
+        repository.addContact(dono, admin, "OTHER", "Ela escreveu para o Saqz")
+        assertFalse(item().doNotContact)
+    }
+
+    @Test
+    fun `busca acha o telefone em qualquer formato e poucos digitos nao varrem a base`() {
+        insertUser("a", name = "Bianca Souza", email = "bianca@saqz.test", phone = "+5511900001234")
+        insertUser("b", name = "Thiago Melo", email = "thiago@saqz.test", phone = "+5521900005678")
+        insertUser("c", name = "Sem Telefone", email = "sem@saqz.test")
+
+        fun names(query: String) = repository.list(query, null, null, 1, 10).items.map { it.displayName }
+
+        assertEquals(listOf("Bianca Souza"), names("(11) 90000-1234"))
+        assertEquals(listOf("Thiago Melo"), names("5678"))
+        assertEquals(emptyList(), names("900"))
+        assertEquals(listOf("Bianca Souza"), names("bianca"))
+    }
+
+    @Test
+    fun `lista traz telefone, se esta verificado, e o acesso mais recente entre sessao e app`() {
+        val verificado = insertUser("v", name = "Verificado", email = "v@saqz.test", phone = "+5511900001234", createdAt = now)
+        val trocou = insertUser("t", name = "Trocou O Numero", email = "t@saqz.test", phone = "+5511900005678", createdAt = now.minusSeconds(60))
+        execute("UPDATE access_users SET verified_phone = phone WHERE id = '$verificado'")
+        execute("UPDATE access_users SET verified_phone = '+5511900009999' WHERE id = '$trocou'")
+        val noApp = now.plusSeconds(3_600)
+        insertApp(verificado, "IOS", noApp)
+
+        val items = repository.list(null, null, null, 1, 10).items
+
+        assertEquals("+5511900001234", items[0].phone)
+        assertTrue(items[0].phoneVerified)
+        assertEquals(noApp, items[0].lastSeenAt)
+        assertFalse(items[1].phoneVerified)
+        assertEquals(now.minusSeconds(60), items[1].lastSeenAt)
+        assertEquals(listOf("Verificado", "Trocou O Numero"), repository.list(null, null, null, 1, 10, "lastSeen", true).items.map { it.displayName })
+    }
+
+    @Test
+    fun `detalhe traz o cadastro completo, o teste, os aparelhos e o perfil em cada grupo`() {
+        val admin = insertUser("admin", name = "Equipe Saqz", email = "equipe@saqz.test")
+        val id = insertUser("carla", name = "Carla Menezes", email = "carla@saqz.test", phone = "+5511900001234")
+        execute(
+            "UPDATE access_users SET nickname = 'Carlinha', city = 'Sao Paulo', verified_phone = phone, " +
+                "phone_visibility = 'NOBODY', onboarding_completed_at = '$now' WHERE id = '$id'",
+        )
+        val fim = Instant.now().minus(2, ChronoUnit.DAYS)
+        insertTrial(id, fim)
+        execute("INSERT INTO organizer_trial_notices (owner_user_id, milestone) VALUES ('$id', 3), ('$id', 1)")
+        insertApp(id, "IOS", now)
+        val grupo = insertGroup(admin, "Racha da Firma")
+        insertMembership(grupo, id, "ATHLETE")
+        execute(
+            "UPDATE group_memberships SET membership_type = 'MENSALISTA', position = 'LEVANTADOR', level = 'AVANCADO', " +
+                "height_cm = 172, mensalista_since = '2026-10-01' WHERE user_id = '$id'",
+        )
+        repository.addContact(id, admin, "TOO_EXPENSIVE", "Achou caro para 8 pessoas")
+
+        val detail = assertNotNull(repository.find(id))
+
+        assertEquals("Carlinha", detail.nickname)
+        assertEquals("NOBODY", detail.phoneVisibility)
+        assertTrue(detail.phoneVerified)
+        assertTrue(detail.emailVerified)
+        assertFalse(detail.hasPhoto)
+        assertFalse(detail.platformAdmin)
+        assertEquals(now, detail.onboardingCompletedAt)
+        assertNull(detail.plan)
+        assertEquals(2, detail.trial?.noticesSent)
+        assertEquals(fim.truncatedTo(ChronoUnit.MILLIS), detail.trial?.endsAt?.truncatedTo(ChronoUnit.MILLIS))
+        assertNull(detail.origin)
+        assertEquals("IOS", detail.apps.single().platform)
+        assertEquals("1.0.16", detail.apps.single().appVersion)
+        assertEquals("33", detail.apps.single().appBuild)
+
+        val perfil = assertNotNull(detail.groups.single().athlete)
+        assertEquals("MENSALISTA", perfil.membershipType)
+        assertEquals("LEVANTADOR", perfil.position)
+        assertEquals("AVANCADO", perfil.level)
+        assertEquals(172, perfil.heightCm)
+
+        val contato = detail.contacts.single()
+        assertEquals("TOO_EXPENSIVE", contato.result)
+        assertEquals("Achou caro para 8 pessoas", contato.note)
+        assertEquals("Equipe Saqz", contato.authorName)
+        assertFalse(detail.doNotContact)
+    }
+
+    @Test
+    fun `contato so entra em conta existente e o mais recente vem primeiro`() {
+        val admin = insertUser("admin", name = "Equipe Saqz", email = "equipe@saqz.test")
+        val id = insertUser("pessoa", name = "Pessoa", email = "pessoa@saqz.test")
+        val apagada = insertUser("apagada", name = "Apagada", email = "apagada@saqz.test", deleted = true)
+
+        assertNull(repository.addContact(UUID.randomUUID(), admin, "OTHER", null))
+        assertNull(repository.addContact(apagada, admin, "OTHER", null))
+
+        repository.addContact(id, admin, "NO_ANSWER", null)
+        val ultimo = assertNotNull(repository.addContact(id, admin, "DO_NOT_CONTACT", "Pediu"))
+
+        val detail = assertNotNull(repository.find(id))
+        assertEquals(listOf(ultimo.id), detail.contacts.take(1).map { it.id })
+        assertEquals(2, detail.contacts.size)
+        assertTrue(detail.doNotContact)
+    }
+
     private fun insertUser(
         subject: String,
         name: String,
@@ -301,6 +478,35 @@ class JdbcAdminUserDirectoryRepositoryIntegrationTest {
                 "asaas_subscription_id, current_period_end, first_confirmed_at, created_at, updated_at) " +
                 "VALUES ('$ownerId', '$plan', 'MONTHLY', '$status', 'cus-$ownerId', 'sub-$ownerId', " +
                 "'${now.plusSeconds(2_592_000)}', '$now', '$now', '$now')",
+        )
+    }
+
+    // O teste tem 14 dias: o início sai do fim, como manda a constraint da tabela.
+    private fun insertTrial(ownerId: UUID, endsAt: Instant) {
+        execute(
+            "INSERT INTO organizer_trials (owner_user_id, started_at, ends_at) " +
+                "VALUES ('$ownerId', '${endsAt.minus(14, ChronoUnit.DAYS)}', '$endsAt')",
+        )
+    }
+
+    private fun insertApp(userId: UUID, platform: String, lastSeenAt: Instant) {
+        execute(
+            "INSERT INTO access_user_app_versions (user_id, platform, app_version, app_build, first_seen_at, last_seen_at) " +
+                "VALUES ('$userId', '$platform', '1.0.16', 33, '$lastSeenAt', '$lastSeenAt')",
+        )
+    }
+
+    private fun insertGame(groupId: UUID, startsAt: Instant, status: String) {
+        execute(
+            """
+            INSERT INTO games (
+                id, group_id, title, local_date, local_time, zone_id, starts_at, duration_minutes,
+                confirmation_deadline, venue_name, venue_address, capacity, status, created_at, updated_at
+            ) VALUES (
+                '${UUID.randomUUID()}', '$groupId', 'Jogo da Semana', '2026-07-01', '19:30', 'America/Sao_Paulo',
+                '$startsAt', 90, '$startsAt', 'Quadra Central', 'Rua dos Esportes, 100', 12, '$status', now(), now()
+            )
+            """.trimIndent(),
         )
     }
 

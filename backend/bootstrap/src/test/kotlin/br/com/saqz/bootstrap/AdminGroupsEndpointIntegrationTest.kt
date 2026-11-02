@@ -6,6 +6,8 @@ import br.com.saqz.adminweb.http.AdminGroupsController
 import br.com.saqz.groups.application.admin.AdminGroupDetail
 import br.com.saqz.groups.application.admin.AdminGroupDirectory
 import br.com.saqz.groups.application.admin.AdminGroupGame
+import br.com.saqz.groups.application.admin.AdminGroupMember
+import br.com.saqz.groups.application.admin.AdminGroupMemberPage
 import br.com.saqz.groups.application.admin.AdminGroupPage
 import br.com.saqz.groups.application.admin.AdminGroupSummary
 import br.com.saqz.identity.application.TokenVerification
@@ -81,6 +83,22 @@ class AdminGroupsEndpointIntegrationTest {
         assertEquals(403, get("/admin/groups", token = "user-token").statusCode())
     }
 
+    @Test
+    fun `membros valida a pagina, respeita a guarda e grupo inexistente da 404`() {
+        val ok = get("/admin/groups/$GROUP_ID/members?query=cam&page=2&size=5", token = "admin-token")
+        val body = objectMapper.readTree(ok.body())
+
+        assertEquals(200, ok.statusCode())
+        assertEquals(1, body["total"].intValue())
+        assertEquals(2, body["page"].intValue())
+        assertEquals("+5511900001234", body["items"][0]["phone"].stringValue())
+        assertEquals("OWNER", body["items"][0]["role"].stringValue())
+        assertEquals(404, get("/admin/groups/${UUID.randomUUID()}/members", token = "admin-token").statusCode())
+        assertEquals(400, get("/admin/groups/$GROUP_ID/members?page=0", token = "admin-token").statusCode())
+        assertEquals(400, get("/admin/groups/$GROUP_ID/members?size=101", token = "admin-token").statusCode())
+        assertEquals(403, get("/admin/groups/$GROUP_ID/members", token = "user-token").statusCode())
+    }
+
     private fun get(path: String, token: String): HttpResponse<String> {
         val builder = HttpRequest.newBuilder(URI.create("http://localhost:$port$path")).GET()
             .header("Authorization", "Bearer $token")
@@ -142,6 +160,32 @@ class AdminGroupsEndpointIntegrationTest {
                 ),
             )
         }
+
+        override fun members(groupId: UUID, query: String?, page: Int, size: Int): AdminGroupMemberPage? {
+            if (groupId != GROUP_ID) return null
+            val member = AdminGroupMember(
+                userId = OWNER_ID,
+                displayName = "Camila Rocha",
+                email = "camila@saqz.test",
+                phone = "+5511900001234",
+                phoneVerified = true,
+                doNotContact = false,
+                role = "OWNER",
+                membershipType = "MENSALISTA",
+                active = true,
+                nickname = null,
+                position = "SETTER",
+                secondaryPosition = null,
+                level = "ADVANCED",
+                preferredSide = null,
+                heightCm = null,
+                monthlyFeeExempt = false,
+                mensalistaSince = null,
+                joinedAt = Instant.parse("2026-02-20T00:00:00Z"),
+                lastSeenAt = Instant.parse("2026-08-03T10:00:00Z"),
+            )
+            return AdminGroupMemberPage(listOf(member), 1, page, size)
+        }
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -162,7 +206,7 @@ class AdminGroupsEndpointIntegrationTest {
         }
 
         @Bean
-        fun adminGroupsController() = AdminGroupsController(StubGroupDirectory())
+        fun adminGroupsController(lookup: PlatformAdminLookup) = AdminGroupsController(StubGroupDirectory(), lookup)
     }
 
     private companion object {
