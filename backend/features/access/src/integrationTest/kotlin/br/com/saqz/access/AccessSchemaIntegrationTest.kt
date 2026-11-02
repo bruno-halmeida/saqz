@@ -26,7 +26,7 @@ class AccessSchemaIntegrationTest {
             .dataSource(database.jdbcUrl, database.username, database.password)
             .locations("classpath:db/migration")
             .load()
-        assertEquals(20, flyway.migrate().migrationsExecuted)
+        assertEquals(21, flyway.migrate().migrationsExecuted)
     }
 
     @BeforeEach
@@ -44,6 +44,7 @@ class AccessSchemaIntegrationTest {
             setOf(
                 "access_users",
                 "account_deletion_requests",
+                "admin_user_contacts",
                 "access_groups",
                 "group_memberships",
                 "group_invites",
