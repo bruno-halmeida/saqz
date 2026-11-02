@@ -47,8 +47,17 @@ test("privacy describes the Brazil launch and both account deletion channels", (
   assert.doesNotMatch(page, /<strong>Branch:/);
 });
 
+test("privacy page declares that the team may reach out and how to refuse it", () => {
+  assert.match(page, /Atualizada em 2 de novembro de 2026 \(contato da equipe do Saqz\)\./);
+  assert.match(page, /<strong>Registros de contato:<\/strong> quando a equipe do Saqz fala com você/);
+  assert.match(page, /<strong>Falar com você sobre o uso do Saqz<\/strong>, por WhatsApp ou e-mail/);
+  assert.match(page, /entender por que o teste grátis não virou assinatura: legítimo interesse/);
+  assert.match(page, /Se não quiser esse contato, avise na própria conversa/);
+  assert.match(page, /Essa configuração vale entre participantes: para dar suporte, a equipe administrativa do Saqz vê/);
+  assert.match(page, /inclusive os registros de contato, que são apagados com a exclusão da conta/);
+});
+
 test("privacy page declares the WhatsApp messages read by the admin team", () => {
-  assert.match(page, /Atualizada em 1º de novembro de 2026 \(mensagens no WhatsApp\)\./);
   assert.match(page, /<strong>Mensagens no WhatsApp:<\/strong> as mensagens enviadas ao número do Saqz/);
   assert.match(page, /inclusive de pessoas sem conta no app\. Não copiamos essas mensagens para o nosso banco de dados\./);
   assert.match(page, /<strong>Atender quem escreve para o número do Saqz<\/strong> e acompanhar as mensagens desse número: legítimo interesse/);
