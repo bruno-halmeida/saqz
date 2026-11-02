@@ -77,8 +77,8 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 
 **Conferir**
 - Em "Próximos jogos", aparece já publicado o próximo jogo do novo horário; os seguintes da série não
-  aparecem para ninguém: cada um é liberado sozinho 4 dias antes (rotina de hora em hora), em nome do dono
-  do grupo, com o aviso de jogo liberado.
+  aparecem para ninguém: cada um sai publicado sozinho quando o anterior começa (rotina de hora em hora), em nome
+  do dono do grupo. O aviso de jogo liberado só sai a partir de 4 dias antes da data (DEB-163).
 - Os rascunhos da série são invisíveis, também para ORG (desenho de 09/10): não reprova a agenda futura
   não aparecer.
 
