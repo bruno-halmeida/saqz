@@ -98,7 +98,7 @@ function loaderSetup(consent) {
   const listeners = {};
   const store = new Map(consent ? [['saqz_consent_ads', consent]] : []);
   const window = { SAQZ_ANALYTICS: { ga4MeasurementId: 'G-T', clarityProjectId: 'c', metaPixelId: 'm' } };
-  const context = vm.createContext({ window, Date, JSON, encodeURIComponent,
+  const context = vm.createContext({ window, Date, JSON, encodeURIComponent, URLSearchParams,
     localStorage: { getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, v) },
     location: { hostname: 'saqz.app', reload() { window.reloaded = true; } },
     document: { cookie: '', body: null, readyState: 'loading', head: { appendChild: s => scripts.push(s.src) },
