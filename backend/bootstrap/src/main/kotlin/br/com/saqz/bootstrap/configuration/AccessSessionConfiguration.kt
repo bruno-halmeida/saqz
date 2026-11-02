@@ -964,9 +964,8 @@ class AccessSessionConfiguration {
         repository: br.com.saqz.groups.adapter.output.jdbc.game.JdbcSeriesReleaseRepository,
         lifecycle: ChangeGameLifecycle,
         horizon: br.com.saqz.sharedkernel.subscription.GameCreationHorizon,
-        @Value("\${saqz.games.series-release-lead-days:4}") leadDays: Long,
     ) = br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences(
-        repository, lifecycle, horizon, java.time.Duration.ofDays(leadDays), Clock.systemUTC(),
+        repository, lifecycle, horizon, Clock.systemUTC(),
     ) { what, failure ->
         org.slf4j.LoggerFactory.getLogger(br.com.saqz.groups.application.game.series.ReleaseSeriesOccurrences::class.java)
             .warn("game series release failed for {}", what, failure)

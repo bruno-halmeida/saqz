@@ -24,11 +24,18 @@ const val ON_CHANGE_QUIET_FROM_HOUR = 22
 const val ON_CHANGE_QUIET_UNTIL_HOUR = 8
 
 /**
+ * Quantos dias antes da data do jogo da série os avisos automáticos começam (decisão do dono, 02/11, DEB-163): aviso de jogo
+ * liberado e lembretes, no push, na central e no grupo do WhatsApp. O jogo já aparece publicado antes disso; o que espera são os
+ * avisos. Vale a data no fuso do jogo, então o dia inteiro conta. O jogo avulso segue avisando desde a publicação.
+ */
+const val GAME_NOTICE_LEAD_DAYS = 4L
+
+/**
  * Mínimo do modo ON_CHANGE (decisão do dono, 30/10): a partir de 4 dias antes do jogo, o dia que chega às 9h de São Paulo sem
  * lista ganha uma, mesmo sem mudança. Jogo publicado com mais antecedência não entra, para o grupo não receber lista todo dia.
  */
 const val ON_CHANGE_DAILY_MINIMUM_HOUR = 9
-const val ON_CHANGE_DAILY_MINIMUM_DAYS = 4L
+const val ON_CHANGE_DAILY_MINIMUM_DAYS = GAME_NOTICE_LEAD_DAYS
 
 /**
  * Publica quando a lista mudou (sem assinatura gravada também é mudança) ou quando o dia pede o mínimo, fora do silêncio e

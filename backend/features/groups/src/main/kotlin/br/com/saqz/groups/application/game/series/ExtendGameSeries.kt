@@ -9,7 +9,7 @@ import java.time.ZoneId
 
 /**
  * Rotina da recorrência: jogos nascem mês a mês, conforme o plano do dono renova
- * ([GameCreationHorizon]), e o próximo de cada horário é liberado perto da data
+ * ([GameCreationHorizon]), e o próximo de cada horário fica sempre liberado
  * ([ReleaseSeriesOccurrences]). Trial expirado sem assinatura cancela o futuro de toda série.
  * Tudo aqui é por estado, então rodar duas vezes (ou em duas instâncias) não duplica nada.
  */

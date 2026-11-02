@@ -17,18 +17,15 @@ import br.com.saqz.groups.domain.game.GameVenueSnapshot
 import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
 import org.junit.jupiter.api.Test
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class ReleaseSeriesOccurrencesTest {
     private val now = Instant.parse("2026-09-17T15:00:00Z")
-    private val lead = Duration.ofDays(5)
     private val owner = UUID.randomUUID()
     private val groupId = UUID.randomUUID()
     private val games = FakeGames(owner)
@@ -37,14 +34,14 @@ class ReleaseSeriesOccurrencesTest {
     private val failures = mutableListOf<String>()
     private var horizonUntil: Instant? = Instant.MAX
 
-    @Test fun `publishes every occurrence the repository offers inside the lead window as the group owner`() {
+    @Test fun `publishes every occurrence the repository offers as the group owner`() {
         val thursday = games.draft(groupId)
         val saturday = games.draft(groupId)
         repository.offer(thursday, saturday)
 
         release().releaseAll()
 
-        assertEquals(listOf(Triple<Instant, Instant?, UUID?>(now, now.plus(lead), null)), repository.calls)
+        assertEquals(listOf<Pair<Instant, UUID?>>(now to null), repository.calls)
         assertEquals(GameStatus.PUBLISHED, games.status(thursday))
         assertEquals(GameStatus.PUBLISHED, games.status(saturday))
         // Mesmo caminho do "Publicar" manual: presença aberta, aviso e confirmações em nome do dono.
@@ -58,22 +55,10 @@ class ReleaseSeriesOccurrencesTest {
         assertEquals(emptyList(), failures)
     }
 
-    @Test fun `release after a group sync is limited to that group and has no upper bound`() {
-        release().release(groupId)
-        // Horário recém-criado ou editado sai com o próximo jogo publicado, por mais distante que seja.
-        assertEquals(listOf(Triple<Instant, Instant?, UUID?>(now, null, groupId)), repository.calls)
-    }
-
-    @Test fun `the routine keeps the lead window while the group release does not`() {
+    @Test fun `release after a group sync is limited to that group while the routine reaches all`() {
         release().releaseAll()
         release().release(groupId)
-        assertEquals(
-            listOf(
-                Triple<Instant, Instant?, UUID?>(now, now.plus(lead), null),
-                Triple<Instant, Instant?, UUID?>(now, null, groupId),
-            ),
-            repository.calls,
-        )
+        assertEquals(listOf<Pair<Instant, UUID?>>(now to null, now to groupId), repository.calls)
     }
 
     @Test fun `groups without a creation horizon are left alone`() {
@@ -130,11 +115,7 @@ class ReleaseSeriesOccurrencesTest {
         assertEquals(emptyList(), effects)
     }
 
-    @Test fun `negative lead is rejected`() {
-        assertFailsWith<IllegalArgumentException> { release(lead = Duration.ofDays(-1)) }
-    }
-
-    private fun release(lead: Duration = this.lead) = ReleaseSeriesOccurrences(
+    private fun release() = ReleaseSeriesOccurrences(
         repository,
         ChangeGameLifecycle(
             object : TransactionRunner { override fun <T> inTransaction(block: () -> T): T = block() },
@@ -142,12 +123,11 @@ class ReleaseSeriesOccurrencesTest {
             GameSideEffectPort { game, actorId, applied -> effects += Triple(game.id, actorId, applied) },
         ),
         GameCreationHorizon { horizonUntil },
-        lead,
         Clock.fixed(now, ZoneOffset.UTC),
     ) { what, _ -> failures += what }
 
     private class FakeReleasable(private val owner: UUID) : ReleasableOccurrenceRepository {
-        val calls = mutableListOf<Triple<Instant, Instant?, UUID?>>()
+        val calls = mutableListOf<Pair<Instant, UUID?>>()
         private val offered = mutableListOf<ReleasableOccurrence>()
         fun offer(vararg games: Pair<Game, Instant>) {
             games.forEach { (game, startsAt) -> offered += ReleasableOccurrence(game.groupId, game.id, game.version, owner, startsAt) }
@@ -155,8 +135,8 @@ class ReleaseSeriesOccurrencesTest {
         fun offer(vararg games: Game, version: Long? = null) {
             games.forEach { offered += ReleasableOccurrence(it.groupId, it.id, version ?: it.version, owner) }
         }
-        override fun nextOccurrences(after: Instant, until: Instant?, groupId: UUID?): List<ReleasableOccurrence> {
-            calls += Triple(after, until, groupId)
+        override fun nextOccurrences(after: Instant, groupId: UUID?): List<ReleasableOccurrence> {
+            calls += after to groupId
             return offered.toList()
         }
     }
@@ -186,6 +166,7 @@ class ReleaseSeriesOccurrencesTest {
         fun status(game: Game) = stored.getValue(game.id).status
         override fun creationContext(actor: UUID, groupId: UUID): GameCreationContext? = error("unused")
         override fun recurringConflict(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?): UUID? = error("unused")
+        override fun yieldHiddenOccurrences(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?): Unit = error("unused")
         override fun find(actor: UUID, groupId: UUID, gameId: UUID): GameCommandContext? {
             check(gameId != failing) { "database down" }
             val game = stored[gameId]?.takeIf { it.groupId == groupId } ?: return null

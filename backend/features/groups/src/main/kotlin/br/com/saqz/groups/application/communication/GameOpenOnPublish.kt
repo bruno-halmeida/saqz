@@ -6,7 +6,8 @@ import br.com.saqz.groups.domain.game.Game
 import java.util.UUID
 
 /**
- * Publicar o próximo jogo do grupo avisa na hora. [enabled] é a mesma chave do cron do aviso
+ * Publicar o próximo jogo do grupo avisa na hora; o jogo da série só avisa dentro de [GAME_NOTICE_LEAD_DAYS] dias, e antes
+ * disso sai calado e fica para o cron. [enabled] é a mesma chave do cron do aviso
  * (`saqz.notifications.reminder.enabled`): desligada, a publicação fica em silêncio como antes.
  */
 class GameOpenOnPublish(

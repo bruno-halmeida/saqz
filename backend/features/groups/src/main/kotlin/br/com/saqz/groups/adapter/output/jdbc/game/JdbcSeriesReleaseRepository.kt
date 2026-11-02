@@ -11,10 +11,9 @@ import javax.sql.DataSource
 class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrenceRepository {
     private val jdbc = JdbcClient.create(dataSource)
 
-    override fun nextOccurrences(after: Instant, until: Instant?, groupId: UUID?): List<ReleasableOccurrence> =
+    override fun nextOccurrences(after: Instant, groupId: UUID?): List<ReleasableOccurrence> =
         jdbc.sql(NEXT_OCCURRENCES)
             .param("after", Timestamp.from(after))
-            .param("until", until?.let(Timestamp::from))
             .param("groupId", groupId)
             .query { rs, _ ->
                 ReleasableOccurrence(
@@ -31,8 +30,7 @@ class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrence
         // Rascunho avulso (series_id nulo) é do gestor e não entra; jogo que já começou também não.
         // O "próximo" de cada horário é o primeiro jogo ainda não começado, rascunho ou publicado
         // (cancelado não conta). Só é liberado se for rascunho: se o próximo já está publicado
-        // (ex.: o avulso adotado pela série), o seguinte espera. A janela :until só limita o que é
-        // liberado e não muda quem é o próximo: próximo além da janela não libera nada.
+        // (ex.: o avulso adotado pela série), o seguinte espera.
         const val NEXT_OCCURRENCES = """
             SELECT next.group_id, next.id, next.version, next.owner_user_id, next.starts_at
             FROM (
@@ -47,7 +45,6 @@ class JdbcSeriesReleaseRepository(dataSource: DataSource) : ReleasableOccurrence
                 ORDER BY g.group_id, g.series_id, g.slot_key, g.starts_at, g.id
             ) next
             WHERE next.status = 'DRAFT'
-              AND (CAST(:until AS timestamptz) IS NULL OR next.starts_at <= :until)
         """
     }
 }

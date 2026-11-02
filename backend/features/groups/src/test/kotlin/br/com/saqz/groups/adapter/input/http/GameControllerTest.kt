@@ -104,6 +104,7 @@ class GameControllerTest {
         var role: GroupRole?=GroupRole.OWNER; var writeResult: GameWriteResult?=null; val games=linkedMapOf<UUID,Game>()
         override fun creationContext(actor:UUID,groupId:UUID)=if(groupId==group) GameCreationContext(role,GroupGameDefaults()) else null
         override fun recurringConflict(groupId:UUID,startsAt:Instant,durationMinutes:Int,excludingGameId:UUID?):UUID?=null
+        override fun yieldHiddenOccurrences(groupId:UUID,startsAt:Instant,durationMinutes:Int,excludingGameId:UUID?)=Unit
         override fun find(actor:UUID,groupId:UUID,gameId:UUID)=if(groupId==group&&role!=null) games[gameId]?.let{GameCommandContext(role,it)} else null
         override fun create(game:Game):GameWriteResult { writeResult?.let { return it }; val stored=games.getOrPut(game.id){game}; return GameWriteResult.Saved(stored) }
         override fun update(game:Game,expectedVersion:Long):GameWriteResult { val old=games[game.id]?:return GameWriteResult.NotFound; if(old.version!=expectedVersion)return GameWriteResult.VersionConflict; val saved=game.copy(version=expectedVersion+1);games[game.id]=saved;return GameWriteResult.Saved(saved) }

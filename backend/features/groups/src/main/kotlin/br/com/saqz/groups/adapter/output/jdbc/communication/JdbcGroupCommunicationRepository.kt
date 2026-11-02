@@ -4,6 +4,7 @@ import br.com.saqz.groups.adapter.output.jdbc.attendance.PersonNameSql
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
 import br.com.saqz.groups.application.communication.AttendanceWindowCandidate
+import br.com.saqz.groups.application.communication.GAME_NOTICE_LEAD_DAYS
 import br.com.saqz.groups.application.communication.GroupCommunicationRepository
 import br.com.saqz.groups.application.communication.GroupMessage
 import br.com.saqz.groups.application.communication.GroupNotification
@@ -281,30 +282,40 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         OnChangeActivity(rs.getTimestamp("last_at")?.toInstant(), rs.getInt("today"))
     }.single()
 
+    // A janela dos avisos vem depois de escolher o próximo jogo: jogo da série ainda fora dela segura o grupo, e o jogo seguinte
+    // não passa à frente.
     private fun candidates(deadlineOpen: Boolean, mode: AttendanceUpdatesMode?): List<ReminderCandidate> = jdbc.sql(
         """
-        SELECT DISTINCT ON (games.group_id)
-               games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
-               games.confirmation_deadline, games.capacity, groups.owner_user_id, groups.mensalista_priority
-        FROM games
-        JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
-        WHERE games.status = 'PUBLISHED' AND games.starts_at > now()
-          AND (NOT :deadlineOpen OR games.confirmation_deadline > now())
-          AND (CAST(:mode AS varchar) IS NULL OR groups.attendance_updates_mode = :mode)
-        ORDER BY games.group_id, games.starts_at, games.id
+        SELECT next.* FROM (
+            SELECT DISTINCT ON (games.group_id)
+                   games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
+                   games.confirmation_deadline, games.capacity, groups.owner_user_id, groups.mensalista_priority,
+                   games.series_id, games.zone_id
+            FROM games
+            JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
+            WHERE games.status = 'PUBLISHED' AND games.starts_at > now()
+              AND (NOT :deadlineOpen OR games.confirmation_deadline > now())
+              AND (CAST(:mode AS varchar) IS NULL OR groups.attendance_updates_mode = :mode)
+            ORDER BY games.group_id, games.starts_at, games.id
+        ) next
+        WHERE $NOTICE_WINDOW_OPEN
         """.trimIndent(),
     ).param("deadlineOpen", deadlineOpen).param("mode", mode?.name, Types.VARCHAR).query { rs, _ -> candidate(rs) }.list()
 
     override fun reminderCandidate(groupId: UUID): ReminderCandidate? = jdbc.sql(
         """
-        SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
-               games.confirmation_deadline, games.capacity, groups.owner_user_id, groups.mensalista_priority
-        FROM games
-        JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
-        WHERE games.group_id = :group AND games.status = 'PUBLISHED'
-          AND games.starts_at > now() AND games.confirmation_deadline > now()
-        ORDER BY games.starts_at, games.id
-        LIMIT 1
+        SELECT next.* FROM (
+            SELECT games.id AS game_id, games.group_id, games.local_date, games.local_time, games.venue_name,
+                   games.confirmation_deadline, games.capacity, groups.owner_user_id, groups.mensalista_priority,
+                   games.series_id, games.zone_id
+            FROM games
+            JOIN access_groups groups ON groups.id = games.group_id AND groups.deleted_at IS NULL
+            WHERE games.group_id = :group AND games.status = 'PUBLISHED'
+              AND games.starts_at > now() AND games.confirmation_deadline > now()
+            ORDER BY games.starts_at, games.id
+            LIMIT 1
+        ) next
+        WHERE $NOTICE_WINDOW_OPEN
         """.trimIndent(),
     ).param("group", groupId).query { rs, _ -> candidate(rs) }.optional().orElse(null)
 
@@ -422,6 +433,9 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
         )
         /** Canais escritos por uma pessoa: são os que o bloqueio esconde. Os do sistema seguem chegando. */
         val PERSONAL_CHANNELS = setOf(MessageChannel.NOTICE, MessageChannel.CHAT)
+        /** Jogo avulso avisa desde a publicação; o da série, só a partir de [GAME_NOTICE_LEAD_DAYS] dias da data, no fuso do jogo. */
+        const val NOTICE_WINDOW_OPEN = "(next.series_id IS NULL OR next.local_date <= " +
+            "CAST(now() AT TIME ZONE next.zone_id AS date) + $GAME_NOTICE_LEAD_DAYS)"
         const val NOT_FROM_BLOCKED = "(m.channel NOT IN ('NOTICE', 'CHAT') OR NOT EXISTS (" +
             "SELECT 1 FROM user_blocks b WHERE b.blocker_id = :viewer AND b.blocked_id = m.author_id))"
         /** Mensagem ou aviso que o leitor denunciou: some para ele, mesmo depois de a equipe resolver a denúncia. */

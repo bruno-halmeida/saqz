@@ -77,6 +77,15 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
         .optional()
         .orElse(null)
 
+    override fun yieldHiddenOccurrences(groupId: UUID, startsAt: java.time.Instant, durationMinutes: Int, excludingGameId: UUID?) {
+        jdbc.sql(YIELD_HIDDEN_OCCURRENCES)
+            .param("groupId", groupId)
+            .param("startsAt", Timestamp.from(startsAt))
+            .param("durationMinutes", durationMinutes)
+            .param("excludingGameId", excludingGameId)
+            .update()
+    }
+
     // Dois creates simultâneos no mesmo horário podem se enroscar na checagem da exclusion
     // constraint (deadlock 40P01) e o Postgres derruba um deles. Repetir uma vez converge:
     // o vencedor já commitou e a reexecução cai no caminho normal de ScheduleConflict.
@@ -241,6 +250,7 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
             WHERE group_id = :groupId
               AND game_time_range(starts_at, duration_minutes) && game_time_range(:startsAt, :durationMinutes)
               AND status IN ('DRAFT', 'PUBLISHED')
+              AND NOT (status = 'DRAFT' AND series_id IS NOT NULL)
             ORDER BY id
             LIMIT 1
         """
@@ -252,8 +262,17 @@ class JdbcGameOccurrenceRepository(dataSource: DataSource) : GameCommandReposito
               AND game_time_range(starts_at, duration_minutes) && game_time_range(:startsAt, :durationMinutes)
               AND id <> :excludingGameId
               AND status IN ('DRAFT', 'PUBLISHED')
+              AND NOT (status = 'DRAFT' AND series_id IS NOT NULL)
             ORDER BY id
             LIMIT 1
+        """
+
+        const val YIELD_HIDDEN_OCCURRENCES = """
+            DELETE FROM games
+            WHERE group_id = :groupId
+              AND status = 'DRAFT' AND series_id IS NOT NULL
+              AND game_time_range(starts_at, duration_minutes) && game_time_range(:startsAt, :durationMinutes)
+              AND (CAST(:excludingGameId AS uuid) IS NULL OR id <> CAST(:excludingGameId AS uuid))
         """
 
         const val UPDATE_GAME = """

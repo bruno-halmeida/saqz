@@ -4,7 +4,6 @@ import br.com.saqz.groups.application.game.ChangeGameLifecycle
 import br.com.saqz.groups.domain.game.GameMutation
 import br.com.saqz.sharedkernel.subscription.GameCreationHorizon
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -32,36 +31,31 @@ data class ReleasableOccurrence(
 
 interface ReleasableOccurrenceRepository {
     /**
-     * O próximo rascunho de cada horário (grupo, série, slot) que começa depois de [after] e, se houver
-     * [until], até ele (nulo = sem limite), em grupo ativo. Um por horário: o seguinte só conta depois
-     * que este começar.
+     * O próximo rascunho de cada horário (grupo, série, slot) que começa depois de [after], em grupo ativo.
+     * Um por horário: o seguinte só conta depois que este começar.
      */
-    fun nextOccurrences(after: Instant, until: Instant?, groupId: UUID?): List<ReleasableOccurrence>
+    fun nextOccurrences(after: Instant, groupId: UUID?): List<ReleasableOccurrence>
 }
 
 /**
- * Liberação da série: os jogos nascem mês a mês em rascunho e ficam invisíveis até aqui. A rotina
- * publica o próximo jogo de cada horário [lead] antes de começar; já o horário recém-criado ou editado
- * ([release] de um grupo) sai com o próximo jogo publicado na hora, qualquer que seja a distância.
- * Vale o mesmo caminho do "Publicar" manual (presença aberta, mensalistas confirmados, aviso aos
- * membros), e nunca depois do fim do plano ou do teste. É por estado: repetir não publica duas vezes e um rascunho publicado à mão não é tocado.
+ * Liberação da série: os jogos nascem mês a mês em rascunho e ficam invisíveis até aqui. O próximo jogo de cada
+ * horário sai publicado qualquer que seja a distância, para o grupo nunca ficar sem ver o próximo jogo (DEB-163);
+ * o que espera são os avisos, que só saem a partir de [br.com.saqz.groups.application.communication.GAME_NOTICE_LEAD_DAYS]
+ * dias antes. Vale o mesmo caminho do "Publicar" manual (presença aberta, mensalistas confirmados), e nunca depois do
+ * fim do plano ou do teste. É por estado: repetir não publica duas vezes e um rascunho publicado à mão não é tocado.
  */
 class ReleaseSeriesOccurrences(
     private val repository: ReleasableOccurrenceRepository,
     private val lifecycle: ChangeGameLifecycle,
     private val horizon: GameCreationHorizon,
-    private val lead: Duration,
     private val clock: Clock,
     private val onFailure: (String, Throwable) -> Unit = { _, _ -> },
 ) : SeriesOccurrenceRelease {
-    init { require(!lead.isNegative) { "lead must not be negative" } }
+    override fun release(groupId: UUID) = releaseNext(groupId)
+    override fun releaseAll() = releaseNext(groupId = null)
 
-    override fun release(groupId: UUID) = releaseWithin(groupId, withLead = false)
-    override fun releaseAll() = releaseWithin(groupId = null, withLead = true)
-
-    private fun releaseWithin(groupId: UUID?, withLead: Boolean) {
-        val now = clock.instant()
-        repository.nextOccurrences(now, if (withLead) now.plus(lead) else null, groupId)
+    private fun releaseNext(groupId: UUID?) {
+        repository.nextOccurrences(clock.instant(), groupId)
             .groupBy { it.groupId }
             // Trial expirado sem assinatura: a rotina cancela o futuro da série; nada a liberar.
             // Jogo no limite do plano ou depois fica em rascunho e sai sozinho quando o plano renova (DEB-075).

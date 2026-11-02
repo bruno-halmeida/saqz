@@ -51,8 +51,8 @@ class SyncScheduleSeries(
     private val release: SeriesOccurrenceRelease = SeriesOccurrenceRelease.None,
 ) : ScheduleSeriesSync {
     override fun sync(groupId: UUID) {
-        // Só a série recém-criada ou editada sai com o próximo jogo de cada horário liberado na hora. A rotina de hora em
-        // hora também passa aqui: sem mudança, quem libera é o `releaseAll`, com a antecedência.
+        // A série recém-criada ou editada libera o próximo jogo de cada horário na hora. A rotina de hora em hora também
+        // passa aqui: sem mudança, quem libera é o `releaseAll`, logo depois.
         if (syncSeries(groupId)) release.release(groupId)
     }
 

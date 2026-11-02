@@ -83,6 +83,17 @@ class GameCommandsTest {
 
         assertEquals(GameCommandResult.ScheduleConflict(existing), result)
         assertTrue(fixture.repository.creates.isEmpty())
+        // Com jogo visível no caminho nada é gravado, nem a saída da ocorrência escondida.
+        assertTrue(fixture.repository.yielded.isEmpty())
+    }
+
+    @Test fun `manual create takes the place of hidden series occurrences before saving`() {
+        val fixture = fixture(GroupRole.OWNER)
+
+        assertIs<GameCommandResult.Success>(fixture.create.execute(actor, groupId, gameId, createInput()))
+
+        assertEquals(listOf<UUID?>(null), fixture.repository.yielded)
+        assertEquals(1, fixture.repository.creates.size)
     }
 
     @Test fun `database schedule conflict from create is exposed as a command conflict`() {
@@ -160,6 +171,7 @@ class GameCommandsTest {
         assertEquals(GameCommandResult.ScheduleConflict(existing), result)
         assertTrue(fixture.repository.updates.isEmpty())
         assertTrue(fixture.effects.calls.isEmpty())
+        assertTrue(fixture.repository.yielded.isEmpty())
     }
 
     @Test fun `edit does not report the game itself as a recurring conflict`() {
@@ -170,6 +182,8 @@ class GameCommandsTest {
 
         assertTrue(result is GameCommandResult.Success)
         assertEquals(1, fixture.repository.updates.size)
+        // O jogo editado nunca cede o lugar para si mesmo.
+        assertEquals(listOf<UUID?>(gameId), fixture.repository.yielded)
     }
 
     @Test fun `published game remains editable`() {
@@ -469,10 +483,15 @@ class GameCommandsTest {
         val updates = mutableListOf<Pair<Game, Long>>()
         var writeResult: GameWriteResult? = null
         var recurringConflict: UUID? = null
+        /** Cada chamada de [yieldHiddenOccurrences], com o jogo excluído, na ordem. */
+        val yielded = mutableListOf<UUID?>()
 
         override fun creationContext(actor: UUID, groupId: UUID) = creation
         override fun recurringConflict(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?) =
             recurringConflict?.takeUnless { it == excludingGameId }
+        override fun yieldHiddenOccurrences(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?) {
+            yielded += excludingGameId
+        }
         override fun find(actor: UUID, groupId: UUID, gameId: UUID) = current
         override fun create(game: Game): GameWriteResult {
             creates += game

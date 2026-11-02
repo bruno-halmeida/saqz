@@ -47,6 +47,7 @@ class EditGameScheduleAndCapacityTest {
         val updates = mutableListOf<Game>()
         override fun creationContext(actor: UUID, groupId: UUID): GameCreationContext? = null
         override fun recurringConflict(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?): UUID? = null
+        override fun yieldHiddenOccurrences(groupId: UUID, startsAt: Instant, durationMinutes: Int, excludingGameId: UUID?) = Unit
         override fun find(actor: UUID, groupId: UUID, gameId: UUID) = GameCommandContext(role, game)
         override fun create(game: Game): GameWriteResult = GameWriteResult.Saved(game)
         override fun update(game: Game, expectedVersion: Long): GameWriteResult {

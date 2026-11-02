@@ -35,8 +35,19 @@ class GameScheduleConflictWriteException : RuntimeException()
 
 interface GameCommandRepository {
     fun creationContext(actor: UUID, groupId: UUID): GameCreationContext?
-    /** Jogo ativo do grupo cujo intervalo se sobrepõe a [startsAt] + [durationMinutes] (encostado não conta). */
+    /**
+     * Jogo ativo do grupo cujo intervalo se sobrepõe a [startsAt] + [durationMinutes] (encostado não conta). Só o que o gestor
+     * enxerga conta: a ocorrência da série ainda não liberada não existe para o app, e o conflito sempre aponta para um jogo que
+     * ele consegue abrir (DEB-163).
+     */
     fun recurringConflict(groupId: UUID, startsAt: java.time.Instant, durationMinutes: Int, excludingGameId: UUID?): UUID?
+
+    /**
+     * Apaga as ocorrências da série ainda não liberadas que se sobrepõem ao jogo do gestor: elas nunca foram vistas por ninguém
+     * e cedem o lugar. Apagar, e não cancelar, deixa a rotina adotar o avulso no mesmo início (o índice da série é por data e
+     * horário e contaria o cancelado); com início diferente, a sobreposição impede a ocorrência de nascer de novo.
+     */
+    fun yieldHiddenOccurrences(groupId: UUID, startsAt: java.time.Instant, durationMinutes: Int, excludingGameId: UUID?)
     fun find(actor: UUID, groupId: UUID, gameId: UUID): GameCommandContext?
     fun create(game: Game): GameWriteResult
     fun update(game: Game, expectedVersion: Long): GameWriteResult
@@ -119,9 +130,12 @@ class CreateGame(
                     ?: horizon.limitFor(groupId, validation.snapshot.startsAt)
                     ?: repository.recurringConflict(groupId, validation.snapshot.startsAt, validation.snapshot.durationMinutes, excludingGameId = null)
                     ?.let(GameCommandResult::ScheduleConflict)
-                    ?: repository.create(
-                        Game(gameId, groupId, validation.snapshot, advancePaymentRequired = context.defaults.advancePaymentRequired),
-                    ).toResult()
+                    ?: run {
+                        repository.yieldHiddenOccurrences(groupId, validation.snapshot.startsAt, validation.snapshot.durationMinutes, excludingGameId = null)
+                        repository.create(
+                            Game(gameId, groupId, validation.snapshot, advancePaymentRequired = context.defaults.advancePaymentRequired),
+                        ).toResult()
+                    }
             }
         }
 }
@@ -184,6 +198,7 @@ class EditGame(
         if (snapshot.startsAt != current.startsAt) horizon.limitFor(groupId, snapshot.startsAt)?.let { return it }
         repository.recurringConflict(groupId, snapshot.startsAt, snapshot.durationMinutes, excludingGameId = gameId)
             ?.let { return GameCommandResult.ScheduleConflict(it) }
+        repository.yieldHiddenOccurrences(groupId, snapshot.startsAt, snapshot.durationMinutes, excludingGameId = gameId)
         // Num jogo publicado a capacidade só muda pelo ajuste de vagas (fila, diária, avisos); o resto é gravado antes.
         val adjustCapacity = capacityAdjuster != null && context.game.status == GameStatus.PUBLISHED &&
             snapshot.capacity != current.capacity
