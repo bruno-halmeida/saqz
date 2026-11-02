@@ -17,6 +17,10 @@
   var me = null;
   var listeners = [];
   var pendingError = null;
+  var loadingTimer = null;
+  // Firebase ou API sem resposta não prendem ninguém no carregando: depois disso o login aparece com o aviso.
+  var LOADING_LIMIT_MS = 15000;
+  var VALIDATION_ERROR = "Não deu para validar o acesso agora. Tente de novo.";
 
   // ---- Overlay de login (bloqueia o painel até validar o papel de admin) ----
   var overlay = document.createElement("div");
@@ -24,6 +28,8 @@
   overlay.innerHTML =
     '<style>' +
     '#saqz-admin-login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--saqz-canvas,#F5F5F7);font-family:var(--font-ui,Inter,sans-serif)}' +
+    '#saqz-admin-login .carregando{width:36px;height:36px;box-sizing:border-box;border:3px solid var(--saqz-border,#D8DDE8);border-top-color:var(--saqz-blue,#0638DF);border-radius:50%;animation:saqz-login-gira .8s linear infinite}' +
+    '@keyframes saqz-login-gira{to{transform:rotate(360deg)}}' +
     '#saqz-admin-login .card{width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow-y:auto;box-sizing:border-box;background:#fff;border:1px solid var(--saqz-border,#D8DDE8);border-radius:16px;padding:32px;box-shadow:0 12px 40px rgba(14,23,56,.08)}' +
     '#saqz-admin-login h1{font-size:21px;font-weight:700;color:var(--saqz-navy,#0E1738);margin:0 0 4px}' +
     '#saqz-admin-login p{font-size:14px;color:var(--saqz-muted,#667085);margin:0 0 20px}' +
@@ -40,7 +46,8 @@
     '#saqz-admin-login .erro{display:none;font-size:13px;font-weight:600;color:var(--saqz-error,#E5484D);margin-top:12px}' +
     '#saqz-admin-logout{position:fixed;left:12px;bottom:64px;z-index:60;font:600 12px/1 Inter,sans-serif;color:var(--saqz-muted,#667085);background:#fff;border:1px solid var(--saqz-border,#D8DDE8);border-radius:999px;padding:8px 12px;cursor:pointer}' +
     '</style>' +
-    '<div class="card"><h1>Saqz Admin</h1><p>Entre com sua conta de administrador.</p>' +
+    '<div class="carregando" id="saqz-login-carregando" role="status" aria-label="Carregando"></div>' +
+    '<div class="card" id="saqz-login-card"><h1>Saqz Admin</h1><p>Entre com sua conta de administrador.</p>' +
     '<button type="button" class="google" id="saqz-login-google">' +
     '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' +
     '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>' +
@@ -64,15 +71,34 @@
     auth.signOut();
   });
 
-  function showOverlay(errorMessage) {
+  var card = overlay.querySelector("#saqz-login-card");
+  var carregando = overlay.querySelector("#saqz-login-carregando");
+
+  // Ainda não se sabe se há sessão (ou ela está sendo validada): nem login, nem painel.
+  function showLoading() {
+    clearTimeout(loadingTimer);
     overlay.style.display = "flex";
     logoutButton.style.display = "none";
+    card.style.display = "none";
+    carregando.style.display = "block";
+    loadingTimer = setTimeout(function () {
+      showOverlay(VALIDATION_ERROR);
+    }, LOADING_LIMIT_MS);
+  }
+
+  function showOverlay(errorMessage) {
+    clearTimeout(loadingTimer);
+    overlay.style.display = "flex";
+    logoutButton.style.display = "none";
+    carregando.style.display = "none";
+    card.style.display = "block";
     var erro = overlay.querySelector("#saqz-login-erro");
     erro.textContent = errorMessage || "";
     erro.style.display = errorMessage ? "block" : "none";
   }
 
   function hideOverlay() {
+    clearTimeout(loadingTimer);
     overlay.style.display = "none";
     logoutButton.style.display = "block";
   }
@@ -87,6 +113,8 @@
     }
     return "Não deu para entrar com o Google. Tente de novo.";
   }
+
+  showLoading();
 
   document.addEventListener("DOMContentLoaded", function () {
     document.body.appendChild(overlay);
@@ -152,17 +180,19 @@
       notify();
       return;
     }
+    showLoading();
     verifyAdmin(user)
       .then(function (profile) {
+        // Validação atrasada de uma sessão anterior não vale para a atual.
+        if (auth.currentUser !== user) return;
         me = profile;
         hideOverlay();
         notify();
       })
       .catch(function (error) {
+        if (auth.currentUser !== user) return;
         me = null;
-        pendingError = error.status === 403
-          ? "Esta conta não tem acesso ao painel."
-          : "Não deu para validar o acesso agora. Tente de novo.";
+        pendingError = error.status === 403 ? "Esta conta não tem acesso ao painel." : VALIDATION_ERROR;
         showOverlay(pendingError);
         auth.signOut();
       });

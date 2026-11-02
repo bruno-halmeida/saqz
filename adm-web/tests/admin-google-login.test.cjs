@@ -18,8 +18,8 @@ function node() {
     addEventListener(type, listener) { listeners[type] = listener; } };
 }
 
-function setup({ adminStatus = 200 } = {}) {
-  const t = { warnings: [], requests: [] };
+function setup({ adminStatus = 200, holdAdmin = false } = {}) {
+  const t = { warnings: [], requests: [], timers: new Map() };
   const selected = new Map();
   let overlay = null;
   let onState = null;
@@ -59,10 +59,14 @@ function setup({ adminStatus = 200 } = {}) {
     console,
     document,
     firebase: { initializeApp() {}, auth: Object.assign(() => auth, { GoogleAuthProvider }) },
+    setTimeout: (run, delay) => { const id = t.timers.size + 1; t.timers.set(id, { run, delay }); return id; },
+    clearTimeout: id => { t.timers.delete(id); },
     fetch: (url, options) => {
       t.requests.push({ url, options });
-      return Promise.resolve({ ok: adminStatus === 200, status: adminStatus,
+      const response = status => ({ ok: status === 200, status,
         json: () => Promise.resolve({ userId: 'u-1', email: 'dono@saqz.test', displayName: 'Dono' }) });
+      if (!holdAdmin) return Promise.resolve(response(adminStatus));
+      return new Promise(resolve => { t.answerAdmin = status => resolve(response(status)); });
     },
   });
   vm.runInContext(source, context);
@@ -70,6 +74,12 @@ function setup({ adminStatus = 200 } = {}) {
   const user = { uid: 'fb-1', getIdToken: () => Promise.resolve('id-token') };
   return Object.assign(t, {
     auth, overlay, session: context.window.saqzAdmin,
+    card: () => overlay.querySelector('#saqz-login-card'),
+    spinner: () => overlay.querySelector('#saqz-login-carregando'),
+    signedOut() { auth.currentUser = null; onState(null); },
+    otherUser() { const other = { uid: 'fb-2', getIdToken: () => Promise.resolve('outro-token') }; auth.currentUser = other; onState(other); },
+    // Dispara o limite do carregando, como se o tempo tivesse passado.
+    loadingLimit() { const [timer] = [...t.timers.values()]; assert.ok(timer, 'sem limite armado'); timer.run(); },
     google: () => overlay.querySelector('#saqz-login-google'),
     error: () => overlay.querySelector('#saqz-login-erro'),
     clickGoogle: () => overlay.querySelector('#saqz-login-google').listeners.click(),
@@ -82,6 +92,89 @@ function setup({ adminStatus = 200 } = {}) {
     },
   });
 }
+
+function assertLoading(t) {
+  assert.equal(t.overlay.style.display, 'flex');
+  assert.equal(t.card().style.display, 'none');
+  assert.equal(t.spinner().style.display, 'block');
+}
+
+function assertLogin(t) {
+  assert.equal(t.overlay.style.display, 'flex');
+  assert.equal(t.card().style.display, 'block');
+  assert.equal(t.spinner().style.display, 'none');
+}
+
+test('ao abrir fica em carregando, sem login, até o Firebase dizer se há sessão', () => {
+  const t = setup();
+  assertLoading(t);
+  assert.equal(t.session.me, null);
+});
+
+test('sem sessão salva o carregando dá lugar ao login, sem erro', () => {
+  const t = setup();
+  t.signedOut();
+  assertLogin(t);
+  assert.equal(t.error().style.display, 'none');
+  assert.equal(t.timers.size, 0);
+});
+
+test('sessão salva válida vai do carregando ao painel sem passar pelo login', async () => {
+  const t = setup({ holdAdmin: true });
+  t.signedIn();
+  await settle();
+  assertLoading(t);
+  t.answerAdmin(200);
+  await settle();
+  assert.equal(t.overlay.style.display, 'none');
+  assert.equal(t.card().style.display, 'none');
+  assert.equal(t.session.me.email, 'dono@saqz.test');
+  assert.equal(t.timers.size, 0);
+});
+
+test('depois de entrar, a validação do papel fica no carregando; recusa volta ao login com o motivo', async () => {
+  const t = setup({ holdAdmin: true });
+  t.signedOut();
+  t.signedIn();
+  await settle();
+  assertLoading(t);
+  t.answerAdmin(403);
+  await settle();
+  assertLogin(t);
+  assert.equal(t.error().textContent, 'Esta conta não tem acesso ao painel.');
+  assert.equal(t.auth.signOuts, 1);
+});
+
+test('sem resposta até o limite o login aparece com aviso; resposta atrasada ainda abre o painel', async () => {
+  const t = setup({ holdAdmin: true });
+  t.signedIn();
+  await settle();
+  assert.equal([...t.timers.values()][0].delay, 15000);
+  t.loadingLimit();
+  assertLogin(t);
+  assert.equal(t.error().textContent, 'Não deu para validar o acesso agora. Tente de novo.');
+  assert.equal(t.auth.signOuts, 0);
+  t.answerAdmin(200);
+  await settle();
+  assert.equal(t.overlay.style.display, 'none');
+  assert.equal(t.session.me.email, 'dono@saqz.test');
+});
+
+test('validação atrasada de outra conta não derruba nem abre a sessão atual', async () => {
+  const t = setup({ holdAdmin: true });
+  t.signedIn();
+  await settle();
+  const answerFirst = t.answerAdmin;
+  t.otherUser();
+  await settle();
+  answerFirst(403);
+  await settle();
+  assert.equal(t.auth.signOuts, 0);
+  assertLoading(t);
+  t.answerAdmin(200);
+  await settle();
+  assert.equal(t.overlay.style.display, 'none');
+});
 
 test('o botão do Google fica acima do formulário e não envia o formulário de e-mail', () => {
   const html = setup().overlay.innerHTML;
