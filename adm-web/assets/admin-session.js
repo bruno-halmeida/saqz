@@ -24,7 +24,7 @@
   overlay.innerHTML =
     '<style>' +
     '#saqz-admin-login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--saqz-canvas,#F5F5F7);font-family:var(--font-ui,Inter,sans-serif)}' +
-    '#saqz-admin-login .card{width:360px;background:#fff;border:1px solid var(--saqz-border,#D8DDE8);border-radius:16px;padding:32px;box-shadow:0 12px 40px rgba(14,23,56,.08)}' +
+    '#saqz-admin-login .card{width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow-y:auto;box-sizing:border-box;background:#fff;border:1px solid var(--saqz-border,#D8DDE8);border-radius:16px;padding:32px;box-shadow:0 12px 40px rgba(14,23,56,.08)}' +
     '#saqz-admin-login h1{font-size:21px;font-weight:700;color:var(--saqz-navy,#0E1738);margin:0 0 4px}' +
     '#saqz-admin-login p{font-size:14px;color:var(--saqz-muted,#667085);margin:0 0 20px}' +
     '#saqz-admin-login label{display:block;font-size:13px;font-weight:600;color:var(--saqz-navy,#0E1738);margin:12px 0 6px}' +

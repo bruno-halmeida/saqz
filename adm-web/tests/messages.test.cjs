@@ -242,3 +242,40 @@ test('logout limpa tudo e resposta atrasada não repovoa', async () => {
   assert.equal(Object.keys(s.app.state.mgLocais).length, 0);
   assert.equal(Object.keys(s.app.state.mgEnvio).length, 0);
 });
+
+test('no celular a lista vem primeiro: só o toque abre a conversa, e voltar devolve a lista', async () => {
+  const s = await entrar();
+  assert.equal(s.vals().mgVista, 'lista');
+  assert.equal(s.vals().admSemNav, 'false');
+  s.vals().mgRows[1].abrir(); await flush();
+  assert.equal(s.vals().mgVista, 'conversa');
+  assert.equal(s.vals().admSemNav, 'true');
+  assert.equal(s.vals().mgNome, 'Quadra 7');
+  s.vals().onMgVoltar();
+  assert.equal(s.vals().mgVista, 'lista');
+  assert.equal(s.vals().admSemNav, 'false');
+  assert.equal(s.vals().mgNome, 'Quadra 7');
+});
+
+test('trocar entre Grupos e Privadas não abre conversa sozinho no celular', async () => {
+  const s = await entrar();
+  s.vals().onMgPrivadas(); await flush();
+  assert.equal(s.vals().mgVista, 'lista');
+});
+
+test('conversa aberta que some da lista devolve a lista, sem tela vazia no celular', async () => {
+  const s = await entrar({ 'GET /admin/whatsapp/conversations': json(lista({ groups: [] })) });
+  s.app.setState({ mgNoChat: true });
+  assert.equal(s.vals().mgVista, 'lista');
+  assert.equal(s.vals().admSemNav, 'false');
+});
+
+test('fora da aba Mensagens a barra do celular volta, e o logout limpa a vista', async () => {
+  const s = await entrar();
+  s.vals().mgRows[0].abrir(); await flush();
+  assert.equal(s.vals().admSemNav, 'true');
+  s.vals().onMgVerGrupo();
+  assert.equal(s.vals().admSemNav, 'false');
+  s.sessao(null); await flush();
+  assert.equal(s.app.state.mgNoChat, false);
+});
