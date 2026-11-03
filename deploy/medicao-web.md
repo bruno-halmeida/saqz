@@ -54,6 +54,17 @@ para a mesma propriedade do GA4. Por isso o `user_id` da web é o id interno da 
 usa em `SaqzAnalytics.setUser`), não o uid do Firebase. O cadastro conhece esse id pela sessão; a
 assinatura reaproveita o par guardado no navegador quando o login é o mesmo.
 
+## Contagem própria da landing
+
+`landing-page/assets/conversao.js` soma quatro eventos sem cookie, sem identificador de pessoa e sem o `fbclid`: `10s` (10
+segundos com a página visível), `metade` (chegou à metade da página), `demo` (tocou no cartão do topo) e `aviso` (escolheu no
+aviso de cookies). Cada carga manda cada evento no máximo uma vez para `/assets/m.json?e=<evento>&a=<utm_content>`. A soma sai
+do log do servidor, que recriar o container apaga:
+
+```bash
+docker logs saqz-landing-page-1 2>&1 | grep -o 'm\.json?e=[^ ]*' | sort | uniq -c | sort -rn
+```
+
 ## Conferir depois de publicar
 
 1. Abrir `saqz.app` e o GA4 em Relatórios → Tempo real; os eventos aparecem em até um minuto.

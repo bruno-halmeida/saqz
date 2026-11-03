@@ -8,14 +8,18 @@ Elenco e regras em [README.md](README.md). Os textos entre aspas são os da tela
 **Quem:** visitante, no computador e no celular.
 
 1. Abrir `https://saqz.app`.
-2. Tocar "Baixar grátis"; voltar, tocar "Não organiza o grupo? Mande para quem organiza"; voltar e, no plano Titular, tocar "Assinar o Titular".
+2. Tocar "Baixar grátis"; voltar, tocar "Não organiza o grupo? Mande para quem organiza"; voltar e, abaixo dos planos, tocar "Assine pelo site".
 3. No rodapé, abrir "Termos de uso", "Política de privacidade" e "Excluir conta".
 
 **Conferir**
 - "Baixar grátis" abre a loja do aparelho: Google Play no Android, App Store no iPhone e, no computador,
   `links.saqz.app` com o QR. Vale também tocando no link da bio, dentro do navegador do Instagram.
 - "Mande para quem organiza" abre o WhatsApp com o texto pronto e o link de `saqz.app`.
-- "Assinar o Titular" abre `saqz.app/assinar/`. Nada aponta para `brunoalmeida.dev`.
+- "Assine pelo site" abre `saqz.app/assinar/`. Nada aponta para `brunoalmeida.dev`.
+- No cartão do topo, tocar "Vou, me confirma!" muda para 11/12 sem sair da página.
+- O aviso de cookies só aparece depois de rolar a página e sai da frente em 12 segundos sem resposta; o link "Cookies" do rodapé reabre.
+- No celular, a barra com o botão aparece quando nenhum botão grande está na tela.
+- Com `utm_content=f-lista-espera`, o topo mostra "Jogo cheio?" e o botão "Teste grátis"; sem anúncio conhecido, mostra "Baixar grátis".
 - A prévia do link no WhatsApp mostra a imagem do Saqz (celular azul com o título), não a foto de banco.
 - Preços: Titular R$ 39,90/mês (R$ 359,10/ano), Organizador R$ 59,90 (R$ 539,10), Ilimitado R$ 89,90
   (R$ 809,10).

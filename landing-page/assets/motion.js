@@ -13,10 +13,6 @@
   window.addEventListener('scroll', elevateHeader, { passive: true });
   elevateHeader();
 
-  // Libera as animações de entrada do hero para os hovers voltarem ao normal.
-  var hero = document.querySelector('.hero');
-  window.setTimeout(function () { hero.classList.add('is-settled'); }, 1700);
-
   // Números que contam ao entrar na tela.
   function animateCount(el) {
     var target = parseInt(el.getAttribute('data-count'), 10);

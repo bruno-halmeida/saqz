@@ -106,7 +106,20 @@
   }
   function openConsent() { var bar = buildBar(); if (bar) bar.hidden = false; }
   window.saqzOpenConsent = openConsent;
-  function askIfNeeded() { if ((ga4 || clarity || meta) && readConsent() === null) openConsent(); }
+  var waitingScroll = false;
+  function askIfNeeded() {
+    if (!(ga4 || clarity || meta) || readConsent() !== null) return;
+    if (document.documentElement.getAttribute('data-aviso') !== 'rolagem') { openConsent(); return; }
+    // Landing: o aviso espera a primeira rolagem e sai da frente em 12 s sem resposta. Sem escolha, nada é medido,
+    // e o link Cookies do rodapé reabre o aviso.
+    if (waitingScroll) return;
+    waitingScroll = true;
+    window.addEventListener('scroll', function open() {
+      window.removeEventListener('scroll', open);
+      openConsent();
+      window.setTimeout(function () { var bar = document.getElementById('consent'); if (bar) bar.hidden = true; }, 12000);
+    }, { passive: true });
+  }
   document.addEventListener('click', function (ev) {
     var t = ev.target && ev.target.closest ? ev.target : null;
     if (!t) return;
@@ -161,6 +174,7 @@
 
   function position(el) {
     if (el.closest('header')) return 'nav';
+    if (el.closest('.barra-cta')) return 'barra';
     var section = el.closest('section');
     if (!section) return 'outro';
     if (section.classList.contains('hero')) return 'hero';

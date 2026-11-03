@@ -48,7 +48,7 @@ test("privacy describes the Brazil launch and both account deletion channels", (
 });
 
 test("privacy page declares that the team may reach out and how to refuse it", () => {
-  assert.match(page, /Atualizada em 2 de novembro de 2026 \(contato da equipe do Saqz\)\./);
+  assert.match(page, /Atualizada em 2 de novembro de 2026 \(contato da equipe do Saqz e contagem da página inicial\)\./);
   assert.match(page, /<strong>Registros de contato:<\/strong> quando a equipe do Saqz fala com você/);
   assert.match(page, /<strong>Falar com você sobre o uso do Saqz<\/strong>, por WhatsApp ou e-mail/);
   assert.match(page, /entender por que o teste grátis não virou assinatura: legítimo interesse/);
