@@ -5,6 +5,8 @@ import br.com.saqz.access.application.admin.PlatformAdminView
 import br.com.saqz.adminweb.http.AdminWhatsAppController
 import br.com.saqz.adminweb.http.logChat
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
+import br.com.saqz.groups.application.whatsapp.AdminContactTarget
+import br.com.saqz.groups.application.whatsapp.AdminContactTargets
 import br.com.saqz.groups.application.whatsapp.AdminWhatsAppInbox
 import br.com.saqz.groups.application.whatsapp.AdminWhatsAppMessages
 import br.com.saqz.groups.application.whatsapp.DirectoryError
@@ -13,6 +15,7 @@ import br.com.saqz.groups.application.whatsapp.InboxChatPage
 import br.com.saqz.groups.application.whatsapp.InboxMessage
 import br.com.saqz.groups.application.whatsapp.InboxMessageKind
 import br.com.saqz.groups.application.whatsapp.InboxMessagePage
+import br.com.saqz.groups.application.whatsapp.SaqzAccountLink
 import br.com.saqz.groups.application.whatsapp.SaqzGroupLink
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
 import br.com.saqz.identity.application.TokenVerification
@@ -41,6 +44,9 @@ import kotlin.test.assertTrue
 private const val PRIVATE = "5511988887777@s.whatsapp.net"
 private const val GROUP = "120363000000000000@g.us"
 private const val REQUEST = "9c8b7a6d-5e4f-4321-9876-abcdef012345"
+private val CARLA: UUID = UUID.fromString("4f2a91c7-8e13-4b60-a2d5-7c19e0b6d341")
+private val RENATO: UUID = UUID.fromString("0b6d3414-8e13-4b60-a2d5-7c19e0f2a91c")
+private val SEM_TELEFONE: UUID = UUID.fromString("7c19e0b6-8e13-4b60-a2d5-4f2a91c7d341")
 
 private fun admin(subject: String) = if (subject == "admin-subject") PlatformAdminView(UUID.randomUUID(), "admin@saqz.test", "Ana Admin") else null
 
@@ -69,10 +75,11 @@ class AdminWhatsAppEndpointIntegrationTest {
     private val messagesPath = "/admin/whatsapp/messages?chatId=${URLEncoder.encode(PRIVATE, Charsets.UTF_8)}"
 
     @Test
-    fun `quem nao e admin e barrado nas tres rotas`() {
+    fun `quem nao e admin e barrado nas quatro rotas`() {
         assertEquals(403, call(port, "GET", "/admin/whatsapp/conversations", "user-token").statusCode())
         assertEquals(403, call(port, "GET", messagesPath, "user-token").statusCode())
         assertEquals(403, call(port, "POST", "/admin/whatsapp/messages", "user-token", reply(PRIVATE)).statusCode())
+        assertEquals(403, call(port, "POST", "/admin/whatsapp/users/$CARLA/messages", "user-token", contact()).statusCode())
     }
 
     @Test
@@ -84,6 +91,8 @@ class AdminWhatsAppEndpointIntegrationTest {
         assertTrue(response.body().contains("\"saqzGroup\":{"))
         assertTrue(response.body().contains("\"previewKind\":\"TEXT\""))
         assertTrue(response.body().contains("\"lastMessageAt\":\"1970-01-01T00:00:01Z\""))
+        val account = Regex("\"account\":\\{[^}]*\\}").find(response.body())?.value.orEmpty()
+        assertTrue(account.contains("\"userId\":\"$CARLA\"") && account.contains("\"name\":\"Carla Menezes\""), response.body())
     }
 
     @Test
@@ -109,6 +118,25 @@ class AdminWhatsAppEndpointIntegrationTest {
     }
 
     @Test
+    fun `mensagem para uma conta devolve os codigos combinados`() {
+        val sent = call(port, "POST", "/admin/whatsapp/users/$CARLA/messages", "admin-token", contact())
+        assertEquals(200, sent.statusCode())
+        assertTrue(sent.body().contains("SENT"))
+        val blocked = call(port, "POST", "/admin/whatsapp/users/$RENATO/messages", "admin-token", contact())
+        assertEquals(409, blocked.statusCode())
+        assertTrue(blocked.body().contains("DO_NOT_CONTACT"))
+        val noPhone = call(port, "POST", "/admin/whatsapp/users/$SEM_TELEFONE/messages", "admin-token", contact())
+        assertEquals(422, noPhone.statusCode())
+        assertTrue(noPhone.body().contains("NO_PHONE"))
+        val missing = call(port, "POST", "/admin/whatsapp/users/${UUID.randomUUID()}/messages", "admin-token", contact())
+        assertEquals(404, missing.statusCode())
+        assertTrue(missing.body().contains("USER_NOT_FOUND"))
+        assertEquals(400, call(port, "POST", "/admin/whatsapp/users/nao-e-uuid/messages", "admin-token", contact()).statusCode())
+        assertEquals(400, call(port, "POST", "/admin/whatsapp/users/$CARLA/messages", "admin-token", """{"text":"oi"}""").statusCode())
+        assertEquals(400, call(port, "POST", "/admin/whatsapp/users/$CARLA/messages", "admin-token", "{nao e json").statusCode())
+    }
+
+    @Test
     fun `json malformado responde 400 INVALID_INPUT`() {
         val response = call(port, "POST", "/admin/whatsapp/messages", "admin-token", "{nao e json")
         assertEquals(400, response.statusCode())
@@ -122,6 +150,7 @@ class AdminWhatsAppEndpointIntegrationTest {
     }
 
     private fun reply(chatId: String) = """{"chatId":"$chatId","text":"oi","requestId":"$REQUEST"}"""
+    private fun contact() = """{"text":"Oi, Carla!","requestId":"$REQUEST"}"""
 
     private class Inbox : AdminWhatsAppInbox {
         private val chat = InboxChat(PRIVATE, null, "5511988887777", Instant.ofEpochSecond(1), "oi", InboxMessageKind.TEXT)
@@ -140,12 +169,26 @@ class AdminWhatsAppEndpointIntegrationTest {
         override fun isMember(jid: String) = false
     }
 
+    private class Targets : AdminContactTargets {
+        override fun find(userId: UUID) = when (userId) {
+            CARLA -> AdminContactTarget(CARLA, "+5511988887777", doNotContact = false)
+            RENATO -> AdminContactTarget(RENATO, "+5511977776666", doNotContact = true)
+            SEM_TELEFONE -> AdminContactTarget(SEM_TELEFONE, null, doNotContact = false)
+            else -> null
+        }
+        override fun byPhone(phones: Collection<String>) =
+            phones.filter { it == "+5511988887777" }.associateWith { SaqzAccountLink(CARLA, "Carla Menezes") }
+        override fun recordSent(userId: UUID, adminId: UUID, requestId: UUID, text: String) = Unit
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     class Config {
         @Bean @Primary fun adminWhatsAppVerifier(): VerifyRequestIdentity = verifier()
         @Bean fun adminWhatsAppLookup(): PlatformAdminLookup = PlatformAdminLookup(::admin)
         @Bean fun adminWhatsAppController(lookup: PlatformAdminLookup) = AdminWhatsAppController(
-            AdminWhatsAppMessages(Inbox(), Directory(), { mapOf(GROUP to SaqzGroupLink(UUID.randomUUID(), "Vôlei", false)) }) { WhatsAppDelivery.Accepted },
+            AdminWhatsAppMessages(Inbox(), Directory(), { mapOf(GROUP to SaqzGroupLink(UUID.randomUUID(), "Vôlei", false)) }, Targets(), { true }) {
+                WhatsAppDelivery.Accepted
+            },
             lookup,
         )
     }
@@ -164,6 +207,8 @@ class AdminWhatsAppDisabledEndpointIntegrationTest {
         val response = call(port, "GET", "/admin/whatsapp/conversations", "admin-token")
         assertEquals(404, response.statusCode())
         assertFalse(response.body().contains("connected"))
+        val contact = """{"text":"oi","requestId":"$REQUEST"}"""
+        assertEquals(404, call(port, "POST", "/admin/whatsapp/users/$CARLA/messages", "admin-token", contact).statusCode())
     }
 
     @TestConfiguration(proxyBeanMethods = false)

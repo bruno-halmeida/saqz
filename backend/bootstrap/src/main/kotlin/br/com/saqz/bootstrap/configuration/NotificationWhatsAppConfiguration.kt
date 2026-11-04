@@ -10,6 +10,7 @@ import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhat
 import br.com.saqz.groups.adapter.output.jdbc.communication.JdbcNotificationWhatsAppGroup
 import br.com.saqz.groups.adapter.output.jdbc.group.read.JdbcGroupReadRepository
 import br.com.saqz.groups.adapter.output.jdbc.transaction.JdbcTransactionRunner
+import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcAdminContactTargets
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcAdminWhatsAppBindings
 import br.com.saqz.groups.adapter.output.jdbc.whatsapp.JdbcGroupWhatsAppBindingRepository
 import br.com.saqz.groups.adapter.output.whatsapp.UazapiGroupDirectory
@@ -109,8 +110,11 @@ class NotificationWhatsAppConfiguration {
         client: UazapiClient,
         directory: WhatsAppGroupDirectory,
         dataSource: DataSource,
+        numbers: WhatsAppNumberCheck,
         sender: NotificationWhatsAppSender,
-    ) = AdminWhatsAppMessages(UazapiWhatsAppInbox(client), directory, JdbcAdminWhatsAppBindings(dataSource), sender)
+    ) = AdminWhatsAppMessages(
+        UazapiWhatsAppInbox(client), directory, JdbcAdminWhatsAppBindings(dataSource), JdbcAdminContactTargets(dataSource), numbers, sender,
+    )
 
     @Bean @ConditionalOnProperty(prefix = "saqz.admin.inbox", name = ["enabled"], havingValue = "true")
     fun adminWhatsAppController(messages: AdminWhatsAppMessages, admins: PlatformAdminLookup) =

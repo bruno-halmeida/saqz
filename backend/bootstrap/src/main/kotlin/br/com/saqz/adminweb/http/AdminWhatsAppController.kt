@@ -3,6 +3,7 @@ package br.com.saqz.adminweb.http
 import br.com.saqz.access.adapter.output.jdbc.flags.FeatureJson
 import br.com.saqz.access.application.admin.PlatformAdminLookup
 import br.com.saqz.groups.application.whatsapp.AdminWhatsAppMessages
+import br.com.saqz.groups.application.whatsapp.ContactSendResult
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.InboxConversation
 import br.com.saqz.groups.application.whatsapp.InboxMessagePage
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
@@ -21,7 +23,11 @@ import java.util.UUID
 
 data class AdminWhatsAppReplyBody(val chatId: String? = null, val text: String? = null, val requestId: String? = null)
 
+data class AdminWhatsAppUserMessageBody(val text: String? = null, val requestId: String? = null)
+
 data class AdminWhatsAppGroupLinkResponse(val id: UUID, val name: String, val broken: Boolean)
+
+data class AdminWhatsAppAccountResponse(val userId: UUID, val name: String?)
 
 data class AdminWhatsAppConversationResponse(
     val chatId: String,
@@ -31,6 +37,7 @@ data class AdminWhatsAppConversationResponse(
     val preview: String?,
     val previewKind: String,
     val saqzGroup: AdminWhatsAppGroupLinkResponse?,
+    val account: AdminWhatsAppAccountResponse? = null,
 )
 
 data class AdminWhatsAppConversationsResponse(
@@ -117,9 +124,38 @@ class AdminWhatsAppController(private val messages: AdminWhatsAppMessages, priva
             }
         }
 
+    /** Mensagem para uma conta do Saqz pelo telefone do cadastro (DEB-164): da ficha ou de "Nova conversa". */
+    @PostMapping("/admin/whatsapp/users/{userId}/messages")
+    fun sendToUser(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @PathVariable userId: String,
+        @RequestBody raw: String,
+    ): ResponseEntity<*> = admin(identity) { actor ->
+        val target = runCatching { UUID.fromString(userId) }.getOrNull() ?: return@admin error(400, "INVALID_INPUT")
+        val body = try {
+            FeatureJson.read(raw, AdminWhatsAppUserMessageBody::class.java)
+        } catch (_: Exception) {
+            return@admin error(400, "INVALID_INPUT")
+        }
+        val result = messages.sendToUser(target, body.text, body.requestId, actor)
+        log.info("admin_whatsapp action=contact admin={} user={} result={}", actor, target, result::class.simpleName.orEmpty().lowercase())
+        when (result) {
+            ContactSendResult.Sent -> json(200, mapOf("status" to "SENT"))
+            ContactSendResult.Invalid -> error(400, "INVALID_INPUT")
+            ContactSendResult.NotFound -> error(404, "USER_NOT_FOUND")
+            ContactSendResult.NoPhone -> error(422, "NO_PHONE")
+            ContactSendResult.DoNotContact -> error(409, "DO_NOT_CONTACT")
+            ContactSendResult.NotOnWhatsApp -> error(422, "NOT_ON_WHATSAPP")
+            ContactSendResult.Unconfirmed -> error(503, "SEND_UNCONFIRMED")
+            ContactSendResult.Failed -> error(502, "SEND_FAILED")
+            ContactSendResult.Unavailable -> error(503, "WHATSAPP_UNAVAILABLE")
+        }
+    }
+
     private fun conversation(item: InboxConversation) = AdminWhatsAppConversationResponse(
         item.chat.chatId, item.chat.name, item.chat.phone, item.chat.lastMessageAt, item.chat.preview, item.chat.previewKind.name,
         item.saqzGroup?.let { AdminWhatsAppGroupLinkResponse(it.id, it.name, it.broken) },
+        item.account?.let { AdminWhatsAppAccountResponse(it.userId, it.name) },
     )
 
     private fun page(page: InboxMessagePage) = AdminWhatsAppMessagesResponse(

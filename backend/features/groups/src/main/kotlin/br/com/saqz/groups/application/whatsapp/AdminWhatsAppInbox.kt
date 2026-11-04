@@ -3,6 +3,7 @@ package br.com.saqz.groups.application.whatsapp
 import br.com.saqz.groups.application.communication.NotificationWhatsAppSender
 import br.com.saqz.groups.application.communication.WhatsAppDelivery
 import br.com.saqz.groups.application.communication.WhatsAppNotification
+import br.com.saqz.groups.application.communication.WhatsAppNumberCheck
 import java.time.Instant
 import java.util.UUID
 
@@ -57,7 +58,28 @@ fun interface AdminWhatsAppBindings {
     fun activeByJid(): Map<String, SaqzGroupLink>
 }
 
-data class InboxConversation(val chat: InboxChat, val saqzGroup: SaqzGroupLink?)
+/** Conta do Saqz dona do telefone de uma conversa privada (DEB-164). */
+data class SaqzAccountLink(val userId: UUID, val name: String?)
+
+/** Para quem o adm pode escrever pelo número do Saqz: o telefone é sempre o do cadastro, nunca um digitado no adm. */
+data class AdminContactTarget(val userId: UUID, val phone: String?, val doNotContact: Boolean)
+
+/** Contas do Saqz do lado do adm (DEB-164). */
+interface AdminContactTargets {
+    /** Conta não apagada; null se não existir. `doNotContact` segue o registro de contato mais recente (GER-005). */
+    fun find(userId: UUID): AdminContactTarget?
+
+    /**
+     * Telefone no formato do cadastro (`+55` e 11 dígitos) para a conta dona dele. Telefone de mais de uma conta fica de
+     * fora: o nome mostrado no adm tem de ser o da pessoa certa.
+     */
+    fun byPhone(phones: Collection<String>): Map<String, SaqzAccountLink>
+
+    /** Anota o envio em Contatos. O mesmo `requestId` não anota duas vezes; conta apagada não anota. */
+    fun recordSent(userId: UUID, adminId: UUID, requestId: UUID, text: String)
+}
+
+data class InboxConversation(val chat: InboxChat, val saqzGroup: SaqzGroupLink?, val account: SaqzAccountLink? = null)
 
 data class InboxOverview(
     val connected: Boolean,
@@ -77,11 +99,28 @@ sealed interface ReplyResult {
     data object Unavailable : ReplyResult
 }
 
-/** Regras da aba Mensagens do adm. O adm responde a quem já escreveu; grupo é somente leitura. */
+sealed interface ContactSendResult {
+    data object Sent : ContactSendResult
+    data object Invalid : ContactSendResult
+    data object NotFound : ContactSendResult
+    data object NoPhone : ContactSendResult
+    data object DoNotContact : ContactSendResult
+    data object NotOnWhatsApp : ContactSendResult
+    data object Unconfirmed : ContactSendResult
+    data object Failed : ContactSendResult
+    data object Unavailable : ContactSendResult
+}
+
+/**
+ * Regras da aba Mensagens do adm. Conversa existente aceita resposta; conversa nova só com conta do Saqz, pelo telefone
+ * do cadastro ([sendToUser], DEB-164). Grupo é somente leitura.
+ */
 class AdminWhatsAppMessages(
     private val inbox: AdminWhatsAppInbox,
     private val directory: WhatsAppGroupDirectory,
     private val bindings: AdminWhatsAppBindings,
+    private val targets: AdminContactTargets,
+    private val numbers: WhatsAppNumberCheck,
     private val sender: NotificationWhatsAppSender,
 ) {
     /** Desconectado não é erro: a tela mostra o estado próprio, sem ler a lista. */
@@ -94,12 +133,14 @@ class AdminWhatsAppMessages(
         val page = inbox.chats()
         val links = bindings.activeByJid()
         val (groups, privates) = page.chats.partition { isGroup(it.chatId) }
+        val phones = privates.associate { it.chatId to accountPhone(it.chatId) }
+        val accounts = targets.byPhone(phones.values.filterNotNull().distinct())
         return InboxOverview(
             connected = true,
             phone = phone,
             truncated = page.truncated,
             groups = groups.map { InboxConversation(it, links[it.chatId]) },
-            privates = privates.map { InboxConversation(it, null) },
+            privates = privates.map { InboxConversation(it, null, phones[it.chatId]?.let(accounts::get)) },
         )
     }
 
@@ -126,8 +167,57 @@ class AdminWhatsAppMessages(
         }
     }
 
+    /**
+     * Mensagem para uma conta do Saqz, com ou sem conversa aberta (DEB-164). Recusa quem pediu para não ser procurado e
+     * número que a Uazapi diz não ter WhatsApp; dúvida na consulta não recusa. Enviada, fica anotada em Contatos.
+     */
+    fun sendToUser(userId: UUID, rawText: String?, requestId: String?, adminId: UUID): ContactSendResult {
+        val text = rawText?.trim().orEmpty()
+        if (requestId == null || !UUID_FORMAT.matches(requestId) || text.isEmpty() || text.length > MAX_REPLY) return ContactSendResult.Invalid
+        val request = UUID.fromString(requestId)
+        val target = targets.find(userId) ?: return ContactSendResult.NotFound
+        if (target.doNotContact) return ContactSendResult.DoNotContact
+        val phone = target.phone?.takeIf { ACCOUNT_PHONE.matches(it) }?.removePrefix("+") ?: return ContactSendResult.NoPhone
+        val trackId = "adm-contact-$request"
+        try {
+            if (inbox.trackExists(trackId)) {
+                targets.recordSent(userId, adminId, request, text)
+                return ContactSendResult.Sent
+            }
+        } catch (_: DirectoryError.Unavailable) {
+            return ContactSendResult.Unavailable
+        }
+        if (numbers.hasWhatsApp(phone) == false) return ContactSendResult.NotOnWhatsApp
+        return when (sender.send(WhatsAppNotification(0, phone, text, trackId = trackId))) {
+            WhatsAppDelivery.Accepted -> {
+                targets.recordSent(userId, adminId, request, text)
+                ContactSendResult.Sent
+            }
+            is WhatsAppDelivery.Retry -> ContactSendResult.Unconfirmed
+            WhatsAppDelivery.Failed -> ContactSendResult.Failed
+        }
+    }
+
     companion object {
         const val MAX_REPLY = 2000
+        private val ACCOUNT_PHONE = Regex("^\\+55[1-9][0-9]9[0-9]{8}$")
+
+        /**
+         * Telefone do cadastro (`+55`, DDD e 9 dígitos) de uma conversa privada. Conta antiga de celular no WhatsApp ainda
+         * pode ter o JID sem o nono dígito (`55` + DDD + 8): ele volta aqui com o 9.
+         */
+        fun accountPhone(chatId: String): String? {
+            if (!isPrivate(chatId)) return null
+            val digits = chatId.substringBefore("@")
+            if (!digits.startsWith("55")) return null
+            val national = digits.removePrefix("55")
+            val mobile = when {
+                national.length == 11 && national[2] == '9' -> national
+                national.length == 10 && national[2] in '6'..'9' -> national.take(2) + "9" + national.drop(2)
+                else -> return null
+            }
+            return "+55$mobile".takeIf { ACCOUNT_PHONE.matches(it) }
+        }
         private const val GROUP_SUFFIX = "@g.us"
         private val PRIVATE_CHAT = Regex("^[1-9][0-9]{7,14}@s\\.whatsapp\\.net$")
         private val GROUP_CHAT = Regex("^[0-9-]+@g\\.us$")

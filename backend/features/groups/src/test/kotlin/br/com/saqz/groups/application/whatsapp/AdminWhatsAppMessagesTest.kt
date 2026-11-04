@@ -46,7 +46,22 @@ class AdminWhatsAppMessagesTest {
         override fun isMember(jid: String) = error("unused")
     }
     private val link = SaqzGroupLink(UUID.randomUUID(), "Vôlei", false)
-    private val service = AdminWhatsAppMessages(inbox, directory, { mapOf(GROUP to link) }) { sent += it; delivery }
+    private val carla = AdminContactTarget(CARLA, "+5511988887777", doNotContact = false)
+    private var target: AdminContactTarget? = carla
+    private var hasWhatsApp: Boolean? = true
+    private val recorded = mutableListOf<Triple<UUID, UUID, String>>()
+    private val askedPhones = mutableListOf<Collection<String>>()
+    private val targets = object : AdminContactTargets {
+        override fun find(userId: UUID) = target?.takeIf { it.userId == userId }
+        override fun byPhone(phones: Collection<String>): Map<String, SaqzAccountLink> {
+            askedPhones += phones
+            return phones.filter { it == "+5511988887777" }.associateWith { SaqzAccountLink(CARLA, "Carla Menezes") }
+        }
+        override fun recordSent(userId: UUID, adminId: UUID, requestId: UUID, text: String) {
+            recorded += Triple(userId, requestId, text)
+        }
+    }
+    private val service = AdminWhatsAppMessages(inbox, directory, { mapOf(GROUP to link) }, targets, { hasWhatsApp }) { sent += it; delivery }
 
     @Test
     fun `overview separates groups from privates and links saqz groups`() {
@@ -57,6 +72,74 @@ class AdminWhatsAppMessagesTest {
         assertEquals(link, overview.groups[0].saqzGroup)
         assertNull(overview.groups[1].saqzGroup)
         assertEquals(listOf(PRIVATE), overview.privates.map { it.chat.chatId })
+        assertEquals(SaqzAccountLink(CARLA, "Carla Menezes"), overview.privates.single().account)
+        assertNull(overview.groups[0].account)
+        assertEquals(listOf("+5511988887777"), askedPhones.single().toList())
+    }
+
+    @Test
+    fun `chat phone reads as the account phone, putting back the ninth digit of old jids`() {
+        assertEquals("+5511988887777", AdminWhatsAppMessages.accountPhone("5511988887777@s.whatsapp.net"))
+        assertEquals("+5511988887777", AdminWhatsAppMessages.accountPhone("551188887777@s.whatsapp.net"))
+        assertNull(AdminWhatsAppMessages.accountPhone("551133334444@s.whatsapp.net"))
+        assertNull(AdminWhatsAppMessages.accountPhone("14155550100@s.whatsapp.net"))
+        assertNull(AdminWhatsAppMessages.accountPhone(GROUP))
+    }
+
+    @Test
+    fun `message to an account goes to the phone of the record and is noted in contacts`() {
+        assertEquals(ContactSendResult.Sent, service.sendToUser(CARLA, "  Oi, Carla!\n\nTudo bem?  ", REQUEST, ADMIN))
+        val message = sent.single()
+        assertEquals("5511988887777", message.phone)
+        assertEquals("Oi, Carla!\n\nTudo bem?", message.body)
+        assertEquals("adm-contact-$REQUEST", message.trackId)
+        assertEquals(listOf(Triple(CARLA, UUID.fromString(REQUEST), "Oi, Carla!\n\nTudo bem?")), recorded)
+    }
+
+    @Test
+    fun `message to an account is refused before sending when the rules say so`() {
+        assertEquals(ContactSendResult.Invalid, service.sendToUser(CARLA, "oi", "nao-e-uuid", ADMIN))
+        assertEquals(ContactSendResult.Invalid, service.sendToUser(CARLA, "  ", REQUEST, ADMIN))
+        assertEquals(ContactSendResult.Invalid, service.sendToUser(CARLA, "a".repeat(2001), REQUEST, ADMIN))
+        assertEquals(ContactSendResult.NotFound, service.sendToUser(UUID.randomUUID(), "oi", REQUEST, ADMIN))
+        target = carla.copy(doNotContact = true)
+        assertEquals(ContactSendResult.DoNotContact, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        target = carla.copy(phone = null)
+        assertEquals(ContactSendResult.NoPhone, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        target = carla.copy(phone = "+551133334444")
+        assertEquals(ContactSendResult.NoPhone, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        target = carla
+        hasWhatsApp = false
+        assertEquals(ContactSendResult.NotOnWhatsApp, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        assertTrue(sent.isEmpty())
+        assertTrue(recorded.isEmpty())
+    }
+
+    @Test
+    fun `unknown answer from the number check does not block the message`() {
+        hasWhatsApp = null
+        assertEquals(ContactSendResult.Sent, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        assertEquals(1, sent.size)
+    }
+
+    @Test
+    fun `message to an account maps delivery and only notes what was accepted`() {
+        delivery = WhatsAppDelivery.Retry()
+        assertEquals(ContactSendResult.Unconfirmed, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        delivery = WhatsAppDelivery.Failed
+        assertEquals(ContactSendResult.Failed, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        assertTrue(recorded.isEmpty())
+        failTrack = true
+        assertEquals(ContactSendResult.Unavailable, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun `resend of a message that already went out notes it without sending again`() {
+        tracked = true
+        assertEquals(ContactSendResult.Sent, service.sendToUser(CARLA, "oi", REQUEST, ADMIN))
+        assertTrue(sent.isEmpty())
+        assertEquals(1, recorded.size)
     }
 
     @Test
@@ -131,5 +214,7 @@ class AdminWhatsAppMessagesTest {
         const val GROUP = "120363000000000000@g.us"
         const val UNLINKED = "120363000000000001@g.us"
         const val REQUEST = "9c8b7a6d-5e4f-4321-9876-abcdef012345"
+        val CARLA: UUID = UUID.fromString("4f2a91c7-8e13-4b60-a2d5-7c19e0b6d341")
+        val ADMIN: UUID = UUID.fromString("0b6d3414-8e13-4b60-a2d5-7c19e0f2a91c")
     }
 }
