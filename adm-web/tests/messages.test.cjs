@@ -279,3 +279,127 @@ test('fora da aba Mensagens a barra do celular volta, e o logout limpa a vista',
   s.sessao(null); await flush();
   assert.equal(s.app.state.mgNoChat, false);
 });
+
+// Conversa com conta do Saqz (DEB-164): nome do cadastro nas privadas e "Nova conversa" pela busca de Usuários.
+const C1 = '5511988887777@s.whatsapp.net';
+const comConta = (extra = {}) => lista({ privates: [conversa(C1, { name: 'Ca 💙', phone: '5511988887777', account: { userId: 'u-carla', name: 'Carla Menezes' } }),
+  conversa(P1, { name: 'Marina Costa', phone: '5511900001234' })], ...extra });
+const conta = (extra = {}) => ({ userId: 'u-diego', displayName: 'Diego Ramos', phone: '+5521900000388', doNotContact: false, memberships: 1,
+  ownedGroup: { groupId: 'g-9', name: 'Futebol de Quinta', deleted: false }, ...extra });
+const busca = termo => `GET /admin/users?query=${encodeURIComponent(termo)}&page=1&size=20`;
+const esperarBusca = async () => { await new Promise(r => setTimeout(r, 280)); await flush(); };
+
+test('privada de uma conta mostra o nome do cadastro, a etiqueta e o link para a ficha', async () => {
+  const s = await privadas({ 'GET /admin/whatsapp/conversations': json(comConta()) });
+  const v = s.vals();
+  assert.equal(v.mgRows[0].nome, 'Carla Menezes'); assert.equal(v.mgRows[0].conta, true); assert.equal(v.mgRows[0].ini, 'CM');
+  assert.equal(v.mgRows[1].conta, false);
+  assert.equal(v.mgNome, 'Carla Menezes');
+  assert.equal(v.mgSub, '(11) 98888-7777 · Conta do Saqz');
+  assert.equal(v.mgTemConta, true);
+  s.vals().onMgQ({ target: { value: 'carla' } });
+  assert.equal(s.vals().mgRows.length, 1);
+  s.vals().onMgVerConta();
+  assert.equal(s.app.state.page, 'usuario'); assert.equal(s.app.state.selU, 'u-carla');
+});
+
+test('Nova conversa busca contas e marca quem já tem conversa ou não pode receber', async () => {
+  const itens = [conta(), conta({ userId: 'u-carla', displayName: 'Carla Menezes', phone: '+5511988887777' }),
+    conta({ userId: 'u-renato', displayName: 'Renato Lima', doNotContact: true }), conta({ userId: 'u-sem', displayName: 'Sem Fone', phone: null, ownedGroup: null })];
+  const s = await entrar({ 'GET /admin/whatsapp/conversations': json(comConta()), [busca('di')]: json({ items: itens, total: 4 }) });
+  s.vals().onMgNova();
+  let v = s.vals();
+  assert.equal(v.mgEscolhendo, true); assert.equal(v.mgTemConversa, false); assert.equal(v.mgSemConversa, false);
+  assert.equal(v.mgVista, 'conversa');
+  assert.match(v.mgNovaMsg, /^Busque pelo nome/);
+  s.vals().onMgNovaQ({ target: { value: 'd' } });
+  assert.equal(s.vals().mgNovaMsg, 'Digite pelo menos 2 letras.');
+  s.vals().onMgNovaQ({ target: { value: 'di' } });
+  assert.equal(s.vals().mgNovaMsg, 'Buscando…');
+  await esperarBusca();
+  v = s.vals();
+  assert.equal(s.requests.filter(r => r.path.startsWith('/admin/users?')).length, 1);
+  assert.equal(v.mgNovaMsg, '');
+  assert.deepEqual(v.mgPessoas.map(p => [p.nome, p.tag, p.bloqueado]), [
+    ['Diego Ramos', '', false], ['Carla Menezes', 'Já tem conversa', false], ['Renato Lima', 'Não procurar', true], ['Sem Fone', 'Sem telefone', true]]);
+  assert.equal(v.mgPessoas[0].sub, '(21) 90000-0388 · Organiza o Futebol de Quinta');
+  v.mgPessoas[2].escolher();
+  assert.equal(s.vals().mgEscolhendo, true);
+  v.mgPessoas[1].escolher(); await flush();
+  v = s.vals();
+  assert.equal(v.mgEscolhendo, false);
+  assert.equal(s.app.state.mgSel, C1);
+  assert.equal(v.mgNome, 'Carla Menezes');
+});
+
+test('conta sem conversa abre conversa nova com saudação, e o envio vai pela conta e troca para a conversa real', async () => {
+  let depois = false;
+  const real = conversa('552190000388@s.whatsapp.net', { phone: '552190000388', account: { userId: 'u-diego', name: 'Diego Ramos' } });
+  const s = await entrar({
+    'GET /admin/whatsapp/conversations': () => json(comConta(depois ? { privates: [real, ...comConta().privates] } : {})),
+    [busca('diego')]: json({ items: [conta()], total: 1 }),
+    'POST /admin/whatsapp/users/u-diego/messages': () => { depois = true; return json({ status: 'SENT' }); },
+  });
+  s.vals().onMgNova();
+  s.vals().onMgNovaQ({ target: { value: 'diego' } });
+  await esperarBusca();
+  s.vals().mgPessoas[0].escolher(); await flush();
+  let v = s.vals();
+  assert.equal(s.app.state.mgSel, 'conta:u-diego');
+  assert.equal(v.mgNome, 'Diego Ramos');
+  assert.equal(v.mgSub, '(21) 90000-0388 · Organiza o Futebol de Quinta');
+  assert.equal(v.mgResponderA, 'Escreva para Diego Ramos');
+  assert.equal(v.mgRascunho, 'Oi, Diego! Aqui é a equipe do Saqz. ');
+  assert.equal(v.mgVazioTitulo, 'Nenhuma mensagem com Diego nos últimos 7 dias');
+  assert.equal(s.requests.some(r => r.path.includes('conta%3A') || r.path.includes('conta:u-diego')), false);
+  digitar(s, 'Oi, Diego! Aqui é a equipe do Saqz. Tudo certo com o grupo?');
+  await enviar(s); await flush();
+  const post = posts(s).at(-1);
+  assert.equal(post.path, '/admin/whatsapp/users/u-diego/messages');
+  assert.deepEqual(Object.keys(post.body).sort(), ['requestId', 'text']);
+  v = s.vals();
+  assert.equal(s.app.state.mgSel, '552190000388@s.whatsapp.net');
+  assert.equal(s.app.state.mgContaNova, null);
+  assert.equal(v.mgNome, 'Diego Ramos');
+  assert.equal(v.mgResponderA, 'Responder a Diego Ramos');
+  assert.equal(v.mgAnotado, true);
+  assert.match(v.mgAnotadoTexto, /anotada em Contatos, na ficha de Diego/);
+  assert.ok(v.mgLinhas.some(l => l.ehMsg && l.texto === 'Oi, Diego! Aqui é a equipe do Saqz. Tudo certo com o grupo?'));
+  digitar(s, 'Mais uma');
+  assert.equal(s.vals().mgAnotado, false);
+  await enviar(s);
+  assert.equal(posts(s).at(-1).path, '/admin/whatsapp/messages');
+});
+
+test('conversa nova continua aberta se a Uazapi ainda não mostrar a conversa, e recusas dizem que nada saiu', async () => {
+  const s = await entrar({ 'GET /admin/whatsapp/conversations': json(comConta()), [busca('diego')]: json({ items: [conta()], total: 1 }),
+    'POST /admin/whatsapp/users/u-diego/messages': json({ error: 'NOT_ON_WHATSAPP' }, 422) });
+  s.vals().onMgNova();
+  s.vals().onMgNovaQ({ target: { value: 'diego' } });
+  await esperarBusca();
+  s.vals().mgPessoas[0].escolher(); await flush();
+  await enviar(s);
+  assert.equal(s.vals().mgEnvioMsg, 'Este número não tem WhatsApp. Nada foi enviado.');
+  s.vals().onMgAtualizar(); await flush();
+  assert.equal(s.app.state.mgSel, 'conta:u-diego');
+  assert.equal(s.vals().mgNome, 'Diego Ramos');
+});
+
+test('fechar Nova conversa volta à conversa e descarta busca atrasada', async () => {
+  let responder;
+  const s = await entrar({ 'GET /admin/whatsapp/conversations': json(comConta()), [busca('di')]: () => new Promise(r => { responder = r; }) });
+  s.vals().onMgNova();
+  s.vals().onMgNovaQ({ target: { value: 'di' } });
+  await esperarBusca();
+  s.vals().onMgFecharNova();
+  responder(json({ items: [conta()], total: 1 })); await flush();
+  const v = s.vals();
+  assert.equal(v.mgEscolhendo, false);
+  assert.equal(v.mgVista, 'lista');
+  assert.equal(s.app.state.mgNovaRes.carregando, true);
+  s.vals().onMgNova();
+  assert.equal(s.vals().mgEscolhendo, true);
+  s.vals().mgRows[1].abrir(); await flush();
+  assert.equal(s.vals().mgEscolhendo, false);
+  assert.equal(s.vals().mgNome, 'Quadra 7');
+});

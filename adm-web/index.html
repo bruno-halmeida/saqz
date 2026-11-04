@@ -349,7 +349,12 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 .pagination button:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}
 </style>
 <style>.flags{overflow:auto;padding:24px 28px;font-size:14px}.flags h1{margin-top:0}.flags h2{font-size:18px}.flags h3{font-size:15px;margin:18px 0 8px}.flags section{background:white;border:1px solid var(--saqz-border);border-radius:16px;padding:20px;margin:18px 0;display:grid;gap:12px}.flags p{line-height:1.5;color:var(--saqz-muted);margin:0;overflow-wrap:anywhere}.flags>p{margin-top:6px}.flags pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.flags textarea{min-height:60px;resize:vertical}.flags .rec-actions button,.flags .flg-row>button,.flags .flg-item button,.flags .flg-line>button,.flags article>button{font:600 13px Inter,sans-serif;padding:9px 14px;border:1px solid var(--saqz-border);border-radius:20px;background:white;color:var(--saqz-blue);cursor:pointer;white-space:nowrap}.flags button:disabled{opacity:.5;cursor:default}.flags .rec-toggle{display:inline-flex;align-items:center;border:0;background:none;padding:6px 0;cursor:pointer}.flg-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--saqz-border);padding:14px 0}.flg-row[aria-current="true"]{box-shadow:inset 3px 0 0 var(--saqz-blue);padding-left:12px}.flg-row strong{display:block;margin:4px 0 2px}.flg-line{display:flex;align-items:center;gap:14px}.flg-item{display:flex;align-items:center;gap:10px;border-top:1px solid var(--saqz-border);padding:8px 0}.flg-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.flg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.flags article{border-top:1px solid var(--saqz-border);padding:12px 0;display:grid;gap:6px;justify-items:start}@media(max-width:650px){.flg-grid{grid-template-columns:1fr}.flags{padding:20px 16px}}</style>
-<style>.mg{flex:1;min-height:0;display:flex;flex-direction:column;font-size:14px}.mg-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 28px;background:#fff;border-bottom:1px solid var(--saqz-border)}.mg-top h1{margin:0 10px 0 0;font-size:20px;line-height:26px;font-weight:800;letter-spacing:-.02em}.mg-top small{font-size:13px;color:var(--saqz-muted)}.mg-top .mg-when{margin-left:auto}.mg-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(23,178,106,.12);color:#0E7A4B}.mg-pill.off{background:rgba(245,166,35,.14);color:#8F5600}.mg-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#17B26A}.mg-pill.off::before{background:#F5A623}.mg-btn{font:600 13px var(--font-ui);min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--saqz-border);background:#fff;color:var(--saqz-blue);cursor:pointer}.mg-btn:disabled{cursor:default;color:var(--saqz-disabled-fg)}.mg-primary{font:600 13px var(--font-ui);min-height:44px;padding:8px 18px;border-radius:999px;border:0;background:var(--saqz-blue);color:#fff;cursor:pointer}.mg-primary .sc-interp{color:inherit!important;opacity:1!important;filter:none!important}.mg-primary:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}.mg-body{flex:1;min-height:0;display:flex;gap:16px;padding:20px 28px;box-sizing:border-box}.mg-panel{min-height:0;min-width:0;background:#fff;border:1px solid var(--saqz-border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}.mg-list{flex:1 1 320px}.mg-chat{flex:999 1 560px}.mg-state{flex:1;display:grid;place-items:center;padding:32px}.mg-state div{max-width:460px;text-align:center;display:grid;gap:8px;justify-items:center}.mg-state h2{margin:0;font-size:17px;line-height:22px}.mg-state p{margin:0;line-height:20px;color:var(--saqz-muted)}.mg-tools{display:grid;gap:10px;padding:14px 14px 12px;border-bottom:1px solid var(--saqz-border)}.mg-tools label,.mg-reply label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)}.mg-tools input,.mg-reply textarea{box-sizing:border-box;width:100%;border:1px solid var(--saqz-border);border-radius:10px;padding:8px 12px;font:400 14px/20px var(--font-ui);color:var(--saqz-navy)}.mg-tools input{min-height:40px}.mg-reply textarea{min-height:64px;resize:vertical}.mg-reply textarea:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}.mg-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:3px;border-radius:999px;background:var(--saqz-ice)}.mg-seg button{border:0;border-radius:999px;min-height:38px;padding:8px 14px;font:600 13px var(--font-ui);cursor:pointer;background:transparent;color:var(--saqz-muted)}.mg-seg button[aria-pressed="true"]{background:#fff;color:var(--saqz-blue);box-shadow:0 0 0 1px var(--saqz-border)}.mg-rows{flex:1;min-height:0;overflow-y:auto}.mg-row{display:flex;gap:10px;align-items:center;width:100%;min-height:64px;box-sizing:border-box;padding:10px 14px;border:0;border-bottom:1px solid #EEF0F5;text-align:left;cursor:pointer;font-family:inherit;color:inherit;background:#fff}.mg-row[aria-current="true"]{background:var(--saqz-ice)}.mg-ini{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:var(--saqz-ice);box-shadow:inset 0 0 0 1px var(--saqz-border);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--saqz-blue)}.mg-rowtxt{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:2px}.mg-rowtop{display:flex;align-items:center;gap:6px}.mg-rowtop strong{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;line-height:20px;font-weight:600}.mg-tag{flex:0 0 auto;padding:1px 6px;border-radius:999px;background:rgba(6,56,223,.08);color:var(--saqz-blue);font-size:11px;line-height:16px;font-weight:700}.mg-rowtop small{margin-left:auto;flex:0 0 auto;font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-prev{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;line-height:18px;color:var(--saqz-muted)}.mg-note{margin:0;padding:10px 14px;font-size:12px;line-height:16px;color:var(--saqz-muted);border-top:1px solid var(--saqz-border)}.mg-none{margin:0;padding:24px 16px;line-height:20px;color:var(--saqz-muted)}.mg-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 20px;border-bottom:1px solid var(--saqz-border)}.mg-headtxt{flex:1 1 240px;min-width:0;display:grid;gap:2px}.mg-ico{display:none}.mg-head h2{margin:0;font-size:17px;line-height:22px;font-weight:700}.mg-head p{margin:0;font-size:13px;line-height:18px;color:var(--saqz-muted)}.mg-head p.warn{color:#8F5600}.mg-link{border:0;background:none;padding:0;font:inherit;color:var(--saqz-blue);text-decoration:underline;cursor:pointer}.mg-head .mg-seg{display:inline-grid}.mg-feed{flex:1;min-height:0;overflow-y:auto;background:var(--saqz-ice);padding:16px 20px;display:flex;flex-direction:column-reverse}.mg-feedin{flex:1 0 auto;display:flex;flex-direction:column;gap:10px}.mg-feedin>.mg-btn{align-self:center}.mg-day{align-self:center;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--saqz-border);font-size:12px;line-height:16px;font-weight:600;color:var(--saqz-muted)}.mg-msg{align-self:flex-start;max-width:72%;box-sizing:border-box;background:#fff;border:1px solid var(--saqz-border);border-radius:12px;padding:10px 12px;display:grid;gap:4px}.mg-msg.me{align-self:flex-end;background:#E7EBFC;border-color:transparent}.mg-who{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}.mg-who strong{font-size:13px;line-height:18px}.mg-msg.me .mg-who strong{color:var(--saqz-blue)}.mg-who span,.mg-time{font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-time{justify-self:end}.mg-media{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;font-weight:600;color:var(--saqz-muted)}.mg-text{margin:0;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere}.mg-empty{margin:auto;max-width:360px;text-align:center;display:grid;gap:6px}.mg-empty strong{font-size:15px;line-height:20px}.mg-empty p{margin:0;line-height:20px;color:var(--saqz-muted)}.mg-reply{display:grid;gap:8px;padding:12px 20px;border-top:1px solid var(--saqz-border)}.mg-replyfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.mg-replyfoot span{flex:1 1 240px;font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-err{margin:0;font-size:13px;line-height:18px;color:var(--saqz-error)}.mg-ro{margin:0;padding:10px 20px;border-top:1px solid var(--saqz-border);font-size:12px;line-height:16px;color:var(--saqz-muted)}</style>
+<style>.mg{flex:1;min-height:0;display:flex;flex-direction:column;font-size:14px}.mg-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:16px 28px;background:#fff;border-bottom:1px solid var(--saqz-border)}.mg-top h1{margin:0 10px 0 0;font-size:20px;line-height:26px;font-weight:800;letter-spacing:-.02em}.mg-top small{font-size:13px;color:var(--saqz-muted)}.mg-top .mg-when{margin-left:auto}.mg-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(23,178,106,.12);color:#0E7A4B}.mg-pill.off{background:rgba(245,166,35,.14);color:#8F5600}.mg-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#17B26A}.mg-pill.off::before{background:#F5A623}.mg-btn{font:600 13px var(--font-ui);min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--saqz-border);background:#fff;color:var(--saqz-blue);cursor:pointer}.mg-btn:disabled{cursor:default;color:var(--saqz-disabled-fg)}.mg-primary{font:600 13px var(--font-ui);min-height:44px;padding:8px 18px;border-radius:999px;border:0;background:var(--saqz-blue);color:#fff;cursor:pointer}.mg-primary .sc-interp{color:inherit!important;opacity:1!important;filter:none!important}.mg-primary:disabled{background:var(--saqz-disabled-bg);color:var(--saqz-disabled-fg);cursor:default}.mg-body{flex:1;min-height:0;display:flex;gap:16px;padding:20px 28px;box-sizing:border-box}.mg-panel{min-height:0;min-width:0;background:#fff;border:1px solid var(--saqz-border);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}.mg-list{flex:1 1 320px}.mg-chat{flex:999 1 560px}.mg-state{flex:1;display:grid;place-items:center;padding:32px}.mg-state div{max-width:460px;text-align:center;display:grid;gap:8px;justify-items:center}.mg-state h2{margin:0;font-size:17px;line-height:22px}.mg-state p{margin:0;line-height:20px;color:var(--saqz-muted)}.mg-tools{display:grid;gap:10px;padding:14px 14px 12px;border-bottom:1px solid var(--saqz-border)}.mg-tools label,.mg-reply label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)}.mg-novabtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%}.mg-novabtn .msr{font-size:18px}
+.mg-nova{padding:14px 20px;border-bottom:1px solid var(--saqz-border)}.mg-nova label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)}
+.mg-ico.mg-fechar{display:inline-grid;place-items:center;flex:0 0 40px;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:none;color:var(--saqz-blue);cursor:pointer}.mg-fechar .msr{font-size:22px}
+.mg-row:disabled{cursor:not-allowed;opacity:.6}.mg-ini-p{border-radius:50%;color:var(--saqz-navy)}
+.mg-tag.off{background:rgba(229,72,77,.10);color:#8E1F24}.mg-ok{margin:0;font-size:12.5px;line-height:18px;font-weight:600;color:#0E7A4B}
+.mg-tools input,.mg-nova input,.mg-reply textarea{box-sizing:border-box;width:100%;border:1px solid var(--saqz-border);border-radius:10px;padding:8px 12px;font:400 14px/20px var(--font-ui);color:var(--saqz-navy)}.mg-tools input{min-height:40px}.mg-reply textarea{min-height:64px;resize:vertical}.mg-reply textarea:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}.mg-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:3px;border-radius:999px;background:var(--saqz-ice)}.mg-seg button{border:0;border-radius:999px;min-height:38px;padding:8px 14px;font:600 13px var(--font-ui);cursor:pointer;background:transparent;color:var(--saqz-muted)}.mg-seg button[aria-pressed="true"]{background:#fff;color:var(--saqz-blue);box-shadow:0 0 0 1px var(--saqz-border)}.mg-rows{flex:1;min-height:0;overflow-y:auto}.mg-row{display:flex;gap:10px;align-items:center;width:100%;min-height:64px;box-sizing:border-box;padding:10px 14px;border:0;border-bottom:1px solid #EEF0F5;text-align:left;cursor:pointer;font-family:inherit;color:inherit;background:#fff}.mg-row[aria-current="true"]{background:var(--saqz-ice)}.mg-ini{flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:var(--saqz-ice);box-shadow:inset 0 0 0 1px var(--saqz-border);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--saqz-blue)}.mg-rowtxt{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:2px}.mg-rowtop{display:flex;align-items:center;gap:6px}.mg-rowtop strong{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;line-height:20px;font-weight:600}.mg-tag{flex:0 0 auto;padding:1px 6px;border-radius:999px;background:rgba(6,56,223,.08);color:var(--saqz-blue);font-size:11px;line-height:16px;font-weight:700}.mg-rowtop small{margin-left:auto;flex:0 0 auto;font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-prev{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;line-height:18px;color:var(--saqz-muted)}.mg-note{margin:0;padding:10px 14px;font-size:12px;line-height:16px;color:var(--saqz-muted);border-top:1px solid var(--saqz-border)}.mg-none{margin:0;padding:24px 16px;line-height:20px;color:var(--saqz-muted)}.mg-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 20px;border-bottom:1px solid var(--saqz-border)}.mg-headtxt{flex:1 1 240px;min-width:0;display:grid;gap:2px}.mg-ico{display:none}.mg-head h2{margin:0;font-size:17px;line-height:22px;font-weight:700}.mg-head p{margin:0;font-size:13px;line-height:18px;color:var(--saqz-muted)}.mg-head p.warn{color:#8F5600}.mg-link{border:0;background:none;padding:0;font:inherit;color:var(--saqz-blue);text-decoration:underline;cursor:pointer}.mg-head .mg-seg{display:inline-grid}.mg-feed{flex:1;min-height:0;overflow-y:auto;background:var(--saqz-ice);padding:16px 20px;display:flex;flex-direction:column-reverse}.mg-feedin{flex:1 0 auto;display:flex;flex-direction:column;gap:10px}.mg-feedin>.mg-btn{align-self:center}.mg-day{align-self:center;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--saqz-border);font-size:12px;line-height:16px;font-weight:600;color:var(--saqz-muted)}.mg-msg{align-self:flex-start;max-width:72%;box-sizing:border-box;background:#fff;border:1px solid var(--saqz-border);border-radius:12px;padding:10px 12px;display:grid;gap:4px}.mg-msg.me{align-self:flex-end;background:#E7EBFC;border-color:transparent}.mg-who{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}.mg-who strong{font-size:13px;line-height:18px}.mg-msg.me .mg-who strong{color:var(--saqz-blue)}.mg-who span,.mg-time{font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-time{justify-self:end}.mg-media{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;font-weight:600;color:var(--saqz-muted)}.mg-text{margin:0;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere}.mg-empty{margin:auto;max-width:360px;text-align:center;display:grid;gap:6px}.mg-empty strong{font-size:15px;line-height:20px}.mg-empty p{margin:0;line-height:20px;color:var(--saqz-muted)}.mg-reply{display:grid;gap:8px;padding:12px 20px;border-top:1px solid var(--saqz-border)}.mg-replyfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}.mg-replyfoot span{flex:1 1 240px;font-size:12px;line-height:16px;color:var(--saqz-muted)}.mg-err{margin:0;font-size:13px;line-height:18px;color:var(--saqz-error)}.mg-ro{margin:0;padding:10px 20px;border-top:1px solid var(--saqz-border);font-size:12px;line-height:16px;color:var(--saqz-muted)}</style>
 <style>
 /* Cartão com overflow:hidden tem altura mínima zero na grade: sem esta regra, quando a tela não comporta tudo, ele é espremido, perde as últimas linhas e nada rola. */
 .adm-body{grid-auto-rows:max-content}
@@ -378,6 +383,11 @@ select:focus,input:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px 
 .ct-res{min-height:38px;padding:6px 12px;border-radius:999px;border:1px solid var(--saqz-border);background:#fff;color:var(--saqz-navy);font:600 13px var(--font-ui);white-space:nowrap;cursor:pointer}
 .ct-res[aria-pressed="true"]{border-color:var(--saqz-blue);background:var(--saqz-blue);color:#fff}
 .ct-texto{box-sizing:border-box;width:100%;resize:vertical;border:1px solid var(--saqz-border);border-radius:10px;padding:10px 12px;font:400 14px/20px var(--font-ui);color:var(--saqz-navy)}
+.ct-falha{display:grid;gap:4px;border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:19px}.ct-falha strong{font-weight:700}
+.ct-conferir{justify-self:start;border:0;background:none;padding:4px 0;font:700 13.5px var(--font-ui);color:var(--saqz-blue);text-decoration:underline;cursor:pointer;min-height:32px}
+.ct-ok{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:12px 14px;background:rgba(23,178,106,.10);font-size:13px;line-height:19px;color:#3F4A5F}.ct-ok strong{font-size:14.5px;font-weight:700;color:#0E5C3A}
+.ct-ok-ico{flex:0 0 auto;width:28px;height:28px;border-radius:50%;background:#17B26A;color:#fff;display:grid;place-items:center}
+.ct-enviado{margin:0;border-radius:10px;padding:10px 12px;background:#E7EBFC;font-size:14px;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere}
 .ct-texto:focus{outline:none;border-color:#0638DF;box-shadow:0 0 0 3px rgba(6,56,223,.11)}
 .adm-nav-mais{display:none!important}
 @media (min-width:821px) and (max-height:520px){.adm-shell{min-height:0!important}.adm-nav{overflow-y:auto}}
@@ -624,13 +634,18 @@ html,body{overscroll-behavior:none}
 <sc-if value="{{ mgCarregando }}"><div class="mg-body"><section class="mg-panel mg-chat"><div class="mg-state"><p role="status">Carregando conversas…</p></div></section></div></sc-if>
 <sc-if value="{{ mgFalha }}"><div class="mg-body"><section class="mg-panel mg-chat"><div class="mg-state"><div><h2>{{ mgFalhaTitulo }}</h2><sc-if value="{{ mgFalhaTexto }}"><p>{{ mgFalhaTexto }}</p></sc-if><sc-if value="{{ mgFalhaRetry }}"><button type="button" class="mg-primary" sc-camel-on-click="{{ onMgAtualizar }}">Tentar de novo</button></sc-if></div></div></section></div></sc-if>
 <sc-if value="{{ mgPronto }}"><div class="mg-body mg-pronto">
-<section class="mg-panel mg-list" aria-label="Conversas"><div class="mg-tools"><label>Buscar por nome ou telefone<input type="search" aria-label="Buscar por nome ou telefone" value="{{ mgQ }}" sc-camel-on-change="{{ onMgQ }}"></label><div class="mg-seg" role="group" aria-label="Tipo de conversa"><button type="button" aria-pressed="{{ mgGruposOn }}" sc-camel-on-click="{{ onMgGrupos }}">Grupos · {{ mgNGrupos }}</button><button type="button" aria-pressed="{{ mgPrivadasOn }}" sc-camel-on-click="{{ onMgPrivadas }}">Privadas · {{ mgNPrivadas }}</button></div></div>
-<div class="mg-rows"><sc-for list="{{ mgRows }}" as="c"><button type="button" class="mg-row" aria-current="{{ c.atual }}" sc-camel-on-click="{{ c.abrir }}"><span class="mg-ini" aria-hidden="true">{{ c.ini }}</span><span class="mg-rowtxt"><span class="mg-rowtop"><strong>{{ c.nome }}</strong><sc-if value="{{ c.saqz }}"><span class="mg-tag">Saqz</span></sc-if><small>{{ c.quando }}</small></span><span class="mg-prev">{{ c.previa }}</span></span></button></sc-for><sc-if value="{{ mgSemResultado }}"><p class="mg-none">{{ mgSemResultado }}</p></sc-if></div>
+<section class="mg-panel mg-list" aria-label="Conversas"><div class="mg-tools"><button type="button" class="mg-primary mg-novabtn" aria-pressed="{{ mgNovaOn }}" sc-camel-on-click="{{ onMgNova }}"><span class="msr" aria-hidden="true">add</span>Nova conversa</button><label>Buscar por nome ou telefone<input type="search" aria-label="Buscar por nome ou telefone" value="{{ mgQ }}" sc-camel-on-change="{{ onMgQ }}"></label><div class="mg-seg" role="group" aria-label="Tipo de conversa"><button type="button" aria-pressed="{{ mgGruposOn }}" sc-camel-on-click="{{ onMgGrupos }}">Grupos · {{ mgNGrupos }}</button><button type="button" aria-pressed="{{ mgPrivadasOn }}" sc-camel-on-click="{{ onMgPrivadas }}">Privadas · {{ mgNPrivadas }}</button></div></div>
+<div class="mg-rows"><sc-for list="{{ mgRows }}" as="c"><button type="button" class="mg-row" aria-current="{{ c.atual }}" sc-camel-on-click="{{ c.abrir }}"><span class="mg-ini" aria-hidden="true">{{ c.ini }}</span><span class="mg-rowtxt"><span class="mg-rowtop"><strong>{{ c.nome }}</strong><sc-if value="{{ c.saqz }}"><span class="mg-tag">Saqz</span></sc-if><sc-if value="{{ c.conta }}"><span class="mg-tag">Conta</span></sc-if><small>{{ c.quando }}</small></span><span class="mg-prev">{{ c.previa }}</span></span></button></sc-for><sc-if value="{{ mgSemResultado }}"><p class="mg-none">{{ mgSemResultado }}</p></sc-if></div>
 <sc-if value="{{ mgTruncado }}"><p class="mg-note">A lista mostra as 1.000 conversas mais recentes.</p></sc-if><p class="mg-note">A Uazapi guarda até 7 dias e até 2.000 mensagens por conversa.</p></section>
-<section class="mg-panel mg-chat" aria-label="Mensagens da conversa"><sc-if value="{{ mgSemConversa }}"><div class="mg-state"><p>Nenhuma conversa para mostrar.</p></div></sc-if><sc-if value="{{ mgTemConversa }}">
-<div class="mg-head"><button type="button" class="mg-ico mg-voltar" aria-label="Voltar para as conversas" sc-camel-on-click="{{ onMgVoltar }}"><span class="msr" aria-hidden="true">arrow_back</span></button><div class="mg-headtxt"><h2>{{ mgNome }}</h2><p class="{{ mgSubClasse }}">{{ mgSub }}<sc-if value="{{ mgTemGrupo }}"> · <button type="button" class="mg-link" sc-camel-on-click="{{ onMgVerGrupo }}">Abrir grupo no adm</button></sc-if></p></div><button type="button" class="mg-ico mg-refresh" aria-label="Atualizar conversa" disabled="{{ mgBusy }}" sc-camel-on-click="{{ onMgAtualizar }}"><span class="msr" aria-hidden="true">refresh</span></button><div class="mg-seg" role="group" aria-label="Quais mensagens mostrar"><button type="button" aria-pressed="{{ mgRecOn }}" sc-camel-on-click="{{ onMgRecebidas }}">Recebidas</button><button type="button" aria-pressed="{{ mgTodasOn }}" sc-camel-on-click="{{ onMgTodas }}">Todas</button></div></div>
+<section class="mg-panel mg-chat" aria-label="Mensagens da conversa"><sc-if value="{{ mgEscolhendo }}">
+<div class="mg-head"><button type="button" class="mg-ico mg-fechar" aria-label="Fechar nova conversa" sc-camel-on-click="{{ onMgFecharNova }}"><span class="msr" aria-hidden="true">arrow_back</span></button><div class="mg-headtxt"><h2>Nova conversa</h2></div></div>
+<div class="mg-nova"><label>Para quem<input type="search" aria-label="Para quem: nome, telefone ou e-mail de uma conta do Saqz" placeholder="Nome, telefone ou e-mail de uma conta do Saqz" value="{{ mgNovaQ }}" sc-camel-on-change="{{ onMgNovaQ }}"></label></div>
+<div class="mg-rows"><sc-for list="{{ mgPessoas }}" as="p"><button type="button" class="mg-row" disabled="{{ p.bloqueado }}" sc-camel-on-click="{{ p.escolher }}"><span class="mg-ini mg-ini-p" aria-hidden="true">{{ p.ini }}</span><span class="mg-rowtxt"><span class="mg-rowtop"><strong>{{ p.nome }}</strong><sc-if value="{{ p.tag }}"><span class="{{ p.tagClasse }}">{{ p.tag }}</span></sc-if></span><span class="mg-prev">{{ p.sub }}</span></span></button></sc-for><sc-if value="{{ mgNovaMsg }}"><p class="mg-none" role="status">{{ mgNovaMsg }}</p></sc-if></div>
+<p class="mg-note">Só contas do Saqz com telefone. Quem já tem conversa abre a conversa que existe. Quem pediu para não ser procurado fica bloqueado.</p>
+</sc-if><sc-if value="{{ mgSemConversa }}"><div class="mg-state"><p>Nenhuma conversa para mostrar.</p></div></sc-if><sc-if value="{{ mgTemConversa }}">
+<div class="mg-head"><button type="button" class="mg-ico mg-voltar" aria-label="Voltar para as conversas" sc-camel-on-click="{{ onMgVoltar }}"><span class="msr" aria-hidden="true">arrow_back</span></button><div class="mg-headtxt"><h2>{{ mgNome }}</h2><p class="{{ mgSubClasse }}">{{ mgSub }}<sc-if value="{{ mgTemGrupo }}"> · <button type="button" class="mg-link" sc-camel-on-click="{{ onMgVerGrupo }}">Abrir grupo no adm</button></sc-if><sc-if value="{{ mgTemConta }}"> · <button type="button" class="mg-link" sc-camel-on-click="{{ onMgVerConta }}">Abrir ficha no adm</button></sc-if></p></div><button type="button" class="mg-ico mg-refresh" aria-label="Atualizar conversa" disabled="{{ mgBusy }}" sc-camel-on-click="{{ onMgAtualizar }}"><span class="msr" aria-hidden="true">refresh</span></button><div class="mg-seg" role="group" aria-label="Quais mensagens mostrar"><button type="button" aria-pressed="{{ mgRecOn }}" sc-camel-on-click="{{ onMgRecebidas }}">Recebidas</button><button type="button" aria-pressed="{{ mgTodasOn }}" sc-camel-on-click="{{ onMgTodas }}">Todas</button></div></div>
 <div class="mg-feed"><div class="mg-feedin"><sc-if value="{{ mgPodeCarregar }}"><button type="button" class="mg-btn" disabled="{{ mgCarregandoMais }}" sc-camel-on-click="{{ onMgAnteriores }}">Carregar anteriores</button></sc-if><sc-for list="{{ mgLinhas }}" as="l"><sc-if value="{{ l.ehDia }}"><div class="mg-day">{{ l.dia }}</div></sc-if><sc-if value="{{ l.ehMsg }}"><article class="{{ l.classe }}"><sc-if value="{{ l.mostraNome }}"><div class="mg-who"><strong>{{ l.nome }}</strong><span>{{ l.fone }}</span></div></sc-if><sc-if value="{{ l.midia }}"><span class="mg-media"><span class="msr" style="font-size:16px" aria-hidden="true">{{ l.icone }}</span>{{ l.midia }}</span></sc-if><sc-if value="{{ l.texto }}"><p class="mg-text">{{ l.texto }}</p></sc-if><span class="mg-time">{{ l.hora }}</span></article></sc-if></sc-for><sc-if value="{{ mgVazioTitulo }}"><div class="mg-empty"><strong>{{ mgVazioTitulo }}</strong><p>{{ mgVazioTexto }}</p><sc-if value="{{ mgConvErro }}"><button type="button" class="mg-btn" sc-camel-on-click="{{ onMgReabrir }}">Tentar de novo</button></sc-if></div></sc-if></div></div>
-<sc-if value="{{ mgPodeResponder }}"><div class="mg-reply"><label>{{ mgResponderA }}<textarea rows="2" maxlength="2000" aria-label="{{ mgResponderA }}" value="{{ mgRascunho }}" sc-camel-on-change="{{ onMgRascunho }}"></textarea></label><sc-if value="{{ mgEnvioMsg }}"><p class="mg-err" role="alert">{{ mgEnvioMsg }}</p></sc-if><div class="mg-replyfoot"><span>Sai pelo número do Saqz. Abrir a conversa não marca nada como lido no WhatsApp.</span><button type="button" class="mg-primary" disabled="{{ mgEnvioBloqueado }}" sc-camel-on-click="{{ onMgEnviar }}">{{ mgEnviarRotulo }}</button></div></div></sc-if>
+<sc-if value="{{ mgPodeResponder }}"><div class="mg-reply"><label>{{ mgResponderA }}<textarea rows="2" maxlength="2000" aria-label="{{ mgResponderA }}" value="{{ mgRascunho }}" sc-camel-on-change="{{ onMgRascunho }}"></textarea></label><sc-if value="{{ mgEnvioMsg }}"><p class="mg-err" role="alert">{{ mgEnvioMsg }}</p></sc-if><sc-if value="{{ mgAnotado }}"><p class="mg-ok" role="status">{{ mgAnotadoTexto }}</p></sc-if><div class="mg-replyfoot"><span>Sai pelo número do Saqz. Abrir a conversa não marca nada como lido no WhatsApp.</span><button type="button" class="mg-primary" disabled="{{ mgEnvioBloqueado }}" sc-camel-on-click="{{ onMgEnviar }}">{{ mgEnviarRotulo }}</button></div></div></sc-if>
 <sc-if value="{{ mgSoLeitura }}"><p class="mg-ro">Grupos são somente leitura. Abrir uma conversa aqui não marca nada como lido no WhatsApp.</p></sc-if>
 </sc-if></section></div></sc-if>
 </div></sc-if>
@@ -772,15 +787,24 @@ html,body{overscroll-behavior:none}
           <sc-if value="{{ ct.podeFalar }}" hint-placeholder-val="{{ true }}">
             <div style="display:grid;gap:10px;border-top:1px solid var(--saqz-border);padding-top:14px">
               <strong style="font-size:15px;font-weight:700">Mensagem</strong>
+              <sc-if value="{{ ct.escrevendo }}" hint-placeholder-val="{{ true }}"><div style="display:grid;gap:10px">
               <div class="adm-seg adm-seg-4" role="group" aria-label="Modelo de mensagem">
-                <sc-for list="{{ ct.modelos }}" as="m" hint-placeholder-count="4"><button type="button" aria-pressed="{{ m.on }}" aria-label="{{ m.rotulo }}" sc-camel-on-click="{{ m.onClick }}"><span class="adm-rot-longo">{{ m.rotulo }}</span><span class="adm-rot-curto">{{ m.curto }}</span></button></sc-for>
+                <sc-for list="{{ ct.modelos }}" as="m" hint-placeholder-count="4"><button type="button" aria-pressed="{{ m.on }}" aria-label="{{ m.rotulo }}" disabled="{{ ct.ocupado }}" sc-camel-on-click="{{ m.onClick }}"><span class="adm-rot-longo">{{ m.rotulo }}</span><span class="adm-rot-curto">{{ m.curto }}</span></button></sc-for>
               </div>
-              <label style="display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)">Texto, você pode editar antes de abrir<textarea class="ct-texto" rows="5" maxlength="2000" value="{{ ct.texto }}" sc-camel-on-change="{{ ct.onTexto }}"></textarea></label>
+              <label style="display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--saqz-muted)">Texto, você pode editar antes de enviar<textarea class="ct-texto" rows="5" maxlength="2000" disabled="{{ ct.ocupado }}" value="{{ ct.texto }}" sc-camel-on-change="{{ ct.onTexto }}"></textarea></label>
+              <sc-if value="{{ ct.temFalhaEnvio }}" hint-placeholder-val="{{ false }}"><div role="alert" class="ct-falha" style="{{ ct.falhaStyle }}"><strong>{{ ct.falhaTitulo }}</strong><span>{{ ct.falhaTexto }}</span><sc-if value="{{ ct.falhaConferir }}" hint-placeholder-val="{{ false }}"><button type="button" class="ct-conferir" sc-camel-on-click="{{ ct.onVerConversa }}">Conferir em Mensagens</button></sc-if></div></sc-if>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
-                <sc-if value="{{ ct.temTelefone }}" hint-placeholder-val="{{ true }}"><a class="ct-btn pri" href="{{ ct.whatsUrl }}" target="_blank" rel="noopener noreferrer"><span class="msr" style="font-size:16px">chat</span>Abrir no WhatsApp</a></sc-if>
+                <sc-if value="{{ ct.podeEnviarSaqz }}" hint-placeholder-val="{{ true }}"><button type="button" class="ct-btn pri" disabled="{{ ct.naoPodeEnviarSaqz }}" sc-camel-on-click="{{ ct.onEnviarSaqz }}"><span class="msr" style="font-size:16px" aria-hidden="true">send</span>{{ ct.enviarSaqzLabel }}</button></sc-if>
+                <sc-if value="{{ ct.temTelefone }}" hint-placeholder-val="{{ true }}"><a class="ct-btn sec gr" href="{{ ct.whatsUrl }}" target="_blank" rel="noopener noreferrer"><span class="msr" style="font-size:16px" aria-hidden="true">chat</span>Abrir no meu WhatsApp</a></sc-if>
                 <sc-if value="{{ ct.temEmail }}" hint-placeholder-val="{{ true }}"><a class="ct-btn sec gr" href="{{ ct.emailUrl }}">Abrir no e-mail</a></sc-if>
               </div>
-              <span style="font-size:12.5px;line-height:18px;color:var(--saqz-muted)">Abre o seu WhatsApp ou e-mail com o texto pronto. Nada é enviado pelo número do Saqz.</span>
+              <span style="font-size:12.5px;line-height:18px;color:var(--saqz-muted)">{{ ct.ajudaEnvio }}</span>
+              </div></sc-if>
+              <sc-if value="{{ ct.enviado }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:grid;gap:12px">
+                <div class="ct-ok"><span class="ct-ok-ico" aria-hidden="true"><span class="msr" style="font-size:16px">check</span></span><span style="min-width:0;display:grid;gap:2px"><strong>{{ ct.enviadoTitulo }}</strong><span>{{ ct.enviadoTexto }}</span></span></div>
+                <p class="ct-enviado">{{ ct.textoEnviado }}</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="ct-btn pri" sc-camel-on-click="{{ ct.onVerConversa }}">Ver conversa em Mensagens</button><button type="button" class="ct-btn sec gr" sc-camel-on-click="{{ ct.onEscreverOutra }}">Escrever outra</button></div>
+              </div></sc-if>
             </div>
           </sc-if>
         </div>
@@ -816,7 +840,7 @@ html,body{overscroll-behavior:none}
           </div>
           <sc-for list="{{ ct.contatos }}" as="c" hint-placeholder-count="1">
             <div style="padding:12px 20px;border-bottom:1px solid var(--saqz-border);display:grid;gap:4px;font-size:13.5px">
-              <span style="display:flex;justify-content:space-between;gap:12px"><strong style="font-weight:600">{{ c.resultado }}</strong><span style="font-size:12.5px;color:var(--saqz-muted);white-space:nowrap">{{ c.quando }}</span></span>
+              <span style="display:flex;justify-content:space-between;gap:12px"><span style="display:flex;align-items:center;gap:8px;min-width:0"><strong style="font-weight:600">{{ c.resultado }}</strong><sc-if value="{{ c.automatico }}" hint-placeholder-val="{{ false }}"><span class="mg-tag">Automático</span></sc-if></span><span style="font-size:12.5px;color:var(--saqz-muted);white-space:nowrap">{{ c.quando }}</span></span>
               <span style="line-height:20px;color:var(--saqz-muted);overflow-wrap:anywhere;white-space:pre-wrap">{{ c.texto }}</span>
             </div>
           </sc-for>
@@ -938,7 +962,7 @@ html,body{overscroll-behavior:none}
       <div class="adm-kpis adm-kpis-1" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px">
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px">
           <span style="flex:1 1 200px;min-width:0"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Organizador</span><button type="button" class="adm-link" sc-camel-on-click="{{ gd.onOrganizador }}">{{ gd.organizador }}</button><span style="display:block;margin-top:2px;font-size:12.5px;color:var(--saqz-muted)">{{ gd.organizadorSub }}</span></span>
-          <sc-if value="{{ gd.temWhats }}" hint-placeholder-val="{{ false }}"><a class="ct-btn" href="{{ gd.whatsUrl }}" target="_blank" rel="noopener noreferrer"><span class="msr" style="font-size:16px">chat</span>WhatsApp</a></sc-if>
+          <sc-if value="{{ gd.temWhats }}" hint-placeholder-val="{{ false }}"><button type="button" class="ct-btn pri" sc-camel-on-click="{{ gd.onOrganizador }}"><span class="msr" style="font-size:16px" aria-hidden="true">chat</span>Mandar mensagem</button></sc-if>
           <sc-if value="{{ gd.semWhats }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:var(--saqz-muted)">{{ gd.semWhatsTxt }}</span></sc-if>
         </div>
         <div style="background:var(--saqz-white);border:1px solid var(--saqz-border);border-radius:var(--radius-card);padding:14px 16px"><span style="display:block;font-size:12px;font-weight:600;color:var(--saqz-muted)">Membros</span><strong style="display:block;margin-top:6px;font-size:22px;font-weight:800;letter-spacing:-0.02em">{{ gd.membros }}</strong></div>
@@ -1763,7 +1787,8 @@ class Component extends DCLogic {
   // rascunho e o requestId são por chatId, para o texto nunca ir de uma conversa para outra.
   mgInitial() {
     return { mgData: null, mgAt: null, mgBusy: false, mgTipo: "grupos", mgSel: null, mgQ: "", mgEscopo: "recebidas",
-      mgConv: null, mgLocais: {}, mgRascunhos: {}, mgPedidos: {}, mgEnvio: {}, mgNoChat: false };
+      mgConv: null, mgLocais: {}, mgRascunhos: {}, mgPedidos: {}, mgEnvio: {}, mgNoChat: false,
+      mgNova: false, mgNovaQ: "", mgNovaRes: null, mgContaNova: null, mgPreferirConta: null, mgAnotado: null };
   }
   mgFone(digitos) {
     const d = String(digitos || "").replace(/\D/g, "");
@@ -1790,17 +1815,23 @@ class Component extends DCLogic {
       DOCUMENT: ["Documento", "description"], CONTACT: ["Contato", "person"], OTHER: ["Mensagem", "chat"] }[kind] || null;
   }
   mgIniciais(c) {
-    if (!c.name) return String(this.mgFone(c.phone)).slice(1, 3);
-    return c.name.split(/\s+/).map(p => Array.from(p).find(ch => /[\p{L}\p{N}]/u.test(ch))).filter(Boolean).slice(0, 2).join("").toUpperCase();
+    const nome = (c.account && c.account.name) || c.name;
+    if (!nome) return String(this.mgFone(c.phone)).slice(1, 3);
+    return nome.split(/\s+/).map(p => Array.from(p).find(ch => /[\p{L}\p{N}]/u.test(ch))).filter(Boolean).slice(0, 2).join("").toUpperCase();
   }
-  mgNomeConversa(c) { return c.name || this.mgFone(c.phone) || c.chatId; }
+  mgNomeConversa(c) { return (c.account && c.account.name) || c.name || this.mgFone(c.phone) || c.chatId; }
   mgLista(st, tipo) { const d = st.mgData; return d && d.connected ? (tipo === "grupos" ? d.groups : d.privates) : []; }
-  mgAtual(st) { return this.mgLista(st, st.mgTipo).find(c => c.chatId === st.mgSel) || null; }
+  // Conversa nova com uma conta (DEB-164) ainda não existe na Uazapi: vive só aqui, com chatId "conta:<userId>".
+  mgAtual(st) {
+    const nova = st.mgContaNova && st.mgSel === st.mgContaNova.chatId && st.mgTipo === "privadas" ? st.mgContaNova : null;
+    return this.mgLista(st, st.mgTipo).find(c => c.chatId === st.mgSel) || nova;
+  }
+  mgChatDaConta(st, userId) { return this.mgLista(st, "privadas").find(c => c.account && c.account.userId === userId) || null; }
   mgFiltradas(st) {
     const termo = st.mgQ.trim().toLowerCase(), digitos = termo.replace(/\D/g, "");
     const lista = this.mgLista(st, st.mgTipo);
     if (!termo) return lista;
-    return lista.filter(c => (c.name || "").toLowerCase().includes(termo) || this.mgFone(c.phone).toLowerCase().includes(termo) ||
+    return lista.filter(c => this.mgNomeConversa(c).toLowerCase().includes(termo) || (c.name || "").toLowerCase().includes(termo) || this.mgFone(c.phone).toLowerCase().includes(termo) ||
       (digitos && String(c.phone || "").includes(digitos)));
   }
   mgLoad() {
@@ -1811,9 +1842,17 @@ class Component extends DCLogic {
       if (!vale()) return;
       this.setState(st => {
         const conectado = !!dados.connected;
+        const preferida = conectado && st.mgPreferirConta ? (dados.privates || []).find(c => c.account && c.account.userId === st.mgPreferirConta) : null;
+        if (preferida) {
+          const nova = st.mgContaNova, locais = nova ? st.mgLocais[nova.chatId] || [] : [];
+          return { mgData: dados, mgAt: new Date(), mgBusy: false, mgSel: preferida.chatId, mgTipo: "privadas", mgEscopo: "todas", mgPreferirConta: null,
+            mgContaNova: nova && nova.account.userId === st.mgPreferirConta ? null : nova,
+            mgLocais: locais.length ? { ...st.mgLocais, [preferida.chatId]: (st.mgLocais[preferida.chatId] || []).concat(locais) } : st.mgLocais };
+        }
         const lista = conectado ? (st.mgTipo === "grupos" ? dados.groups : dados.privates) : [];
-        const mgSel = lista.some(c => c.chatId === st.mgSel) ? st.mgSel : (lista[0] ? lista[0].chatId : null);
-        return { mgData: dados, mgAt: new Date(), mgBusy: false, mgSel };
+        const nova = st.mgContaNova && st.mgSel === st.mgContaNova.chatId && st.mgTipo === "privadas";
+        const mgSel = nova || lista.some(c => c.chatId === st.mgSel) ? st.mgSel : (lista[0] ? lista[0].chatId : null);
+        return { mgData: dados, mgAt: new Date(), mgBusy: false, mgSel, mgPreferirConta: null };
       }, () => { if (this.state.mgSel) this.mgAbrirConversa(this.state.mgSel); else this.mgInvalidaConversa(); });
     };
     return window.saqzAdmin.fetchAdmin("/admin/whatsapp/conversations").then(r => {
@@ -1825,6 +1864,10 @@ class Component extends DCLogic {
   mgInvalidaConversa() { this._mgConvSeq = (this._mgConvSeq || 0) + 1; this.setState({ mgConv: null }); }
   mgRota(chatId, offset) { return `/admin/whatsapp/messages?chatId=${encodeURIComponent(chatId)}&offset=${offset}&limit=50`; }
   mgAbrirConversa(chatId) {
+    if (String(chatId).startsWith("conta:")) {
+      this._mgConvSeq = (this._mgConvSeq || 0) + 1;
+      return this.setState({ mgConv: { chatId, itens: [], hasMore: false, nextOffset: null, carregando: false, erro: false } });
+    }
     const seq = this._mgConvSeq = (this._mgConvSeq || 0) + 1, epoca = this._epoca;
     const vale = () => seq === this._mgConvSeq && epoca === this._epoca;
     this.setState(st => ({ mgConv: st.mgConv && st.mgConv.chatId === chatId ? { ...st.mgConv, carregando: true, erro: false } : { chatId, itens: [], hasMore: false, nextOffset: null, carregando: true, erro: false } }));
@@ -1863,9 +1906,54 @@ class Component extends DCLogic {
     this.setState({ mgQ: "" });
     this.mgSelecionar(lista[0] ? lista[0].chatId : null, tipo);
   }
+  // Nova conversa (DEB-164): só contas do Saqz, pela busca de Usuários. Quem já tem conversa abre a que existe.
+  mgAbrirNova() { this.setState({ mgNova: true, mgNovaQ: "", mgNovaRes: null, mgNoChat: true }); }
+  mgFecharNova() { clearTimeout(this._mgNovaT); this._mgNovaSeq = (this._mgNovaSeq || 0) + 1; this.setState({ mgNova: false, mgNoChat: false }); }
+  mgBuscarContas(q) {
+    clearTimeout(this._mgNovaT);
+    const seq = this._mgNovaSeq = (this._mgNovaSeq || 0) + 1, termo = q.trim();
+    this.setState({ mgNovaQ: q, mgNovaRes: termo.length < 2 ? null : { carregando: true, itens: [] } });
+    if (termo.length < 2) return;
+    this._mgNovaT = setTimeout(() => {
+      this.api(`/admin/users?query=${encodeURIComponent(termo)}&page=1&size=20`)
+        .then(p => { if (seq === this._mgNovaSeq) this.setState({ mgNovaRes: { itens: p.items || [] } }); })
+        .catch(() => { if (seq === this._mgNovaSeq) this.setState({ mgNovaRes: { erro: true, itens: [] } }); });
+    }, 250);
+  }
+  mgPapelConta(u) {
+    if (u.ownedGroup && !u.ownedGroup.deleted) return `Organiza o ${u.ownedGroup.name}`;
+    if (u.memberships) return `Membro de ${this.plural(u.memberships, "grupo", "grupos")}`;
+    return "Sem grupo";
+  }
+  mgSaudacao(nome) {
+    const eu = (window.saqzAdmin?.me?.displayName || "").trim().split(/\s+/)[0];
+    const primeiro = (nome || "").trim().split(/\s+/)[0];
+    return `Oi${primeiro ? `, ${primeiro}` : ""}! Aqui é ${eu ? `${eu}, do Saqz` : "a equipe do Saqz"}. `;
+  }
+  // Abre a conversa com a conta: a que existe na Uazapi, senão uma nova, com a saudação já escrita.
+  mgAbrirConta(u, sub) {
+    const existente = this.mgChatDaConta(this.state, u.userId);
+    clearTimeout(this._mgNovaT);
+    if (existente) {
+      this.setState({ mgNova: false, mgNoChat: true, mgQ: "" });
+      return this.mgSelecionar(existente.chatId, "privadas");
+    }
+    const chatId = "conta:" + u.userId, digitos = String(u.phone || "").replace(/\D/g, "");
+    const conversa = { chatId, name: null, phone: digitos, account: { userId: u.userId, name: u.displayName || null }, nova: true, sub: sub || "",
+      lastMessageAt: null, preview: "", previewKind: "TEXT", saqzGroup: null };
+    this.setState(st => ({ mgNova: false, mgNoChat: true, mgQ: "", mgContaNova: conversa, mgTipo: "privadas", mgEscopo: "todas", mgSel: chatId,
+      mgRascunhos: st.mgRascunhos[chatId] !== undefined ? st.mgRascunhos : { ...st.mgRascunhos, [chatId]: this.mgSaudacao(u.displayName) } }));
+    this.mgAbrirConversa(chatId);
+  }
+  // Da ficha ("Ver conversa em Mensagens"): a lista é relida e a conversa da conta é escolhida quando aparecer.
+  mgIrParaConta(u, sub) {
+    this.setState({ mgPreferirConta: u.userId });
+    this.mgAbrirConta(u, sub);
+    this.go("mensagens");
+  }
   mgEditarRascunho(chatId, texto) {
     const envio = this.state.mgEnvio[chatId];
-    this.setState({ mgRascunhos: { ...this.state.mgRascunhos, [chatId]: texto },
+    this.setState({ mgRascunhos: { ...this.state.mgRascunhos, [chatId]: texto }, mgAnotado: null,
       mgEnvio: envio && !envio.ocupado && !envio.retry ? { ...this.state.mgEnvio, [chatId]: null } : this.state.mgEnvio });
   }
   mgEnviar(chatId) {
@@ -1883,21 +1971,31 @@ class Component extends DCLogic {
       this.setState(aplica);
     };
     const naoConfirmado = () => encerra(st => marca(st, { msg: "Não foi possível confirmar o envio. Confira a conversa antes de tentar de novo.", retry: true }));
+    // Conversa nova (DEB-164) vai pela conta: o servidor usa o telefone do cadastro e anota em Contatos.
+    const conta = String(chatId).startsWith("conta:") ? chatId.slice(6) : null;
+    const rota = conta ? `/admin/whatsapp/users/${conta}/messages` : "/admin/whatsapp/messages";
+    const corpo = conta ? { text: texto, requestId } : { chatId, text: texto, requestId };
     let timer;
     const limite = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), 60000); });
-    const envio = window.saqzAdmin.fetchAdmin("/admin/whatsapp/messages", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId, text: texto, requestId }) });
+    const envio = window.saqzAdmin.fetchAdmin(rota, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
     return Promise.race([envio, limite]).then(r => r.ok
-      ? encerra(st => {
+      ? (encerra(st => {
           const { [chatId]: _r, ...mgRascunhos } = st.mgRascunhos, { [chatId]: _p, ...mgPedidos } = st.mgPedidos;
           const local = { id: "local-" + requestId, fromMe: true, at: new Date().toISOString(), senderName: null, senderPhone: null, text: texto, kind: "TEXT" };
           return { ...marca(st, null), mgRascunhos, mgPedidos, mgLocais: { ...st.mgLocais, [chatId]: (st.mgLocais[chatId] || []).concat([local]) },
-            mgEscopo: st.mgSel === chatId ? "todas" : st.mgEscopo };
-        })
+            mgEscopo: st.mgSel === chatId ? "todas" : st.mgEscopo, ...(conta ? { mgAnotado: conta, mgPreferirConta: conta, usersPage: null } : {}) };
+        }), conta && epoca === this._epoca ? this.mgLoad() : undefined)
       : r.json().catch(() => ({})).then(b => {
-          if (b.error === "SEND_FAILED") encerra(st => marca(st, { msg: "O envio falhou. Nada foi enviado." }));
-          else if (b.error === "CHAT_NOT_FOUND") encerra(st => marca(st, { msg: "Esta conversa não existe mais." }));
-          else if (b.error === "WHATSAPP_UNAVAILABLE") encerra(st => marca(st, { msg: "A Uazapi não respondeu. Tente de novo em instantes." }));
+          const recusa = {
+            SEND_FAILED: "O envio falhou. Nada foi enviado.",
+            CHAT_NOT_FOUND: "Esta conversa não existe mais.",
+            WHATSAPP_UNAVAILABLE: "A Uazapi não respondeu. Tente de novo em instantes.",
+            DO_NOT_CONTACT: "Esta pessoa pediu para não ser procurada. Nada foi enviado.",
+            NOT_ON_WHATSAPP: "Este número não tem WhatsApp. Nada foi enviado.",
+            NO_PHONE: "Esta conta está sem telefone. Nada foi enviado.",
+            USER_NOT_FOUND: "Esta conta não existe mais. Nada foi enviado.",
+          }[b.error];
+          if (recusa) encerra(st => marca(st, { msg: recusa }));
           else naoConfirmado();
         })).catch(naoConfirmado).finally(() => clearTimeout(timer));
   }
@@ -1918,8 +2016,8 @@ class Component extends DCLogic {
     const mgRows = filtradas.map(c => {
       const midia = this.mgMidia(c.previewKind);
       return { nome: this.mgNomeConversa(c), ini: this.mgIniciais(c),
-        saqz: !!c.saqzGroup, quando: this.mgQuandoLinha(c.lastMessageAt), previa: c.preview || (midia ? midia[0] : ""), atual: c.chatId === chatId ? "true" : "false",
-        abrir: () => { this.setState({ mgNoChat: true }); this.mgSelecionar(c.chatId); } };
+        saqz: !!c.saqzGroup, conta: !!c.account, quando: this.mgQuandoLinha(c.lastMessageAt), previa: c.preview || (midia ? midia[0] : ""), atual: c.chatId === chatId ? "true" : "false",
+        abrir: () => { clearTimeout(this._mgNovaT); this.setState({ mgNoChat: true, mgNova: false }); this.mgSelecionar(c.chatId); } };
     });
     const todas = chatId ? this.mgMensagens(st, chatId) : [];
     const visiveis = st.mgEscopo === "recebidas" ? todas.filter(m => !m.fromMe) : todas;
@@ -1934,20 +2032,34 @@ class Component extends DCLogic {
         midia: midia ? midia[0] : "", icone: midia ? midia[1] : "", texto: m.text || "", hora: this.mgHora(new Date(m.at)) });
     });
     const carregada = !!conv && !conv.carregando;
+    const nova = !!atual && !!atual.nova, primeiro = atual ? this.mgNomeConversa(atual).split(/\s+/)[0] : "";
     let vazioT = "", vazioX = "";
-    if (conv && conv.carregando && !conv.itens.length) vazioT = "Carregando mensagens…";
+    if (nova && !todas.length) { vazioT = `Nenhuma mensagem com ${primeiro} nos últimos 7 dias`; vazioX = "A primeira mensagem sai pelo número do Saqz e fica anotada em Contatos, na ficha."; }
+    else if (conv && conv.carregando && !conv.itens.length) vazioT = "Carregando mensagens…";
     else if (conv && conv.erro) { vazioT = "Não foi possível ler as mensagens"; vazioX = "A Uazapi não respondeu. Tente de novo em instantes."; }
     else if (carregada && !todas.length) { vazioT = "Nenhuma mensagem guardada"; vazioX = `A última mensagem foi em ${this.mgDataCurta(new Date(atual.lastMessageAt))}, e a Uazapi só guarda até 7 dias.`; }
     else if (carregada && !visiveis.length) { vazioT = "Nenhuma mensagem recebida"; vazioX = "Aqui só há mensagens enviadas pelo Saqz. Escolha Todas para vê-las."; }
-    const link = atual && atual.saqzGroup;
+    const link = atual && atual.saqzGroup, conta = atual && !grupos ? atual.account : null;
     const sub = !atual ? "" : grupos ? (!link ? "Sem vínculo com nenhum grupo do Saqz" : link.broken ? `Vínculo quebrado com o grupo ${link.name}` : `Vinculado ao grupo ${link.name}`)
+      : conta ? [this.mgFone(atual.phone), atual.sub || "Conta do Saqz"].filter(Boolean).join(" · ")
       : atual.name ? this.mgFone(atual.phone) : "Sem nome no WhatsApp";
     const rascunho = chatId ? st.mgRascunhos[chatId] || "" : "";
     const envio = (chatId && st.mgEnvio[chatId]) || {};
     const pedido = chatId && st.mgPedidos[chatId];
     const repetir = !!envio.retry && !!pedido && pedido.texto === rascunho.trim();
     const quando = st.mgAt ? `${falha || desconectado ? "Última tentativa às" : "Atualizado às"} ${this.mgHora(st.mgAt)}` : "";
-    const noChat = !!atual && st.mgNoChat;
+    const noChat = (!!atual || st.mgNova) && st.mgNoChat;
+    const res = st.mgNovaRes;
+    const mgPessoas = res && !res.carregando ? res.itens.map(u => {
+      const existente = this.mgChatDaConta(st, u.userId), tel = this.telefoneBr(u.phone), papel = this.mgPapelConta(u);
+      const bloqueado = !!u.doNotContact || !tel;
+      const tag = u.doNotContact ? "Não procurar" : !tel ? "Sem telefone" : existente ? "Já tem conversa" : "";
+      return { nome: u.displayName || "Sem nome", ini: this.mgIniciais({ name: u.displayName, phone: u.phone }), sub: [tel || "Sem telefone", papel].join(" · "),
+        bloqueado, tag, tagClasse: bloqueado ? "mg-tag off" : "mg-tag", escolher: () => !bloqueado && this.mgAbrirConta(u, papel) };
+    }) : [];
+    const termoNova = st.mgNovaQ.trim();
+    const mgNovaMsg = !termoNova ? "Busque pelo nome, telefone (a partir de 4 dígitos) ou e-mail." : termoNova.length < 2 ? "Digite pelo menos 2 letras."
+      : !res || res.carregando ? "Buscando…" : res.erro ? "Não deu para buscar agora. Tente de novo." : !mgPessoas.length ? "Nenhuma conta com esse nome, telefone ou e-mail." : "";
     return {
       mgVista: noChat ? "conversa" : "lista", onMgVoltar: () => this.setState({ mgNoChat: false }),
       admSemNav: st.page === "mensagens" && noChat ? "true" : "false",
@@ -1961,14 +2073,19 @@ class Component extends DCLogic {
       mgGruposOn: grupos ? "true" : "false", mgPrivadasOn: grupos ? "false" : "true", onMgGrupos: () => this.mgTrocarTipo("grupos"), onMgPrivadas: () => this.mgTrocarTipo("privadas"),
       mgNGrupos: pronto ? d.groups.length : 0, mgNPrivadas: pronto ? d.privates.length : 0, mgRows,
       mgSemResultado: !mgRows.length ? (st.mgQ.trim() ? "Nenhuma conversa com esse nome ou telefone." : "Nenhuma conversa.") : "",
-      mgTruncado: pronto && d.truncated, mgSemConversa: !atual, mgTemConversa: !!atual,
+      mgTruncado: pronto && d.truncated, mgSemConversa: !atual && !st.mgNova, mgTemConversa: !!atual && !st.mgNova,
+      mgEscolhendo: pronto && st.mgNova, onMgNova: () => this.mgAbrirNova(), onMgFecharNova: () => this.mgFecharNova(), mgNovaOn: st.mgNova ? "true" : "false",
+      mgNovaQ: st.mgNovaQ, onMgNovaQ: e => this.mgBuscarContas(e.target.value), mgPessoas, mgNovaMsg,
+      mgTemConta: !!conta, onMgVerConta: () => conta && this.go("usuario", { selU: conta.userId }),
+      mgAnotado: !!conta && st.mgAnotado === conta.userId, mgAnotadoTexto: conta ? `Enviada pelo número do Saqz e anotada em Contatos, na ficha de ${primeiro}.` : "",
       mgNome: atual ? this.mgNomeConversa(atual) : "", mgSub: sub, mgSubClasse: link && link.broken ? "warn" : "", mgTemGrupo: !!link,
       onMgVerGrupo: () => link && this.go("grupo", { selG: link.id }),
       mgRecOn: st.mgEscopo === "recebidas" ? "true" : "false", mgTodasOn: st.mgEscopo === "todas" ? "true" : "false",
       onMgRecebidas: () => this.setState({ mgEscopo: "recebidas" }), onMgTodas: () => this.setState({ mgEscopo: "todas" }),
       mgPodeCarregar: !!conv && !!conv.hasMore && conv.nextOffset != null, mgCarregandoMais: !!(conv && conv.maisCarregando), onMgAnteriores: () => this.mgAnteriores(),
       mgLinhas, mgVazioTitulo: vazioT, mgVazioTexto: vazioX, mgConvErro: !!(conv && conv.erro), onMgReabrir: () => chatId && this.mgAbrirConversa(chatId),
-      mgPodeResponder: !!atual && !grupos, mgSoLeitura: !!atual && grupos, mgResponderA: atual ? `Responder a ${this.mgNomeConversa(atual)}` : "",
+      mgPodeResponder: !!atual && !grupos, mgSoLeitura: !!atual && grupos,
+      mgResponderA: atual ? `${nova ? "Escreva para" : "Responder a"} ${this.mgNomeConversa(atual)}` : "",
       mgRascunho: rascunho, onMgRascunho: e => this.mgEditarRascunho(chatId, e.target.value),
       mgEnvioMsg: envio.msg || "", mgEnvioBloqueado: !rascunho.trim() || !!envio.ocupado, mgEnviarRotulo: repetir ? "Tentar de novo" : "Enviar",
       onMgEnviar: () => this.mgEnviar(chatId)
@@ -2528,7 +2645,10 @@ class Component extends DCLogic {
   // ---- Contato com a pessoa (DEB-162) ----
   CONTATO_RESULTADOS = { NO_ANSWER: "Sem resposta", WILL_SUBSCRIBE: "Vai assinar", TOO_EXPENSIVE: "Achou caro", DID_NOT_USE: "Não usou", OTHER: "Outro motivo", DO_NOT_CONTACT: "Não quer contato" };
   CONTATO_MODELOS = [["acabou", "Teste acabou", "Acabou"], ["acabando", "Teste acabando", "Acabando"], ["duvida", "Dúvida", "Dúvida"], ["branco", "Em branco", "Vazio"]];
-  contatoInicial() { return { modelo: null, texto: null, resultado: null, nota: "", salvando: false }; }
+  // Gravados só pelo servidor: não entram nos botões de "Como foi".
+  CONTATO_AUTOMATICOS = { SAQZ_MESSAGE: "Mensagem pelo Saqz" };
+  rotuloContato(result) { return this.CONTATO_RESULTADOS[result] || this.CONTATO_AUTOMATICOS[result] || result; }
+  contatoInicial() { return { modelo: null, texto: null, resultado: null, nota: "", salvando: false, envio: null, pedido: null }; }
   telefoneNacional(phone) {
     const digitos = String(phone || "").replace(/\D/g, "");
     return digitos.length === 13 && digitos.startsWith("55") ? digitos.slice(2) : digitos;
@@ -2608,6 +2728,46 @@ class Component extends DCLogic {
       })
       .finally(() => { this._ctEnviando = false; });
   }
+  // Envio pelo número do Saqz (DEB-164): o servidor usa o telefone do cadastro, recusa "Não quer contato" e anota em Contatos.
+  enviarPeloSaqz(textoAtual) {
+    const id = this.state.selU, texto = (textoAtual || "").trim(), c = this.state.ct;
+    if (!id || !texto || this._ctSaqz) return;
+    this._ctSaqz = true;
+    const requestId = c.pedido && c.pedido.texto === texto ? c.pedido.requestId : this.flgId();
+    const atual = () => this.state.selU === id;
+    const marca = (patch) => { if (atual()) this.setState({ ct: { ...this.state.ct, ...patch } }); };
+    marca({ envio: { ocupado: true }, pedido: { texto, requestId } });
+    let timer;
+    const limite = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("timeout")), 60000); });
+    const envio = this.mutacao(`/admin/whatsapp/users/${id}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: texto, requestId }) });
+    return Promise.race([envio, limite])
+      .then((r) => r.ok ? r : r.json().catch(() => ({})).then((b) => { throw Object.assign(new Error("HTTP " + r.status), { status: r.status, code: b.error }); }))
+      .then(() => {
+        if (!atual()) return;
+        const det = this.state.userDetail, agora = new Date();
+        const nota = texto.length > 1000 ? texto.slice(0, 999).trimEnd() + "…" : texto;
+        const contato = { id: "local-" + requestId, result: "SAQZ_MESSAGE", note: nota, authorName: window.saqzAdmin?.me?.displayName || null, createdAt: agora.toISOString() };
+        this.setState({ ct: { ...this.state.ct, envio: { ok: true, hora: this.mgHora(agora), texto }, pedido: null }, usersPage: null,
+          userDetail: det && !det.erro ? { ...det, contacts: [contato, ...(det.contacts || [])] } : det });
+      })
+      .catch((e) => marca({ envio: this.erroEnvioSaqz(e) }))
+      .finally(() => { clearTimeout(timer); this._ctSaqz = false; });
+  }
+  erroEnvioSaqz(e) {
+    const aviso = "background:rgba(245,166,35,.14);color:#6B4300", erro = "background:rgba(229,72,77,.10);color:#8E1F24";
+    const nada = (titulo, texto, cor = aviso) => ({ titulo, texto, estilo: cor });
+    switch (e && e.code) {
+      case "NOT_ON_WHATSAPP": return nada("Este número não tem WhatsApp.", "Nada foi enviado. Use o e-mail ou registre o contato de outro jeito.");
+      case "DO_NOT_CONTACT": return nada("Esta pessoa pediu para não ser procurada.", "Nada foi enviado.", erro);
+      case "NO_PHONE": return nada("Esta conta está sem telefone.", "Nada foi enviado.");
+      case "USER_NOT_FOUND": return nada("Esta conta não existe mais.", "Nada foi enviado.", erro);
+      case "SEND_FAILED": return nada("O envio falhou.", "Nada foi enviado. Tente de novo em instantes.", erro);
+      case "WHATSAPP_UNAVAILABLE": return nada("A Uazapi não respondeu.", "Nada foi enviado. Tente de novo em instantes.");
+      default:
+        if (e && e.status === 404) return nada("O WhatsApp está desligado neste ambiente.", "Use Abrir no meu WhatsApp.");
+        return { titulo: "Não deu para confirmar o envio.", texto: "A mensagem pode ter saído. Confira a conversa em Mensagens antes de tentar de novo.", estilo: aviso, retry: true, conferir: true };
+    }
+  }
   contatoVals(det) {
     const c = this.state.ct;
     const mudar = (patch) => this.setState({ ct: { ...this.state.ct, ...patch } });
@@ -2617,6 +2777,12 @@ class Component extends DCLogic {
     const texto = c.texto ?? (det ? this.textoContato(modelo, det.displayName, dono?.name) : "");
     const tel = det ? this.telefoneBr(det.phone) : "";
     const bloqueado = !!det?.doNotContact;
+    const envio = c.envio || {}, falha = envio.titulo ? envio : null;
+    const repetir = !!envio.retry && !!c.pedido && c.pedido.texto === (texto || "").trim();
+    // Texto ou modelo novos tiram o aviso de recusa; o de "não confirmado" fica até tentar de novo.
+    const limpa = envio.ocupado || envio.retry ? {} : { envio: null };
+    const conta = det ? { userId: det.userId, displayName: det.displayName, phone: det.phone } : null;
+    const papel = dono ? `Organiza o ${dono.name}` : "";
     return {
       telefone: tel || "Sem telefone",
       telChip: !tel ? "" : det.phoneVerified ? "Verificado" : "Não verificado",
@@ -2624,13 +2790,24 @@ class Component extends DCLogic {
       temTelefone: !!tel, temEmail: !!det?.email, email: det?.email || "Sem e-mail", emailApple: this.emailPrivadoApple(det?.email),
       onCopiarTel: () => this.copiar(tel, "Telefone copiado."), onCopiarEmail: () => this.copiar(det?.email || "", "E-mail copiado."),
       bloqueado, podeFalar: !!det && !bloqueado,
-      modelos: this.CONTATO_MODELOS.map(([id, rotulo, curto]) => ({ rotulo, curto, on: id === modelo ? "true" : "false", onClick: () => mudar({ modelo: id, texto: null }) })),
-      texto, onTexto: (e) => mudar({ texto: e.target.value }),
+      modelos: this.CONTATO_MODELOS.map(([id, rotulo, curto]) => ({ rotulo, curto, on: id === modelo ? "true" : "false", onClick: () => mudar({ modelo: id, texto: null, ...limpa }) })),
+      texto, onTexto: (e) => mudar({ texto: e.target.value, ...limpa }),
+      escrevendo: !envio.ok, enviado: !!envio.ok, ocupado: !!envio.ocupado,
+      podeEnviarSaqz: !!tel, naoPodeEnviarSaqz: !(texto || "").trim() || !!envio.ocupado,
+      enviarSaqzLabel: envio.ocupado ? "Enviando…" : repetir ? "Tentar de novo" : "Enviar pelo Saqz",
+      onEnviarSaqz: () => this.enviarPeloSaqz(texto),
+      temFalhaEnvio: !!falha, falhaTitulo: falha?.titulo || "", falhaTexto: falha?.texto || "", falhaStyle: falha?.estilo || "", falhaConferir: !!falha?.conferir,
+      enviadoTitulo: envio.ok ? `Enviada às ${envio.hora} pelo número do Saqz` : "", textoEnviado: envio.ok ? envio.texto : "",
+      enviadoTexto: `Ficou anotada em Contatos. Quando ${(det?.displayName || "").trim().split(/\s+/)[0] || "a pessoa"} responder, a resposta aparece em Mensagens.`,
+      onVerConversa: () => conta && this.mgIrParaConta(conta, papel),
+      onEscreverOutra: () => mudar({ envio: null, modelo: "branco", texto: null }),
+      ajudaEnvio: tel ? `Enviar pelo Saqz manda do número do Saqz para ${tel}, e a resposta aparece em Mensagens. Os outros abrem o seu WhatsApp ou o seu e-mail com o texto pronto.`
+        : "Sem telefone no cadastro: só dá para abrir o seu e-mail com o texto pronto.",
       whatsUrl: det?.phone ? this.linkWhatsApp(det.phone, texto) : "", emailUrl: det?.email ? this.linkEmail(det.email, texto) : "",
       resultados: Object.entries(this.CONTATO_RESULTADOS).map(([id, rotulo]) => ({ rotulo, on: id === c.resultado ? "true" : "false", onClick: () => mudar({ resultado: id }) })),
       nota: c.nota, onNota: (e) => mudar({ nota: e.target.value }),
       naoPodeSalvar: !c.resultado || c.salvando, salvarLabel: c.salvando ? "Registrando…" : "Registrar contato", onSalvar: () => this.registrarContato(),
-      contatos: (det?.contacts || []).map((x) => ({ resultado: this.CONTATO_RESULTADOS[x.result] || x.result, quando: `${this.dataBr(x.createdAt)} · ${x.authorName || "Equipe"}`, texto: x.note || "Sem observação." })),
+      contatos: (det?.contacts || []).map((x) => ({ resultado: this.rotuloContato(x.result), automatico: !!this.CONTATO_AUTOMATICOS[x.result], quando: `${this.dataBr(x.createdAt)} · ${x.authorName || "Equipe"}`, texto: x.note || "Sem observação." })),
       semContatos: !!det && !det.contacts?.length,
     };
   }
@@ -3504,7 +3681,7 @@ class Component extends DCLogic {
         grupo: g ? g.name : "Sem grupo", grupoNota: !g ? "" : g.deleted ? "Apagado" : g.frozen ? "Congelado" : "Ativo",
         jogos: g ? this.plural(g.gamesPlayed, "jogo", "jogos") : "—", membros: g ? this.plural(g.members, "membro", "membros") : "",
         acesso: this.dataBr(u.lastSeenAt),
-        contato: c ? `${this.CONTATO_RESULTADOS[c.result] || c.result} · ${this.dataCurta(c.at)}` : "Sem contato", contatoStyle: corContato(cor),
+        contato: c ? `${this.rotuloContato(c.result)} · ${this.dataCurta(c.at)}` : "Sem contato", contatoStyle: corContato(cor),
         temWhats: !!tel && !u.doNotContact, semWhats: !tel || u.doNotContact, semWhatsTxt: u.doNotContact ? "Não procurar" : "Sem telefone",
         whatsUrl: tel ? this.linkWhatsApp(u.phone, this.textoContato(modelo, u.displayName, g && !g.deleted ? g.name : "")) : "",
       };
@@ -3581,12 +3758,10 @@ class Component extends DCLogic {
     const gc = gdet?.ownerContact;
     const gOrgTel = gc ? this.telefoneBr(gc.phone) : "";
     const gPlanoOrg = gdet ? [this.planoNome(gdet.ownerPlan) || "Sem plano", this.planoOrigem(gdet.ownerPlanSource, gdet.ownerPlanEndsAt)].filter(Boolean).join(" · ") : "";
-    const gOrgModelo = gdet?.ownerPlanSource === "TRIAL" ? "acabando" : gdet?.frozen ? "acabou" : "duvida";
     const gd = gdet ? {
       nome: gdet.name, organizador: gdet.ownerName || "—", organizadorSub: [gOrgTel || "Sem telefone", gPlanoOrg].filter(Boolean).join(" · "),
       onOrganizador: () => this.go("usuario", { selU: gdet.ownerUserId }),
       temWhats: !!gOrgTel && !gc?.doNotContact, semWhats: !gOrgTel || !!gc?.doNotContact, semWhatsTxt: gc?.doNotContact ? "Não procurar" : "Sem telefone",
-      whatsUrl: gOrgTel ? this.linkWhatsApp(gc.phone, this.textoContato(gOrgModelo, gdet.ownerName, gdet.name)) : "",
       membros: String(gdet.members), jogos: String(gdet.gamesPlayed), ultimoJogo: gdet.lastGameAt ? this.dataCurta(gdet.lastGameAt) : "—", criado: this.dataBr(gdet.createdAt),
       temDescricao: !!gdet.profile?.description, descricao: gdet.profile?.description || "",
     } : { nome: st.groupDetail && st.groupDetail.erro ? "Não deu para carregar" : "Carregando…", organizador: "—", organizadorSub: "", membros: "—", jogos: "—", ultimoJogo: "—", criado: "—", temWhats: false, semWhats: false };

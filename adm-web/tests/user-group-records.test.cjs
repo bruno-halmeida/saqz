@@ -286,6 +286,132 @@ test('resposta de contato de outra pessoa não entra na ficha aberta', async () 
   assert.equal(app.state.userDetail.contacts.length, 0);
 });
 
+// Envio pelo número do Saqz (DEB-164): o adm manda só a pessoa e o texto; o servidor usa o telefone do cadastro.
+const ROTA_SAQZ = 'POST /admin/whatsapp/users/u1/messages';
+const flush3 = async () => { await flush(); await flush(); await flush(); };
+
+test('Enviar pelo Saqz manda o texto editado à conta, mostra o envio e anota em Contatos', async () => {
+  const { app, requests } = await abrirUsuario(carla(), { [ROTA_SAQZ]: json({ status: 'SENT' }) });
+  let ct = app.renderVals().ct;
+  assert.equal(ct.podeEnviarSaqz, true);
+  assert.equal(ct.enviarSaqzLabel, 'Enviar pelo Saqz');
+  assert.match(ct.ajudaEnvio, /número do Saqz para \(11\) 90000-1234/);
+  ct.onTexto({ target: { value: '  Oi, Carla! Tudo bem?  ' } });
+  app.renderVals().ct.onEnviarSaqz();
+  app.renderVals().ct.onEnviarSaqz();
+  assert.equal(app.renderVals().ct.enviarSaqzLabel, 'Enviando…');
+  assert.equal(app.renderVals().ct.naoPodeEnviarSaqz, true);
+  await flush3();
+  const posts = requests.filter(r => r.method === 'POST');
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].path, '/admin/whatsapp/users/u1/messages');
+  assert.equal(posts[0].body.text, 'Oi, Carla! Tudo bem?');
+  assert.match(posts[0].body.requestId, /^[0-9a-f-]{36}$/);
+  assert.deepEqual(Object.keys(posts[0].body).sort(), ['requestId', 'text']);
+  ct = app.renderVals().ct;
+  assert.equal(ct.enviado, true); assert.equal(ct.escrevendo, false);
+  assert.match(ct.enviadoTitulo, /^Enviada às \d\d:\d\d pelo número do Saqz$/);
+  assert.equal(ct.textoEnviado, 'Oi, Carla! Tudo bem?');
+  assert.match(ct.enviadoTexto, /Quando Carla responder/);
+  assert.equal(ct.contatos[0].resultado, 'Mensagem pelo Saqz');
+  assert.equal(ct.contatos[0].automatico, true);
+  assert.equal(ct.contatos[0].texto, 'Oi, Carla! Tudo bem?');
+  assert.match(ct.contatos[0].quando, /Bruno Almeida$/);
+  assert.equal(app.state.usersPage, null);
+  assert.equal(ct.resultados.some(r => r.rotulo === 'Mensagem pelo Saqz'), false);
+  ct.onEscreverOutra();
+  ct = app.renderVals().ct;
+  assert.equal(ct.escrevendo, true); assert.equal(ct.texto, '');
+  assert.equal(ct.naoPodeEnviarSaqz, true);
+});
+
+test('sem confirmação o mesmo texto repete o requestId; texto novo ganha outro', async () => {
+  let resposta = json({ error: 'SEND_UNCONFIRMED' }, 503);
+  const { app, requests } = await abrirUsuario(carla(), { [ROTA_SAQZ]: () => resposta });
+  app.renderVals().ct.onEnviarSaqz();
+  await flush3();
+  let ct = app.renderVals().ct;
+  assert.equal(ct.temFalhaEnvio, true);
+  assert.equal(ct.falhaTitulo, 'Não deu para confirmar o envio.');
+  assert.equal(ct.falhaConferir, true);
+  assert.equal(ct.enviarSaqzLabel, 'Tentar de novo');
+  ct.onEnviarSaqz();
+  await flush3();
+  const [a, b] = requests.filter(r => r.method === 'POST');
+  assert.equal(a.body.requestId, b.body.requestId);
+  app.renderVals().ct.onTexto({ target: { value: 'Outro texto' } });
+  assert.equal(app.renderVals().ct.temFalhaEnvio, true);
+  resposta = json({ status: 'SENT' });
+  app.renderVals().ct.onEnviarSaqz();
+  await flush3();
+  const c = requests.filter(r => r.method === 'POST')[2];
+  assert.notEqual(c.body.requestId, a.body.requestId);
+  assert.equal(app.renderVals().ct.enviado, true);
+});
+
+test('recusas do servidor dizem que nada saiu e somem ao editar o texto', async () => {
+  const casos = [
+    [json({ error: 'NOT_ON_WHATSAPP' }, 422), 'Este número não tem WhatsApp.'],
+    [json({ error: 'DO_NOT_CONTACT' }, 409), 'Esta pessoa pediu para não ser procurada.'],
+    [json({ error: 'NO_PHONE' }, 422), 'Esta conta está sem telefone.'],
+    [json({ error: 'USER_NOT_FOUND' }, 404), 'Esta conta não existe mais.'],
+    [json({ error: 'SEND_FAILED' }, 502), 'O envio falhou.'],
+    [json({ error: 'WHATSAPP_UNAVAILABLE' }, 503), 'A Uazapi não respondeu.'],
+    [json({ status: 404, error: 'Not Found' }, 404), 'O WhatsApp está desligado neste ambiente.'],
+  ];
+  for (const [resposta, titulo] of casos) {
+    const { app } = await abrirUsuario(carla(), { [ROTA_SAQZ]: resposta });
+    app.renderVals().ct.onEnviarSaqz();
+    await flush3();
+    const ct = app.renderVals().ct;
+    assert.equal(ct.falhaTitulo, titulo);
+    assert.match(ct.falhaTexto, /Nada foi enviado|Use Abrir no meu WhatsApp/);
+    assert.equal(ct.falhaConferir, false);
+    assert.equal(ct.contatos.length, 0);
+    ct.onTexto({ target: { value: 'Oi de novo' } });
+    assert.equal(app.renderVals().ct.temFalhaEnvio, false);
+  }
+});
+
+test('sem telefone não há Enviar pelo Saqz; texto vazio não envia', async () => {
+  const sem = await abrirUsuario(carla({ phone: null }));
+  assert.equal(sem.app.renderVals().ct.podeEnviarSaqz, false);
+  assert.match(sem.app.renderVals().ct.ajudaEnvio, /Sem telefone no cadastro/);
+  const { app, requests } = await abrirUsuario();
+  app.renderVals().ct.modelos.find(m => m.rotulo === 'Em branco').onClick();
+  assert.equal(app.renderVals().ct.naoPodeEnviarSaqz, true);
+  app.renderVals().ct.onEnviarSaqz();
+  assert.equal(requests.filter(r => r.method === 'POST').length, 0);
+});
+
+test('resposta do envio de outra pessoa não entra na ficha aberta', async () => {
+  let responder;
+  const { app } = await abrirUsuario(carla(), { [ROTA_SAQZ]: () => new Promise(r => { responder = r; }) });
+  app.renderVals().ct.onEnviarSaqz();
+  await flush();
+  app.setState({ selU: 'u2', userDetail: carla({ userId: 'u2', displayName: 'Outra' }), ct: app.contatoInicial() });
+  responder(json({ status: 'SENT' }));
+  await flush3();
+  assert.equal(app.state.userDetail.contacts.length, 0);
+  assert.equal(app.renderVals().ct.enviado, false);
+});
+
+test('Ver conversa em Mensagens abre a conversa da conta', async () => {
+  const conversas = { connected: true, phone: '551153040175', truncated: false, groups: [],
+    privates: [{ chatId: '5511900001234@s.whatsapp.net', name: null, phone: '5511900001234', lastMessageAt: dias(0), preview: 'oi', previewKind: 'TEXT', saqzGroup: null, account: { userId: 'u1', name: 'Carla Menezes' } }] };
+  const { app } = await abrirUsuario(carla(), { [ROTA_SAQZ]: json({ status: 'SENT' }), 'GET /admin/whatsapp/conversations': json(conversas),
+    'GET /admin/whatsapp/messages?chatId=5511900001234%40s.whatsapp.net&offset=0&limit=50': json({ messages: [], hasMore: false, nextOffset: null }) });
+  app.renderVals().ct.onEnviarSaqz();
+  await flush3();
+  app.renderVals().ct.onVerConversa();
+  await flush3();
+  assert.equal(app.state.page, 'mensagens');
+  assert.equal(app.state.mgSel, '5511900001234@s.whatsapp.net');
+  assert.equal(app.state.mgTipo, 'privadas');
+  assert.equal(app.state.mgContaNova, null);
+  assert.equal(app.mensagensVals().mgNome, 'Carla Menezes');
+});
+
 const grupo = (extra = {}) => ({
   groupId: 'g1', name: 'Vôlei do Parque', timeZone: 'America/Sao_Paulo', ownerUserId: 'u1', ownerName: 'Carla Menezes', ownerPlan: null, ownerPlanSource: null, ownerPlanEndsAt: null,
   members: 2, gamesPlayed: 6, deletedAt: null, createdAt: dias(-16), lastGames: [], frozen: true, lastGameAt: '2026-10-29T22:00:00Z',
@@ -348,11 +474,13 @@ test('valor por jogo marcado como sem cobrança, grupo sem cadastro e WhatsApp q
   assert.equal(w.gd.temWhats, false);
 });
 
-test('organizador fala com mensagem de teste acabado; quem pediu para não ser procurado fica sem botão', async () => {
+test('Mandar mensagem leva à ficha do organizador; quem pediu para não ser procurado fica sem botão', async () => {
   const { app } = await abrirGrupo();
   const v = app.renderVals();
-  assert.match(decodeURIComponent(v.gd.whatsUrl), /o teste do Vôlei do Parque acabou/);
+  assert.equal(v.gd.temWhats, true);
   assert.equal(v.gd.organizadorSub, '(11) 90000-1234 · Sem plano');
+  v.gd.onOrganizador();
+  assert.equal(app.state.page, 'usuario'); assert.equal(app.state.selU, 'u1');
 
   const bloqueado = await abrirGrupo(grupo({ ownerContact: { ...grupo().ownerContact, doNotContact: true } }));
   const w = bloqueado.app.renderVals();
