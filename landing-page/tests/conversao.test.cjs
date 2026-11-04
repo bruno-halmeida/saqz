@@ -27,12 +27,24 @@ test("the consent notice waits for the first scroll and never records a choice b
   assert.doesNotMatch(waiting, /writeConsent|saqzConsent/);
 });
 
-test("every ad keeps its own top and the card answers to a real button", () => {
+test("every ad keeps its own top and the top plays the silent video with a pause button", () => {
   for (const ad of ["f-lista-espera", "v1-editor", "v1-designer", "a-cobrar", "c-antes-depois", "b-quem-vai"]) {
     assert.ok(home.includes(`'${ad}':`), ad);
   }
-  assert.ok(home.includes('<button type="button" class="wa-btn" data-resposta="vou"'));
-  assert.ok(home.includes("<button type=\"button\" data-recebi>Recebi</button>"));
+  const start = home.indexOf('<figure class="hero-video">');
+  assert.ok(start > 0);
+  const figure = home.slice(start, home.indexOf("</figure>", start));
+  for (const attr of [" muted", " autoplay", " loop", " playsinline", 'poster="assets/video/lista-whatsapp-capa.jpg"', "data-video-pausa"]) {
+    assert.ok(figure.includes(attr), attr);
+  }
+  for (const file of ["assets/video/lista-whatsapp.mp4", "assets/video/lista-whatsapp.webm", "assets/video/lista-whatsapp-capa.jpg"]) {
+    assert.ok(figure.includes(file), file);
+    assert.ok(fs.existsSync(path.join(root, file)), file);
+  }
+  assert.doesNotMatch(home, /data-resposta|data-recebi|card-espera|card-caixa/);
+  assert.match(counter, /conta\('video'\)/);
+  assert.match(counter, /conta\('video-fim'\)/);
+  assert.match(counter, /prefers-reduced-motion: reduce/);
 });
 
 test("the top says the group uses the app and the testimonials name real groups", () => {

@@ -56,9 +56,10 @@ assinatura reaproveita o par guardado no navegador quando o login é o mesmo.
 
 ## Contagem própria da landing
 
-`landing-page/assets/conversao.js` soma quatro eventos sem cookie, sem identificador de pessoa e sem o `fbclid`: `10s` (10
-segundos com a página visível), `metade` (chegou à metade da página), `demo` (tocou no cartão do topo) e `aviso` (escolheu no
-aviso de cookies). Cada carga manda cada evento no máximo uma vez para `/assets/m.json?e=<evento>&a=<utm_content>`. A soma sai
+`landing-page/assets/conversao.js` soma cinco eventos sem cookie, sem identificador de pessoa e sem o `fbclid`: `10s` (10
+segundos com a página visível), `metade` (chegou à metade da página), `video` (o vídeo do topo começou a tocar; visita sem ele é
+navegador que bloqueou o vídeo sozinho ou aparelho com menos movimento), `video-fim` (o vídeo chegou ao fim pelo menos uma vez) e
+`aviso` (escolheu no aviso de cookies). Cada carga manda cada evento no máximo uma vez para `/assets/m.json?e=<evento>&a=<utm_content>`. A soma sai
 do log do servidor, que recriar o container apaga:
 
 ```bash

@@ -1,4 +1,4 @@
-// Contagem própria sem cookie, demonstração do cartão do topo e barra do botão no celular.
+// Contagem própria sem cookie, vídeo do topo e barra do botão no celular.
 (function () {
   'use strict';
 
@@ -33,42 +33,33 @@
   }
   window.addEventListener('scroll', olhaRolagem, { passive: true });
 
-  function avisa(cartao, texto) {
-    var nota = cartao.querySelector('.demo-nota');
-    nota.textContent = texto;
-    nota.classList.add('is-ok');
-    conta('demo');
-  }
-
-  function responde(botao) {
-    var cartao = botao.closest('.wa-card');
-    var vou = botao.getAttribute('data-resposta') === 'vou';
-    cartao.querySelectorAll('[data-resposta]').forEach(function (opcao) {
-      opcao.setAttribute('aria-pressed', String(opcao === botao));
-    });
-    cartao.querySelector('.wa-vagas').textContent = 'Vagas: ' + (vou ? 11 : 10) + '/12';
-    avisa(cartao, vou ? 'Pronto: 11 de 12, sem ninguém recontar a lista.' : 'Pronto: a galera já sabe, sem ninguém perguntar de novo.');
-  }
-
-  function recebe(botao) {
-    var cartao = botao.closest('.wa-card');
-    var placar = cartao.querySelector('.wa-vagas');
-    var pagos = parseInt(placar.textContent, 10) + 1;
-    placar.textContent = pagos + ' de 12 pagaram';
-    botao.disabled = true;
-    botao.textContent = 'Pago ✓';
-    avisa(cartao, 'Pronto: ' + pagos + ' de 12, sem planilha.');
-  }
-
   document.addEventListener('click', function (evento) {
     var alvo = evento.target;
-    if (!alvo.closest) return;
-    var resposta = alvo.closest('[data-resposta]');
-    if (resposta) { responde(resposta); return; }
-    var recebi = alvo.closest('[data-recebi]');
-    if (recebi) { recebe(recebi); return; }
-    if (alvo.closest('[data-saqz-choice]')) conta('aviso');
+    if (alvo.closest && alvo.closest('[data-saqz-choice]')) conta('aviso');
   });
+
+  // Vídeo do topo (mudo, em loop): conta quando começa a tocar, o que mostra se o navegador deixou tocar sozinho, e
+  // quando chega ao fim. Quem pediu menos movimento no aparelho vê a capa parada; o botão pausa e volta a tocar.
+  var video = document.querySelector('.hero-video video');
+  var pausa = document.querySelector('[data-video-pausa]');
+  if (video) {
+    var marca = function () { if (pausa) pausa.setAttribute('aria-pressed', String(video.paused)); };
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      video.removeAttribute('autoplay');
+      video.pause();
+    }
+    video.addEventListener('playing', function () { conta('video'); marca(); });
+    video.addEventListener('pause', marca);
+    video.addEventListener('timeupdate', function () {
+      if (video.duration && video.currentTime >= video.duration - 1.5) conta('video-fim');
+    });
+    if (pausa) {
+      pausa.addEventListener('click', function () {
+        if (video.paused) { video.play().catch(function () {}); } else { video.pause(); }
+      });
+    }
+    marca();
+  }
 
   // Barra do botão: só aparece quando nenhum botão grande está na tela.
   var barra = document.querySelector('.barra-cta');
