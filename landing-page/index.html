@@ -26,560 +26,1627 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@110,800&family=Inter:wght@400;500;600;700;800&display=swap">
   <style>
-    :root { --blue:#0638df; --lime:#c7f300; --ink:#071025; --paper:#f4f5f0; --ease:cubic-bezier(.23,1,.32,1); }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,system-ui,sans-serif; }
-    .shell { width:min(1240px,calc(100% - 40px)); margin:0 auto; }
-    header { position:relative; z-index:10; background:#fff; border-bottom:1px solid #e4e7df; }
-    nav { min-height:82px; display:flex; align-items:center; justify-content:space-between; }
-    .logo { width:142px; height:auto; }
-    .nav-cta,.primary { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-size:12px; font-weight:800; }
-    .nav-cta { padding:12px 17px; border-radius:999px; background:var(--ink); color:#fff; }
-    .hero { position:relative; min-height:720px; overflow:hidden; color:#fff; background:var(--blue); }
-    .photo { position:absolute; inset:0; background-image:linear-gradient(90deg,rgba(6,56,223,1) 0%,rgba(6,56,223,.98) 34%,rgba(6,56,223,.58) 58%,rgba(7,16,37,.14) 100%),url('assets/img/hero-1800.jpg'); background-position:center,64% center; background-size:cover; }
-    .photo::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg,rgba(7,16,37,.32),transparent 45%); }
-    .hero-grid { position:relative; z-index:2; min-height:720px; display:grid; grid-template-columns:1.02fr .98fr; align-items:center; gap:60px; padding:66px 0 74px; }
-    .copy { position:relative; z-index:3; }
-    .kicker { display:inline-flex; align-items:center; gap:9px; margin-bottom:24px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
-    .kicker::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 5px rgba(199,243,0,.16); }
-    h1 { max-width:650px; margin:0; font-family:Anybody,sans-serif; font-stretch:110%; font-size:clamp(46px,5vw,72px); font-weight:800; line-height:.94; letter-spacing:-.05em; }
-    .lead { max-width:570px; margin:28px 0 0; color:rgba(255,255,255,.82); font-size:17px; line-height:1.65; text-shadow:0 1px 18px rgba(0,0,0,.15); }
-    .primary { gap:9px; margin-top:31px; padding:16px 21px; border-radius:10px; background:var(--lime); color:var(--ink); box-shadow:0 10px 32px rgba(0,0,0,.2); }
-    .primary small { opacity:.58; font-size:9px; }
-    .visual { position:relative; min-height:590px; }
-    .halo { position:absolute; width:470px; height:470px; left:51%; top:50%; border:1px solid rgba(255,255,255,.25); border-radius:50%; transform:translate(-50%,-50%); }
-    .halo::before,.halo::after { content:""; position:absolute; inset:35px; border:1px solid rgba(255,255,255,.15); border-radius:50%; }
-    .halo::after { inset:72px; border-color:rgba(199,243,0,.38); }
-    .device-stage { position:absolute; left:50%; top:50%; width:286px; height:584px; transform:translate(-42%,-50%) rotate(3deg); }
-    .device { position:absolute; inset:0; width:100%; height:100%; padding:8px; border:2px solid rgba(255,255,255,.28); border-radius:43px; background:#030817; box-shadow:0 48px 100px rgba(0,0,0,.48),0 0 0 7px rgba(3,8,23,.44); }
-    .device::after { content:""; position:absolute; inset:8px; pointer-events:none; border-radius:35px; background:linear-gradient(115deg,rgba(255,255,255,.09),transparent 22%); }
-    .screen { height:100%; overflow:hidden; position:relative; border-radius:35px; background:#0a1430; }
-    .island { position:absolute; z-index:4; top:12px; left:50%; width:86px; height:25px; border-radius:20px; background:#020510; transform:translateX(-50%); }
-    .float-card { position:absolute; z-index:4; display:flex; align-items:center; gap:9px; padding:11px 13px; border:1px solid rgba(255,255,255,.25); border-radius:12px; background:rgba(7,16,37,.82); color:#fff; font-size:9px; box-shadow:0 16px 35px rgba(0,0,0,.3); backdrop-filter:blur(12px); }
-    .float-card i { display:grid; width:27px; height:27px; place-items:center; border-radius:8px; background:var(--lime); color:var(--ink); font-style:normal; font-weight:900; }
-    .float-card strong { display:block; margin-bottom:2px; font-size:10px; }
-    .one { left:-52px; bottom:86px; transform:scale(1.15); transform-origin:right center; }.two { top:166px; right:-58px; transform:scale(1.15); transform-origin:left center; }
-    .caption { position:absolute; z-index:3; right:18px; bottom:16px; color:rgba(255,255,255,.76); font-size:9px; }
-    .below { padding:92px 0 104px; }
-    .eyebrow { color:var(--blue); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    .below h2,.final h2 { max-width:850px; margin:12px 0 18px; font-family:Anybody,sans-serif; font-stretch:110%; font-size:clamp(40px,5vw,70px); line-height:.97; letter-spacing:-.055em; }
-    .section-lead { max-width:650px; margin:0; color:#667086; font-size:16px; line-height:1.65; }
-    .below-head { display:block; }
-    .below-head h2 { max-width:none; margin-bottom:0; font-size:clamp(42px,4vw,58px); }
-    .below-head .section-lead { max-width:760px; margin-top:18px; }
-    .organizer-board { display:grid; grid-template-columns:1.08fr .92fr; grid-template-rows:1fr 1fr; gap:16px; margin-top:42px; }
-    .board-panel { position:relative; overflow:hidden; border-radius:24px; }
-    .panel-label { position:relative; z-index:2; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    .attendance-panel { grid-row:1 / 3; min-height:430px; padding:30px; background:var(--blue); color:#fff; }
-    .attendance-panel::before { content:""; position:absolute; width:410px; height:410px; right:-205px; top:44px; border:1px solid rgba(255,255,255,.2); border-radius:50%; box-shadow:0 0 0 45px rgba(255,255,255,.045),0 0 0 90px rgba(199,243,0,.1); }
-    .attendance-copy { position:relative; z-index:2; display:grid; grid-template-columns:1.18fr .82fr; gap:28px; align-items:end; }
-    .attendance-panel h3 { max-width:430px; margin:14px 0 0; font-family:Anybody,sans-serif; font-size:clamp(28px,2.8vw,40px); line-height:1; letter-spacing:-.05em; }
-    .attendance-copy > p { max-width:300px; margin:0 0 2px; color:rgba(255,255,255,.72); font-size:12px; line-height:1.6; }
-    .attendance-demo { position:absolute; z-index:2; left:30px; right:30px; bottom:30px; padding:20px; border:1px solid rgba(255,255,255,.15); border-radius:18px; background:rgba(7,16,37,.68); box-shadow:0 24px 50px rgba(0,0,0,.18); backdrop-filter:blur(14px); }
-    .demo-row { display:flex; align-items:center; justify-content:space-between; gap:20px; color:#c7cede; font-size:11px; }
-    .demo-row strong { color:var(--lime); font-size:18px; }
-    .progress { height:7px; margin:15px 0 18px; overflow:hidden; border-radius:8px; background:rgba(255,255,255,.1); }
-    .progress i { display:block; width:83.33%; height:100%; border-radius:inherit; background:var(--lime); }
-    .player-row { display:flex; align-items:center; justify-content:space-between; }
-    .player-stack { display:flex; padding-left:8px; }
-    .player-stack i { width:38px; height:38px; margin-left:-8px; border:3px solid #101b37; border-radius:50%; background-position:center 20%; background-size:cover; box-shadow:0 3px 9px rgba(0,0,0,.2); }
-    .player-stack i:nth-child(1) { background-image:url('assets/img/face-3.jpg'); }
-    .player-stack i:nth-child(2) { background-image:url('assets/img/face-4.jpg'); }
-    .player-stack i:nth-child(3) { background-image:url('assets/img/face-1.jpg'); }
-    .player-stack i:nth-child(4) { display:grid; place-items:center; background:var(--lime); color:var(--ink); font-size:9px; font-style:normal; font-weight:800; }
-    .waiting { color:#919cb3; font-size:9px; text-align:right; }.waiting b { display:block; margin-top:3px; color:#fff; font-size:11px; }
-    .game-panel,.money-panel { min-height:207px; padding:25px; }
-    .game-panel { background-image:linear-gradient(90deg,rgba(7,16,37,.92),rgba(7,16,37,.44)),url('assets/img/quadra-900.jpg'); background-position:center; background-size:cover; color:#fff; }
-    .game-panel .panel-label { color:var(--lime); text-shadow:0 2px 10px rgba(0,0,0,.4); }
-    .game-ticket { position:absolute; left:25px; right:25px; bottom:22px; display:grid; grid-template-columns:72px 1fr; align-items:center; gap:15px; padding:12px; border:1px solid rgba(255,255,255,.14); border-radius:16px; background:rgba(7,16,37,.7); backdrop-filter:blur(10px); }
-    .date-block { padding:10px; border-radius:11px; background:var(--lime); color:var(--ink); text-align:center; }
-    .date-block strong { display:block; font-size:27px; line-height:1; }.date-block span { color:#34401f; font-size:8px; font-weight:800; }
-    .game-ticket h3 { margin:0 0 5px; font-size:18px; letter-spacing:-.03em; }.game-ticket p { margin:0; color:#c5ccda; font-size:10px; line-height:1.5; }
-    .money-panel { background:var(--ink); color:#fff; }
-    .money-panel .panel-label { color:var(--lime); }
-    .money-summary { position:absolute; left:25px; right:25px; bottom:22px; top:54px; display:flex; flex-direction:column; }
-    .money-amount { display:flex; align-items:baseline; gap:7px; }
-    .money-amount span { color:#8995ad; font-size:10px; letter-spacing:.01em; }
-    .money-amount strong { color:#fff; font-size:32px; font-weight:600; letter-spacing:-.04em; }
-    .money-amount small { color:var(--lime); font-size:10px; font-weight:600; }
-    .money-bar { height:3px; margin:16px 0 22px; overflow:hidden; border-radius:980px; background:rgba(255,255,255,.1); }
-    .money-bar i { display:block; width:80%; height:100%; border-radius:inherit; background:var(--lime); }
-    .money-columns { display:grid; grid-template-columns:1fr 1fr; margin-bottom:22px; border-top:1px solid rgba(255,255,255,.1); }
-    .money-col { padding:14px 14px 14px 0; }
-    .money-col + .money-col { padding-left:14px; border-left:1px solid rgba(255,255,255,.1); }
-    .money-col span { display:block; color:#8995ad; font-size:8px; letter-spacing:.04em; text-transform:uppercase; }
-    .money-col b { display:block; margin-top:6px; color:#fff; font-size:15px; font-weight:600; letter-spacing:-.02em; }
-    .money-col b em { margin-left:5px; color:#8995ad; font-size:9px; font-style:normal; font-weight:400; }
-    .money-col:last-child b { color:rgba(255,255,255,.78); }
-    .money-list { display:grid; gap:9px; margin:0; list-style:none; padding:0; }
-    .payer { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.07); }
-    .payer:first-child { border-top:0; }
-    .payer-name { display:flex; align-items:center; gap:9px; color:#fff; font-size:10px; }
-    .payer-dot { width:7px; height:7px; border-radius:50%; background:var(--lime); }
-    .payer.payer--pending .payer-dot { background:#8995ad; }
-    .payer-status { padding:4px 9px; border-radius:980px; background:rgba(199,243,0,.1); color:var(--lime); font-size:8px; font-weight:600; letter-spacing:.01em; }
-    .payer.payer--pending .payer-status { background:rgba(255,255,255,.06); color:#8995ad; }
-    .truth { position:relative; overflow:hidden; background:var(--ink); color:#fff; }
-    .truth::before { content:""; position:absolute; width:480px; height:480px; left:-300px; bottom:-310px; border:1px solid rgba(199,243,0,.18); border-radius:50%; box-shadow:0 0 0 55px rgba(199,243,0,.035),0 0 0 110px rgba(255,255,255,.025); }
-    .truth-row { position:relative; z-index:2; display:grid; grid-template-columns:1.05fr .95fr; align-items:center; gap:78px; padding:88px 0; }
-    .truth .eyebrow { display:inline-flex; align-items:center; gap:11px; color:var(--lime); font-size:24px; font-weight:600; letter-spacing:-.03em; text-transform:none; }
-    .truth .eyebrow::before { content:""; width:8px; height:8px; border:2px solid var(--lime); border-radius:50%; box-shadow:0 0 0 5px rgba(199,243,0,.13); }
-    .truth h2 { max-width:650px; margin:12px 0 16px; font-family:Anybody,sans-serif; font-stretch:110%; font-size:clamp(37px,4vw,58px); line-height:.98; letter-spacing:-.05em; }
-    .truth-copy > p { max-width:580px; margin:0; color:#aeb7ca; font-size:15px; line-height:1.65; }
-    .truth-copy .primary { margin-top:26px; }
-    .truth-copy .click-trigger { color:#8994aa; }
-    .access-card { padding:26px; border:1px solid rgba(255,255,255,.12); border-radius:24px; background:rgba(255,255,255,.055); box-shadow:0 30px 70px rgba(0,0,0,.22); backdrop-filter:blur(16px); }
-    .access-top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:9px; color:#fff; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
-    .access-top b { padding:7px 10px; border-radius:999px; background:var(--lime); color:var(--ink); font-size:8px; letter-spacing:.04em; }
-    .access-step { display:grid; grid-template-columns:38px 1fr; align-items:center; gap:14px; padding:18px 0; border-top:1px solid rgba(255,255,255,.11); }
-    .access-step i { display:grid; width:34px; height:34px; place-items:center; border:1px solid rgba(199,243,0,.34); border-radius:50%; color:var(--lime); font-size:10px; font-style:normal; font-weight:800; }
-    .access-step strong { display:block; margin-bottom:4px; color:#fff; font-size:13px; }.access-step p { margin:0; color:#8f9ab0; font-size:10px; line-height:1.5; }
-    .faq { padding:94px 0; }
-    .faq-grid { display:grid; grid-template-columns:.75fr 1.25fr; gap:80px; align-items:start; }
-    .faq h2 { margin:12px 0 0; font-family:Anybody,sans-serif; font-stretch:110%; font-size:clamp(38px,4.5vw,64px); line-height:.98; letter-spacing:-.055em; }
-    .questions { border-top:1px solid #d6dbd0; }
-    .question { padding:22px 0; border-bottom:1px solid #d6dbd0; }
-    .question h3 { margin:0 0 8px; font-size:16px; letter-spacing:-.02em; }
-    .question p { margin:0; color:#667086; font-size:13px; line-height:1.6; }
-    .final { padding:100px 0; text-align:center; }
-    .final h2 { margin-left:auto; margin-right:auto; }
-    .final p { max-width:610px; margin:0 auto; color:#667086; font-size:16px; line-height:1.65; }
-    .click-trigger { display:block; margin-top:10px; color:#667086; font-size:10px; }
-    a:focus-visible { outline:3px solid #ff7a59; outline-offset:3px; }
-    @media (hover:hover) and (pointer:fine) { .nav-cta,.primary { transition:transform 150ms var(--ease); }.nav-cta:hover,.primary:hover { transform:translateY(-2px); }.nav-cta:active,.primary:active { transform:scale(.97); } }
-    @media (min-width:1100px) { .below-head h2 { white-space:nowrap; } }
-    @media (max-width:900px) { .hero-grid { grid-template-columns:1fr; gap:20px; padding-top:58px; }.photo { background-image:linear-gradient(180deg,rgba(6,56,223,1) 0%,rgba(6,56,223,.96) 44%,rgba(6,56,223,.48) 70%,rgba(7,16,37,.35) 100%),url('assets/img/hero-1400.jpg'); background-position:center,center; }.visual { min-height:620px; }.device-stage { transform:translate(-50%,-50%) rotate(2deg); }.below-head,.organizer-board,.truth-row,.faq-grid,.attendance-copy { grid-template-columns:1fr; }.organizer-board { grid-template-rows:auto; }.attendance-panel { grid-row:auto; min-height:500px; }.attendance-copy { gap:15px; }.attendance-copy > p { max-width:460px; }.below-head .section-lead { margin-top:0; }.truth-row,.faq-grid,.below-head { gap:26px; } }
-    @media (max-width:520px) { .shell { width:min(100% - 28px,1240px); } nav { min-height:70px; }.logo { width:116px; }.nav-cta { padding:10px 12px; font-size:9px; }.hero-grid { min-height:auto; }.copy h1 { font-size:42px; line-height:.98; }.lead { font-size:15px; }.visual { min-height:570px; margin-top:6px; }.device-stage { width:265px; height:540px; }.halo { width:370px; height:370px; }.one { left:-18px; bottom:66px; }.two { top:158px; right:-18px; }.caption { bottom:8px; } }
-    @media (prefers-reduced-motion:reduce) { .nav-cta,.primary,.page-track,.tabbar button { transition:none; } }
+/* Hallmark · macrostructure: Split Studio + Workbench · genre: editorial-sport · theme: custom (court-blue + ball-lime) · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 
-    /* Alternative concept: restrained, product-led, and centered. */
-    :root { --paper:#f5f5f7; --ink:#1d1d1f; }
-    html { zoom:1.33; }
-    body { background:#f5f5f7; color:#1d1d1f; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Segoe UI",sans-serif; letter-spacing:-.016em; }
-    .shell { width:min(1080px,calc(100% - 48px)); }
-    header { position:sticky; top:0; z-index:20; border-bottom:1px solid rgba(0,0,0,.08); background:rgba(255,255,255,.78); backdrop-filter:saturate(180%) blur(20px); }
-    nav { min-height:54px; }
-    .logo { width:102px; }
-    .nav-cta,.primary { border-radius:980px; font-size:14px; font-weight:400; letter-spacing:-.01em; }
-    .nav-cta { padding:9px 15px; background:var(--blue); color:#fff; }
-    .hero { min-height:auto; overflow:hidden; background:#f5f5f7; color:#1d1d1f; }
-    .photo { top:auto; bottom:0; height:58%; border:0; background-image:linear-gradient(rgba(6,56,223,.11),rgba(6,56,223,.11)),url('assets/img/hero-2000.jpg'); background-position:center,center 44%; -webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 8%,rgba(0,0,0,.72) 24%,#000 38%); mask-image:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 8%,rgba(0,0,0,.72) 24%,#000 38%); }
-    .photo::after { display:none; }
-    .hero-grid { min-height:1120px; display:flex; flex-direction:column; gap:0; padding:86px 0 0; }
-    .copy { width:min(880px,100%); margin:0 auto; text-align:center; }
-    .kicker { margin-bottom:18px; color:var(--blue); font-size:13px; font-weight:600; letter-spacing:-.01em; text-transform:none; }
-    .kicker::before { display:none; }
-    h1 { max-width:900px; margin:0 auto; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:clamp(48px,6vw,72px); font-weight:600; line-height:1.04; letter-spacing:-.045em; }
-    .lead { max-width:760px; margin:22px auto 0; color:#6e6e73; font-size:21px; font-weight:400; line-height:1.38; text-shadow:none; }
-    .primary { margin-top:26px; padding:11px 17px; background:var(--blue); color:#fff; box-shadow:none; }
-    .click-trigger { color:#6e6e73; font-size:12px; }
-    .hero .click-trigger { color:#6e6e73 !important; }
-    .visual { width:100%; min-height:720px; margin-top:18px; }
-    .halo { display:none; }
-    .device-stage { left:50%; top:52%; width:310px; height:632px; transform:translate(-50%,-50%); }
-    .device { border:1px solid rgba(255,255,255,.42); border-radius:50px; box-shadow:rgba(0,0,0,.22) 3px 5px 30px; }
-    .device::after { border-radius:42px; }
-    .screen { border-radius:42px; }
-    .float-card { border:1px solid rgba(0,0,0,.1); border-radius:8px; background:rgba(255,255,255,.92); color:#1d1d1f; box-shadow:none; backdrop-filter:blur(20px); }
-    .float-card i { border-radius:7px; background:var(--blue); color:#fff; }
-    .float-card strong { color:#1d1d1f; }
-    .one { left:-58px; bottom:92px; }.two { top:178px; right:-62px; }
-    .caption { right:24px; bottom:18px; color:rgba(255,255,255,.82); }
+/* =========================================================================
+   1. LOCKED TOKEN SYSTEM
+   ========================================================================= */
+:root {
+  --blue: #0638df;
+  --blue-deep: #042494;
+  --blue-soft: rgba(6, 56, 223, 0.08);
+  --lime: #c7f300;
+  --lime-hover: #d4ff1a;
+  --ink: #071025;
+  --ink-2: #1e293b;
+  --muted: #4b5565;
+  --muted-light: rgba(255, 255, 255, 0.78);
+  --paper: #f4f5f0;
+  --surface: #ffffff;
+  --surface-2: #eaece4;
+  --border: #d5d9ce;
+  --border-dark: rgba(255, 255, 255, 0.16);
 
-    .below { width:100%; padding:120px 0; background:#fff; }
-    .below > * { width:min(1080px,calc(100% - 48px)); margin-left:auto; margin-right:auto; }
-    .below-head { text-align:center; }
-    .eyebrow { color:var(--blue); font-size:13px; font-weight:600; letter-spacing:-.01em; text-transform:none; }
-    .below h2,.final h2,.faq h2,.truth h2 { font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-weight:600; letter-spacing:-.04em; }
-    .below-head h2 { max-width:900px; margin:12px auto 0; font-size:clamp(42px,5vw,56px); line-height:1.07; white-space:normal; }
-    .below-head .section-lead { max-width:700px; margin:18px auto 0; color:#6e6e73; font-size:19px; line-height:1.45; }
-    .organizer-board { grid-template-columns:1fr 1fr; grid-template-rows:auto auto; gap:16px; margin-top:64px; }
-    .board-panel { border-radius:8px; }
-    .attendance-panel { grid-column:1 / -1; grid-row:auto; min-height:430px; padding:48px; }
-    .attendance-panel::before { display:none; }
-    .attendance-copy { grid-template-columns:1fr 1fr; align-items:start; gap:64px; }
-    .attendance-panel h3 { max-width:540px; margin-top:16px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:42px; font-weight:600; line-height:1.06; letter-spacing:-.04em; }
-    .attendance-copy > p { max-width:390px; color:rgba(255,255,255,.76); font-size:17px; line-height:1.47; }
-    .attendance-demo { left:48px; right:48px; bottom:42px; border-radius:8px; box-shadow:none; }
-    .game-panel,.money-panel { min-height:320px; padding:32px; }
-    .game-ticket { left:32px; right:32px; bottom:30px; border-radius:8px; box-shadow:none; }
-    .money-summary { left:32px; right:32px; bottom:32px; }
+  --font-display: 'Anybody', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 
-    .truth { background:var(--blue); }
-    .truth::before { display:none; }
-    .truth-row { display:block; width:min(980px,calc(100% - 48px)); padding:112px 0; text-align:center; }
-    .truth .eyebrow { color:var(--lime); }
-    .truth h2 { max-width:800px; margin:14px auto 18px; font-size:clamp(42px,5vw,56px); line-height:1.07; }
-    .truth-copy > p { max-width:680px; margin:0 auto; color:rgba(255,255,255,.76); font-size:19px; line-height:1.47; }
-    .truth-copy .primary { background:var(--lime); color:#1d1d1f; }
-    .truth-copy .click-trigger { color:rgba(255,255,255,.68); }
-    .access-card { display:grid; grid-template-columns:repeat(3,1fr); max-width:900px; margin:48px auto 0; padding:0; border:1px solid rgba(255,255,255,.22); border-radius:8px; background:transparent; box-shadow:none; backdrop-filter:none; text-align:left; }
-    .access-top { grid-column:1 / -1; margin:0; padding:18px 22px; border-bottom:1px solid rgba(255,255,255,.22); }
-    .access-step { grid-template-columns:34px 1fr; padding:24px 20px; border-top:0; border-right:1px solid rgba(255,255,255,.18); }
-    .access-step:last-child { border-right:0; }
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-    .faq { width:min(900px,calc(100% - 48px)); padding:112px 0; }
-    .faq-grid { display:block; }
-    .faq-grid > div:first-child { text-align:center; }
-    .faq h2 { margin:12px auto 0; font-size:48px; line-height:1.08; }
-    .questions { max-width:780px; margin:54px auto 0; border-top:1px solid #d2d2d7; }
-    .question { padding:28px 0; border-color:#d2d2d7; }
-    .question h3 { font-size:19px; font-weight:600; }.question p { max-width:680px; color:#6e6e73; font-size:17px; line-height:1.47; }
-    .final { width:100%; padding:120px 24px; background:#fff; }
-    .final h2 { max-width:800px; font-size:56px; line-height:1.07; }
-    .final p { max-width:660px; color:#6e6e73; font-size:19px; }
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+}
 
-    @media (max-width:900px) {
-      html { zoom:1; }
-      .hero-grid { min-height:1080px; padding-top:72px; }
-      .visual { min-height:680px; }
-      .device-stage { transform:translate(-50%,-50%); }
-      .organizer-board,.attendance-copy { grid-template-columns:1fr; }
-      .attendance-panel { grid-column:auto; min-height:520px; padding:34px; }
-      .attendance-copy { gap:18px; }
-      .attendance-demo { left:34px; right:34px; bottom:34px; }
-      .access-card { grid-template-columns:1fr; }
-      .access-top { grid-column:auto; }
-      .access-step { border-right:0; border-top:1px solid rgba(255,255,255,.18); }
-    }
-    @media (max-width:520px) {
-      .shell { width:min(100% - 32px,1080px); }
-      nav { min-height:50px; }
-      .logo { width:88px; }
-      .nav-cta { padding:8px 12px; font-size:12px; }
-      .hero-grid { min-height:1000px; padding-top:54px; }
-      h1 { font-size:44px; line-height:1.05; }
-      .lead { font-size:18px; }
-      .visual { min-height:630px; }
-      .device-stage { width:265px; height:540px; }
-      .one { left:-14px; bottom:70px; }.two { top:160px; right:-14px; }
-      .below { padding:88px 0; }
-      .below > * { width:min(100% - 32px,1080px); }
-      .below-head h2,.truth h2,.faq h2,.final h2 { font-size:38px; }
-      .below-head .section-lead,.truth-copy > p,.final p { font-size:17px; }
-      .attendance-panel { min-height:560px; padding:26px; }
-      .attendance-panel h3 { font-size:34px; }
-      .attendance-demo { left:26px; right:26px; bottom:26px; }
-      .organizer-board { grid-template-columns:1fr; }
-      .game-panel,.money-panel { min-height:280px; }
-      .truth-row,.faq { width:min(100% - 32px,900px); padding:88px 0; }
-      .final { padding:88px 20px; }
-    }
-    /* Finance panel: human, light, and status-led. */
-    .money-panel { border:1px solid #d2d2d7; background:#f4f8fb; color:#1d1d1f; }
-    .money-panel .panel-label { color:var(--blue); }
-    .payment-story { position:absolute; inset:62px 32px 30px; display:flex; flex-direction:column; }
-    .payment-story h3 { max-width:420px; margin:0; color:#1d1d1f; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:30px; font-weight:600; line-height:1.08; letter-spacing:-.04em; }
-    .payment-story h3 strong { color:var(--blue); font-weight:600; }
-    .payment-story > p { margin:8px 0 0; color:#6e6e73; font-size:12px; line-height:1.45; }
-    .payment-people { display:flex; align-items:center; margin-top:22px; padding-left:8px; }
-    .payment-face,.payment-more { position:relative; width:42px; height:42px; margin-left:-8px; border:3px solid #f4f8fb; border-radius:50%; background-position:center 20%; background-size:cover; }
-    .payment-face:nth-child(1) { background-image:url('assets/img/face-3.jpg'); }
-    .payment-face:nth-child(2) { background-image:url('assets/img/face-4.jpg'); }
-    .payment-face:nth-child(3) { background-image:url('assets/img/face-1.jpg'); }
-    .payment-face:nth-child(4) { background-image:url('assets/img/face-5.jpg'); }
-    .payment-face:nth-child(5) { background-image:url('assets/img/face-2.jpg'); }
-    .payment-face::after { content:"✓"; position:absolute; right:-2px; bottom:-2px; display:grid; width:15px; height:15px; place-items:center; border:2px solid #f4f8fb; border-radius:50%; background:var(--lime); color:#1d1d1f; font-size:7px; font-style:normal; font-weight:800; }
-    .payment-face.is-pending { filter:grayscale(1); opacity:.62; }
-    .payment-face.is-pending::after { content:""; background:#b8b8bd; }
-    .payment-more { display:grid; place-items:center; background:#e2e2e5; color:#6e6e73; font-size:9px; font-style:normal; font-weight:600; }
-    .payment-totals { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-top:auto; border-top:1px solid #d2d2d7; }
-    .payment-total { padding-top:15px; }
-    .payment-total + .payment-total { padding-left:18px; border-left:1px solid #d2d2d7; }
-    .payment-total span { display:block; color:#6e6e73; font-size:9px; }
-    .payment-total strong { display:block; margin-top:5px; color:#1d1d1f; font-size:19px; font-weight:600; letter-spacing:-.03em; }
-    .payment-total:last-child strong { color:#6e6e73; }
-    /* FAQ: native disclosure with quiet, editorial hierarchy. */
-    .questions { border-top:1px solid #d2d2d7; }
-    .question { padding:0; border-bottom:1px solid #d2d2d7; }
-    .question summary { display:grid; grid-template-columns:38px 1fr 34px; align-items:center; gap:14px; padding:26px 0; list-style:none; cursor:pointer; }
-    .question summary::-webkit-details-marker { display:none; }
-    .question summary:focus-visible { border-radius:8px; outline:2px solid var(--blue); outline-offset:5px; }
-    .question-index { color:var(--blue); font-size:11px; font-weight:600; letter-spacing:.04em; }
-    .question h3 { margin:0; color:#1d1d1f; font-size:21px; font-weight:600; letter-spacing:-.025em; }
-    .question-toggle { position:relative; display:block; width:30px; height:30px; border:1px solid #d2d2d7; border-radius:50%; }
-    .question-toggle::before,.question-toggle::after { content:""; position:absolute; left:50%; top:50%; width:10px; height:1px; background:#1d1d1f; transform:translate(-50%,-50%); transition:transform 180ms var(--ease); }
-    .question-toggle::after { transform:translate(-50%,-50%) rotate(90deg); }
-    .question[open] .question-toggle { border-color:var(--blue); background:var(--blue); }
-    .question[open] .question-toggle::before,.question[open] .question-toggle::after { background:#fff; }
-    .question[open] .question-toggle::after { transform:translate(-50%,-50%) rotate(0deg); }
-    .question p { max-width:720px; margin:0; padding:0 48px 28px 52px; color:#6e6e73; font-size:17px; line-height:1.47; }
-    @media (max-width:520px) {
-      .question summary { grid-template-columns:28px 1fr 32px; gap:10px; padding:22px 0; }
-      .question h3 { font-size:18px; }
-      .question p { padding:0 42px 22px 38px; font-size:15px; }
-    }
-    /* Final CTA: quiet product lockup on a blue-tinted wash. */
-    .final { position:relative; overflow:hidden; border-top:1px solid #dbe5ee; border-bottom:1px solid #dbe5ee; background:#f4f8fb; }
-    .final-logo { display:block; width:132px; height:auto; margin:0 auto 24px; }
-    .final .eyebrow { display:inline-flex; align-items:center; gap:8px; padding:8px 13px; border:1px solid #d2dce5; border-radius:980px; background:rgba(255,255,255,.72); color:var(--blue); font-size:12px; font-weight:600; letter-spacing:-.01em; }
-    .final .eyebrow::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 3px rgba(199,243,0,.16); }
-    .final h2 { margin-top:24px; }
-    .final .primary { padding:13px 21px; font-size:16px; }
-    .final .click-trigger { display:flex; width:max-content; align-items:center; gap:7px; margin:14px auto 0; }
-    .final .click-trigger::before { content:"✓"; display:grid; width:17px; height:17px; place-items:center; border-radius:50%; background:rgba(6,56,223,.09); color:var(--blue); font-size:9px; font-weight:700; }
-    @media (max-width:520px) {
-      .final-logo { width:112px; margin-bottom:20px; }
-      .final .primary { padding:12px 18px; font-size:14px; }
-    }
+/* =========================================================================
+   2. RESET + ROOT OVERFLOW SAFETY (Hallmark Gate 34)
+   ========================================================================= */
+*,
+*::before,
+*::after { box-sizing: border-box; }
 
-    /* Trial offer and paid plan comparison: conditions stay visible beside the CTA. */
-    .pricing { padding:112px 0; background:#fff; }
-    .pricing-head { max-width:760px; margin:0 auto; text-align:center; }
-    .pricing-head h2 { margin:12px 0 16px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:clamp(40px,5vw,56px); font-weight:600; line-height:1.07; letter-spacing:-.04em; }
-    .pricing-head p { margin:0; color:#6e6e73; font-size:18px; line-height:1.5; }
-    .pricing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:54px; }
-    .plan-card { display:flex; flex-direction:column; padding:30px; border:1px solid #d2d2d7; border-radius:8px; background:#f5f5f7; }
-    .plan-card--featured { border:2px solid var(--blue); padding:29px; background:#fff; }
-    .plan-card h3 { margin:0; color:#1d1d1f; font-size:22px; font-weight:600; letter-spacing:-.025em; }
-    .plan-card > p { min-height:45px; margin:10px 0 22px; color:#6e6e73; font-size:14px; line-height:1.45; }
-    .plan-price { display:flex; align-items:baseline; gap:5px; color:#1d1d1f; }
-    .plan-price strong { font-size:30px; font-weight:600; letter-spacing:-.04em; }
-    .plan-price span { color:#6e6e73; font-size:13px; }
-    .plan-annual { margin:6px 0 24px; color:#6e6e73; font-size:13px; }
-    .plan-annual strong { color:#1d1d1f; font-weight:600; }
-    .plan-limit { padding:14px 0; border-top:1px solid #d2d2d7; color:#1d1d1f; font-size:14px; line-height:1.45; }
-    .plan-card .primary { width:100%; margin-top:auto; padding:11px 15px; font-size:13px; box-shadow:none; }
-    .plan-card .secondary { display:inline-flex; align-items:center; justify-content:center; margin-top:10px; padding:11px 15px; border:1px solid #c8c8cc; border-radius:980px; color:#1d1d1f; font-size:13px; text-decoration:none; }
-    .plan-card--featured .secondary { border-color:var(--blue); color:var(--blue); }
-    .pricing-note { max-width:760px; margin:24px auto 0; color:#6e6e73; font-size:13px; line-height:1.5; text-align:center; }
-    @media (max-width:900px) { .pricing-grid { grid-template-columns:1fr; max-width:520px; margin-left:auto; margin-right:auto; } }
-    @media (max-width:520px) { .pricing { padding:88px 0; } .pricing-head p { font-size:17px; } .plan-card,.plan-card--featured { padding:25px; } }
+html,
+body {
+  overflow-x: clip;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 
-    /* Camada de movimento e encantamento — quase tudo condicionado à classe .js (adicionada por assets/motion.js). */
-    html { scroll-padding-top:96px; }
-    @media (prefers-reduced-motion:no-preference) { html { scroll-behavior:smooth; } }
-    header { transition:background-color .35s ease, box-shadow .35s ease; }
-    header.is-scrolled { background:rgba(255,255,255,.92); box-shadow:0 1px 0 rgba(0,0,0,.06),0 10px 30px rgba(0,0,0,.07); }
-    .photo { background-image:none; }
-    .photo-img { position:absolute; inset:0; background-image:linear-gradient(rgba(6,56,223,.11),rgba(6,56,223,.11)),url('assets/img/hero-2000.jpg'); background-position:center,center 44%; background-size:cover; transform-origin:50% 36%; }
-    .device-stage { perspective:1100px; }
-    .primary { position:relative; overflow:hidden; }
-    .primary .arrow { display:inline-block; transition:transform .3s var(--ease); }
-    .payment-total strong span { display:inline; font-size:inherit; color:inherit; }
-    [data-glow] { position:relative; }
-    [data-glow]::after { content:""; position:absolute; inset:0; z-index:0; border-radius:inherit; background:radial-gradient(460px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.13),transparent 62%); opacity:0; transition:opacity .5s ease; pointer-events:none; }
-    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-    @keyframes deviceIn { from { opacity:0; transform:translateY(70px) scale(.95) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); } to { opacity:1; transform:translateY(0) scale(1) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); } }
-    @keyframes deviceFloat { from { transform:translateY(0) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); } to { transform:translateY(-9px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)); } }
-    @keyframes cardIn { 0% { opacity:0; transform:scale(.72) translateY(16px); } 70% { opacity:1; transform:scale(1.2) translateY(-2px); } 100% { opacity:1; transform:scale(1.15) translateY(0); } }
-    @keyframes cardFloat { from { transform:scale(1.15) translateY(0); } to { transform:scale(1.15) translateY(-7px); } }
-    @keyframes kenburns { from { transform:scale(1); } to { transform:scale(1.06); } }
-    @keyframes sheen { 0% { left:-45%; } 14% { left:125%; } 100% { left:125%; } }
-    @keyframes ping { 0% { box-shadow:0 0 0 4px rgba(199,243,0,.32); } 70%,100% { box-shadow:0 0 0 15px rgba(199,243,0,0); } }
-    @keyframes appItem { from { opacity:0; transform:translateY(13px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes iconHot { 0% { transform:scale(1); box-shadow:0 0 0 0 rgba(199,243,0,.5); } 45% { transform:scale(1.26); } 100% { transform:scale(1); box-shadow:0 0 0 13px rgba(199,243,0,0); } }
-    @keyframes faqIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
-    .js .photo { animation:fadeIn 1.1s ease .1s both; }
-    .js .photo-img { animation:kenburns 27s ease-in-out 1.4s infinite alternate; }
-    .js .device { animation:deviceIn .95s var(--ease) .5s both, deviceFloat 6.5s ease-in-out 2.6s infinite alternate; }
-    .js .float-card.one { animation:cardIn .6s cubic-bezier(.34,1.56,.64,1) 1.4s both, cardFloat 6.8s ease-in-out 3s infinite alternate; }
-    .js .float-card.two { animation:cardIn .6s cubic-bezier(.34,1.56,.64,1) 1.6s both, cardFloat 7.6s ease-in-out 3.4s infinite alternate; }
-    .js .caption { animation:fadeIn .9s ease 1.8s both; }
-    .js [data-reveal] { opacity:0; transform:translateY(26px); transition:opacity .7s var(--ease), transform .7s var(--ease); }
-    .js [data-reveal].is-in { opacity:1; transform:translateY(0); }
-    .js .attendance-demo .progress i { width:0; transition:width 1.2s var(--ease) .4s; }
-    .js .attendance-demo.is-in .progress i { width:83.33%; }
-    .js .payment-face, .js .payment-more { opacity:0; transform:scale(.4); transition:opacity .45s ease, transform .5s cubic-bezier(.34,1.56,.64,1); }
-    .js .money-panel.is-in .payment-face, .js .money-panel.is-in .payment-more { opacity:1; transform:scale(1); }
-    .js .money-panel.is-in .payment-face.is-pending { opacity:.62; }
-    .js .money-panel.is-in .payment-people > :nth-child(1) { transition-delay:.25s; }
-    .js .money-panel.is-in .payment-people > :nth-child(2) { transition-delay:.35s; }
-    .js .money-panel.is-in .payment-people > :nth-child(3) { transition-delay:.45s; }
-    .js .money-panel.is-in .payment-people > :nth-child(4) { transition-delay:.55s; }
-    .js .money-panel.is-in .payment-people > :nth-child(5) { transition-delay:.65s; }
-    .js .money-panel.is-in .payment-people > :nth-child(6) { transition-delay:.75s; }
-    .js .payment-face::after { transform:scale(0); transition:transform .4s cubic-bezier(.34,1.56,.64,1); }
-    .js .money-panel.is-in .payment-face:nth-child(1)::after { transform:scale(1); transition-delay:.65s; }
-    .js .money-panel.is-in .payment-face:nth-child(2)::after { transform:scale(1); transition-delay:.78s; }
-    .js .money-panel.is-in .payment-face:nth-child(3)::after { transform:scale(1); transition-delay:.91s; }
-    .js .money-panel.is-in .payment-face:nth-child(4)::after { transform:scale(1); transition-delay:1.04s; }
-    .js .money-panel.is-in .payment-face:nth-child(5)::after { transform:scale(1); transition-delay:1.17s; }
-    .js .primary::after { content:""; position:absolute; top:-6px; bottom:-6px; left:-45%; width:34%; background:linear-gradient(105deg,transparent,rgba(255,255,255,.5),transparent); transform:skewX(-16deg); animation:sheen 5.5s ease-in-out 3.2s infinite; }
-    .js .truth .eyebrow::before, .js .final .eyebrow::before { animation:ping 2.6s cubic-bezier(.4,0,.2,1) 1s infinite; }
-    .js .app-page.page-live > * { animation:appItem .5s var(--ease) both; }
-    .js .app-page.page-live > :nth-child(2) { animation-delay:.07s; }
-    .js .app-page.page-live > :nth-child(3) { animation-delay:.14s; }
-    .js .app-page.page-live > :nth-child(4) { animation-delay:.21s; }
-    .js .app-page.page-live > :nth-child(5) { animation-delay:.28s; }
-    .js .float-card.is-hot i { animation:iconHot .9s var(--ease); }
-    .js .question[open] > p { animation:faqIn .45s var(--ease) both; }
-    @supports (interpolate-size:allow-keywords) {
-      :root { interpolate-size:allow-keywords; }
-      .js .question::details-content { block-size:0; overflow:clip; opacity:0; transition:block-size .4s var(--ease), opacity .35s ease, content-visibility .4s allow-discrete; }
-      .js .question[open]::details-content { block-size:auto; opacity:1; }
-    }
-    @media (hover:hover) and (pointer:fine) {
-      .primary:hover .arrow { transform:translateX(4px); }
-      .js [data-glow]:hover::after { opacity:1; }
-    }
-    @media (max-width:520px) { .money-panel { min-height:390px; } }
-    @media (prefers-reduced-motion:reduce) {
-      .js .photo, .js .photo-img, .js .device, .js .float-card.one, .js .float-card.two, .js .caption, .js .primary::after, .js .truth .eyebrow::before, .js .final .eyebrow::before, .js .app-page.page-live > *, .js .float-card.is-hot i, .js .question[open] > p { animation:none; }
-      .js [data-reveal] { opacity:1; transform:none; transition:none; }
-      .js .attendance-demo .progress i { width:83.33%; transition:none; }
-      .js .payment-face, .js .payment-more { opacity:1; transform:none; transition:none; }
-      .js .payment-face::after { transform:scale(1); transition:none; }
-      header { transition:none; }
-      .primary .arrow { transition:none; }
-    }
+html { scroll-padding-top: 96px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 
-    /* Ajustes de layout: dobra do hero, painel de confirmações, header e tipografia. */
-    h1, h2, h3 { text-wrap:balance; }
-    .lead, .section-lead, .truth-copy > p, .final p, .question p, .attendance-copy > p { text-wrap:pretty; }
-    .nav-links { display:flex; gap:26px; }
-    .nav-links a { color:var(--ink); font-size:13px; letter-spacing:-.01em; text-decoration:none; opacity:.72; transition:opacity .2s ease; }
-    .nav-links a:hover { opacity:1; }
-    @media (min-width:901px) {
-      .hero-grid { min-height:1030px; padding-top:60px; }
-      .visual { min-height:690px; margin-top:8px; }
-      .device-stage { top:50%; }
-      .attendance-panel { display:grid; grid-template-columns:1.05fr .95fr; gap:48px; align-items:center; min-height:380px; }
-      .attendance-copy { display:block; }
-      .attendance-copy > p { margin:14px 0 0; }
-      .attendance-demo { position:static; }
-    }
-    @media (max-width:700px) { .nav-links { display:none; } }
-    @media (max-width:520px) {
-      .copy h1 { font-size:40px; }
-      .float-card { padding:9px 11px; font-size:8px; }
-      .float-card strong { font-size:9px; }
-      .float-card i { width:24px; height:24px; }
-      .one { left:-10px; bottom:-18px; }
-      .two { top:150px; right:-10px; }
-      .final .click-trigger { width:auto; max-width:100%; flex-wrap:wrap; justify-content:center; }
-    }
-    /* Topo igual ao anúncio: título, o vídeo da lista no WhatsApp e o download na mesma dobra do celular. */
-    .copy h1 { max-width:1040px; }
-    /* Vídeo mudo e em loop no lugar do cartão. A altura acompanha a tela para o botão seguir na primeira dobra. */
-    .hero-video { position:relative; width:max-content; max-width:100%; margin:20px auto 0; }
-    .hero-video video { display:block; width:auto; max-width:100%; height:360px; height:clamp(280px, calc(100svh - 300px), 440px); aspect-ratio:4 / 5; border-radius:18px; background:var(--blue); box-shadow:0 12px 34px rgba(7,16,37,.22); object-fit:cover; }
-    .video-pausa { position:absolute; top:10px; right:10px; display:grid; place-items:center; width:40px; height:40px; padding:0; border:0; border-radius:50%; background:rgba(7,16,37,.55); color:#fff; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-    .video-pausa svg { width:16px; height:16px; fill:currentColor; }
-    .video-pausa .icone-tocar,.video-pausa[aria-pressed="true"] .icone-pausar { display:none; }
-    .video-pausa[aria-pressed="true"] .icone-tocar { display:block; }
-    .video-pausa:focus-visible { outline:2px solid #fff; outline-offset:2px; }
-    .sr-only { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
-    .hero-video + .primary { margin-top:18px; }
-    .share-link { display:inline-block; margin-top:4px; padding:8px 6px; color:var(--blue); font-size:14px; text-underline-offset:3px; }
-    @media (max-width:520px) {
-      .hero-grid { padding-top:26px; }
-      .kicker { margin-bottom:10px; }
-      /* O vídeo traz o título grande: no celular o título da página encolhe e a frase de apoio sai. */
-      .copy h1 { font-size:28px; line-height:1.06; }
-      .lead { display:none; }
-      .hero-video { margin-top:14px; }
-      .hero-video + .primary { margin-top:14px; padding:13px 26px; font-size:16px; }
-      .hero .click-trigger { margin-top:8px; }
-      .share-link { margin-top:0; }
-      .visual { margin-top:8px; }
-    }
-    /* Tela curta (navegador do Instagram em celular pequeno): o botão não pode ficar sob o aviso de cookies. */
-    @media (max-width:520px) and (max-height:680px) {
-      .hero-grid { padding-top:18px; }
-    }
-    @media (max-width:340px) {
-      .copy h1 { font-size:24px; }
-    }
-    /* Acima de 900px a página tem zoom de 1.33: estes tamanhos aparecem 33% maiores. */
-    @media (min-width:901px) {
-      .hero-grid { padding-top:34px; }
-      .copy h1 { font-size:54px; line-height:1.04; }
-      .lead { max-width:560px; margin-top:12px; font-size:15px; }
-      .hero-video { margin-top:16px; }
-      .hero-video video { height:300px; }
-      .hero-video + .primary { margin-top:16px; }
-      .hero .click-trigger { margin-top:8px; }
-      .share-link { padding-top:4px; font-size:12px; }
-    }
-    /* Topo azul, igual ao fundo do anúncio. */
-    .hero--azul { background:var(--blue); color:#fff; }
-    .hero--azul .kicker { color:#fff; }
-    .hero--azul h1 { color:#fff; font-family:Anybody,Inter,sans-serif; font-stretch:110%; font-weight:800; letter-spacing:-.035em; }
-    .hero--azul .lead { color:rgba(255,255,255,.88); }
-    .hero--azul .primary { background:#fff; color:var(--blue); font-weight:600; }
-    .hero--azul .click-trigger { color:rgba(255,255,255,.8) !important; }
-    .hero--azul .share-link { color:#fff; }
-    /* Reserva as três linhas da Anybody: sem isso o botão desce quando a fonte chega. */
-    @media (max-width:430px) { .hero--azul h1 { min-height:90px; } }
-    @media (max-width:340px) { .hero--azul h1 { min-height:77px; } }
-    @media (min-width:901px) {
-      .copy { width:min(1040px,100%); }
-      .hero--azul h1 { font-size:46px; }
-    }
-    /* Topo por anúncio: repete a frase do anúncio que trouxe a visita. */
-    .h1-a,.h1-b { display:block; }
-    .h1-a { font-size:1.26em; line-height:1.04; }
-    .h1-b { margin-top:2px; font-size:min(.8em,7.3vw); line-height:1.1; letter-spacing:-.03em; white-space:nowrap; }
-    @media (max-width:430px) {
-      .hero--azul h1.sem-reserva { min-height:0; }
-    }
-    /* Botão dominante, prova real e barra fixa no celular. */
-    .hero--azul .primary { font-weight:700; }
-    .hero .linha-app { margin-top:2px; }
-    .prova-topo { display:flex; align-items:center; gap:10px; width:min(340px,100%); margin:10px auto 0; padding:7px 12px; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; text-align:left; }
-    .prova-topo i,.depoimento i { display:grid; flex:none; width:32px; height:32px; place-items:center; border-radius:50%; background:#fff; color:var(--blue); font-size:14px; font-style:normal; font-weight:700; }
-    .prova-topo p { margin:0; font-size:14px; font-weight:600; line-height:1.25; }
-    .prova-topo small { display:block; margin-top:2px; color:rgba(255,255,255,.86); font-size:12px; font-weight:400; line-height:1.25; }
-    .pain-cta { margin:22px 0 40px; }
-    .pain-cta .primary { padding:14px 24px; font-size:16px; }
-    .pain-cta .click-trigger { margin-top:8px; }
-    .depoimentos { padding:96px 0 112px; background:#f5f5f7; }
-    .depoimentos-head { text-align:center; }
-    .depoimentos-head h2 { margin:12px 0 0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:clamp(38px,5vw,56px); font-weight:600; line-height:1.07; letter-spacing:-.04em; }
-    .depoimentos-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:44px; }
-    .depoimento { margin:0; padding:28px; border:1px solid #d2d2d7; border-radius:8px; background:#fff; }
-    .depoimento blockquote { margin:0; color:#1d1d1f; font-size:24px; font-weight:600; line-height:1.25; letter-spacing:-.025em; }
-    .depoimento figcaption { display:flex; align-items:center; gap:10px; margin-top:20px; color:#6e6e73; font-size:14px; line-height:1.3; }
-    .depoimento figcaption strong { display:block; color:#1d1d1f; font-size:15px; font-weight:600; }
-    .depoimento i { background:var(--blue); color:#fff; }
-    .selos { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-    .selos img { display:block; width:auto; height:36px; }
-    .access-step p { color:rgba(255,255,255,.88); }
-    .pricing-conta { margin-top:8px; }
-    .pricing-conta a { color:var(--blue); }
-    .barra-cta { display:none; }
-    @media (max-width:900px) {
-      .depoimentos { padding:72px 0 80px; }
-      .depoimentos-grid { grid-template-columns:1fr; }
-      .depoimento blockquote { font-size:22px; }
-      .access-top { font-size:12px; }
-      .access-top b { font-size:11px; }
-      .access-step strong { font-size:16px; }
-      .access-step p { font-size:14px; line-height:1.4; }
-      .barra-cta { position:fixed; z-index:30; left:0; right:0; bottom:0; display:block; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid #e0e3ea; background:rgba(255,255,255,.97); transform:translateY(110%); transition:transform .25s var(--ease); }
-      .barra-cta.is-on { transform:none; }
-      .barra-cta a { display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; border-radius:980px; background:var(--blue); color:#fff; font-size:17px; font-weight:700; text-decoration:none; }
-      body:has(.saqz-consent:not([hidden])) .barra-cta { transform:translateY(110%); }
-      footer.shell { padding-bottom:88px !important; }
-    }
-    @media (max-width:520px) {
-      .hero--azul .hero-video + .primary { display:flex; width:min(340px,100%); min-height:52px; margin-left:auto; margin-right:auto; padding:14px 20px; font-size:18px; }
-    }
-    @media (prefers-reduced-motion:reduce) { .barra-cta { transition:none; } }
+img,
+video,
+svg { max-width: 100%; }
+img, video { height: auto; }
+
+a { color: inherit; }
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--lime);
+  outline-offset: 3px;
+}
+
+.shell {
+  width: min(1240px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+/* =========================================================================
+   3. TYPOGRAPHY PURITY (Hallmark Gate 38a)
+   ========================================================================= */
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-stretch: 110%;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  text-wrap: balance;
+  margin: 0;
+}
+
+h3 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+p { margin: 0; }
+
+.plan-price,
+.plan-annual,
+.plan-annual-equiv,
+.demo-row,
+.payment-totals,
+.date-block,
+.question-index,
+.prova-topo,
+.pain-stat { font-variant-numeric: tabular-nums; }
+
+/* Clickable text never wraps (Hallmark Gate 49) */
+.nav-cta,
+.primary,
+.secondary,
+.nav-links a { white-space: nowrap; }
+
+.eyebrow {
+  display: inline-block;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.section-lead {
+  max-width: 68ch;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+/* =========================================================================
+   4. HEADER + NAV
+   ========================================================================= */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(244, 245, 240, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+
+header.is-scrolled {
+  background: rgba(244, 245, 240, 0.96);
+  box-shadow: 0 1px 0 var(--border), 0 10px 30px rgba(7, 16, 37, 0.06);
+}
+
+nav.shell {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.logo {
+  display: block;
+  width: 142px;
+  height: auto;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-left: auto;
+}
+
+.nav-links a {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  opacity: 0.72;
+  transition: opacity 0.2s ease;
+}
+.nav-links a:hover { opacity: 1; }
+
+.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.18s var(--ease);
+}
+.nav-cta:hover { transform: translateY(-2px); }
+.nav-cta:active { transform: scale(0.97); }
+
+/* =========================================================================
+   5. BUTTONS + CTAs
+   ========================================================================= */
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  text-decoration: none;
+  border-radius: 12px;
+}
+
+.primary {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 15px 26px;
+  box-shadow: 0 8px 22px rgba(6, 56, 223, 0.2);
+  transition: transform 0.2s var(--ease), background-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.primary:hover { background: var(--blue-deep); transform: translateY(-2px); }
+.primary:active { transform: scale(0.98); }
+.primary small { opacity: 0.6; font-size: 11px; font-weight: 600; }
+
+.primary .arrow {
+  display: inline-block;
+  transition: transform 0.3s var(--ease);
+}
+.primary:hover .arrow { transform: translateX(4px); }
+
+.secondary {
+  padding: 13px 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+  transition: border-color 0.2s ease, transform 0.2s var(--ease);
+}
+.secondary:hover { border-color: var(--ink); transform: translateY(-2px); }
+
+/* Dark sections → Von Restorff brutal contrast (lime on ink) */
+.hero--azul .primary,
+.truth-copy .primary,
+.plan-card--featured .primary,
+.final .primary {
+  background: var(--lime);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 17px;
+  padding: 16px 28px;
+  box-shadow: 0 10px 28px rgba(7, 16, 37, 0.28);
+}
+.hero--azul .primary:hover,
+.truth-copy .primary:hover,
+.plan-card--featured .primary:hover,
+.final .primary:hover {
+  background: var(--lime-hover);
+  transform: translateY(-2px);
+}
+
+.click-trigger {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Court-blue hero: keep the click-trigger lines crisp/translucent white */
+.hero--azul .click-trigger { color: rgba(255, 255, 255, 0.84); }
+
+/* =========================================================================
+   6. HERO — Split Studio (court-blue)
+   ========================================================================= */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  background: var(--blue);
+}
+.hero--azul { background: var(--blue); color: #fff; }
+
+/* Photo layer: subtle court texture at 18%, scrim keeps text crisp */
+.photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.photo-img {
+  position: absolute;
+  inset: 0;
+  background-image: url('assets/img/hero-2000.jpg');
+  background-position: center 44%;
+  background-size: cover;
+  opacity: 0.18;
+}
+.photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(6, 56, 223, 0.4) 0%, rgba(6, 56, 223, 0.62) 55%, rgba(4, 36, 148, 0.92) 100%),
+    radial-gradient(120% 120% at 18% 0%, rgba(6, 56, 223, 0) 28%, rgba(4, 36, 148, 0.72) 100%);
+}
+
+.hero-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-lg);
+  padding: 48px 0 56px;
+  min-height: auto;
+  align-items: center;
+}
+
+.copy { position: relative; z-index: 3; text-align: left; min-width: 0; }
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.kicker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 5px rgba(199, 243, 0, 0.16);
+}
+.hero--azul .kicker { color: #fff; }
+
+.hero h1 {
+  max-width: 18ch;
+  color: #fff;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1;
+}
+.hero--azul h1 { color: #fff; }
+
+.h1-a { display: block; font-size: 1.22em; line-height: 1.04; }
+.h1-b {
+  display: block;
+  margin-top: 2px;
+  font-size: min(0.82em, 7.3vw);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.lead {
+  display: block;
+  max-width: 56ch;
+  margin-top: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.hero--azul .lead { color: rgba(255, 255, 255, 0.9); }
+
+/* Hero CTA block */
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: 22px;
+}
+
+/* Hero video (WhatsApp demo) */
+.hero-video {
+  position: relative;
+  width: auto;
+  max-width: 100%;
+  margin: 20px 0 0;
+}
+.hero-video video {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: clamp(250px, 42svh, 360px);
+  aspect-ratio: 4 / 5;
+  margin-inline: auto;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: var(--blue-deep);
+  box-shadow: 0 20px 50px rgba(7, 16, 37, 0.35);
+}
+.hero-video + .primary { margin-top: 18px; }
+
+.video-pausa {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(7, 16, 37, 0.55);
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.video-pausa svg { width: 16px; height: 16px; fill: currentColor; }
+.video-pausa .icone-tocar,
+.video-pausa[aria-pressed="true"] .icone-pausar { display: none; }
+.video-pausa[aria-pressed="true"] .icone-tocar { display: block; }
+.video-pausa:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Top-of-page proof + share */
+.hero .linha-app { margin-top: 2px; }
+
+.prova-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(340px, 100%);
+  margin: 16px 0 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  text-align: left;
+}
+.prova-topo i,
+.depoimento i {
+  display: grid;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--blue);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+}
+.prova-topo p { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.25; }
+.prova-topo small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.share-link {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 6px 4px;
+  color: #fff;
+  font-size: 14px;
+  text-underline-offset: 3px;
+}
+.hero--azul .share-link { color: #fff; }
+
+/* Device stage — clean flat viewport, no tilt, no halo */
+.visual {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: auto;
+  perspective: 1400px;
+}
+
+.halo { display: none; }
+
+.device-stage {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 286px;
+  height: 584px;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+}
+
+.device {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  border-radius: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--ink);
+  box-shadow: 0 24px 60px rgba(7, 16, 37, 0.35);
+}
+.device::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  pointer-events: none;
+  border-radius: 28px;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.09), transparent 22%);
+}
+
+.screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 28px;
+  background: #f5f5f7;
+}
+
+.island {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 50%;
+  width: 86px;
+  height: 25px;
+  border-radius: 20px;
+  background: #020510;
+  transform: translateX(-50%);
+}
+
+.float-card {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  background: rgba(7, 16, 37, 0.82);
+  color: #fff;
+  font-size: 10px;
+  box-shadow: 0 16px 35px rgba(7, 16, 37, 0.3);
+  backdrop-filter: blur(12px);
+}
+.float-card i {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--lime);
+  color: var(--ink);
+  font-style: normal;
+  font-weight: 800;
+}
+.float-card strong { display: block; margin-bottom: 2px; font-size: 11px; }
+.one { left: -52px; bottom: 86px; transform: scale(1.1); transform-origin: right center; }
+.two { top: 166px; right: -58px; transform: scale(1.1); transform-origin: left center; }
+
+.caption {
+  position: relative;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  max-width: 32ch;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================================================================
+   7. PAIN — “Antes” / organizer routine
+   ========================================================================= */
+.pain {
+  padding: 84px 0 var(--space-xl);
+  text-align: left;
+}
+.pain-head { max-width: 68ch; }
+.pain-head h2 { margin-top: 12px; font-size: clamp(30px, 4.6vw, 50px); }
+.pain-head .section-lead { margin-top: 16px; }
+
+.pain-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  margin-top: 40px;
+  text-align: left;
+}
+.pain-card {
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.pain-tag {
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pain-card h3 { margin: 16px 0 10px; color: var(--ink); font-size: 20px; line-height: 1.25; }
+.pain-card p { color: var(--muted); font-size: 15px; line-height: 1.55; }
+
+.pain-stat { font-weight: 800; color: var(--blue); }
+
+.pain-bridge {
+  max-width: 60ch;
+  margin-top: 36px;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+
+.pain-cta { margin-top: 24px; }
+
+/* Speculative asymmetrical contrast grid (defined for reuse) */
+.contrast-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  margin-top: 40px;
+}
+
+/* =========================================================================
+   8. WORKBENCH — organizer panel + interactive preview
+   ========================================================================= */
+.below { padding: 84px 0 96px; }
+
+.below-head { display: grid; grid-template-columns: 1fr; gap: var(--space-md); }
+.below-head h2 { margin-top: 12px; font-size: clamp(32px, 4.4vw, 54px); }
+.below-head .section-lead { margin-top: 0; }
+
+.organizer-board {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  margin-top: 40px;
+}
+
+.board-panel { position: relative; overflow: hidden; border-radius: 24px; }
+.panel-label {
+  position: relative;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Panel 1 — attendance (blue) */
+.attendance-panel {
+  min-height: 460px;
+  padding: 30px;
+  background: var(--blue);
+  color: #fff;
+}
+.attendance-panel::before {
+  content: "";
+  position: absolute;
+  width: 410px;
+  height: 410px;
+  right: -205px;
+  top: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  box-shadow: 0 0 0 45px rgba(255, 255, 255, 0.045), 0 0 0 90px rgba(199, 243, 0, 0.1);
+}
+.attendance-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.attendance-panel h3 {
+  max-width: 30ch;
+  margin: 14px 0 0;
+  color: #fff;
+  font-size: clamp(26px, 2.8vw, 40px);
+  line-height: 1.02;
+}
+.attendance-copy > p {
+  max-width: 46ch;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.attendance-demo {
+  position: absolute;
+  z-index: 2;
+  left: 30px;
+  right: 30px;
+  bottom: 30px;
+  padding: 20px;
+  border: 1px solid var(--border-dark);
+  border-radius: 18px;
+  background: rgba(7, 16, 37, 0.68);
+  box-shadow: 0 24px 50px rgba(7, 16, 37, 0.18);
+  backdrop-filter: blur(14px);
+}
+.demo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  color: #c7cede;
+  font-size: 12px;
+}
+.demo-row strong { color: var(--lime); font-size: 20px; }
+.progress {
+  height: 7px;
+  margin: 15px 0 18px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.progress i {
+  display: block;
+  width: 83.33%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--lime);
+}
+.player-row { display: flex; align-items: center; justify-content: space-between; }
+.player-stack { display: flex; padding-left: 8px; }
+.player-stack i {
+  width: 38px;
+  height: 38px;
+  margin-left: -8px;
+  border: 3px solid #101b37;
+  border-radius: 50%;
+  background-position: center 20%;
+  background-size: cover;
+  box-shadow: 0 3px 9px rgba(7, 16, 37, 0.2);
+}
+.player-stack i:nth-child(1) { background-image: url('assets/img/face-3.jpg'); }
+.player-stack i:nth-child(2) { background-image: url('assets/img/face-4.jpg'); }
+.player-stack i:nth-child(3) { background-image: url('assets/img/face-1.jpg'); }
+.player-stack i:nth-child(4) {
+  display: grid;
+  place-items: center;
+  background: var(--lime);
+  color: var(--ink);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+.waiting { color: #919cb3; font-size: 11px; text-align: right; }
+.waiting b { display: block; margin-top: 3px; color: #fff; font-size: 13px; }
+
+/* Panel 2 — game (photo) */
+.game-panel { min-height: 220px; padding: 25px; }
+.money-panel { display: flex; flex-direction: column; min-height: 310px; padding: 25px; }
+
+.game-panel {
+  background-image: linear-gradient(90deg, rgba(7, 16, 37, 0.92), rgba(7, 16, 37, 0.44)), url('assets/img/quadra-900.jpg');
+  background-position: center;
+  background-size: cover;
+  color: #fff;
+}
+.game-panel .panel-label { color: var(--lime); }
+.game-ticket {
+  position: absolute;
+  left: 25px;
+  right: 25px;
+  bottom: 22px;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: 16px;
+  background: rgba(7, 16, 37, 0.7);
+  backdrop-filter: blur(10px);
+}
+.date-block {
+  padding: 10px;
+  border-radius: 11px;
+  background: var(--lime);
+  color: var(--ink);
+  text-align: center;
+}
+.date-block strong { display: block; font-size: 27px; line-height: 1; }
+.date-block span { color: #34401f; font-size: 9px; font-weight: 800; }
+.game-ticket h3 { margin: 0 0 5px; color: #fff; font-size: 18px; }
+.game-ticket p { color: #c5ccda; font-size: 11px; line-height: 1.5; }
+
+/* Panel 3 — money (light, status-led) */
+.money-panel {
+  border: 1px solid var(--border);
+  background: #f4f8fb;
+  color: var(--ink);
+}
+.money-panel .panel-label { color: var(--blue); }
+
+.payment-story {
+  position: relative;
+  inset: auto;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.payment-story h3 {
+  max-width: 22ch;
+  color: var(--ink);
+  font-size: clamp(24px, 2.4vw, 30px);
+  line-height: 1.08;
+}
+.payment-story h3 strong { color: var(--blue); }
+.payment-story > p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+.payment-people { display: flex; align-items: center; margin-top: 22px; padding-left: 8px; }
+.payment-face,
+.payment-more {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  margin-left: -8px;
+  border: 3px solid #f4f8fb;
+  border-radius: 50%;
+  background-position: center 20%;
+  background-size: cover;
+}
+.payment-face:nth-child(1) { background-image: url('assets/img/face-3.jpg'); }
+.payment-face:nth-child(2) { background-image: url('assets/img/face-4.jpg'); }
+.payment-face:nth-child(3) { background-image: url('assets/img/face-1.jpg'); }
+.payment-face:nth-child(4) { background-image: url('assets/img/face-5.jpg'); }
+.payment-face:nth-child(5) { background-image: url('assets/img/face-2.jpg'); }
+.payment-face::after {
+  content: "✓";
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 2px solid #f4f8fb;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--ink);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+}
+.payment-face.is-pending { filter: grayscale(1); opacity: 0.62; }
+.payment-face.is-pending::after { content: ""; background: #b8b8bd; }
+.payment-more {
+  display: grid;
+  place-items: center;
+  background: #e2e2e5;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.payment-totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+}
+.payment-total { padding-top: 15px; }
+.payment-total + .payment-total { padding-left: 18px; border-left: 1px solid var(--border); }
+.payment-total span { display: block; color: var(--muted); font-size: 12px; }
+.payment-total strong { display: block; margin-top: 5px; color: var(--ink); font-size: 20px; font-weight: 700; letter-spacing: -0.03em; }
+.payment-total:last-child strong { color: var(--muted); }
+
+/* Legacy money sub-elements kept functional for reuse */
+.money-summary { position: absolute; left: 25px; right: 25px; bottom: 22px; top: 54px; display: flex; flex-direction: column; }
+.money-amount { display: flex; align-items: baseline; gap: 7px; }
+.money-amount span { color: var(--muted); font-size: 12px; }
+.money-amount strong { color: var(--ink); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; }
+.money-amount small { color: var(--blue); font-size: 12px; font-weight: 600; }
+.money-bar { height: 3px; margin: 16px 0 22px; overflow: hidden; border-radius: 999px; background: rgba(7, 16, 37, 0.1); }
+.money-bar i { display: block; width: 80%; height: 100%; border-radius: inherit; background: var(--lime); }
+.money-columns { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 22px; border-top: 1px solid var(--border); }
+.money-col { padding: 14px 14px 14px 0; }
+.money-col + .money-col { padding-left: 14px; border-left: 1px solid var(--border); }
+.money-col span { display: block; color: var(--muted); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; }
+.money-col b { display: block; margin-top: 6px; color: var(--ink); font-size: 15px; font-weight: 700; }
+.money-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.payer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); }
+.payer:first-child { border-top: 0; }
+.payer-name { display: flex; align-items: center; gap: 9px; color: var(--ink); font-size: 12px; }
+.payer-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); }
+.payer.payer--pending .payer-dot { background: #b8b8bd; }
+.payer-status { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 10px; font-weight: 600; }
+.payer.payer--pending .payer-status { background: var(--surface-2); color: var(--muted); }
+
+/* Optional 2-column workbench wrapper around board + interactive preview */
+.workbench-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+  margin-top: 40px;
+}
+
+/* =========================================================================
+   9. DEPOIMENTOS — editorial quote-led
+   ========================================================================= */
+.depoimentos {
+  padding: 84px 0 96px;
+  background: var(--surface-2);
+}
+.depoimentos-head { text-align: left; }
+.depoimentos-head h2 { margin-top: 12px; font-size: clamp(30px, 4.2vw, 50px); }
+
+.depoimentos-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-lg);
+  margin-top: 40px;
+}
+.depoimento {
+  margin: 0;
+  padding: 30px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.depoimento blockquote {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.grupo-tag {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.depoimento figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.3;
+}
+.depoimento figcaption strong { display: block; color: var(--ink); font-size: 15px; font-weight: 700; }
+.depoimento i { background: var(--blue); color: #fff; }
+
+/* =========================================================================
+   10. TRUTH — Como começar nos 14 dias (ink surface)
+   ========================================================================= */
+.truth {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink);
+  color: #fff;
+}
+.truth::before {
+  content: "";
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  left: -300px;
+  bottom: -310px;
+  border: 1px solid rgba(199, 243, 0, 0.18);
+  border-radius: 50%;
+  box-shadow: 0 0 0 55px rgba(199, 243, 0, 0.035), 0 0 0 110px rgba(255, 255, 255, 0.025);
+}
+.truth-row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+  padding: 80px 0;
+  align-items: center;
+}
+.truth .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--lime);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+.truth .eyebrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--lime);
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px rgba(199, 243, 0, 0.13);
+}
+.truth h2 { max-width: 20ch; margin: 12px 0 16px; color: #fff; font-size: clamp(30px, 4vw, 52px); }
+.truth-copy > p { max-width: 58ch; color: #aeb7ca; font-size: 16px; line-height: 1.65; }
+.truth-copy .primary { margin-top: 26px; }
+.truth-copy .click-trigger { color: #8994aa; }
+
+.access-card {
+  padding: 26px;
+  border: 1px solid var(--border-dark);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(16px);
+}
+.access-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 9px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.access-top b { padding: 7px 11px; border-radius: 999px; background: var(--lime); color: var(--ink); font-size: 10px; letter-spacing: 0.04em; }
+.access-step {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0;
+  border-top: 1px solid var(--border-dark);
+}
+.access-step i {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(199, 243, 0, 0.34);
+  border-radius: 50%;
+  color: var(--lime);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+.access-step strong { display: block; margin-bottom: 4px; color: #fff; font-size: 15px; }
+.access-step p { color: rgba(255, 255, 255, 0.82); font-size: 13px; line-height: 1.5; }
+
+.selos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.selos img { display: block; width: auto; height: 36px; }
+
+/* =========================================================================
+   11. PRICING — value anchor + Von Restorff flagship
+   ========================================================================= */
+.pricing { padding: 96px 0; background: var(--surface); }
+
+.pricing-head { max-width: 68ch; text-align: left; }
+.pricing-head h2 { margin: 12px 0 16px; font-size: clamp(32px, 4.2vw, 52px); }
+.pricing-head p { color: var(--muted); font-size: 17px; line-height: 1.55; }
+
+.pricing-anchor-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: fit-content;
+  max-width: 100%;
+  margin-top: var(--space-lg);
+  padding: 14px 20px;
+  border-left: 4px solid var(--lime);
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.pricing-anchor-banner strong { color: var(--lime); font-weight: 800; }
+
+.pricing-includes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  max-width: 900px;
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pricing-includes li {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+}
+.pricing-includes li::before { content: "✓ "; color: var(--blue); font-weight: 800; }
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  margin-top: 48px;
+}
+
+.plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 30px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.plan-card h3 { color: var(--ink); font-size: 22px; }
+.plan-card > p { min-height: 44px; margin: 10px 0 22px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+
+.plan-price { display: flex; align-items: baseline; gap: 5px; color: var(--ink); }
+.plan-price strong { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; }
+.plan-price span { color: var(--muted); font-size: 14px; }
+
+.plan-annual { margin: 6px 0 10px; color: var(--muted); font-size: 14px; }
+.plan-annual strong { color: var(--ink); font-weight: 700; }
+.plan-annual-equiv {
+  display: block;
+  margin-bottom: 20px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+.plan-save {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(199, 243, 0, 0.38);
+  color: var(--ink);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.plan-limit { padding: 14px 0; border-top: 1px solid var(--border); color: var(--ink); font-size: 15px; line-height: 1.45; }
+.plan-limit strong { font-weight: 700; }
+
+.plan-card .primary { width: 100%; margin-top: auto; padding: 14px 18px; font-size: 15px; box-shadow: none; }
+.plan-card .secondary { width: 100%; margin-top: 10px; }
+.plan-card--featured .secondary { border-color: var(--blue); color: var(--blue); }
+
+/* Flagship = Organizador */
+.plan-card--featured {
+  background: var(--ink);
+  border: 2px solid var(--lime);
+  padding: 29px;
+}
+.plan-card--featured h3,
+.plan-card--featured .plan-price strong,
+.plan-card--featured .plan-limit,
+.plan-card--featured .plan-limit strong { color: #fff; }
+.plan-card--featured > p,
+.plan-card--featured .plan-price span,
+.plan-card--featured .plan-annual { color: rgba(255, 255, 255, 0.72); }
+.plan-card--featured .plan-annual strong,
+.plan-card--featured .plan-annual-equiv { color: var(--lime); }
+.plan-card--featured .plan-limit { border-top-color: var(--border-dark); }
+.plan-card--featured .plan-save { background: var(--lime); color: var(--ink); }
+
+.plan-badge {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.plan-card--featured .plan-badge { background: var(--lime); color: var(--ink); }
+
+.pricing-note { max-width: 72ch; margin: 24px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.pricing-conta { margin-top: 8px; }
+.pricing-conta a { color: var(--blue); font-weight: 600; }
+
+/* =========================================================================
+   12. FAQ — asymmetric, sticky editorial header
+   ========================================================================= */
+.faq { padding: 88px 0; }
+.faq-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); align-items: start; }
+.faq h2 { margin-top: 12px; font-size: clamp(32px, 4.4vw, 54px); }
+
+.questions { border-top: 1px solid var(--border); }
+.question { padding: 0; border-bottom: 1px solid var(--border); }
+.question summary {
+  display: grid;
+  grid-template-columns: 38px 1fr 34px;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 0;
+  list-style: none;
+  cursor: pointer;
+}
+.question summary::-webkit-details-marker { display: none; }
+.question-index { color: var(--blue); font-size: 13px; font-weight: 800; letter-spacing: 0.04em; }
+.question h3 { color: var(--ink); font-size: 19px; }
+.question p { max-width: 72ch; margin: 0; padding: 0 48px 26px 52px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+.question-toggle {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+.question-toggle::before,
+.question-toggle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 1.5px;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  transition: transform 0.18s var(--ease);
+}
+.question-toggle::after { transform: translate(-50%, -50%) rotate(90deg); }
+.question[open] .question-toggle { border-color: var(--blue); background: var(--blue); }
+.question[open] .question-toggle::before,
+.question[open] .question-toggle::after { background: #fff; }
+.question[open] .question-toggle::after { transform: translate(-50%, -50%) rotate(0deg); }
+
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+  .question::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition: block-size 0.35s var(--ease), opacity 0.3s ease, content-visibility 0.35s allow-discrete;
+  }
+  .question[open]::details-content { block-size: auto; opacity: 1; }
+}
+
+/* =========================================================================
+   13. FINAL CTA + FOOTER
+   ========================================================================= */
+.final {
+  position: relative;
+  overflow: hidden;
+  margin: 40px auto 0;
+  padding: 72px 32px;
+  border-radius: 28px;
+  background: var(--ink);
+  color: #fff;
+  text-align: center;
+}
+.final-logo { display: block; width: 132px; height: auto; margin: 0 auto 22px; }
+.final .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-dark);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lime);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.final .eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 3px rgba(199, 243, 0, 0.16);
+}
+.final h2 { max-width: 20ch; margin: 24px auto 0; color: #fff; font-size: clamp(30px, 4.4vw, 54px); }
+.final p { max-width: 56ch; margin: 18px auto 0; color: rgba(255, 255, 255, 0.78); font-size: 17px; line-height: 1.6; }
+.final .primary { margin-top: 28px; }
+.final .click-trigger { color: rgba(255, 255, 255, 0.7); }
+
+footer.shell {
+  padding: 32px 20px 48px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+footer.shell a { color: inherit; text-decoration: none; }
+footer.shell a:hover { color: var(--ink); text-decoration: underline; }
+
+/* =========================================================================
+   14. MOBILE STICKY CTA BAR
+   ========================================================================= */
+.barra-cta { display: none; }
+
+/* =========================================================================
+   15. RESTRAINED MOTION + REVEAL
+   ========================================================================= */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+}
+.js [data-reveal].is-in { opacity: 1; transform: translateY(0); }
+
+[data-glow] { position: relative; }
+[data-glow]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: radial-gradient(460px circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, 0.12), transparent 62%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .js [data-glow]:hover::after { opacity: 1; }
+}
+
+@keyframes sq-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sq-rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+
+.js .photo-img { animation: sq-fade 1.1s ease both; }
+.js .device { animation: sq-rise 0.9s var(--ease) 0.2s both; }
+
+.js .attendance-demo .progress i { width: 0; transition: width 1.1s var(--ease) 0.3s; }
+.js .attendance-demo.is-in .progress i { width: 83.33%; }
+
+.js .payment-face,
+.js .payment-more {
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.4s ease, transform 0.45s var(--ease);
+}
+.js .money-panel.is-in .payment-face,
+.js .money-panel.is-in .payment-more { opacity: 1; transform: scale(1); }
+.js .money-panel.is-in .payment-face.is-pending { opacity: 0.62; }
+.js .money-panel.is-in .payment-people > :nth-child(1) { transition-delay: 0.18s; }
+.js .money-panel.is-in .payment-people > :nth-child(2) { transition-delay: 0.26s; }
+.js .money-panel.is-in .payment-people > :nth-child(3) { transition-delay: 0.34s; }
+.js .money-panel.is-in .payment-people > :nth-child(4) { transition-delay: 0.42s; }
+.js .money-panel.is-in .payment-people > :nth-child(5) { transition-delay: 0.5s; }
+.js .money-panel.is-in .payment-people > :nth-child(6) { transition-delay: 0.58s; }
+
+/* =========================================================================
+   16. DESKTOP LAYOUT (Split Studio + Workbench) — min-width: 901px
+   ========================================================================= */
+@media (min-width: 901px) {
+  .shell { width: min(1240px, calc(100% - 72px)); }
+
+  /* --- Hero: asymmetric Split Studio (text + video left, phone right) --- */
+  .hero-grid {
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 56px;
+    padding: 56px 0 68px;
+    min-height: auto;
+  }
+
+  /* Copy is a 2-column Split Studio grid: text left, video right */
+  .copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    column-gap: 64px;
+    align-items: center;
+    text-align: left;
+    margin: 0;
+  }
+  .copy > * { grid-column: 1; }
+  .copy > .hero-video {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+    align-self: center;
+    justify-self: center;
+    width: 100%;
+    margin: 0;
+  }
+  .copy > .hero-video + .primary { margin-top: 22px; }
+
+  .hero h1 { max-width: 14ch; font-size: clamp(38px, 3.4vw, 52px); line-height: 1; }
+  .lead { max-width: 42ch; margin-top: 18px; font-size: 18px; line-height: 1.55; }
+  .hero-video video { height: auto; aspect-ratio: 4 / 5; width: 100%; max-width: 320px; margin-inline: auto; }
+
+  .visual { min-height: auto; }
+
+  /* --- Section heads: asymmetric, left-biased --- */
+  .below-head { grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: end; }
+
+  /* --- Workbench bento --- */
+  .organizer-board {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+    margin-top: 0;
+  }
+  .attendance-panel {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 48px;
+    align-items: center;
+    min-height: 320px;
+  }
+  .attendance-copy { display: block; }
+  .attendance-copy > p { margin: 14px 0 0; }
+  .attendance-demo { position: static; }
+  .game-panel,
+  .money-panel { min-height: 310px; }
+
+  .workbench-grid { grid-template-columns: minmax(0, 1.22fr) minmax(300px, 0.78fr); gap: 40px; align-items: center; }
+
+  /* --- Pain: asymmetric 3-up --- */
+  .pain-grid { grid-template-columns: 1.15fr 0.95fr 0.9fr; }
+  .contrast-grid { grid-template-columns: 1.15fr 0.95fr 0.9fr; }
+
+  /* --- Social proof: editorial quote-led asymmetry --- */
+  .depoimentos-grid { grid-template-columns: 1.1fr 0.9fr; gap: 24px; }
+  .depoimentos-grid .depoimento:nth-child(2) { margin-top: 24px; }
+
+  /* --- Truth: 2-column --- */
+  .truth-row { grid-template-columns: 1.05fr 0.95fr; gap: 64px; padding: 88px 0; }
+
+  /* --- Pricing: 3-up with dominant flagship --- */
+  .pricing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .plan-card--featured { transform: translateY(-6px); }
+
+  /* --- FAQ: sticky editorial header --- */
+  .faq-grid { grid-template-columns: 0.75fr 1.25fr; gap: 64px; }
+  .faq-grid > div:first-child { position: sticky; top: 120px; }
+}
+
+/* =========================================================================
+   17. MOBILE / TABLET (max-width: 900px)
+   ========================================================================= */
+@media (max-width: 900px) {
+  .nav-links { display: none; }
+
+  .hero-grid { padding: 40px 0 48px; }
+  .hero h1 { max-width: 100%; }
+  .lead {
+    display: block;
+    font-size: 15px;
+    line-height: 1.45;
+    margin-top: 10px;
+    max-width: 44ch;
+  }
+
+  .visual { min-height: auto; }
+
+  .organizer-board { grid-template-columns: 1fr; }
+  .attendance-panel { min-height: 500px; }
+  .attendance-copy { gap: 15px; }
+  .attendance-copy > p { max-width: 46ch; }
+
+  .below-head,
+  .truth-row,
+  .faq-grid,
+  .workbench-grid { grid-template-columns: 1fr; }
+  .truth-row { gap: 26px; }
+
+  .depoimentos,
+  .pricing,
+  .faq,
+  .below { padding-top: 72px; padding-bottom: 80px; }
+
+  .final { margin: 0; border-radius: 0; padding: 64px 20px; }
+
+  /* Sticky mobile CTA bar */
+  .barra-cta {
+    position: fixed;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: block;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: rgba(244, 245, 240, 0.97);
+    backdrop-filter: blur(16px);
+    transform: translateY(110%);
+    transition: transform 0.25s var(--ease);
+  }
+  .barra-cta.is-on { transform: none; }
+  .barra-cta a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    border-radius: 999px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  body:has(.saqz-consent:not([hidden])) .barra-cta { transform: translateY(110%); }
+
+  footer.shell { padding-bottom: 96px; }
+}
+
+/* =========================================================================
+   18. SMALL PHONES (max-width: 520px)
+   ========================================================================= */
+@media (max-width: 520px) {
+  .shell { width: min(1240px, calc(100% - 28px)); }
+
+  nav.shell { min-height: 68px; }
+  .logo { width: 116px; }
+  .nav-cta { padding: 10px 14px; font-size: 13px; }
+
+  .hero-grid { padding: 28px 0 36px; }
+  .kicker { margin-bottom: 10px; font-size: 11px; }
+  .hero h1 { font-size: clamp(28px, 8.2vw, 38px); }
+  .h1-b { white-space: normal; }
+
+  .hero-video { margin-top: 14px; }
+  .hero-video video { height: clamp(250px, 44svh, 340px); }
+  .hero-video + .primary { margin-top: 14px; }
+
+  .prova-topo { width: 100%; }
+  .share-link { margin-top: 8px; }
+
+  .visual { min-height: auto; }
+  .device-stage { width: 265px; height: 540px; }
+
+  .pain,
+  .below,
+  .depoimentos,
+  .truth-row,
+  .pricing,
+  .faq { padding-top: 64px; padding-bottom: 72px; }
+
+  .pain-grid,
+  .depoimentos-grid { gap: 12px; }
+  .depoimentos-grid .depoimento:nth-child(2) { margin-top: 0; }
+
+  .question summary { grid-template-columns: 28px 1fr 32px; gap: 10px; padding: 20px 0; }
+  .question h3 { font-size: 17px; }
+  .question p { padding: 0 42px 22px 38px; font-size: 14px; }
+
+  .money-panel { min-height: 390px; }
+
+  .attendance-panel { min-height: 560px; padding: 26px; }
+  .attendance-demo { left: 26px; right: 26px; bottom: 26px; }
+
+  .final { padding: 56px 18px; }
+  .final-logo { width: 112px; margin-bottom: 20px; }
+  .final h2 { font-size: clamp(28px, 8vw, 38px); }
+}
+
+/* =========================================================================
+   19. SHORT VIEWPORTS (Instagram in-app browser)
+   ========================================================================= */
+@media (max-width: 520px) and (max-height: 680px) {
+  .hero-grid { padding-top: 18px; }
+}
+
+/* =========================================================================
+   20. REDUCED MOTION RESET
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .js .photo-img,
+  .js .device { animation: none; }
+  .js .attendance-demo .progress i { width: 83.33%; transition: none; }
+  .js .payment-face,
+  .js .payment-more { opacity: 1; transform: none; transition: none; }
+  .barra-cta { transition: none; }
+  .primary,
+  .secondary,
+  .nav-cta,
+  .primary .arrow,
+  .header,
+  header,
+  .question-toggle::before,
+  .question-toggle::after { transition: none; }
+  [data-glow]::after { transition: none; }
+}
   </style>
   <link rel="preload" as="image" href="assets/img/hero-2000.jpg" media="(min-width:901px)">
   <link rel="preload" as="image" href="assets/img/hero-1200.jpg" media="(max-width:900px)">
-  <style>
-/* Revisão RCD (13/10/2026): seção da dor, selos e âncoras dos planos, hero servido do próprio domínio. */
-.pain { padding:96px 0 8px; text-align:center; }
-.pain-head h2 { max-width:860px; margin:12px auto 0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif; font-size:clamp(40px,5vw,56px); font-weight:600; line-height:1.07; letter-spacing:-.04em; }
-.pain-head .section-lead { max-width:700px; margin:18px auto 0; color:#6e6e73; font-size:19px; line-height:1.45; }
-.pain-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:44px; text-align:left; }
-.pain-card { padding:28px; border:1px solid #d2d2d7; border-radius:8px; background:#fff; }
-.pain-tag { display:inline-block; padding:6px 10px; border-radius:980px; background:rgba(6,56,223,.08); color:var(--blue); font-size:12px; font-weight:600; }
-.pain-card h3 { margin:16px 0 10px; color:#1d1d1f; font-size:20px; font-weight:600; line-height:1.25; letter-spacing:-.025em; }
-.pain-card p { margin:0; color:#6e6e73; font-size:15px; line-height:1.5; }
-.pain-bridge { max-width:640px; margin:36px auto 0; color:#1d1d1f; font-size:19px; font-weight:500; line-height:1.4; letter-spacing:-.02em; }
-.pricing-includes { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 10px; max-width:860px; margin:30px auto 0; padding:0; list-style:none; }
-.pricing-includes li { padding:8px 13px; border:1px solid #d2d2d7; border-radius:980px; background:#fff; color:#1d1d1f; font-size:13px; }
-.pricing-includes li::before { content:"✓ "; color:var(--blue); font-weight:700; }
-.plan-card { position:relative; }
-.plan-badge { position:absolute; top:-13px; left:50%; transform:translateX(-50%); white-space:nowrap; padding:6px 12px; border-radius:980px; background:var(--blue); color:#fff; font-size:12px; font-weight:600; }
-.plan-save { display:inline-block; margin-left:6px; padding:3px 8px; border-radius:980px; background:rgba(199,243,0,.38); color:#1d1d1f; font-size:11px; font-style:normal; font-weight:600; }
-.plan-limit strong { font-weight:600; }
-@media (max-width:900px) { .pain { padding:72px 0 0; } .pain-grid { grid-template-columns:1fr; } .pain-head h2 { font-size:38px; } .pain-head .section-lead,.pain-bridge { font-size:17px; } .photo-img { background-image:linear-gradient(rgba(6,56,223,.11),rgba(6,56,223,.11)),url('assets/img/hero-1200.jpg'); } }
-  </style>
   <link rel="stylesheet" href="assets/app-preview.css">
 </head>
 <body>
@@ -590,9 +1657,9 @@
       <div class="photo"><div class="photo-img"></div></div>
       <div class="hero-grid shell">
         <div class="copy">
-          <div class="kicker">Para quem organiza grupos de vôlei de quadra</div>
-          <h1>A lista do vôlei, com botões, no WhatsApp do grupo.</h1>
-          <p class="lead">A galera toca em Vou ou Não vou. Você vê quem vai, quem está na espera e quem pagou.</p>
+          <div class="kicker">Para quem organiza vôlei de quadra</div>
+          <h1>A lista do vôlei fecha sozinha no WhatsApp. E o caixa também.</h1>
+          <p class="lead">A galera toca em Vou ou Não vou direto no grupo. Você vê na hora quem está confirmado, quem entrou na fila de espera e quem já pagou.</p>
           <figure class="hero-video">
             <video muted autoplay loop playsinline preload="auto" width="600" height="750" poster="assets/video/lista-whatsapp-capa.jpg" aria-describedby="video-topo-descricao">
               <source src="assets/video/lista-whatsapp.webm" type="video/webm">
@@ -638,6 +1705,26 @@
               document.querySelector('.barra-cta a').firstChild.textContent = 'Teste grátis ';
             })();
           </script>
+        </div>
+      </div>
+    </section>
+    <section class="pain shell" id="rotina">
+      <div class="pain-head" data-reveal><h2>Você montou o grupo para jogar. Não para virar cobrador.</h2><p class="section-lead">Toda semana é o mesmo ritual: caçar quem vai no meio da conversa, refazer a contagem quando alguém desiste às 18h e cobrar o Pix da quadra um por um.</p></div>
+      <div class="pain-grid">
+        <article class="pain-card" data-reveal><span class="pain-tag">Antes · segunda, 20h47</span><h3>“Quem vai?” no grupo e três respostas perdidas no meio da conversa.</h3><p>Depois: a lista chega pronta no WhatsApp e cada um toca em Vou ou Não vou. A contagem se atualiza sozinha.</p></article>
+        <article class="pain-card" data-reveal data-reveal-delay="90"><span class="pain-tag">Antes · quarta, 18h02</span><h3>Alguém desiste em cima da hora e a lista já não fecha.</h3><p>Depois: quem entra na lista de espera assume a vaga na hora e o time continua completo, sem você remarcar tudo.</p></article>
+        <article class="pain-card" data-reveal data-reveal-delay="180"><span class="pain-tag">Antes · quinta, 23h15</span><h3>O Pix da quadra entrou, mas ninguém sabe quem já pagou.</h3><p>Depois: o caixa marca quem está em dia e quem ainda deve, sem planilha e sem cobrar um por um.</p></article>
+      </div>
+      <p class="pain-bridge" data-reveal>O Saqz tira essas três perguntas da sua mão. Sobra o que você queria desde o início: jogar.</p>
+      <div class="pain-cta" data-reveal><a class="primary" href="/baixar">Testar com meu grupo <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">14 dias grátis · sem cartão</span></div>
+    </section>
+    <section class="below shell" id="painel">
+      <div class="below-head" data-reveal><div><h2>Confirmações, fila de espera e caixa em uma tela só.</h2></div><p class="section-lead">Enquanto a lista roda sozinha no WhatsApp às 9h, 12h30 e 18h, o seu painel separa mensalistas, avulsos e pagamentos em tempo real.</p></div>
+      <div class="workbench-grid">
+        <div class="organizer-board">
+          <article class="board-panel attendance-panel" data-reveal data-glow><div class="attendance-copy"><div><span class="panel-label">Quem vai?</span><h3>Veja as confirmações sem recontar a conversa.</h3></div><p>Cada atleta confirma presença pelo link do convite. Vagas e lista de espera ficam visíveis para o grupo.</p></div><div class="attendance-demo" data-reveal data-reveal-delay="150"><div class="demo-row"><span>Confirmados para quinta</span><strong><span data-count="10">10</span> / 12</strong></div><div class="progress"><i></i></div><div class="player-row"><div class="player-stack"><i></i><i></i><i></i><i>+7</i></div><span class="waiting">Lista de espera<b>2 atletas</b></span></div></div></article>
+          <article class="board-panel game-panel" data-reveal data-reveal-delay="90" data-glow><span class="panel-label">Onde e quando?</span><div class="game-ticket" data-reveal data-reveal-delay="220"><div class="date-block"><strong>18</strong><span>JUL · QUI</span></div><div><h3>Quinta na Arena</h3><p>20h30 · Quadra 2<br>Confirmações até quarta, 18h</p></div></div></article>
+          <article class="board-panel money-panel" data-reveal data-reveal-delay="160"><span class="panel-label">Quem pagou?</span><div class="payment-story"><h3><strong><span data-count="8">8</span> de 10</strong> atletas já pagaram.</h3><p>Veja rapidamente quem está em dia e quem ainda precisa acertar.</p><div class="payment-people" aria-label="Status dos pagamentos"><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face is-pending"></i><i class="payment-face is-pending"></i><i class="payment-more">+5</i></div><div class="payment-totals"><div class="payment-total"><span>Recebido em julho</span><strong>R$ <span data-count="840">840</span></strong></div><div class="payment-total"><span>A receber</span><strong>R$ <span data-count="120">120</span></strong></div></div></div></article>
         </div>
         <div class="visual">
           <div class="halo"></div>
@@ -723,35 +1810,169 @@
             </div>
            </div>
           </div>
+          <p class="caption">As telas se alternam sozinhas · toque uma aba para explorar · dados ilustrativos</p>
         </div>
       </div>
-      <p class="caption">As telas se alternam sozinhas · toque uma aba para explorar · dados ilustrativos</p>
     </section>
-    <section class="pain shell" id="rotina">
-      <div class="pain-head" data-reveal><span class="eyebrow">A rotina de quem organiza</span><h2>Você montou o grupo para jogar. Não para virar cobrador.</h2><p class="section-lead">Quem organiza vôlei conhece a sequência: perguntar quem vai, repetir onde é, cobrar quem não pagou. E ainda jogar.</p></div>
-      <div class="pain-grid">
-        <article class="pain-card" data-reveal><span class="pain-tag">Quem vai?</span><h3>Perguntar na segunda, de novo na quarta e fechar o time no dia.</h3><p>Contando mensagem por mensagem, com quem respondeu no privado, no áudio ou nem respondeu.</p></article>
-        <article class="pain-card" data-reveal data-reveal-delay="90"><span class="pain-tag">Onde é?</span><h3>Repetir quadra, horário e regra a cada jogo.</h3><p>A mensagem fixada ninguém lê. A dúvida chega no seu privado, no dia do jogo.</p></article>
-        <article class="pain-card" data-reveal data-reveal-delay="180"><span class="pain-tag">Quem pagou?</span><h3>Cobrar um por um e torcer para a conta da quadra fechar.</h3><p>Diária de quem foi, mensalidade de quem sumiu, planilha que só você atualiza. O caixa mora na sua cabeça.</p></article>
+    <section class="depoimentos" id="depoimentos">
+      <div class="shell">
+        <div class="depoimentos-head" data-reveal>
+          <h2>Palavra de quem organiza.</h2>
+        </div>
+        <div class="depoimentos-grid">
+          <figure class="depoimento" data-reveal>
+            <span class="pain-tag">Vôlei de quinta · 21 atletas</span>
+            <blockquote>“Amei. Consigo ter o controle financeiro.”</blockquote>
+            <figcaption>
+              <i aria-hidden="true">I</i>
+              <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas — controle de mensalidades e avulsos</span>
+            </figcaption>
+          </figure>
+          <figure class="depoimento" data-reveal data-reveal-delay="90">
+            <span class="pain-tag">Grupo MBJR · 25 atletas</span>
+            <blockquote>“A melhor coisa é o aviso automático no WhatsApp.”</blockquote>
+            <figcaption>
+              <i aria-hidden="true">A</i>
+              <span><strong>Alexandre, organiza o MBJR</strong> · 25 pessoas — lista automática no WhatsApp</span>
+            </figcaption>
+          </figure>
+        </div>
       </div>
-      <p class="pain-bridge" data-reveal>O Saqz tira essas três perguntas da sua mão. Sobra o que você queria desde o início: jogar.</p>
-      <div class="pain-cta" data-reveal><a class="primary" href="/baixar">Testar com meu grupo <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">14 dias grátis · sem cartão</span></div>
     </section>
-    <section class="below shell" id="painel">
-      <div class="below-head" data-reveal><div><span class="eyebrow">O painel do organizador</span><h2>Quem vai? Onde é? Quem pagou?</h2></div><p class="section-lead">No Saqz, as respostas ficam reunidas em uma só tela, em vez de espalhadas entre conversas e planilhas.</p></div>
-      <div class="organizer-board">
-        <article class="board-panel attendance-panel" data-reveal data-glow><div class="attendance-copy"><div><span class="panel-label">Quem vai?</span><h3>Veja as confirmações sem recontar a conversa.</h3></div><p>Cada atleta confirma presença pelo link do convite. Vagas e lista de espera ficam visíveis para o grupo.</p></div><div class="attendance-demo" data-reveal data-reveal-delay="150"><div class="demo-row"><span>Confirmados para quinta</span><strong><span data-count="10">10</span> / 12</strong></div><div class="progress"><i></i></div><div class="player-row"><div class="player-stack"><i></i><i></i><i></i><i>+7</i></div><span class="waiting">Lista de espera<b>2 atletas</b></span></div></div></article>
-        <article class="board-panel game-panel" data-reveal data-reveal-delay="90" data-glow><span class="panel-label">Onde e quando?</span><div class="game-ticket" data-reveal data-reveal-delay="220"><div class="date-block"><strong>18</strong><span>JUL · QUI</span></div><div><h3>Quinta na Arena</h3><p>20h30 · Quadra 2<br>Confirmações até quarta, 18h</p></div></div></article>
-        <article class="board-panel money-panel" data-reveal data-reveal-delay="160"><span class="panel-label">Quem pagou?</span><div class="payment-story"><h3><strong><span data-count="8">8</span> de 10</strong> atletas já pagaram.</h3><p>Veja rapidamente quem está em dia e quem ainda precisa acertar.</p><div class="payment-people" aria-label="Status dos pagamentos"><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face"></i><i class="payment-face is-pending"></i><i class="payment-face is-pending"></i><i class="payment-more">+5</i></div><div class="payment-totals"><div class="payment-total"><span>Recebido em julho</span><strong>R$ <span data-count="840">840</span></strong></div><div class="payment-total"><span>A receber</span><strong>R$ <span data-count="120">120</span></strong></div></div></div></article>
+    <section class="truth" id="teste">
+      <div class="truth-row shell">
+        <div class="truth-copy" data-reveal>
+          <span class="eyebrow">Teste grátis de 14 dias</span>
+          <h2>Marque o próximo jogo e veja a lista fechar sozinha.</h2>
+          <p>São 14 dias no plano Organizador, com até 3 grupos e atletas ilimitados, contados a partir do seu primeiro grupo. Dá para convidar a galera, marcar jogos, receber as confirmações e acompanhar quem pagou. Sem cartão e sem cobrança automática: no fim, você decide se assina.</p>
+          <a class="primary" href="/baixar">Baixar grátis <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="click-trigger">Sem cartão e sem cobrança automática.</span>
+        </div>
+        <div class="access-card" data-glow>
+          <div class="access-top" data-reveal data-reveal-delay="120">
+            <span>Como começar</span>
+            <b>14 dias para testar</b>
+          </div>
+          <div class="access-step" data-reveal data-reveal-delay="200">
+            <i>1</i>
+            <div>
+              <strong>Baixe o app no seu celular</strong>
+              <p>Grátis no Google Play e na App Store. Você cria sua conta em 1 minuto.</p>
+              <div class="selos">
+                <a href="/baixar"><img src="/comecar/badges/google-play-pt-br.png" alt="Disponível no Google Play" width="121" height="36"></a>
+                <a href="/baixar"><img src="/comecar/badges/app-store-pt-br.svg" alt="Baixar na App Store" width="108" height="36"></a>
+              </div>
+            </div>
+          </div>
+          <div class="access-step" data-reveal data-reveal-delay="280">
+            <i>2</i>
+            <div>
+              <strong>Crie seu grupo (os 14 dias começam aqui)</strong>
+              <p>Sem cartão de crédito. O teste só começa a contar quando o grupo é criado.</p>
+            </div>
+          </div>
+          <div class="access-step" data-reveal data-reveal-delay="360">
+            <i>3</i>
+            <div>
+              <strong>Mande o link no WhatsApp da galera</strong>
+              <p>Cada atleta instala uma única vez pelo link (100% grátis para eles). Depois disso, a lista com botões Vou e Não vou aparece direto no grupo.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
-    <section class="depoimentos" id="depoimentos"><div class="shell"><div class="depoimentos-head" data-reveal><span class="eyebrow">Grupos que já usam o Saqz</span><h2>Palavra de quem organiza.</h2></div><div class="depoimentos-grid"><figure class="depoimento" data-reveal><blockquote>“Amei. Consigo ter o controle financeiro.”</blockquote><figcaption><i aria-hidden="true">I</i><span><strong>Isabelle</strong>Organiza o Vôlei de quinta · 21 pessoas</span></figcaption></figure><figure class="depoimento" data-reveal data-reveal-delay="90"><blockquote>“A melhor coisa é o aviso automático no WhatsApp.”</blockquote><figcaption><i aria-hidden="true">A</i><span><strong>Alexandre</strong>Organiza o MBJR · 25 pessoas</span></figcaption></figure></div></div></section>
-    <section class="truth" id="teste"><div class="truth-row shell"><div class="truth-copy" data-reveal><span class="eyebrow">Teste grátis de 14 dias</span><h2>Marque o próximo jogo e veja a lista fechar sozinha.</h2><p>São 14 dias no plano Organizador, com até 3 grupos e atletas ilimitados, contados a partir do seu primeiro grupo. Dá para convidar a galera, marcar jogos, receber as confirmações e acompanhar quem pagou. Sem cartão e sem cobrança automática: no fim, você decide se assina.</p><a class="primary" href="/baixar">Baixar grátis <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">Sem cartão e sem cobrança automática.</span></div><div class="access-card" data-glow><div class="access-top" data-reveal data-reveal-delay="120"><span>Como começar</span><b>14 dias para testar</b></div><div class="access-step" data-reveal data-reveal-delay="200"><i>1</i><div><strong>Baixe o app</strong><p>Grátis no Google Play e na App Store.</p><div class="selos"><a href="/baixar"><img src="/comecar/badges/google-play-pt-br.png" alt="Disponível no Google Play" width="121" height="36"></a><a href="/baixar"><img src="/comecar/badges/app-store-pt-br.svg" alt="Baixar na App Store" width="108" height="36"></a></div></div></div><div class="access-step" data-reveal data-reveal-delay="280"><i>2</i><div><strong>Crie sua conta e seu grupo</strong><p>É aqui que os 14 dias começam a contar, não antes.</p></div></div><div class="access-step" data-reveal data-reveal-delay="360"><i>3</i><div><strong>Convide a galera e marque o jogo</strong><p>O convite vai pelo WhatsApp e, na primeira vez, cada atleta instala o app pelo link. Quem confirma entra na lista; quem pagou aparece no caixa.</p></div></div></div></div></section>
-    <section class="pricing" id="precos"><div class="shell"><div class="pricing-head"><span class="eyebrow">Planos pagos</span><h2>Depois do teste, escolha o plano do seu grupo.</h2><p>Assinatura mensal ou anual, só quando você decidir. O teste não vira cobrança sozinho.</p></div><ul class="pricing-includes" aria-label="Em todos os planos"><li>Confirmações com vagas e lista de espera</li><li>Jogos avulsos ou toda semana</li><li>Convites e avisos pelo WhatsApp</li><li>Caixa com mensalidades e diárias</li></ul><div class="pricing-grid"><article class="plan-card"><h3>Titular</h3><p>Para quem organiza um grupo.</p><div class="plan-price"><strong>R$ 39,90</strong><span>/mês</span></div><div class="plan-annual">ou <strong>R$ 359,10/ano</strong> <em class="plan-save">economize 25%</em></div><div class="plan-limit"><strong>1 grupo</strong> · até 25 atletas</div><a class="primary" href="/baixar">Testar com meu grupo</a></article><article class="plan-card plan-card--featured"><span class="plan-badge">O plano do teste grátis</span><h3>Organizador</h3><p>Para quem toca mais de um grupo, ou um grupo grande.</p><div class="plan-price"><strong>R$ 59,90</strong><span>/mês</span></div><div class="plan-annual">ou <strong>R$ 539,10/ano</strong> <em class="plan-save">economize 25%</em></div><div class="plan-limit"><strong>Até 3 grupos</strong> · atletas ilimitados</div><a class="primary" href="/baixar">Testar com meu grupo</a></article><article class="plan-card"><h3>Ilimitado</h3><p>Para quem organiza vários grupos, sem contar.</p><div class="plan-price"><strong>R$ 89,90</strong><span>/mês</span></div><div class="plan-annual">ou <strong>R$ 809,10/ano</strong> <em class="plan-save">economize 25%</em></div><div class="plan-limit"><strong>Grupos ilimitados</strong> · atletas ilimitados</div><a class="primary" href="/baixar">Testar com meu grupo</a></article></div><p class="pricing-note">Durante os 14 dias você usa o Organizador. Depois, continue com ele ou escolha o plano que cabe no seu uso: se o grupo passar do limite de um plano, o checkout pede o plano maior. Nada é cobrado sem você assinar.</p><p class="pricing-note pricing-conta">Já tem conta? <a href="/assinar/">Assine pelo site</a>.</p></div></section>
-    <section class="faq shell" id="faq"><div class="faq-grid"><div data-reveal><span class="eyebrow">Perguntas frequentes</span><h2>As perguntas de quem organiza.</h2></div><div class="questions"><details class="question" open data-reveal><summary><span class="question-index">01</span><h3>Os atletas precisam baixar o app?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>O atleta toca no link do convite no WhatsApp e o Saqz abre no celular. Se ainda não tiver o app, o link leva à loja e o convite continua depois de instalar. Eles não pagam nada ao Saqz: quem assina é só o organizador.</p></details><details class="question" data-reveal data-reveal-delay="80"><summary><span class="question-index">02</span><h3>Substitui o grupo do WhatsApp?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. Você vincula o grupo e o Saqz manda lá a lista com os botões Vou e Não vou: às 9h, às 12h30 e às 18h, ou a cada confirmação, das 8h às 22h. Nos jogos semanais, a lista começa 4 dias antes da data. Os avisos do mural e do Avisar também vão para o grupo. A conversa continua no WhatsApp; a lista e as cobranças saem dela.</p></details><details class="question" data-reveal data-reveal-delay="150"><summary><span class="question-index">03</span><h3>Como funciona a cobrança dos atletas?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Você define as mensalidades e diárias do seu grupo, e o caixa mostra quem está em dia e quem ainda precisa acertar, sem planilha. Essas cobranças são do grupo, separadas da assinatura do Saqz.</p></details><details class="question" data-reveal data-reveal-delay="220"><summary><span class="question-index">04</span><h3>Quanto tempo leva para começar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Baixe o app, crie a conta e o grupo, mande o convite no WhatsApp e marque o primeiro jogo. Dá para fazer tudo em poucos minutos, pelo celular.</p></details><details class="question" data-reveal data-reveal-delay="290"><summary><span class="question-index">05</span><h3>Preciso cadastrar cartão para testar?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. O teste não pede cartão, não cria assinatura e não gera cobrança automática. Os 14 dias começam quando você cria o primeiro grupo, e cada organizador pode usá-lo uma vez.</p></details><details class="question" data-reveal data-reveal-delay="360"><summary><span class="question-index">06</span><h3>O que acontece quando o teste termina?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Seu histórico continua disponível e nada é apagado. O grupo fica congelado: tudo continua visível, mas ninguém marca jogo nem confirma presença até você assinar um plano; o atleta ainda consegue dizer Não vou.</p></details><details class="question" data-reveal data-reveal-delay="430"><summary><span class="question-index">07</span><h3>Posso marcar jogos para depois do fim do teste?</h3><i class="question-toggle" aria-hidden="true"></i></summary><p>Não. No teste você marca jogos até o fim dele, e o app mostra a data limite. Ao assinar, a série semanal volta a ser publicada sozinha e você marca os próximos.</p></details></div></div></section>
-    <section class="final shell" id="comecar"><img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal><span class="eyebrow" data-reveal data-reveal-delay="80">Pronto para começar?</span><h2 data-reveal data-reveal-delay="150">Marque o próximo jogo. Dessa vez, só para jogar.</h2><p data-reveal data-reveal-delay="220">Baixe o app, crie seu grupo e mande o convite no WhatsApp. Você decide se assina depois do teste.</p><div data-reveal data-reveal-delay="300"><a class="primary" href="/baixar">Baixar grátis <span class="arrow" aria-hidden="true">→</span></a><span class="click-trigger">Sem cartão · até 3 grupos e atletas ilimitados · 14 dias contados do primeiro grupo.</span></div></section>
+    <section class="pricing" id="precos">
+      <div class="shell">
+        <div class="pricing-head">
+          <h2>Depois do teste, escolha o plano do seu grupo.</h2>
+          <p>Assinatura mensal ou anual, só quando você decidir. O teste não vira cobrança sozinho.</p>
+          <p class="pricing-anchor-banner"><strong>Faça a conta:</strong> num grupo de 20 pessoas, o Saqz custa <strong>menos de R$ 2 por atleta no mês</strong> — menos que uma única diária de avulso que você esqueceu de cobrar.</p>
+        </div>
+        <ul class="pricing-includes" aria-label="Em todos os planos">
+          <li>Confirmações com vagas e lista de espera</li>
+          <li>Jogos avulsos ou toda semana</li>
+          <li>Convites e avisos pelo WhatsApp</li>
+          <li>Caixa com mensalidades e diárias</li>
+        </ul>
+        <div class="pricing-grid">
+          <article class="plan-card">
+            <h3>Titular</h3>
+            <p>Para 1 grupo fechado e compacto.</p>
+            <div class="plan-price"><strong>R$ 39,90</strong><span>/mês</span></div>
+            <div class="plan-annual">ou <strong>R$ 29,90/mês</strong> no plano anual (R$ 359,10/ano) <em class="plan-save">economize 25%</em></div>
+            <div class="plan-limit"><strong>1 grupo</strong> · até 25 atletas cadastrados</div>
+            <a class="primary" href="/baixar">Testar com meu grupo</a>
+          </article>
+          <article class="plan-card plan-card--featured">
+            <span class="plan-badge">Liberado no teste grátis · Mais escolhido</span>
+            <h3>Organizador</h3>
+            <p>Para grupos com mensalistas + avulsos (acima de 25 pessoas) ou até 3 grupos.</p>
+            <div class="plan-price"><strong>R$ 59,90</strong><span>/mês</span></div>
+            <div class="plan-annual">ou <strong>R$ 44,90/mês</strong> no plano anual (R$ 539,10/ano) <em class="plan-save">economize 25%</em></div>
+            <div class="plan-limit"><strong>Até 3 grupos</strong> · atletas ilimitados</div>
+            <a class="primary" href="/baixar">Testar com meu grupo</a>
+          </article>
+          <article class="plan-card">
+            <h3>Ilimitado</h3>
+            <p>Para assessorias, quadras e quem organiza 4 ou mais grupos.</p>
+            <div class="plan-price"><strong>R$ 89,90</strong><span>/mês</span></div>
+            <div class="plan-annual">ou <strong>R$ 67,40/mês</strong> no plano anual (R$ 809,10/ano) <em class="plan-save">economize 25%</em></div>
+            <div class="plan-limit"><strong>Grupos ilimitados</strong> · atletas ilimitados</div>
+            <a class="primary" href="/baixar">Testar com meu grupo</a>
+          </article>
+        </div>
+        <p class="pricing-note">Durante os 14 dias você usa o Organizador. Depois, continue com ele ou escolha o plano que cabe no seu uso: se o grupo passar do limite de um plano, o checkout pede o plano maior. Nada é cobrado sem você assinar.</p>
+        <p class="pricing-note pricing-conta">Já tem conta? <a href="/assinar/">Assine pelo site</a>.</p>
+      </div>
+    </section>
+    <section class="faq shell" id="faq">
+      <div class="faq-grid">
+        <div data-reveal>
+          <h2>As perguntas de quem organiza.</h2>
+        </div>
+        <div class="questions">
+          <details class="question" open data-reveal>
+            <summary><span class="question-index">01</span><h3>Os atletas precisam baixar o app?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>O atleta toca no link do convite no WhatsApp e o Saqz abre no celular. Se ainda não tiver o app, o link leva à loja e o convite continua depois de instalar. Eles não pagam nada ao Saqz: quem assina é só o organizador.</p>
+          </details>
+          <details class="question" data-reveal data-reveal-delay="80">
+            <summary><span class="question-index">02</span><h3>Substitui o grupo do WhatsApp?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>Não. Você vincula o grupo e o Saqz manda lá a lista com os botões Vou e Não vou: às 9h, às 12h30 e às 18h, ou a cada confirmação, das 8h às 22h. Nos jogos semanais, a lista começa 4 dias antes da data. Os avisos do mural e do Avisar também vão para o grupo. A conversa continua no WhatsApp; a lista e as cobranças saem dela.</p>
+          </details>
+          <details class="question" data-reveal data-reveal-delay="150">
+            <summary><span class="question-index">03</span><h3>Como funciona a cobrança dos atletas?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>Você define as mensalidades e diárias do seu grupo, e o caixa mostra quem está em dia e quem ainda precisa acertar, sem planilha. Essas cobranças são do grupo, separadas da assinatura do Saqz.</p>
+          </details>
+          <details class="question" data-reveal data-reveal-delay="220">
+            <summary><span class="question-index">04</span><h3>Quanto tempo leva para começar?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>Baixe o app, crie a conta e o grupo, mande o convite no WhatsApp e marque o primeiro jogo. Dá para fazer tudo em poucos minutos, pelo celular.</p>
+          </details>
+          <details class="question" data-reveal data-reveal-delay="290">
+            <summary><span class="question-index">05</span><h3>Preciso cadastrar cartão para testar?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>Não. O teste não pede cartão, não cria assinatura e não gera cobrança automática. Os 14 dias começam quando você cria o primeiro grupo, e cada organizador pode usá-lo uma vez.</p>
+          </details>
+          <details class="question" data-reveal data-reveal-delay="360">
+            <summary><span class="question-index">06</span><h3>O que acontece quando o teste termina?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>Seu histórico continua disponível e nada é apagado. O grupo fica congelado: tudo continua visível, mas ninguém marca jogo nem confirma presença até você assinar um plano; o atleta ainda consegue dizer Não vou.</p>
+          </details>
+          <details class="question" data-reveal data-reveal-delay="430">
+            <summary><span class="question-index">07</span><h3>Posso marcar jogos para depois do fim do teste?</h3><i class="question-toggle" aria-hidden="true"></i></summary>
+            <p>Não. No teste você marca jogos até o fim dele, e o app mostra a data limite. Ao assinar, a série semanal volta a ser publicada sozinha e você marca os próximos.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+    <section class="final shell" id="comecar">
+      <img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal>
+      <h2 data-reveal data-reveal-delay="150">Marque o próximo jogo. Dessa vez, só para jogar.</h2>
+      <p data-reveal data-reveal-delay="220">Baixe o app, crie seu grupo e mande o convite no WhatsApp. Você decide se assina depois do teste.</p>
+      <div data-reveal data-reveal-delay="300">
+        <a class="primary" href="/baixar">Baixar grátis <span class="arrow" aria-hidden="true">→</span></a>
+        <span class="click-trigger">Sem cartão · até 3 grupos e atletas ilimitados · 14 dias contados do primeiro grupo.</span>
+      </div>
+    </section>
   </main>
-  <footer class="shell" style="padding:24px 20px 40px;text-align:center;font-size:14px;color:#667085"><a href="/termos/" style="color:inherit">Termos de uso</a> · <a href="/privacidade/" style="color:inherit">Política de privacidade</a> · <a href="/termos/recebimentos/" style="color:inherit">Termos de recebimentos</a> · <a href="/excluir-conta/" style="color:inherit">Excluir conta</a> · <a href="#cookies" data-saqz-cookies style="color:inherit">Cookies</a> · <a href="https://www.instagram.com/saqz.app/" target="_blank" rel="noopener" style="color:inherit">Instagram</a>
+  <footer class="shell"><a href="/termos/">Termos de uso</a> · <a href="/privacidade/">Política de privacidade</a> · <a href="/termos/recebimentos/">Termos de recebimentos</a> · <a href="/excluir-conta/">Excluir conta</a> · <a href="#cookies" data-saqz-cookies>Cookies</a> · <a href="https://www.instagram.com/saqz.app/" target="_blank" rel="noopener">Instagram</a>
 </footer>
   <script src="assets/analytics-config.js"></script>
   <script src="assets/analytics.js" defer></script>
