@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.communication
 
+import br.com.saqz.groups.adapter.output.jdbc.attendance.ConfirmationOrderSql
 import br.com.saqz.groups.adapter.output.jdbc.attendance.PersonNameSql
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.communication.AttendanceUpdatesMode
@@ -217,6 +218,7 @@ class JdbcGroupCommunicationRepository(dataSource: DataSource) : GroupCommunicat
             ORDER BY CASE WHEN attendance.status = 'WAITLISTED'
                           THEN ${WaitlistPositionSql.tier("attendance", "membership", "game", "ag")} ELSE 0 END,
                      CASE WHEN attendance.status = 'WAITLISTED' THEN attendance.waitlist_sequence END NULLS FIRST,
+                     ${ConfirmationOrderSql.of("attendance")} NULLS LAST,
                      lower(${PersonNameSql.attendance("attendance")}), ${PersonNameSql.attendance("attendance")}
             """.trimIndent(),
         ).param("group", groupId).param("game", gameId)

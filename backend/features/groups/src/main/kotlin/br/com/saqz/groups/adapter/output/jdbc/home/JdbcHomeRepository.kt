@@ -1,5 +1,6 @@
 package br.com.saqz.groups.adapter.output.jdbc.home
 
+import br.com.saqz.groups.adapter.output.jdbc.attendance.ConfirmationOrderSql
 import br.com.saqz.groups.adapter.output.jdbc.attendance.PersonNameSql
 import br.com.saqz.groups.adapter.output.jdbc.attendance.WaitlistPositionSql
 import br.com.saqz.groups.application.home.HomeAdminGroup
@@ -390,7 +391,8 @@ class JdbcHomeRepository(
             OFFSET 1 LIMIT 3
         """
 
-        // Mesma ordem de promoção do elenco do jogo (WaitlistPositionSql): a posição mostrada é o lugar na fila.
+        // Mesma ordem do elenco do jogo: a espera pela promoção (WaitlistPositionSql), e a posição mostrada é o lugar na fila;
+        // os confirmados pela ordem de confirmação (ConfirmationOrderSql).
         val NEXT_GAME_ROSTER = """
             SELECT member_display_name AS display_name,
                    CASE WHEN guest_seq = 0 THEN member_user_id END AS user_id,
@@ -406,6 +408,7 @@ class JdbcHomeRepository(
                            ORDER BY CASE WHEN attendance.status = 'WAITLISTED'
                                          THEN (${WaitlistPositionSql.tier("attendance", "m", "g", "ag")}) ELSE 0 END,
                                     attendance.waitlist_sequence NULLS FIRST,
+                                    ${ConfirmationOrderSql.of("attendance")} NULLS LAST,
                                     lower(${PersonNameSql.attendance("attendance")}),
                                     ${PersonNameSql.attendance("attendance")},
                                     attendance.member_user_id

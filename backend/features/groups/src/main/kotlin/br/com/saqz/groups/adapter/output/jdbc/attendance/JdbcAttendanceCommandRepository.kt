@@ -777,6 +777,7 @@ class JdbcAttendanceCommandRepository(
                        ELSE 1
                      END,
                      a.waitlist_sequence NULLS FIRST,
+                     ${ConfirmationOrderSql.of("a")} NULLS LAST,
                      lower(${PersonNameSql.attendance("a")}),${PersonNameSql.attendance("a")},a.member_user_id,a.guest_seq
         """
     }

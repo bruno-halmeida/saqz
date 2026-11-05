@@ -55,7 +55,7 @@ class ApelidoNasListasIntegrationTest {
             .param("g", group).update()
     }
 
-    @Test fun `o elenco do jogo usa o apelido do grupo, depois o do perfil, e ordena pelo nome novo`() {
+    @Test fun `o elenco do jogo usa o apelido do grupo, depois o do perfil, na ordem de confirmacao`() {
         val game = game(capacity = 10)
         val bruno = member("Bruno Henrique Almeida", groupNick = "Zé")
         val ana = member("Ana Souza", profileNick = "Aninha")
@@ -64,7 +64,7 @@ class ApelidoNasListasIntegrationTest {
         listOf(bruno, ana, carla, dani).forEach { confirm(it, game) }
 
         val roster = attendance.roster(owner, group, game)!!
-        assertEquals(listOf("Aninha", "Carla Dias", "Dani", "Zé"), roster.confirmed.map { it.displayName })
+        assertEquals(listOf("Zé", "Aninha", "Carla Dias", "Dani"), roster.confirmed.map { it.displayName })
     }
 
     @Test fun `apelido trocado depois da resposta aparece na lista e no lembrete`() {
@@ -83,21 +83,22 @@ class ApelidoNasListasIntegrationTest {
         confirm(host, game)
         guest(game, host, "Fulano Convidado")
 
+        // O convidado entra direto na tabela, sem evento: vai para o fim, depois de quem confirmou de verdade.
         val confirmed = attendance.roster(owner, group, game)!!.confirmed
-        assertEquals(listOf("Fulano Convidado", "Yayá"), confirmed.map { it.displayName })
+        assertEquals(listOf("Yayá", "Fulano Convidado"), confirmed.map { it.displayName })
         assertEquals("Yayá", confirmed.first { it.guestSeq == 1 }.hostDisplayName)
-        assertEquals(listOf("Fulano Convidado", "Yayá"), communication.reminderRoster(group, game).confirmed)
+        assertEquals(listOf("Yayá", "Fulano Convidado"), communication.reminderRoster(group, game).confirmed)
     }
 
-    @Test fun `o lembrete 6-0 numera pelos apelidos em ordem alfabetica`() {
+    @Test fun `o lembrete 6-0 numera pelos apelidos na ordem de confirmacao`() {
         jdbc.sql("UPDATE access_groups SET play_style = 'SIX_ZERO' WHERE id = :g").param("g", group).update()
         val game = game(capacity = 3)
-        confirm(member("Zuleica Prado", groupNick = "Branca"), game)
         confirm(member("Abel Souza", profileNick = "Tico"), game)
+        confirm(member("Zuleica Prado", groupNick = "Branca"), game)
         decline(member("Carla Dias", groupNick = "Cacá"), game)
 
         val body = service.remind(owner, group, game, UUID.randomUUID()).success().body
-        assertTrue(body.endsWith("✅ Confirmados:\n1. Branca\n2. Tico\n3.\n\n❌ Fora:\nCacá"), body)
+        assertTrue(body.endsWith("✅ Confirmados:\n1. Tico\n2. Branca\n3.\n\n❌ Fora:\nCacá"), body)
         assertEquals(listOf("Cacá"), attendance.roster(owner, group, game)!!.declined.map { it.displayName })
     }
 
