@@ -134,7 +134,6 @@ p { margin: 0; }
 .payment-totals,
 .date-block,
 .question-index,
-.prova-topo,
 .pain-stat { font-variant-numeric: tabular-nums; }
 
 /* Clickable text never wraps (Hallmark Gate 49) */
@@ -210,20 +209,21 @@ nav.shell {
 }
 .nav-links a:hover { opacity: 1; }
 
+/* Nav CTA lives on the light header surface → brand blue */
 .nav-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 10px 18px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--surface);
+  background: var(--blue);
+  color: #ffffff;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
-  transition: transform 0.18s var(--ease);
+  transition: transform 0.18s var(--ease), background-color 0.18s var(--ease);
 }
-.nav-cta:hover { transform: translateY(-2px); }
+.nav-cta:hover { background: var(--blue-deep); transform: translateY(-2px); }
 .nav-cta:active { transform: scale(0.97); }
 
 /* =========================================================================
@@ -239,9 +239,10 @@ nav.shell {
   border-radius: 12px;
 }
 
+/* Primary CTAs on LIGHT surfaces → brand blue */
 .primary {
   background: var(--blue);
-  color: #fff;
+  color: #ffffff;
   font-weight: 700;
   font-size: 16px;
   padding: 15px 26px;
@@ -269,24 +270,27 @@ nav.shell {
 }
 .secondary:hover { border-color: var(--ink); transform: translateY(-2px); }
 
-/* Dark sections → Von Restorff brutal contrast (lime on ink) */
+/* Primary CTAs on BRAND BLUE surfaces → crisp white pills with blue ink.
+   OWNER RULE: never pair dark navy surfaces with lime buttons. */
 .hero--azul .primary,
 .truth-copy .primary,
 .plan-card--featured .primary,
 .final .primary {
-  background: var(--lime);
-  color: var(--ink);
+  background: #ffffff;
+  color: var(--blue);
   font-weight: 800;
   font-size: 17px;
   padding: 16px 28px;
-  box-shadow: 0 10px 28px rgba(7, 16, 37, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(4, 20, 82, 0.28);
 }
 .hero--azul .primary:hover,
 .truth-copy .primary:hover,
 .plan-card--featured .primary:hover,
 .final .primary:hover {
-  background: var(--lime-hover);
+  background: #f4f7ff;
   transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(4, 20, 82, 0.36);
 }
 
 .click-trigger {
@@ -301,16 +305,19 @@ nav.shell {
 .hero--azul .click-trigger { color: rgba(255, 255, 255, 0.84); }
 
 /* =========================================================================
-   6. HERO — Split Studio (court-blue)
+   6. HERO — Split Studio (brand blue gradient)
    ========================================================================= */
 .hero {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   color: #fff;
-  background: var(--blue);
+  background: linear-gradient(145deg, var(--blue) 0%, var(--blue-deep) 100%);
 }
-.hero--azul { background: var(--blue); color: #fff; }
+.hero--azul {
+  background: linear-gradient(145deg, var(--blue) 0%, var(--blue-deep) 100%);
+  color: #fff;
+}
 
 /* Photo layer: subtle court texture at 18%, scrim keeps text crisp */
 .photo {
@@ -407,25 +414,25 @@ nav.shell {
   margin-top: 22px;
 }
 
-/* Hero video (WhatsApp demo) */
+/* Hero video (WhatsApp demo) — base (mobile-first) sizing */
 .hero-video {
   position: relative;
-  width: auto;
+  width: min(100%, 368px);
   max-width: 100%;
-  margin: 20px 0 0;
+  margin: 18px auto 0;
 }
 .hero-video video {
   display: block;
-  width: auto;
-  max-width: 100%;
-  height: clamp(250px, 42svh, 360px);
+  width: 100%;
+  height: auto;
+  max-height: 460px;
   aspect-ratio: 4 / 5;
   margin-inline: auto;
   object-fit: cover;
-  border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
   background: var(--blue-deep);
-  box-shadow: 0 20px 50px rgba(7, 16, 37, 0.35);
+  box-shadow: 0 20px 50px rgba(4, 20, 82, 0.35);
 }
 .hero-video + .primary { margin-top: 18px; }
 
@@ -451,44 +458,8 @@ nav.shell {
 .video-pausa[aria-pressed="true"] .icone-tocar { display: block; }
 .video-pausa:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-/* Top-of-page proof + share */
+/* Top-of-page share */
 .hero .linha-app { margin-top: 2px; }
-
-.prova-topo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(340px, 100%);
-  margin: 16px 0 0;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  text-align: left;
-}
-.prova-topo i,
-.depoimento i {
-  display: grid;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: 50%;
-  background: #fff;
-  color: var(--blue);
-  font-size: 14px;
-  font-style: normal;
-  font-weight: 700;
-}
-.prova-topo p { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.25; }
-.prova-topo small {
-  display: block;
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.25;
-}
 
 .share-link {
   display: inline-block;
@@ -1010,12 +981,159 @@ nav.shell {
 .depoimento i { background: var(--blue); color: #fff; }
 
 /* =========================================================================
-   10. TRUTH — Como começar nos 14 dias (ink surface)
+   9b. RELATOS MARQUEE — right-to-left testimonial cards
+   (shared by .hero-relatos in the hero bottom strip and #depoimentos)
+   ========================================================================= */
+@keyframes relatos-rtl {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Bottom strip of the hero — full-bleed under .hero-grid */
+.hero-relatos {
+  position: relative;
+  z-index: 3;
+  padding: 18px 0 34px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(4, 24, 98, 0.28);
+  backdrop-filter: blur(8px);
+}
+.hero-relatos-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 12px;
+}
+
+.relatos-marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+}
+.relatos-track {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  width: max-content;
+  padding: 4px 9px;
+  animation: relatos-rtl 52s linear infinite;
+  will-change: transform;
+}
+.relatos-marquee:hover .relatos-track,
+.relatos-marquee:focus-within .relatos-track { animation-play-state: paused; }
+
+/* Shared card geometry inside the marquee track */
+.relatos-track .depoimento,
+.relatos-track .relato-card {
+  width: clamp(310px, 34vw, 410px);
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 22px 24px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Cards on the brand-blue hero strip */
+.hero-relatos .depoimento,
+.hero-relatos .relato-card {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  box-shadow: 0 14px 32px rgba(4, 20, 82, 0.2);
+  backdrop-filter: blur(12px);
+}
+.hero-relatos .depoimento blockquote {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.48;
+  color: #fff;
+  margin: 0;
+  text-wrap: pretty;
+}
+.hero-relatos .depoimento .pain-tag {
+  align-self: flex-start;
+  background: rgba(199, 243, 0, 0.18);
+  color: var(--lime);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.hero-relatos .depoimento figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.hero-relatos .depoimento figcaption strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Cards on the light #depoimentos surface */
+.depoimentos .depoimento,
+.depoimentos .relato-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  box-shadow: 0 10px 28px rgba(7, 16, 37, 0.05);
+}
+.depoimentos .depoimento blockquote {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.52;
+  color: var(--ink);
+  margin: 0;
+  text-wrap: pretty;
+}
+.depoimentos .depoimento figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.depoimentos .depoimento figcaption strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Real photo avatar (Alexandre, Isabelle, Glaucia) */
+.relato-foto {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 20%;
+  flex: none;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+.hero-relatos .relato-foto { border: 2px solid rgba(255, 255, 255, 0.45); }
+.depoimentos .relato-foto { border: 2px solid var(--blue-soft); }
+
+/* =========================================================================
+   10. TRUTH — Como começar nos 14 dias (brand blue surface)
    ========================================================================= */
 .truth {
   position: relative;
   overflow: hidden;
-  background: var(--ink);
+  background: linear-gradient(145deg, var(--blue) 0%, var(--blue-deep) 100%);
   color: #fff;
 }
 .truth::before {
@@ -1057,16 +1175,16 @@ nav.shell {
   box-shadow: 0 0 0 5px rgba(199, 243, 0, 0.13);
 }
 .truth h2 { max-width: 20ch; margin: 12px 0 16px; color: #fff; font-size: clamp(30px, 4vw, 52px); }
-.truth-copy > p { max-width: 58ch; color: #aeb7ca; font-size: 16px; line-height: 1.65; }
+.truth-copy > p { max-width: 58ch; color: rgba(255, 255, 255, 0.82); font-size: 16px; line-height: 1.65; }
 .truth-copy .primary { margin-top: 26px; }
-.truth-copy .click-trigger { color: #8994aa; }
+.truth-copy .click-trigger { color: rgba(255, 255, 255, 0.74); }
 
 .access-card {
   padding: 26px;
   border: 1px solid var(--border-dark);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.055);
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 30px 70px rgba(4, 20, 82, 0.32);
   backdrop-filter: blur(16px);
 }
 .access-top {
@@ -1117,6 +1235,7 @@ nav.shell {
 .pricing-head h2 { margin: 12px 0 16px; font-size: clamp(32px, 4.2vw, 52px); }
 .pricing-head p { color: var(--muted); font-size: 17px; line-height: 1.55; }
 
+/* Value anchor sits on the light pricing surface → soft blue, not navy */
 .pricing-anchor-banner {
   display: flex;
   align-items: center;
@@ -1125,15 +1244,16 @@ nav.shell {
   max-width: 100%;
   margin-top: var(--space-lg);
   padding: 14px 20px;
-  border-left: 4px solid var(--lime);
+  background: var(--blue-soft);
+  border: 1px solid rgba(6, 56, 223, 0.18);
+  border-left: 4px solid var(--blue);
   border-radius: 12px;
-  background: var(--ink);
-  color: #fff;
+  color: var(--ink);
   font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
 }
-.pricing-anchor-banner strong { color: var(--lime); font-weight: 800; }
+.pricing-anchor-banner strong { color: var(--blue); font-weight: 800; }
 
 .pricing-includes {
   display: flex;
@@ -1203,12 +1323,13 @@ nav.shell {
 
 .plan-card .primary { width: 100%; margin-top: auto; padding: 14px 18px; font-size: 15px; box-shadow: none; }
 .plan-card .secondary { width: 100%; margin-top: 10px; }
-.plan-card--featured .secondary { border-color: var(--blue); color: var(--blue); }
 
-/* Flagship = Organizador */
+/* Flagship = Organizador — brand blue gradient (no navy + lime buttons) */
 .plan-card--featured {
-  background: var(--ink);
-  border: 2px solid var(--lime);
+  background: linear-gradient(155deg, var(--blue) 0%, var(--blue-deep) 100%);
+  border: 2px solid var(--blue);
+  color: #fff;
+  box-shadow: 0 24px 54px rgba(6, 56, 223, 0.22);
   padding: 29px;
 }
 .plan-card--featured h3,
@@ -1217,11 +1338,15 @@ nav.shell {
 .plan-card--featured .plan-limit strong { color: #fff; }
 .plan-card--featured > p,
 .plan-card--featured .plan-price span,
-.plan-card--featured .plan-annual { color: rgba(255, 255, 255, 0.72); }
+.plan-card--featured .plan-annual { color: rgba(255, 255, 255, 0.78); }
 .plan-card--featured .plan-annual strong,
 .plan-card--featured .plan-annual-equiv { color: var(--lime); }
 .plan-card--featured .plan-limit { border-top-color: var(--border-dark); }
 .plan-card--featured .plan-save { background: var(--lime); color: var(--ink); }
+.plan-card--featured .secondary { border-color: rgba(255, 255, 255, 0.5); color: #fff; }
+.plan-card--featured .secondary:hover { border-color: #fff; }
+/* White pill with brand-blue ink sits on the blue flagship */
+.plan-card--featured .primary { background: #ffffff; color: var(--blue); }
 
 .plan-badge {
   position: absolute;
@@ -1236,7 +1361,8 @@ nav.shell {
   font-size: 12px;
   font-weight: 700;
 }
-.plan-card--featured .plan-badge { background: var(--lime); color: var(--ink); }
+/* Small micro-accent badge on the blue flagship */
+.plan-card--featured .plan-badge { background: var(--lime); color: var(--ink); font-weight: 800; }
 
 .pricing-note { max-width: 72ch; margin: 24px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .pricing-conta { margin-top: 8px; }
@@ -1311,7 +1437,7 @@ nav.shell {
   margin: 40px auto 0;
   padding: 72px 32px;
   border-radius: 28px;
-  background: var(--ink);
+  background: linear-gradient(145deg, var(--blue) 0%, var(--blue-deep) 100%);
   color: #fff;
   text-align: center;
 }
@@ -1339,9 +1465,9 @@ nav.shell {
   box-shadow: 0 0 0 3px rgba(199, 243, 0, 0.16);
 }
 .final h2 { max-width: 20ch; margin: 24px auto 0; color: #fff; font-size: clamp(30px, 4.4vw, 54px); }
-.final p { max-width: 56ch; margin: 18px auto 0; color: rgba(255, 255, 255, 0.78); font-size: 17px; line-height: 1.6; }
+.final p { max-width: 56ch; margin: 18px auto 0; color: rgba(255, 255, 255, 0.82); font-size: 17px; line-height: 1.6; }
 .final .primary { margin-top: 28px; }
-.final .click-trigger { color: rgba(255, 255, 255, 0.7); }
+.final .click-trigger { color: rgba(255, 255, 255, 0.74); }
 
 footer.shell {
   padding: 32px 20px 48px;
@@ -1414,20 +1540,20 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
 @media (min-width: 901px) {
   .shell { width: min(1240px, calc(100% - 72px)); }
 
-  /* --- Hero: asymmetric Split Studio (text + video left, phone right) --- */
+  /* --- Hero: asymmetric Split Studio, larger video on the right --- */
   .hero-grid {
     grid-template-columns: 1fr;
     align-items: center;
     gap: 56px;
-    padding: 56px 0 68px;
+    padding: 44px 0 36px;
     min-height: auto;
   }
 
   /* Copy is a 2-column Split Studio grid: text left, video right */
   .copy {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-    column-gap: 64px;
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 460px);
+    column-gap: 60px;
     align-items: center;
     text-align: left;
     margin: 0;
@@ -1437,15 +1563,26 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
     grid-column: 2;
     grid-row: 1 / span 8;
     align-self: center;
-    justify-self: center;
     width: 100%;
     margin: 0;
+    display: flex;
+    justify-content: center;
   }
   .copy > .hero-video + .primary { margin-top: 22px; }
 
   .hero h1 { max-width: 14ch; font-size: clamp(38px, 3.4vw, 52px); line-height: 1; }
   .lead { max-width: 42ch; margin-top: 18px; font-size: 18px; line-height: 1.55; }
-  .hero-video video { height: auto; aspect-ratio: 4 / 5; width: 100%; max-width: 320px; margin-inline: auto; }
+
+  /* Significantly larger hero video on desktop */
+  .hero-video video {
+    width: 100%;
+    max-width: 460px;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    border-radius: 22px;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 28px 64px rgba(4, 20, 82, 0.42);
+  }
 
   .visual { min-height: auto; }
 
@@ -1510,6 +1647,29 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
     margin-top: 10px;
     max-width: 44ch;
   }
+
+  /* Larger, centered hero video + ultra-clean mobile first-fold */
+  .hero-video { width: min(100%, 368px); margin: 18px auto 0; }
+  .hero-video video {
+    width: 100%;
+    height: auto;
+    max-height: 460px;
+    aspect-ratio: 4 / 5;
+    border-radius: 18px;
+  }
+  .hero--azul .primary {
+    width: min(356px, 100%);
+    display: flex;
+    margin: 16px auto 0;
+  }
+  .hero--azul .click-trigger,
+  .hero--azul .share-link {
+    display: block;
+    width: min(356px, 100%);
+    margin-inline: auto;
+    text-align: center;
+  }
+  .hero-relatos { padding: 16px 0 30px; }
 
   .visual { min-height: auto; }
 
@@ -1580,11 +1740,28 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
   .hero h1 { font-size: clamp(28px, 8.2vw, 38px); }
   .h1-b { white-space: normal; }
 
-  .hero-video { margin-top: 14px; }
-  .hero-video video { height: clamp(250px, 44svh, 340px); }
-  .hero-video + .primary { margin-top: 14px; }
+  .hero-video { width: min(100%, 368px); margin: 18px auto 0; }
+  .hero-video video {
+    width: 100%;
+    height: auto;
+    max-height: 460px;
+    aspect-ratio: 4 / 5;
+    border-radius: 18px;
+  }
+  .hero--azul .primary {
+    width: min(356px, 100%);
+    display: flex;
+    margin: 16px auto 0;
+  }
+  .hero--azul .click-trigger,
+  .hero--azul .share-link {
+    display: block;
+    width: min(356px, 100%);
+    margin-inline: auto;
+    text-align: center;
+  }
+  .hero-video + .primary { margin-top: 16px; }
 
-  .prova-topo { width: 100%; }
   .share-link { margin-top: 8px; }
 
   .visual { min-height: auto; }
@@ -1613,6 +1790,8 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
   .final { padding: 56px 18px; }
   .final-logo { width: 112px; margin-bottom: 20px; }
   .final h2 { font-size: clamp(28px, 8vw, 38px); }
+
+  .hero-relatos { padding: 14px 0 26px; }
 }
 
 /* =========================================================================
@@ -1643,8 +1822,17 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
   .question-toggle::before,
   .question-toggle::after { transition: none; }
   [data-glow]::after { transition: none; }
+
+  /* Relatos marquee → accessible manual horizontal scroll */
+  .relatos-track { animation: none; }
+  .relatos-marquee {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+    padding-inline: 20px;
+  }
 }
-  </style>
+</style>
   <link rel="preload" as="image" href="assets/img/hero-2000.jpg" media="(min-width:901px)">
   <link rel="preload" as="image" href="assets/img/hero-1200.jpg" media="(max-width:900px)">
   <link rel="stylesheet" href="assets/app-preview.css">
@@ -1671,10 +1859,16 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
           <a class="primary" href="/baixar">Baixar grátis <span class="arrow" aria-hidden="true">→</span></a>
           <span class="click-trigger">14 dias grátis · sem cartão · Android e iPhone</span>
           <span class="click-trigger linha-app">Você e a galera usam o app. Cada um instala uma vez.</span>
-          <figure class="prova-topo"><i aria-hidden="true">A</i><figcaption><p>“A melhor coisa é o aviso automático no WhatsApp.”</p><small>Alexandre, organiza o MBJR · 25 pessoas</small></figcaption></figure>
           <a class="share-link" href="/indicar">Não organiza o grupo? Mande para quem organiza</a>
           <template id="prova-isa">
-            <figure class="prova-topo"><i aria-hidden="true">I</i><figcaption><p>“Amei. Consigo ter o controle financeiro.”</p><small>Isabelle, organiza o Vôlei de quinta · 21 pessoas</small></figcaption></figure>
+            <figure class="depoimento">
+              <span class="pain-tag">Controle financeiro</span>
+              <blockquote>“Amei! Agora consigo ter o controle financeiro completo do grupo sem planilha. Bato o olho no caixa e já sei quem pagou a mensalidade, quem jogou avulso e quem falta acertar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-isabelle.jpg" alt="Isabelle" width="48" height="48" loading="lazy">
+                <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas no grupo</span>
+              </figcaption>
+            </figure>
           </template>
           <script>
             // Topo por anúncio: quem veio da Meta vê a frase do anúncio em que tocou. Sem anúncio conhecido, fica o topo padrão.
@@ -1698,13 +1892,120 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
                 h1.innerHTML = t.h1;
                 if (t.reserva === false) h1.classList.add('sem-reserva');
                 copy.querySelector('.lead').textContent = t.lead;
-                if (t.prova) copy.querySelector('.prova-topo').replaceWith(document.getElementById(t.prova).content.cloneNode(true));
+                var pt = document.querySelector('.hero .prova-topo');
+                if (t.prova && pt) pt.replaceWith(document.getElementById(t.prova).content.cloneNode(true));
               }
               copy.querySelector('.primary').firstChild.textContent = 'Teste grátis ';
               document.querySelector('.nav-cta').textContent = 'Teste grátis';
               document.querySelector('.barra-cta a').firstChild.textContent = 'Teste grátis ';
             })();
           </script>
+        </div>
+      </div>
+      <div class="hero-relatos" id="depoimentos" aria-label="Relatos de quem organiza grupos no Saqz">
+        <div class="relatos-marquee">
+          <div class="relatos-track">
+            <!-- Conjunto 1 (Alexandre, Isabelle, Glaucia) -->
+            <figure class="depoimento prova-topo">
+              <span class="pain-tag">Lista e fila no WhatsApp</span>
+              <blockquote>“A melhor coisa é o aviso automático e a facilidade de ordenar a lista de presença direto no WhatsApp. A galera confirma num toque e a fila de espera se ajeita sozinha.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-alexandre.jpg" alt="Alexandre" width="48" height="48" loading="lazy">
+                <span><strong>Alexandre, organiza o MBJR</strong> · 25 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento">
+              <span class="pain-tag">Controle financeiro</span>
+              <blockquote>“Amei! Agora consigo ter o controle financeiro completo do grupo sem planilha. Bato o olho no caixa e já sei quem pagou a mensalidade, quem jogou avulso e quem falta acertar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-isabelle.jpg" alt="Isabelle" width="48" height="48" loading="lazy">
+                <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento">
+              <span class="pain-tag">Fim da lista manual</span>
+              <blockquote>“Ficou muito mais tranquilo porque não preciso mais lembrar de lançar a lista manual toda semana. O Saqz solta a chamada sozinho no grupo e eu só me preocupo em jogar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-glaucia.jpg" alt="Glaucia" width="48" height="48" loading="lazy">
+                <span><strong>Glaucia, organiza o vôlei da turma</strong> · Jogos toda semana</span>
+              </figcaption>
+            </figure>
+            <!-- Conjunto 2 duplicado com aria-hidden="true" para rolagem infinita da direita para a esquerda sem corte -->
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Lista e fila no WhatsApp</span>
+              <blockquote>“A melhor coisa é o aviso automático e a facilidade de ordenar a lista de presença direto no WhatsApp. A galera confirma num toque e a fila de espera se ajeita sozinha.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-alexandre.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Alexandre, organiza o MBJR</strong> · 25 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Controle financeiro</span>
+              <blockquote>“Amei! Agora consigo ter o controle financeiro completo do grupo sem planilha. Bato o olho no caixa e já sei quem pagou a mensalidade, quem jogou avulso e quem falta acertar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-isabelle.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Fim da lista manual</span>
+              <blockquote>“Ficou muito mais tranquilo porque não preciso mais lembrar de lançar a lista manual toda semana. O Saqz solta a chamada sozinho no grupo e eu só me preocupo em jogar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-glaucia.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Glaucia, organiza o vôlei da turma</strong> · Jogos toda semana</span>
+              </figcaption>
+            </figure>
+            <!-- Conjunto 3 duplicado (aria-hidden) — garante largura da faixa em telas ultrawide -->
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Lista e fila no WhatsApp</span>
+              <blockquote>“A melhor coisa é o aviso automático e a facilidade de ordenar a lista de presença direto no WhatsApp. A galera confirma num toque e a fila de espera se ajeita sozinha.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-alexandre.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Alexandre, organiza o MBJR</strong> · 25 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Controle financeiro</span>
+              <blockquote>“Amei! Agora consigo ter o controle financeiro completo do grupo sem planilha. Bato o olho no caixa e já sei quem pagou a mensalidade, quem jogou avulso e quem falta acertar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-isabelle.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Fim da lista manual</span>
+              <blockquote>“Ficou muito mais tranquilo porque não preciso mais lembrar de lançar a lista manual toda semana. O Saqz solta a chamada sozinho no grupo e eu só me preocupo em jogar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-glaucia.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Glaucia, organiza o vôlei da turma</strong> · Jogos toda semana</span>
+              </figcaption>
+            </figure>
+            <!-- Conjunto 4 duplicado (aria-hidden) — fecha o loop de -50% sem corte -->
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Lista e fila no WhatsApp</span>
+              <blockquote>“A melhor coisa é o aviso automático e a facilidade de ordenar a lista de presença direto no WhatsApp. A galera confirma num toque e a fila de espera se ajeita sozinha.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-alexandre.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Alexandre, organiza o MBJR</strong> · 25 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Controle financeiro</span>
+              <blockquote>“Amei! Agora consigo ter o controle financeiro completo do grupo sem planilha. Bato o olho no caixa e já sei quem pagou a mensalidade, quem jogou avulso e quem falta acertar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-isabelle.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas no grupo</span>
+              </figcaption>
+            </figure>
+            <figure class="depoimento" aria-hidden="true">
+              <span class="pain-tag">Fim da lista manual</span>
+              <blockquote>“Ficou muito mais tranquilo porque não preciso mais lembrar de lançar a lista manual toda semana. O Saqz solta a chamada sozinho no grupo e eu só me preocupo em jogar.”</blockquote>
+              <figcaption>
+                <img class="relato-foto" src="assets/img/depoimento-glaucia.jpg" alt="" width="48" height="48" loading="lazy">
+                <span><strong>Glaucia, organiza o vôlei da turma</strong> · Jogos toda semana</span>
+              </figcaption>
+            </figure>
+          </div>
         </div>
       </div>
     </section>
@@ -1811,31 +2112,6 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
            </div>
           </div>
           <p class="caption">As telas se alternam sozinhas · toque uma aba para explorar · dados ilustrativos</p>
-        </div>
-      </div>
-    </section>
-    <section class="depoimentos" id="depoimentos">
-      <div class="shell">
-        <div class="depoimentos-head" data-reveal>
-          <h2>Palavra de quem organiza.</h2>
-        </div>
-        <div class="depoimentos-grid">
-          <figure class="depoimento" data-reveal>
-            <span class="pain-tag">Vôlei de quinta · 21 atletas</span>
-            <blockquote>“Amei. Consigo ter o controle financeiro.”</blockquote>
-            <figcaption>
-              <i aria-hidden="true">I</i>
-              <span><strong>Isabelle, organiza o Vôlei de quinta</strong> · 21 pessoas — controle de mensalidades e avulsos</span>
-            </figcaption>
-          </figure>
-          <figure class="depoimento" data-reveal data-reveal-delay="90">
-            <span class="pain-tag">Grupo MBJR · 25 atletas</span>
-            <blockquote>“A melhor coisa é o aviso automático no WhatsApp.”</blockquote>
-            <figcaption>
-              <i aria-hidden="true">A</i>
-              <span><strong>Alexandre, organiza o MBJR</strong> · 25 pessoas — lista automática no WhatsApp</span>
-            </figcaption>
-          </figure>
         </div>
       </div>
     </section>
@@ -1963,7 +2239,7 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
       </div>
     </section>
     <section class="final shell" id="comecar">
-      <img class="final-logo" src="assets/saqz-logo.svg" alt="Saqz" data-reveal>
+      <img class="final-logo" src="assets/saqz-logo-negativo.svg" alt="Saqz" data-reveal>
       <h2 data-reveal data-reveal-delay="150">Marque o próximo jogo. Dessa vez, só para jogar.</h2>
       <p data-reveal data-reveal-delay="220">Baixe o app, crie seu grupo e mande o convite no WhatsApp. Você decide se assina depois do teste.</p>
       <div data-reveal data-reveal-delay="300">
@@ -1973,7 +2249,7 @@ footer.shell a:hover { color: var(--ink); text-decoration: underline; }
     </section>
   </main>
   <footer class="shell"><a href="/termos/">Termos de uso</a> · <a href="/privacidade/">Política de privacidade</a> · <a href="/termos/recebimentos/">Termos de recebimentos</a> · <a href="/excluir-conta/">Excluir conta</a> · <a href="#cookies" data-saqz-cookies>Cookies</a> · <a href="https://www.instagram.com/saqz.app/" target="_blank" rel="noopener">Instagram</a>
-</footer>
+  </footer>
   <script src="assets/analytics-config.js"></script>
   <script src="assets/analytics.js" defer></script>
   <script src="assets/motion.js"></script>
