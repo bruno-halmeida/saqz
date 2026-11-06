@@ -48,7 +48,7 @@ test("privacy describes the Brazil launch and both account deletion channels", (
 });
 
 test("privacy page declares that the team may reach out and how to refuse it", () => {
-  assert.match(page, /Atualizada em 4 de novembro de 2026 \(mensagens da equipe pelo número do Saqz\)\./);
+  assert.match(page, /Atualizada em 6 de novembro de 2026 \(fotos, vídeos, áudios e reações recebidos pelo número do Saqz\)\./);
   assert.match(page, /<strong>Registros de contato:<\/strong> quando a equipe do Saqz fala com você/);
   assert.match(page, /<strong>Falar com você sobre o uso do Saqz<\/strong>, por WhatsApp ou e-mail/);
   assert.match(page, /usando o telefone e o e-mail da sua conta, inclusive pelo número do Saqz,/);
@@ -60,7 +60,7 @@ test("privacy page declares that the team may reach out and how to refuse it", (
 
 test("privacy page declares the WhatsApp messages read by the admin team", () => {
   assert.match(page, /<strong>Mensagens no WhatsApp:<\/strong> as mensagens enviadas ao número do Saqz/);
-  assert.match(page, /inclusive de pessoas sem conta no app\. Não copiamos essas mensagens para o nosso banco de dados\./);
+  assert.match(page, /inclusive de pessoas sem conta no app\. Isso inclui fotos, vídeos, áudios, figurinhas e reações\. Não copiamos essas mensagens nem os arquivos para o nosso banco de dados\./);
   assert.match(page, /<strong>Atender quem escreve para o número do Saqz<\/strong> e acompanhar as mensagens desse número: legítimo interesse/);
   assert.match(page, /<strong>Uazapi \(WhatsApp\):<\/strong> envio dos avisos do grupo, quando ativado pelo organizador, e das mensagens que a equipe do Saqz manda pelo número do Saqz, além do recebimento e armazenamento das mensagens enviadas a esse número\./);
   assert.match(page, /<p>As mensagens do número do Saqz ficam guardadas na Uazapi por até 7 dias\.<\/p>/);
