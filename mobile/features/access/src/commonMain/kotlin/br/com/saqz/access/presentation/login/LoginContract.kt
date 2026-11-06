@@ -9,7 +9,7 @@ import br.com.saqz.designsystem.UiText
  *
  * [emailError] e [passwordError] são erro **por campo**, e não a repetição do alerta:
  * o e-mail acusa formato inválido antes de qualquer chamada ao provedor, e a senha acusa
- * a recusa que voltou dele.
+ * o campo vazio, também antes, ou a recusa que voltou dele.
  */
 @Immutable
 data class LoginState(

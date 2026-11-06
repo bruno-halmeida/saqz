@@ -10,6 +10,7 @@ import br.com.saqz.access.resources.Res
 import br.com.saqz.access.resources.login_error_credentials
 import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.access.resources.login_error_password
+import br.com.saqz.access.resources.login_error_password_empty
 import br.com.saqz.core.common.mvi.MviViewModel
 import br.com.saqz.designsystem.UiText
 import kotlinx.coroutines.flow.launchIn
@@ -30,6 +31,10 @@ class LoginViewModel(
     // inteiro — sem esta memória ela apagaria o erro que o envio acabou de escrever.
     private var rejectedEmail: String? = null
 
+    // Se o último envio foi barrado por senha vazia. Mesma razão do [rejectedEmail]: a
+    // projeção do state machine reconstrói o estado e apagaria o erro do campo.
+    private var missingPassword = false
+
     init {
         authentication.state
             .onEach { auth ->
@@ -38,6 +43,7 @@ class LoginViewModel(
                 update { current ->
                     auth.toLoginState().copy(
                         emailError = emailErrorFor(auth.email),
+                        passwordError = passwordErrorFor(auth),
                         failedAttempts = current.attemptsAfter(auth, answered),
                     )
                 }
@@ -57,11 +63,20 @@ class LoginViewModel(
 
     // E-mail malformado não vira ida ao provedor: a recusa dele voltaria como credencial
     // inválida e cobraria uma tentativa por um erro que a tela já sabia ver sozinha.
+    //
+    // Senha vazia também não: o Firebase do Android não recusa, lança
+    // `IllegalArgumentException` e derruba o app (Crashlytics 09fbdfc2, 1.0.11). E chegar
+    // aqui com ela vazia é comum, porque o envio apaga a senha e o state machine é `single`:
+    // quem erra, passa por "Esqueci minha senha" e volta encontra o e-mail preenchido e a
+    // senha em branco — foi o caminho do registro da falha.
     private fun submitPasswordLogin() {
-        val email = authentication.state.value.email
-        rejectedEmail = email.takeIf { !looksLikeEmail(it) }
-        if (rejectedEmail != null) {
-            update { it.copy(emailError = emailErrorFor(email)) }
+        val form = authentication.state.value
+        // Em voo a senha já foi apagada pelo envio: julgá-la agora acusaria "vazia" à toa.
+        if (form.isLoading) return
+        rejectedEmail = form.email.takeIf { !looksLikeEmail(it) }
+        missingPassword = form.password.isEmpty()
+        if (rejectedEmail != null || missingPassword) {
+            update { it.copy(emailError = emailErrorFor(form.email), passwordError = passwordErrorFor(form)) }
             return
         }
         awaitingAnswer = true
@@ -70,6 +85,12 @@ class LoginViewModel(
 
     private fun emailErrorFor(email: String): UiText? =
         UiText.Res(Res.string.login_error_email_invalid).takeIf { email == rejectedEmail }
+
+    private fun passwordErrorFor(auth: AuthenticationState): UiText? = when {
+        missingPassword && auth.password.isEmpty() -> UiText.Res(Res.string.login_error_password_empty)
+        auth.error == AuthUiError.INVALID_CREDENTIALS -> UiText.Res(Res.string.login_error_password)
+        else -> null
+    }
 }
 
 // ponytail: o contador é cosmético — veja [LoginState.failedAttempts]. Só credencial
@@ -87,8 +108,6 @@ private fun AuthenticationState.toLoginState() = LoginState(
     isLoading = isLoading,
     appleSignInAvailable = appleSignInAvailable,
     error = error?.loginMessage(),
-    passwordError = UiText.Res(Res.string.login_error_password)
-        .takeIf { error == AuthUiError.INVALID_CREDENTIALS },
 )
 
 // A 1a fala a língua do export — "E-mail ou senha incorretos. Confira os dados e tente de

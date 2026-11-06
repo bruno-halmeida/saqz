@@ -14,6 +14,7 @@ import br.com.saqz.access.resources.login_error_blocked
 import br.com.saqz.access.resources.login_error_credentials
 import br.com.saqz.access.resources.login_error_email_invalid
 import br.com.saqz.access.resources.login_error_password
+import br.com.saqz.access.resources.login_error_password_empty
 import br.com.saqz.designsystem.UiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -117,6 +118,41 @@ class LoginViewModelTest {
         runCurrent()
 
         assertNull(viewModel.state.value.emailError)
+    }
+
+    // Crashlytics 09fbdfc2: com senha vazia o Firebase do Android lança em vez de recusar.
+    // O caminho real: senha recusada (o envio a apaga) e a pessoa toca em Entrar de novo.
+    @Test
+    fun `empty password fails locally without reaching the provider`() = runTest(mainDispatcher) {
+        val (viewModel, auth) = fixture(email = "person@example.test")
+        viewModel.onIntent(LoginIntent.UpdatePassword("wrong"))
+        runCurrent()
+        viewModel.onIntent(LoginIntent.SubmitPasswordLogin)
+        runCurrent()
+        auth.completeAuth(AuthResult.Failure(NativeFailureCode.INVALID_CREDENTIALS))
+        runCurrent()
+        assertEquals("", viewModel.state.value.password)
+
+        viewModel.onIntent(LoginIntent.SubmitPasswordLogin)
+        runCurrent()
+
+        assertEquals(listOf(LoginCall("person@example.test", "wrong")), auth.logins)
+        assertEquals(UiText.Res(Res.string.login_error_password_empty), viewModel.state.value.passwordError)
+        assertFalse(viewModel.state.value.isLoading)
+        assertEquals(1, viewModel.state.value.failedAttempts)
+    }
+
+    @Test
+    fun `typing a password clears the empty password error`() = runTest(mainDispatcher) {
+        val (viewModel, _) = fixture(email = "person@example.test")
+        viewModel.onIntent(LoginIntent.SubmitPasswordLogin)
+        runCurrent()
+        assertEquals(UiText.Res(Res.string.login_error_password_empty), viewModel.state.value.passwordError)
+
+        viewModel.onIntent(LoginIntent.UpdatePassword("s"))
+        runCurrent()
+
+        assertNull(viewModel.state.value.passwordError)
     }
 
     // O contador é cosmético e conta só recusa de credencial: cada envio recusado soma um,
