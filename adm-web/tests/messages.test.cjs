@@ -5,6 +5,9 @@ const html = require('node:fs').readFileSync(require.resolve('../index.html'), '
 const source = html.match(/<script type="text\/x-dc"[^>]*>([\s\S]*?)<\/script>/)[1];
 const flush = async () => { for (let i = 0; i < 6; i++) await new Promise(setImmediate); };
 const json = (data, status = 200) => ({ ok: status < 400, status, json: async () => data });
+const arquivo = nome => ({ ok: true, status: 200, blob: async () => ({ nome }) });
+const rotaMidia = (chatId, id) => `GET /admin/whatsapp/media?chatId=${encodeURIComponent(chatId)}&messageId=${encodeURIComponent(id)}`;
+const adiado = () => { let ok; const p = new Promise(r => { ok = r; }); return { p, ok }; };
 
 const G1 = '120363000000000001@g.us', G2 = '120363000000000002@g.us', P1 = '5511900001234@s.whatsapp.net', P2 = '5521900005678@s.whatsapp.net';
 const agora = () => new Date().toISOString();
@@ -18,7 +21,7 @@ const rota = (chatId, offset = 0) => `GET /admin/whatsapp/messages?chatId=${enco
 
 // rotas: resposta | (body) => resposta | Promise; sem rota = página vazia nas mensagens.
 function setup(rotas = {}) {
-  const requests = [];
+  const requests = [], revogadas = [];
   let sessao;
   const ctx = vm.createContext({
     DCLogic: class { props = {}; setState(p, done) { Object.assign(this.state, typeof p === 'function' ? p(this.state) : p); done?.(); } },
@@ -33,10 +36,11 @@ function setup(rotas = {}) {
       return v instanceof Error ? Promise.reject(v) : Promise.resolve(v);
     } } },
     setTimeout, clearTimeout, console, Date, Promise, Math, JSON, Set, encodeURIComponent,
+    URL: { createObjectURL: b => `blob:${b.nome}`, revokeObjectURL: u => revogadas.push(u) },
   });
   const App = vm.runInContext(source + '\nComponent', ctx);
   const app = new App(); app.componentDidMount();
-  return { app, requests, sessao: me => sessao(me), vals: () => app.mensagensVals() };
+  return { app, requests, revogadas, sessao: me => sessao(me), vals: () => app.mensagensVals() };
 }
 const entrar = async (rotas) => { const s = setup(rotas); s.sessao({}); s.app.go('mensagens'); await flush(); return s; };
 const privadas = async (rotas) => { const s = await entrar(rotas); s.vals().onMgPrivadas(); await flush(); return s; };
@@ -105,13 +109,183 @@ test('conversa vazia cita a data da última mensagem', async () => {
   assert.match(s.vals().mgVazioTexto, /em 14\/10, e a Uazapi só guarda até 7 dias/);
 });
 
-test('mídia vira rótulo com legenda e separador de dia em Hoje', async () => {
-  const s = await entrar({ [rota(G1)]: json(pagina([msg('1', false, 'legenda', { kind: 'IMAGE' }), msg('2', false, null, { kind: 'AUDIO' })])) });
+const plain = x => JSON.parse(JSON.stringify(x));
+const midias = s => s.requests.filter(r => r.path.startsWith('/admin/whatsapp/media')).map(r => new URLSearchParams(r.path.split('?')[1]).get('messageId'));
+const hora = (h, m = 0) => { const d = new Date(); d.setHours(h, m, 0, 0); return d.toISOString(); };
+const reacao = (targetId, emoji, at, extra = {}) => ({ targetId, emoji, fromMe: false, at, senderName: 'Ana', senderPhone: '5511900001111', ...extra });
+
+test('documento continua rótulo; foto carrega sozinha com legenda, áudio e vídeo esperam o toque', async () => {
+  const s = await entrar({
+    [rota(G1)]: json(pagina([
+      msg('F1', false, 'legenda', { kind: 'IMAGE', media: { width: 800, height: 600, sizeBytes: 2048, animated: false, waveform: [] } }),
+      msg('A1', false, null, { kind: 'AUDIO', media: { seconds: 14, sizeBytes: 8800, animated: false, waveform: [0, 100] } }),
+      msg('V1', false, null, { kind: 'VIDEO', media: { seconds: 32, sizeBytes: 4300000, animated: false, waveform: [] } }),
+      msg('D1', false, null, { kind: 'DOCUMENT' }),
+    ])),
+    [rotaMidia(G1, 'F1')]: arquivo('foto1'),
+  });
   const l = s.vals().mgLinhas;
   assert.equal(l[0].dia, 'Hoje');
-  assert.equal(l[1].midia, 'Imagem'); assert.equal(l[1].texto, 'legenda');
-  assert.equal(l[2].midia, 'Áudio');
+  assert.equal(l[1].ehFoto, true); assert.equal(l[1].midiaPronta, true); assert.equal(l[1].midiaUrl, 'blob:foto1');
+  assert.equal(l[1].midia, ''); assert.equal(l[1].texto, 'legenda'); assert.equal(l[1].fotoEstilo, 'aspect-ratio:1.333');
+  assert.match(l[1].classe, /mg-m/); assert.equal(l[1].fotoAlt, 'Foto de Ana: legenda');
+  assert.equal(l[2].ehAudio, true); assert.equal(l[2].midiaEspera, true); assert.equal(l[2].audioInfo, 'Áudio · 0:14');
+  assert.equal(l[2].audioRotulo, 'Ouvir áudio de Ana, 0:14'); assert.match(l[2].ondaPath, /^M1\.5 /);
+  assert.equal(l[3].ehVideo, true); assert.equal(l[3].videoInfo, 'Vídeo · 0:32 · 4,1 MB');
+  assert.equal(l[4].midia, 'Documento'); assert.equal(l[4].ehFoto, false);
+  assert.deepEqual(midias(s), ['F1']);
+  l[2].onTocar(); await flush();
+  assert.deepEqual(midias(s), ['F1', 'A1']);
   assert.equal(s.app.mgDia(new Date(2020, 9, 31, 12).toISOString()), 'Sáb., 31 de out.');
+});
+
+test('fotos carregam três por vez e o toque passa na frente da fila', async () => {
+  const pendentes = {};
+  const rotas = { [rota(G1)]: json(pagina(['F1', 'F2', 'F3', 'F4', 'F5'].map(id => msg(id, false, null, { kind: 'IMAGE' }))
+    .concat([msg('A1', false, null, { kind: 'AUDIO', media: { seconds: 3 } })]))) };
+  ['F1', 'F2', 'F3', 'F4', 'F5', 'A1'].forEach(id => { pendentes[id] = adiado(); rotas[rotaMidia(G1, id)] = () => pendentes[id].p; });
+  const s = await entrar(rotas);
+  assert.deepEqual(midias(s), ['F1', 'F2', 'F3']);
+  assert.equal(s.vals().mgLinhas[1].midiaEspera, true);
+  s.vals().mgLinhas.find(l => l.ehAudio).onTocar(); await flush();
+  assert.equal(s.vals().mgLinhas.find(l => l.ehAudio).audioInfo, 'Carregando…');
+  pendentes.F1.ok(arquivo('f1')); await flush();
+  assert.deepEqual(midias(s), ['F1', 'F2', 'F3', 'A1']);
+  pendentes.F2.ok(arquivo('f2')); await flush();
+  assert.deepEqual(midias(s), ['F1', 'F2', 'F3', 'A1', 'F4']);
+  pendentes.A1.ok(arquivo('a1')); await flush();
+  const audio = s.vals().mgLinhas.find(l => l.ehAudio);
+  assert.equal(audio.midiaPronta, true); assert.equal(audio.midiaUrl, 'blob:a1');
+});
+
+test('falha deixa tentar de novo; arquivo que sumiu, grande ou de formato estranho só avisa', async () => {
+  let tentativas = 0;
+  const s = await entrar({
+    [rota(G1)]: json(pagina([
+      msg('F1', false, null, { kind: 'IMAGE' }), msg('F2', false, null, { kind: 'IMAGE' }),
+      msg('F3', false, null, { kind: 'STICKER' }), msg('F4', false, null, { kind: 'IMAGE' }),
+      msg('V1', false, null, { kind: 'VIDEO', media: { seconds: 90, sizeBytes: 20 * 1024 * 1024 } }),
+    ])),
+    [rotaMidia(G1, 'F1')]: () => (++tentativas === 1 ? json({ error: 'WHATSAPP_UNAVAILABLE' }, 503) : arquivo('f1')),
+    [rotaMidia(G1, 'F2')]: json({ error: 'MEDIA_GONE' }, 410),
+    [rotaMidia(G1, 'F3')]: json({ error: 'NOT_MEDIA' }, 415),
+    [rotaMidia(G1, 'F4')]: json({ error: 'MEDIA_TOO_LARGE', sizeBytes: 15 * 1024 * 1024 }, 413),
+  });
+  let l = s.vals().mgLinhas;
+  assert.equal(l[1].aviso, 'Não foi possível carregar a foto'); assert.equal(l[1].podeTentar, true); assert.equal(l[1].ehFoto, false);
+  assert.equal(l[2].aviso, 'Foto não está mais disponível no WhatsApp'); assert.equal(l[2].podeTentar, false);
+  assert.equal(l[3].aviso, 'Figurinha em formato que o adm não abre. Veja no WhatsApp.');
+  assert.equal(l[4].aviso, 'Foto · 15,0 MB · grande demais para abrir aqui. Veja no WhatsApp.');
+  assert.equal(l[5].aviso, 'Vídeo · 20,0 MB · grande demais para abrir aqui. Veja no WhatsApp.');
+  assert.equal(l[5].ehVideo, false);
+  assert.ok(!midias(s).includes('V1'));
+  l[1].onTentar(); await flush();
+  l = s.vals().mgLinhas;
+  assert.equal(l[1].aviso, ''); assert.equal(l[1].midiaUrl, 'blob:f1');
+  l[2].onTentar(); await flush();
+  assert.equal(midias(s).filter(id => id === 'F2').length, 1);
+});
+
+test('foto amplia com nome, grupo, hora e legenda; fecha com Esc ou Fechar', async () => {
+  const s = await entrar({ [rota(G1)]: json(pagina([msg('F1', false, 'quadra nova', { kind: 'IMAGE', at: hora(21, 45) })])), [rotaMidia(G1, 'F1')]: arquivo('f1') });
+  assert.equal(s.vals().mgFotoAberta, false);
+  s.vals().mgLinhas[1].onFoto();
+  let v = s.vals();
+  assert.equal(v.mgFotoAberta, true); assert.equal(v.mgFotoUrl, 'blob:f1');
+  assert.equal(v.mgFotoTitulo, 'Ana · Rede Alta'); assert.equal(v.mgFotoQuando, 'Hoje, 21:45'); assert.equal(v.mgFotoLegenda, 'quadra nova');
+  v.onMgFotoTecla({ key: 'Enter' }); assert.equal(s.vals().mgFotoAberta, true);
+  v.onMgFotoTecla({ key: 'Escape' }); assert.equal(s.vals().mgFotoAberta, false);
+  s.vals().mgLinhas[1].onFoto(); s.vals().onMgFecharFoto(); assert.equal(s.vals().mgFotoAberta, false);
+});
+
+test('reações: vale a última de cada pessoa, retirada some, e o toque mostra quem reagiu', async () => {
+  const s = await entrar({ [rota(G1)]: json(pagina([msg('M1', false, 'bora?', { at: hora(20) })], { reactions: [
+    reacao('M1', '👍', hora(20, 1), { senderName: 'Tiago', senderPhone: '5511900004444' }),
+    reacao('M1', '👍', hora(20, 2), { senderName: 'Marcos', senderPhone: '5511900005555' }),
+    reacao('M1', '🔥', hora(20, 3), { senderName: 'Tiago', senderPhone: '5511900004444' }),
+    reacao('M1', '❤️', hora(20, 4), { senderName: 'Júlia', senderPhone: '5511900003333' }),
+    reacao('M1', null, hora(20, 5), { senderName: 'Júlia', senderPhone: '5511900003333' }),
+    reacao('M1', '🔥', hora(20, 6), { senderName: 'Ana', senderPhone: '5511900001111' }),
+  ] })) });
+  let m = s.vals().mgLinhas[1];
+  assert.equal(m.temReacoes, true); assert.equal(m.reacoesClasse, 'mg-reacoes');
+  assert.deepEqual(plain(m.reacoes.map(r => r.rotulo)), ['👍 1', '🔥 2']);
+  assert.equal(m.reacoes[1].aria, '🔥: Tiago e Ana');
+  assert.equal(m.quemReagiu, '');
+  m.reacoes[1].alternar();
+  m = s.vals().mgLinhas[1];
+  assert.equal(m.reacoes[1].aberto, 'true'); assert.equal(m.quemReagiu, '🔥 Tiago e Ana');
+  m.reacoes[0].alternar();
+  assert.equal(s.vals().mgLinhas[1].quemReagiu, '👍 Marcos');
+  s.vals().mgLinhas[1].reacoes[0].alternar();
+  assert.equal(s.vals().mgLinhas[1].quemReagiu, '');
+});
+
+test('reação a mensagem fora da tela vira linha solta; em Todas fica sob a mensagem do Saqz', async () => {
+  const s = await entrar({ [rota(G1)]: json(pagina([
+    msg('S1', true, 'Lista aberta', { at: hora(19) }), msg('M1', false, 'oi', { at: hora(20) }),
+  ], { reactions: [
+    reacao('ANTIGA', '❤️', hora(19, 30), { senderName: 'Júlia' }),
+    reacao('S1', '👍', hora(20, 30)),
+    reacao('S1', '👍', hora(20, 35), { senderName: 'Tiago', senderPhone: '5511900004444' }),
+    reacao('M1', '😂', hora(20, 40), { fromMe: true, senderName: null, senderPhone: null }),
+    reacao('S1', '🙏', hora(20, 50), { fromMe: true, senderName: null, senderPhone: null }),
+  ] })) });
+  let l = s.vals().mgLinhas;
+  assert.deepEqual(plain(l.filter(x => x.ehSolta).map(x => x.solta)), [
+    `Júlia reagiu ❤️ a uma mensagem anterior · 19:30`, `Ana e Tiago reagiram 👍 a uma mensagem do Saqz · 20:35`,
+  ]);
+  assert.deepEqual(plain(l.map(x => x.ehDia ? 'dia' : x.ehSolta ? 'solta' : x.texto)), ['dia', 'solta', 'oi', 'solta']);
+  assert.deepEqual(plain(l.find(x => x.texto === 'oi').reacoes.map(r => r.rotulo)), ['😂 1']);
+  s.vals().onMgTodas();
+  l = s.vals().mgLinhas;
+  assert.deepEqual(plain(l.filter(x => x.ehSolta).map(x => x.solta)), [`Júlia reagiu ❤️ a uma mensagem anterior · 19:30`]);
+  const saqz = l.find(x => x.texto === 'Lista aberta');
+  assert.deepEqual(plain(saqz.reacoes.map(r => r.rotulo)), ['👍 2', '🙏 1']); assert.equal(saqz.reacoesClasse, 'mg-reacoes me');
+  saqz.reacoes[1].alternar();
+  assert.equal(s.vals().mgLinhas.find(x => x.texto === 'Lista aberta').quemReagiu, '🙏 Saqz');
+});
+
+test('carregar anteriores junta reações sem repetir e prende a solta na mensagem antiga', async () => {
+  const r1 = reacao('M1', '❤️', hora(20, 30));
+  const s = await entrar({
+    [rota(G1)]: json(pagina([msg('M2', false, 'novo', { at: hora(20) })], { hasMore: true, nextOffset: 50, reactions: [r1] })),
+    [rota(G1, 50)]: json(pagina([msg('M1', false, 'antigo', { at: hora(19), kind: 'IMAGE' })], { reactions: [r1] })),
+    [rotaMidia(G1, 'M1')]: arquivo('m1'),
+  });
+  assert.equal(s.vals().mgLinhas.filter(x => x.ehSolta).length, 1);
+  s.vals().onMgAnteriores(); await flush();
+  const l = s.vals().mgLinhas;
+  assert.equal(l.filter(x => x.ehSolta).length, 0);
+  const antiga = l.find(x => x.texto === 'antigo');
+  assert.deepEqual(plain(antiga.reacoes.map(r => r.rotulo)), ['❤️ 1']);
+  assert.equal(antiga.midiaUrl, 'blob:m1');
+});
+
+test('trocar de conversa ou sair libera os arquivos e descarta resposta atrasada', async () => {
+  const atrasada = adiado();
+  const s = await entrar({
+    [rota(G1)]: json(pagina([msg('F1', false, null, { kind: 'IMAGE' }), msg('F2', false, null, { kind: 'IMAGE' })])),
+    [rota(G2)]: json(pagina([msg('F3', false, null, { kind: 'IMAGE' })])),
+    [rotaMidia(G1, 'F1')]: arquivo('f1'), [rotaMidia(G1, 'F2')]: () => atrasada.p, [rotaMidia(G2, 'F3')]: arquivo('f3'),
+  });
+  assert.equal(s.vals().mgLinhas[1].midiaUrl, 'blob:f1');
+  s.vals().mgLinhas[1].onFoto();
+  s.vals().mgRows[1].abrir(); await flush();
+  assert.deepEqual(s.revogadas, ['blob:f1']);
+  assert.equal(s.vals().mgFotoAberta, false);
+  assert.equal(s.vals().mgLinhas[1].midiaUrl, 'blob:f3');
+  atrasada.ok(arquivo('f2')); await flush();
+  assert.deepEqual(s.revogadas, ['blob:f1', 'blob:f2']);
+  assert.equal(s.app.state.mgMidias.F2, undefined);
+  s.sessao(null); await flush();
+  assert.deepEqual(s.revogadas, ['blob:f1', 'blob:f2', 'blob:f3']);
+  assert.deepEqual(plain(s.app.state.mgMidias), {});
+});
+
+test('prévia de reação na lista diz Reagiu', async () => {
+  const s = await entrar({ 'GET /admin/whatsapp/conversations': json(lista({ groups: [conversa(G1, { name: 'Rede Alta', preview: '❤️', previewKind: 'REACTION' })] })) });
+  assert.equal(s.vals().mgRows[0].previa, 'Reagiu ❤️');
 });
 
 test('carregar anteriores usa nextOffset e põe as antigas antes', async () => {
