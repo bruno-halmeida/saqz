@@ -20,6 +20,11 @@ class AdminWhatsAppMessagesTest {
     private var failTrack = false
     private var disconnected = false
     private var chatsRead = 0
+    private var located: InboxMessageRef? = InboxMessageRef(PRIVATE, InboxMessageKind.IMAGE, 3)
+    private var file: InboxMediaFile? = InboxMediaFile(byteArrayOf(1, 2, 3), "image/jpeg")
+    private var failMedia = false
+    private val locatedIds = mutableListOf<String>()
+    private val downloads = mutableListOf<Pair<String, InboxMessageKind>>()
     private val inbox = object : AdminWhatsAppInbox {
         override fun chats(): InboxChatPage {
             chatsRead++
@@ -33,6 +38,15 @@ class AdminWhatsAppMessagesTest {
         override fun trackExists(trackId: String): Boolean {
             if (failTrack) throw DirectoryError.Unavailable("x")
             return tracked
+        }
+        override fun locate(messageId: String): InboxMessageRef? {
+            locatedIds += messageId
+            if (failMedia) throw DirectoryError.Unavailable("x")
+            return located
+        }
+        override fun download(messageId: String, kind: InboxMessageKind): InboxMediaFile? {
+            downloads += messageId to kind
+            return file
         }
     }
     private val directory = object : WhatsAppGroupDirectory {
@@ -209,11 +223,86 @@ class AdminWhatsAppMessagesTest {
         assertEquals(ReplyResult.Failed, service.reply(PRIVATE, "oi", REQUEST))
     }
 
+    @Test
+    fun `media of the same chat comes back for photo, video, audio and sticker with the file type`() {
+        val cases = listOf(
+            InboxMessageKind.IMAGE to "image/jpeg", InboxMessageKind.VIDEO to "video/mp4",
+            InboxMessageKind.AUDIO to "audio/ogg; codecs=opus", InboxMessageKind.STICKER to "image/webp",
+        )
+        for ((kind, type) in cases) {
+            located = InboxMessageRef(GROUP, kind, 3)
+            file = InboxMediaFile(byteArrayOf(9, 8, 7), type)
+            val result = service.media(GROUP, MESSAGE)
+            assertTrue(result is MediaResult.Found, kind.name)
+            assertEquals(type.substringBefore(";"), result.file.mimeType)
+            assertEquals(kind, result.kind)
+            assertEquals(listOf(9, 8, 7), result.file.bytes.map(Byte::toInt))
+            assertEquals(MESSAGE to kind, downloads.last())
+        }
+    }
+
+    @Test
+    fun `media refuses bad input before asking the provider`() {
+        for ((chatId, id) in listOf(null to MESSAGE, "abc" to MESSAGE, PRIVATE to null, PRIVATE to "abc", PRIVATE to "../3AA025E50D",
+            PRIVATE to "3AA0 25E50D", PRIVATE to "A".repeat(65))) {
+            assertEquals(MediaResult.Invalid, service.media(chatId, id), "$chatId $id")
+        }
+        assertTrue(locatedIds.isEmpty())
+    }
+
+    @Test
+    fun `media of another chat or of an unknown id is not found, without downloading`() {
+        located = InboxMessageRef(GROUP, InboxMessageKind.IMAGE, 3)
+        assertEquals(MediaResult.NotFound, service.media(PRIVATE, MESSAGE))
+        located = null
+        assertEquals(MediaResult.NotFound, service.media(PRIVATE, MESSAGE))
+        assertTrue(downloads.isEmpty())
+    }
+
+    @Test
+    fun `text, document and contact are not media, and an unexpected file type is refused`() {
+        for (kind in listOf(InboxMessageKind.TEXT, InboxMessageKind.DOCUMENT, InboxMessageKind.CONTACT, InboxMessageKind.OTHER)) {
+            located = InboxMessageRef(PRIVATE, kind, 3)
+            assertEquals(MediaResult.NotMedia, service.media(PRIVATE, MESSAGE), kind.name)
+        }
+        assertTrue(downloads.isEmpty())
+        located = InboxMessageRef(PRIVATE, InboxMessageKind.IMAGE, 3)
+        file = InboxMediaFile(byteArrayOf(1), "text/html")
+        assertEquals(MediaResult.NotMedia, service.media(PRIVATE, MESSAGE))
+        located = InboxMessageRef(PRIVATE, InboxMessageKind.STICKER, 3)
+        file = InboxMediaFile(byteArrayOf(1), "image/jpeg")
+        assertEquals(MediaResult.NotMedia, service.media(PRIVATE, MESSAGE))
+    }
+
+    @Test
+    fun `too large is refused before downloading, and also when the file is bigger than announced`() {
+        located = InboxMessageRef(PRIVATE, InboxMessageKind.VIDEO, AdminWhatsAppMessages.MAX_MEDIA_BYTES + 1)
+        assertEquals(MediaResult.TooLarge(AdminWhatsAppMessages.MAX_MEDIA_BYTES + 1), service.media(PRIVATE, MESSAGE))
+        assertTrue(downloads.isEmpty())
+        located = InboxMessageRef(PRIVATE, InboxMessageKind.VIDEO, AdminWhatsAppMessages.MAX_MEDIA_BYTES)
+        file = InboxMediaFile(ByteArray(AdminWhatsAppMessages.MAX_MEDIA_BYTES.toInt()), "video/mp4")
+        assertTrue(service.media(PRIVATE, MESSAGE) is MediaResult.Found)
+        located = InboxMessageRef(PRIVATE, InboxMessageKind.VIDEO, null)
+        file = InboxMediaFile(ByteArray(AdminWhatsAppMessages.MAX_MEDIA_BYTES.toInt() + 1), "video/mp4")
+        assertEquals(MediaResult.TooLarge(AdminWhatsAppMessages.MAX_MEDIA_BYTES + 1), service.media(PRIVATE, MESSAGE))
+    }
+
+    @Test
+    fun `file the whatsapp no longer has is gone, and provider failure is unavailable`() {
+        file = null
+        assertEquals(MediaResult.Gone, service.media(PRIVATE, MESSAGE))
+        file = InboxMediaFile(ByteArray(0), "image/jpeg")
+        assertEquals(MediaResult.Gone, service.media(PRIVATE, MESSAGE))
+        failMedia = true
+        assertEquals(MediaResult.Unavailable, service.media(PRIVATE, MESSAGE))
+    }
+
     private companion object {
         const val PRIVATE = "5511988887777@s.whatsapp.net"
         const val GROUP = "120363000000000000@g.us"
         const val UNLINKED = "120363000000000001@g.us"
         const val REQUEST = "9c8b7a6d-5e4f-4321-9876-abcdef012345"
+        const val MESSAGE = "3AA025E50D2F15D95D7E"
         val CARLA: UUID = UUID.fromString("4f2a91c7-8e13-4b60-a2d5-7c19e0b6d341")
         val ADMIN: UUID = UUID.fromString("0b6d3414-8e13-4b60-a2d5-7c19e0f2a91c")
     }

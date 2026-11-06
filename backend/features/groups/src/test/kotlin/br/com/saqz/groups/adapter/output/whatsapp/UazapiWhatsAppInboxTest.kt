@@ -140,6 +140,107 @@ class UazapiWhatsAppInboxTest {
         }
     }
 
+    @Test
+    fun `messages bring media numbers and reactions, never the file address`() {
+        val wave = java.util.Base64.getEncoder().encodeToString(byteArrayOf(0, 50, 100, 200.toByte()))
+        response = """{"messages":[
+          {"messageid":"I1","fromMe":false,"messageTimestamp":1000,"messageType":"ImageMessage","text":"quadra",
+           "content":{"URL":"https://SECRET","directPath":"/SECRET","mediaKey":"SECRET","fileSHA256":"SECRET","fileLength":2048,
+                      "width":800,"height":600,"mimetype":"image/jpeg"}},
+          {"messageid":"A1","fromMe":false,"messageTimestamp":2000,"messageType":"AudioMessage",
+           "content":{"URL":"https://SECRET","seconds":14,"waveform":"$wave","PTT":true,"fileLength":"8800"}},
+          {"messageid":"S1","fromMe":false,"messageTimestamp":2500,"messageType":"StickerMessage","content":{"isAnimated":true}},
+          {"messageid":"T1","fromMe":false,"messageTimestamp":2600,"messageType":"Conversation","text":"oi","content":{"seconds":3}},
+          {"messageid":"R2","fromMe":false,"messageTimestamp":4000,"messageType":"ReactionMessage","text":"","reaction":"I1",
+           "senderName":"Ana","sender_pn":"5511900001111@s.whatsapp.net"},
+          {"messageid":"R1","fromMe":false,"messageTimestamp":3000,"messageType":"ReactionMessage","text":"❤️","reaction":"I1",
+           "senderName":"Ana","sender_pn":"5511900001111@s.whatsapp.net","sender":"999@lid"},
+          {"messageid":"R3","fromMe":true,"messageTimestamp":3500,"messageType":"ReactionMessage","text":"👍",
+           "content":{"key":{"ID":"A1","fromMe":false}}},
+          {"messageid":"R4","fromMe":false,"messageTimestamp":3600,"messageType":"ReactionMessage","text":"👍"}
+        ]}"""
+
+        val page = inbox.messages(GROUP, 0, 50)
+
+        assertEquals(listOf("I1", "A1", "S1", "T1"), page.messages.map { it.id })
+        val image = page.messages[0].media!!
+        assertEquals(800, image.width); assertEquals(600, image.height); assertEquals(2048L, image.sizeBytes)
+        assertTrue(image.waveform.isEmpty())
+        val audio = page.messages[1].media!!
+        assertEquals(14, audio.seconds); assertEquals(8800L, audio.sizeBytes)
+        assertEquals(listOf(0, 50, 100, 100), audio.waveform)
+        assertTrue(page.messages[2].media!!.animated)
+        assertNull(page.messages[3].media)
+        assertEquals(3, page.reactions.size)
+        val (heart, thumb, removed) = page.reactions
+        assertEquals("I1", heart.targetId); assertEquals("❤️", heart.emoji); assertEquals("Ana", heart.senderName)
+        assertEquals("5511900001111", heart.senderPhone); assertFalse(heart.fromMe)
+        assertEquals("A1", thumb.targetId); assertTrue(thumb.fromMe)
+        assertEquals("I1", removed.targetId); assertNull(removed.emoji)
+        assertFalse(page.toString().contains("SECRET"))
+        assertFalse(page.toString().contains("@lid"))
+    }
+
+    @Test
+    fun `chat preview of a reaction is a reaction`() {
+        response = """{"chats":[{"wa_chatid":"$PRIVATE","wa_lastMsgTimestamp":1,"wa_lastMessageType":"ReactionMessage","wa_lastMessageTextVote":"❤️"}]}"""
+        assertEquals(InboxMessageKind.REACTION, inbox.chats().chats.single().previewKind)
+    }
+
+    @Test
+    fun `locate searches by id and reads chat, kind and size`() {
+        response = """{"messages":[{"messageid":"3AA025E50D","chatid":"$GROUP","messageType":"VideoMessage","content":{"fileLength":4096}}]}"""
+        val ref = inbox.locate("3AA025E50D")
+        val sent = mapper.readTree(requests.single().second)
+        assertEquals("/message/find", requests.single().first)
+        assertEquals("3AA025E50D", sent["id"].asText())
+        assertEquals(GROUP, ref?.chatId)
+        assertEquals(InboxMessageKind.VIDEO, ref?.kind)
+        assertEquals(4096L, ref?.sizeBytes)
+        response = """{"messages":[{"messageid":"OUTRO","chatid":"$GROUP","messageType":"VideoMessage"}]}"""
+        assertNull(inbox.locate("3AA025E50D"))
+        response = """{"messages":[]}"""
+        assertNull(inbox.locate("3AA025E50D"))
+    }
+
+    @Test
+    fun `download asks for base64 without transcription, mp3 only for audio, and keeps only bytes and type`() {
+        response = """{"base64Data":"AQID","mimetype":"image/jpeg","fileURL":"https://SECRET","transcription":"SECRET","cached":true}"""
+        val file = inbox.download("3AA025E50D", InboxMessageKind.IMAGE)!!
+        assertEquals(listOf(1, 2, 3), file.bytes.map(Byte::toInt))
+        assertEquals("image/jpeg", file.mimeType)
+        val sent = mapper.readTree(requests.single().second)
+        assertEquals("/message/download", requests.single().first)
+        assertEquals("3AA025E50D", sent["id"].asText(), sent.toString())
+        assertTrue(sent["return_base64"].asBoolean(), sent.toString())
+        assertFalse(sent["transcribe"].asBoolean(true), sent.toString())
+        assertFalse(sent.path("generate_mp3").asBoolean(false), sent.toString())
+
+        response = """{"base64Data":"data:audio/mpeg;base64,BAU=","mimetype":"audio/mpeg"}"""
+        assertEquals(listOf(4, 5), inbox.download("3AA025E50D", InboxMessageKind.AUDIO)!!.bytes.map(Byte::toInt))
+        assertTrue(mapper.readTree(requests.last().second)["generate_mp3"].asBoolean())
+    }
+
+    @Test
+    fun `download not found is gone, other failures are unavailable without the body`() {
+        status = 404
+        response = """{"error":"Message not found"}"""
+        assertNull(inbox.download("3AA025E50D", InboxMessageKind.IMAGE))
+        status = 200
+        response = """{"mimetype":"image/jpeg"}"""
+        assertNull(inbox.download("3AA025E50D", InboxMessageKind.IMAGE))
+        response = """{"base64Data":"%%%","mimetype":"image/jpeg"}"""
+        assertNull(inbox.download("3AA025E50D", InboxMessageKind.IMAGE))
+        response = """{"base64Data":"A","mimetype":"image/jpeg"}"""
+        assertFailsWith<DirectoryError.Unavailable> { inbox.download("3AA025E50D", InboxMessageKind.IMAGE) }
+        for (code in listOf(401, 500)) {
+            status = code
+            response = """{"error":"SECRET"}"""
+            val error = assertFailsWith<DirectoryError.Unavailable> { inbox.download("3AA025E50D", InboxMessageKind.IMAGE) }
+            assertFalse(error.reason.contains("SECRET"))
+        }
+    }
+
     private companion object {
         const val PRIVATE = "5511988887777@s.whatsapp.net"
         const val GROUP = "120363000000000000@g.us"

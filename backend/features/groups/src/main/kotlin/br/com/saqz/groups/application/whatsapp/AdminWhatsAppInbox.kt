@@ -7,7 +7,7 @@ import br.com.saqz.groups.application.communication.WhatsAppNumberCheck
 import java.time.Instant
 import java.util.UUID
 
-enum class InboxMessageKind { TEXT, AUDIO, IMAGE, VIDEO, STICKER, DOCUMENT, CONTACT, OTHER }
+enum class InboxMessageKind { TEXT, AUDIO, IMAGE, VIDEO, STICKER, DOCUMENT, CONTACT, REACTION, OTHER }
 
 /** Lista fechada de campos: nada do JSON da Uazapi passa desta porta. */
 data class InboxChat(
@@ -21,6 +21,20 @@ data class InboxChat(
 
 data class InboxChatPage(val chats: List<InboxChat>, val truncated: Boolean)
 
+/**
+ * O que a tela precisa para desenhar uma mídia antes de baixá-la (DEB-166). Nunca o link, a chave ou o caminho do arquivo:
+ * o link que a Uazapi devolve abre sem token.
+ */
+data class InboxMedia(
+    val seconds: Int? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val sizeBytes: Long? = null,
+    val animated: Boolean = false,
+    /** Áudio: intensidade de 0 a 100 por trecho, como o WhatsApp desenha. */
+    val waveform: List<Int> = emptyList(),
+)
+
 data class InboxMessage(
     val id: String,
     val fromMe: Boolean,
@@ -29,9 +43,44 @@ data class InboxMessage(
     val senderPhone: String?,
     val text: String?,
     val kind: InboxMessageKind,
+    val media: InboxMedia? = null,
 )
 
-data class InboxMessagePage(val messages: List<InboxMessage>, val hasMore: Boolean, val nextOffset: Int?)
+/** Reação a outra mensagem da conversa. `emoji` nulo é a reação retirada. */
+data class InboxReaction(
+    val targetId: String,
+    val emoji: String?,
+    val fromMe: Boolean,
+    val at: Instant,
+    val senderName: String?,
+    val senderPhone: String?,
+)
+
+data class InboxMessagePage(
+    val messages: List<InboxMessage>,
+    val hasMore: Boolean,
+    val nextOffset: Int?,
+    val reactions: List<InboxReaction> = emptyList(),
+)
+
+/** Onde está e de que tipo é uma mensagem. */
+data class InboxMessageRef(val chatId: String, val kind: InboxMessageKind, val sizeBytes: Long?)
+
+/** Arquivo de uma mensagem, já baixado. */
+class InboxMediaFile(val bytes: ByteArray, val mimeType: String)
+
+sealed interface MediaResult {
+    class Found(val file: InboxMediaFile, val kind: InboxMessageKind) : MediaResult
+    data object Invalid : MediaResult
+    /** Id que a Uazapi não tem ou que é de outra conversa. */
+    data object NotFound : MediaResult
+    /** Texto, documento, contato, ou arquivo de tipo que o adm não abre. */
+    data object NotMedia : MediaResult
+    data class TooLarge(val sizeBytes: Long) : MediaResult
+    /** O WhatsApp não tem mais o arquivo. */
+    data object Gone : MediaResult
+    data object Unavailable : MediaResult
+}
 
 /**
  * Leitura ao vivo das mensagens do número do Saqz (DEB-160). Falha do provedor vira
@@ -49,6 +98,15 @@ interface AdminWhatsAppInbox {
 
     /** Procura mensagem já enviada com `track_source=saqz` e este `track_id`. */
     fun trackExists(trackId: String): Boolean
+
+    /** Conversa e tipo de uma mensagem pelo id; nulo se a Uazapi não a tiver. */
+    fun locate(messageId: String): InboxMessageRef?
+
+    /**
+     * Baixa o arquivo, sempre sem transcrição; áudio volta em MP3, que o Safari toca. Nulo se o WhatsApp não tiver mais
+     * o arquivo.
+     */
+    fun download(messageId: String, kind: InboxMessageKind): InboxMediaFile?
 }
 
 data class SaqzGroupLink(val id: UUID, val name: String, val broken: Boolean)
@@ -146,6 +204,34 @@ class AdminWhatsAppMessages(
 
     fun messages(chatId: String, offset: Int, limit: Int): InboxMessagePage = inbox.messages(chatId, offset, limit)
 
+    /**
+     * Arquivo de foto, vídeo, áudio ou figurinha de uma conversa (DEB-166). A busca por id da Uazapi ignora a conversa, então
+     * a conversa da mensagem é conferida aqui. Só sai tipo que o navegador abre como mídia; o resto é [MediaResult.NotMedia].
+     */
+    fun media(chatId: String?, messageId: String?): MediaResult {
+        if (chatId == null || !validChat(chatId) || messageId == null || !MESSAGE_ID.matches(messageId)) return MediaResult.Invalid
+        return try {
+            val ref = inbox.locate(messageId)
+            when {
+                ref == null || ref.chatId != chatId -> MediaResult.NotFound
+                ref.kind !in MEDIA_TYPES -> MediaResult.NotMedia
+                ref.sizeBytes != null && ref.sizeBytes > MAX_MEDIA_BYTES -> MediaResult.TooLarge(ref.sizeBytes)
+                else -> {
+                    val file = inbox.download(messageId, ref.kind) ?: return MediaResult.Gone
+                    val type = file.mimeType.substringBefore(";").trim().lowercase()
+                    when {
+                        type !in MEDIA_TYPES.getValue(ref.kind) -> MediaResult.NotMedia
+                        file.bytes.size > MAX_MEDIA_BYTES -> MediaResult.TooLarge(file.bytes.size.toLong())
+                        file.bytes.isEmpty() -> MediaResult.Gone
+                        else -> MediaResult.Found(InboxMediaFile(file.bytes, type), ref.kind)
+                    }
+                }
+            }
+        } catch (_: DirectoryError.Unavailable) {
+            MediaResult.Unavailable
+        }
+    }
+
     fun reply(chatId: String?, rawText: String?, requestId: String?): ReplyResult {
         val text = rawText?.trim().orEmpty()
         if (requestId == null || !UUID_FORMAT.matches(requestId) || text.isEmpty() || text.length > MAX_REPLY) return ReplyResult.Invalid
@@ -200,6 +286,19 @@ class AdminWhatsAppMessages(
 
     companion object {
         const val MAX_REPLY = 2000
+
+        /**
+         * 14 MiB: o arquivo chega em base64 dentro do JSON da Uazapi, e o Jackson do SDK recusa texto acima de 20 milhões de
+         * caracteres. Foto, figurinha, áudio e quase todo vídeo do WhatsApp cabem.
+         */
+        const val MAX_MEDIA_BYTES = 14L * 1024 * 1024
+        private val MESSAGE_ID = Regex("^[A-Za-z0-9]{8,64}$")
+        private val MEDIA_TYPES = mapOf(
+            InboxMessageKind.IMAGE to setOf("image/jpeg", "image/png", "image/webp", "image/gif"),
+            InboxMessageKind.STICKER to setOf("image/webp", "image/png"),
+            InboxMessageKind.VIDEO to setOf("video/mp4"),
+            InboxMessageKind.AUDIO to setOf("audio/mpeg", "audio/ogg", "audio/mp4", "audio/aac"),
+        )
         private val ACCOUNT_PHONE = Regex("^\\+55[1-9][0-9]9[0-9]{8}$")
 
         /**

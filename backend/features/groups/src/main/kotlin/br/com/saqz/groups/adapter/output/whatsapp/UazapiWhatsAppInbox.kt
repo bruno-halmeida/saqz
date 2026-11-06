@@ -5,21 +5,28 @@ import br.com.saqz.groups.application.whatsapp.AdminWhatsAppMessages
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.InboxChat
 import br.com.saqz.groups.application.whatsapp.InboxChatPage
+import br.com.saqz.groups.application.whatsapp.InboxMedia
+import br.com.saqz.groups.application.whatsapp.InboxMediaFile
 import br.com.saqz.groups.application.whatsapp.InboxMessage
 import br.com.saqz.groups.application.whatsapp.InboxMessageKind
 import br.com.saqz.groups.application.whatsapp.InboxMessagePage
+import br.com.saqz.groups.application.whatsapp.InboxMessageRef
+import br.com.saqz.groups.application.whatsapp.InboxReaction
 import com.fasterxml.jackson.databind.JsonNode
 import com.uazapi.sdk.UazapiClient
 import com.uazapi.sdk.chat.ChatQuery
 import com.uazapi.sdk.exception.UazapiApiException
 import com.uazapi.sdk.exception.UazapiException
+import com.uazapi.sdk.message.DownloadRequest
 import com.uazapi.sdk.message.MessageQuery
 import java.time.Instant
+import java.util.Base64
 
 /**
  * Único ponto que lê conversas e mensagens da Uazapi. Copia só os campos da porta: `owner`, `lead_*`,
  * `chatbot_summary`, `sendPayload` e `fileURL` nunca saem daqui. O corpo de erro da Uazapi também não
- * entra na exceção, porque pode ecoar conteúdo.
+ * entra na exceção, porque pode ecoar conteúdo. Do download só saem os bytes e o tipo: o `fileURL` abre sem
+ * token e a `transcription` (cache da instância, mesmo pedindo sem) é descartada.
  */
 class UazapiWhatsAppInbox(private val client: UazapiClient) : AdminWhatsAppInbox {
     override fun chats(): InboxChatPage {
@@ -39,12 +46,40 @@ class UazapiWhatsAppInbox(private val client: UazapiClient) : AdminWhatsAppInbox
     override fun messages(chatId: String, offset: Int, limit: Int): InboxMessagePage {
         val query = MessageQuery.builder().chatid(chatId).limit(limit).offset(offset).build()
         val body = call { client.messages().findMessages(query) }
+        val all = list(body, "messages")
         return InboxMessagePage(
-            messages = list(body, "messages").filter { text(it, "messageType") !in HIDDEN_TYPES }
+            messages = all.filter { text(it, "messageType") !in HIDDEN_TYPES }
                 .mapNotNull(::message).sortedBy { it.at },
             hasMore = body.path("hasMore").asBoolean(false),
             nextOffset = body.get("nextOffset")?.takeIf { it.isNumber }?.asInt(),
+            reactions = all.filter { text(it, "messageType") == REACTION }.mapNotNull(::reaction).sortedBy { it.at },
         )
+    }
+
+    override fun locate(messageId: String): InboxMessageRef? {
+        val body = call { client.messages().findMessages(MessageQuery.builder().id(messageId).limit(1).build()) }
+        val node = list(body, "messages").firstOrNull { text(it, "messageid") == messageId } ?: return null
+        val chatId = text(node, "chatid") ?: return null
+        return InboxMessageRef(chatId, kind(text(node, "messageType")), long(node.path("content"), "fileLength"))
+    }
+
+    override fun download(messageId: String, kind: InboxMessageKind): InboxMediaFile? {
+        val request = DownloadRequest.builder(messageId).returnBase64(true).returnLink(false).transcribe(false)
+            .generateMp3(kind == InboxMessageKind.AUDIO).build()
+        val body = try {
+            call { client.messages().downloadMedia(request) }
+        } catch (error: DirectoryError.Unavailable) {
+            if (error.reason in GONE_STATUSES) return null
+            throw error
+        }
+        val data = text(body, "base64Data")?.substringAfter("base64,") ?: return null
+        val type = text(body, "mimetype") ?: return null
+        val bytes = try {
+            Base64.getMimeDecoder().decode(data)
+        } catch (_: IllegalArgumentException) {
+            throw DirectoryError.Unavailable("invalid media")
+        }
+        return InboxMediaFile(bytes, type).takeIf { bytes.isNotEmpty() }
     }
 
     override fun trackExists(trackId: String): Boolean {
@@ -74,16 +109,57 @@ class UazapiWhatsAppInbox(private val client: UazapiClient) : AdminWhatsAppInbox
     }
 
     private fun message(node: JsonNode): InboxMessage? {
+        val kind = kind(text(node, "messageType"))
         return InboxMessage(
             id = text(node, "messageid") ?: return null,
             fromMe = node.path("fromMe").asBoolean(false),
             at = instant(node, "messageTimestamp") ?: return null,
             senderName = text(node, "senderName"),
-            senderPhone = text(node, "sender_pn")?.let(::phone)?.takeIf { it.isNotEmpty() },
+            senderPhone = senderPhone(node),
             text = text(node, "text"),
-            kind = kind(text(node, "messageType")),
+            kind = kind,
+            media = if (kind in MEDIA_KINDS) media(node.path("content"), kind) else null,
         )
     }
+
+    /** Só números e duração: `URL`, `directPath`, `mediaKey` e os hashes do arquivo ficam aqui. */
+    private fun media(content: JsonNode, kind: InboxMessageKind) = InboxMedia(
+        seconds = long(content, "seconds")?.toInt(),
+        width = long(content, "width")?.toInt(),
+        height = long(content, "height")?.toInt(),
+        sizeBytes = long(content, "fileLength"),
+        animated = content.path("isAnimated").asBoolean(false),
+        waveform = if (kind == InboxMessageKind.AUDIO) waveform(text(content, "waveform")) else emptyList(),
+    )
+
+    private fun waveform(encoded: String?): List<Int> {
+        if (encoded == null) return emptyList()
+        val bytes = try {
+            Base64.getDecoder().decode(encoded)
+        } catch (_: IllegalArgumentException) {
+            return emptyList()
+        }
+        return bytes.take(MAX_WAVEFORM).map { (it.toInt() and 0xFF).coerceAtMost(100) }
+    }
+
+    /** A Uazapi manda o id da mensagem alvo em `reaction`; versões antigas, só em `content.key.ID`. */
+    private fun reaction(node: JsonNode): InboxReaction? {
+        val target = text(node, "reaction") ?: text(node.path("content").path("key"), "ID") ?: return null
+        return InboxReaction(
+            targetId = target,
+            emoji = text(node, "text"),
+            fromMe = node.path("fromMe").asBoolean(false),
+            at = instant(node, "messageTimestamp") ?: return null,
+            senderName = text(node, "senderName"),
+            senderPhone = senderPhone(node),
+        )
+    }
+
+    private fun senderPhone(node: JsonNode) = text(node, "sender_pn")?.let(::phone)?.takeIf { it.isNotEmpty() }
+
+    private fun long(node: JsonNode, field: String): Long? =
+        node.get(field)?.takeIf { it.isNumber || (it.isTextual && it.asText().all(Char::isDigit) && it.asText().isNotEmpty()) }
+            ?.asLong()?.takeIf { it >= 0 }
 
     private fun list(body: JsonNode, field: String): List<JsonNode> = body.get(field)?.takeIf { it.isArray }?.toList().orEmpty()
 
@@ -103,13 +179,19 @@ class UazapiWhatsAppInbox(private val client: UazapiClient) : AdminWhatsAppInbox
         "StickerMessage" -> InboxMessageKind.STICKER
         "DocumentMessage" -> InboxMessageKind.DOCUMENT
         "ContactMessage" -> InboxMessageKind.CONTACT
+        REACTION -> InboxMessageKind.REACTION
         else -> InboxMessageKind.OTHER
     }
 
     private companion object {
         const val LATEST_FIRST = "-wa_lastMsgTimestamp"
         const val MAX_CHATS = 1000
+        const val MAX_WAVEFORM = 128
         const val TRACK_SOURCE = "saqz"
-        val HIDDEN_TYPES = setOf("ReactionMessage", "PinInChatMessage")
+        const val REACTION = "ReactionMessage"
+        val HIDDEN_TYPES = setOf(REACTION, "PinInChatMessage")
+        val MEDIA_KINDS = setOf(InboxMessageKind.IMAGE, InboxMessageKind.VIDEO, InboxMessageKind.AUDIO, InboxMessageKind.STICKER)
+        /** Mensagem que a Uazapi não acha mais ou arquivo que o WhatsApp já apagou. */
+        val GONE_STATUSES = setOf("HTTP 404", "HTTP 410")
     }
 }

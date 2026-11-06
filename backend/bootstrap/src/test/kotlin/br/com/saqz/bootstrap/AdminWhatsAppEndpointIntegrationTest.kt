@@ -12,9 +12,13 @@ import br.com.saqz.groups.application.whatsapp.AdminWhatsAppMessages
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.InboxChat
 import br.com.saqz.groups.application.whatsapp.InboxChatPage
+import br.com.saqz.groups.application.whatsapp.InboxMedia
+import br.com.saqz.groups.application.whatsapp.InboxMediaFile
 import br.com.saqz.groups.application.whatsapp.InboxMessage
 import br.com.saqz.groups.application.whatsapp.InboxMessageKind
 import br.com.saqz.groups.application.whatsapp.InboxMessagePage
+import br.com.saqz.groups.application.whatsapp.InboxMessageRef
+import br.com.saqz.groups.application.whatsapp.InboxReaction
 import br.com.saqz.groups.application.whatsapp.SaqzAccountLink
 import br.com.saqz.groups.application.whatsapp.SaqzGroupLink
 import br.com.saqz.groups.application.whatsapp.WhatsAppGroupDirectory
@@ -65,6 +69,14 @@ private fun call(port: Int, method: String, path: String, token: String, body: S
     return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString())
 }
 
+private fun media(port: Int, query: String, token: String = "admin-token"): HttpResponse<ByteArray> {
+    val request = HttpRequest.newBuilder(URI.create("http://localhost:$port/admin/whatsapp/media?$query")).header("Authorization", "Bearer $token").GET().build()
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofByteArray())
+}
+
+private fun mediaQuery(chatId: String, messageId: String) =
+    "chatId=${URLEncoder.encode(chatId, Charsets.UTF_8)}&messageId=$messageId"
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(AdminWhatsAppEndpointIntegrationTest.Config::class)
 @ActiveProfiles("test")
@@ -75,7 +87,8 @@ class AdminWhatsAppEndpointIntegrationTest {
     private val messagesPath = "/admin/whatsapp/messages?chatId=${URLEncoder.encode(PRIVATE, Charsets.UTF_8)}"
 
     @Test
-    fun `quem nao e admin e barrado nas quatro rotas`() {
+    fun `quem nao e admin e barrado em todas as rotas`() {
+        assertEquals(403, media(port, mediaQuery(PRIVATE, "FOTO00000001"), "user-token").statusCode())
         assertEquals(403, call(port, "GET", "/admin/whatsapp/conversations", "user-token").statusCode())
         assertEquals(403, call(port, "GET", messagesPath, "user-token").statusCode())
         assertEquals(403, call(port, "POST", "/admin/whatsapp/messages", "user-token", reply(PRIVATE)).statusCode())
@@ -149,6 +162,45 @@ class AdminWhatsAppEndpointIntegrationTest {
         assertEquals(GROUP, logChat(GROUP))
     }
 
+    @Test
+    fun `mensagens trazem numeros da midia e reacoes, sem endereco do arquivo`() {
+        val body = call(port, "GET", messagesPath, "admin-token").body()
+        val audio = Regex("\"media\":\\{[^}]*\\}").findAll(body).map { it.value }.single { it.contains("seconds\":14") }
+        assertTrue(audio.contains("\"sizeBytes\":8800") && audio.contains("\"waveform\":[10,90]") && audio.contains("\"animated\":false"), body)
+        val reaction = Regex("\"reactions\":\\[\\{[^}]*\\}").find(body)?.value.orEmpty()
+        assertTrue(reaction.contains("\"targetId\":\"1\"") && reaction.contains("\"emoji\":\"❤️\"") && reaction.contains("\"senderName\":\"Ana\""), body)
+        assertFalse(body.contains("URL") || body.contains("mediaKey"), body)
+    }
+
+    @Test
+    fun `midia sai com o tipo conferido, sem cache e sem farejar`() {
+        val response = media(port, mediaQuery(PRIVATE, "FOTO00000001"))
+        assertEquals(200, response.statusCode())
+        assertEquals("image/jpeg", response.headers().firstValue("Content-Type").orElse(""))
+        assertEquals("no-store", response.headers().firstValue("Cache-Control").orElse(""))
+        assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElse(""))
+        assertTrue(response.headers().firstValue("Content-Security-Policy").orElse("").contains("sandbox"))
+        assertEquals(listOf(1, 2, 3), response.body().map(Byte::toInt))
+    }
+
+    @Test
+    fun `midia devolve os codigos combinados`() {
+        fun status(chatId: String, id: String) = media(port, mediaQuery(chatId, id)).let { it.statusCode() to String(it.body()) }
+        assertEquals(400, status(PRIVATE, "abc").first)
+        assertEquals(400, media(port, "messageId=FOTO00000001").statusCode())
+        assertEquals(400, status("abc", "FOTO00000001").first)
+        val other = status(GROUP, "FOTO00000001")
+        assertEquals(404, other.first); assertTrue(other.second.contains("MESSAGE_NOT_FOUND"))
+        val text = status(PRIVATE, "TEXTO0000001")
+        assertEquals(415, text.first); assertTrue(text.second.contains("NOT_MEDIA"))
+        val big = status(PRIVATE, "GRANDE000001")
+        assertEquals(413, big.first); assertTrue(big.second.contains("\"sizeBytes\":20000000"), big.second)
+        val gone = status(PRIVATE, "SUMIU0000001")
+        assertEquals(410, gone.first); assertTrue(gone.second.contains("MEDIA_GONE"))
+        val down = status(PRIVATE, "FORA00000001")
+        assertEquals(503, down.first); assertTrue(down.second.contains("WHATSAPP_UNAVAILABLE"))
+    }
+
     private fun reply(chatId: String) = """{"chatId":"$chatId","text":"oi","requestId":"$REQUEST"}"""
     private fun contact() = """{"text":"Oi, Carla!","requestId":"$REQUEST"}"""
 
@@ -157,8 +209,26 @@ class AdminWhatsAppEndpointIntegrationTest {
         override fun chats() = InboxChatPage(listOf(chat, chat.copy(chatId = GROUP, phone = null)), false)
         override fun privateChat(chatId: String) = chat
         override fun messages(chatId: String, offset: Int, limit: Int) = InboxMessagePage(
-            listOf(InboxMessage("1", false, Instant.ofEpochSecond(1), "Rita", "5511988887777", "oi", InboxMessageKind.TEXT)), false, null)
+            listOf(
+                InboxMessage("1", false, Instant.ofEpochSecond(1), "Rita", "5511988887777", "oi", InboxMessageKind.TEXT),
+                InboxMessage("2", false, Instant.ofEpochSecond(2), "Rita", "5511988887777", null, InboxMessageKind.AUDIO,
+                    InboxMedia(seconds = 14, sizeBytes = 8800, waveform = listOf(10, 90))),
+            ),
+            false, null,
+            listOf(InboxReaction("1", "❤️", false, Instant.ofEpochSecond(3), "Ana", "5511900001111")),
+        )
         override fun trackExists(trackId: String) = false
+        override fun locate(messageId: String) = when (messageId) {
+            "FOTO00000001", "SUMIU0000001", "FORA00000001" -> InboxMessageRef(PRIVATE, InboxMessageKind.IMAGE, 3)
+            "TEXTO0000001" -> InboxMessageRef(PRIVATE, InboxMessageKind.TEXT, null)
+            "GRANDE000001" -> InboxMessageRef(PRIVATE, InboxMessageKind.VIDEO, 20_000_000)
+            else -> null
+        }
+        override fun download(messageId: String, kind: InboxMessageKind) = when (messageId) {
+            "FOTO00000001" -> InboxMediaFile(byteArrayOf(1, 2, 3), "image/jpeg")
+            "FORA00000001" -> throw DirectoryError.Unavailable("HTTP 500")
+            else -> null
+        }
     }
 
     private class Directory : WhatsAppGroupDirectory {
@@ -209,6 +279,7 @@ class AdminWhatsAppDisabledEndpointIntegrationTest {
         assertFalse(response.body().contains("connected"))
         val contact = """{"text":"oi","requestId":"$REQUEST"}"""
         assertEquals(404, call(port, "POST", "/admin/whatsapp/users/$CARLA/messages", "admin-token", contact).statusCode())
+        assertEquals(404, media(port, mediaQuery(PRIVATE, "FOTO00000001")).statusCode())
     }
 
     @TestConfiguration(proxyBeanMethods = false)

@@ -7,9 +7,11 @@ import br.com.saqz.groups.application.whatsapp.ContactSendResult
 import br.com.saqz.groups.application.whatsapp.DirectoryError
 import br.com.saqz.groups.application.whatsapp.InboxConversation
 import br.com.saqz.groups.application.whatsapp.InboxMessagePage
+import br.com.saqz.groups.application.whatsapp.MediaResult
 import br.com.saqz.groups.application.whatsapp.ReplyResult
 import br.com.saqz.sharedkernel.RequestIdentity
 import org.slf4j.LoggerFactory
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
@@ -48,6 +50,15 @@ data class AdminWhatsAppConversationsResponse(
     val privates: List<AdminWhatsAppConversationResponse>,
 )
 
+data class AdminWhatsAppMediaResponse(
+    val seconds: Int?,
+    val width: Int?,
+    val height: Int?,
+    val sizeBytes: Long?,
+    val animated: Boolean,
+    val waveform: List<Int>,
+)
+
 data class AdminWhatsAppMessageResponse(
     val id: String,
     val fromMe: Boolean,
@@ -56,9 +67,24 @@ data class AdminWhatsAppMessageResponse(
     val senderPhone: String?,
     val text: String?,
     val kind: String,
+    val media: AdminWhatsAppMediaResponse? = null,
 )
 
-data class AdminWhatsAppMessagesResponse(val messages: List<AdminWhatsAppMessageResponse>, val hasMore: Boolean, val nextOffset: Int?)
+data class AdminWhatsAppReactionResponse(
+    val targetId: String,
+    val emoji: String?,
+    val fromMe: Boolean,
+    val at: Instant,
+    val senderName: String?,
+    val senderPhone: String?,
+)
+
+data class AdminWhatsAppMessagesResponse(
+    val messages: List<AdminWhatsAppMessageResponse>,
+    val hasMore: Boolean,
+    val nextOffset: Int?,
+    val reactions: List<AdminWhatsAppReactionResponse> = emptyList(),
+)
 
 /**
  * Aba Mensagens do adm (DEB-160): leitura ao vivo da Uazapi e resposta a conversas privadas. Só existe com
@@ -98,6 +124,37 @@ class AdminWhatsAppController(private val messages: AdminWhatsAppMessages, priva
         } catch (_: DirectoryError) {
             record("conversation", actor, chatId, "unavailable")
             error(503, "WHATSAPP_UNAVAILABLE")
+        }
+    }
+
+    /**
+     * Arquivo de foto, vídeo, áudio ou figurinha (DEB-166). Os bytes passam pelo backend porque o link da Uazapi abre sem
+     * token. Nada fica em cache: é mensagem pessoal. O log leva a conversa e o resultado, nunca o arquivo.
+     */
+    @GetMapping("/admin/whatsapp/media")
+    fun media(
+        @AuthenticationPrincipal identity: RequestIdentity,
+        @RequestParam(required = false) chatId: String?,
+        @RequestParam(required = false) messageId: String?,
+    ): ResponseEntity<*> = admin(identity) { actor ->
+        val result = messages.media(chatId, messageId)
+        if (chatId != null && AdminWhatsAppMessages.validChat(chatId)) {
+            val outcome = if (result is MediaResult.Found) result.kind.name.lowercase() else result::class.simpleName.orEmpty().lowercase()
+            record("media", actor, chatId, outcome)
+        }
+        when (result) {
+            is MediaResult.Found -> ResponseEntity.status(200)
+                .contentType(MediaType.parseMediaType(result.file.mimeType))
+                .header("Cache-Control", "no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; sandbox")
+                .body(result.file.bytes)
+            MediaResult.Invalid -> error(400, "INVALID_INPUT")
+            MediaResult.NotFound -> error(404, "MESSAGE_NOT_FOUND")
+            MediaResult.NotMedia -> error(415, "NOT_MEDIA")
+            is MediaResult.TooLarge -> json(413, mapOf("error" to "MEDIA_TOO_LARGE", "sizeBytes" to result.sizeBytes))
+            MediaResult.Gone -> error(410, "MEDIA_GONE")
+            MediaResult.Unavailable -> error(503, "WHATSAPP_UNAVAILABLE")
         }
     }
 
@@ -159,8 +216,12 @@ class AdminWhatsAppController(private val messages: AdminWhatsAppMessages, priva
     )
 
     private fun page(page: InboxMessagePage) = AdminWhatsAppMessagesResponse(
-        page.messages.map { AdminWhatsAppMessageResponse(it.id, it.fromMe, it.at, it.senderName, it.senderPhone, it.text, it.kind.name) },
+        page.messages.map {
+            AdminWhatsAppMessageResponse(it.id, it.fromMe, it.at, it.senderName, it.senderPhone, it.text, it.kind.name,
+                it.media?.let { m -> AdminWhatsAppMediaResponse(m.seconds, m.width, m.height, m.sizeBytes, m.animated, m.waveform) })
+        },
         page.hasMore, page.nextOffset,
+        page.reactions.map { AdminWhatsAppReactionResponse(it.targetId, it.emoji, it.fromMe, it.at, it.senderName, it.senderPhone) },
     )
 
     private fun record(action: String, actor: UUID, chatId: String, result: String) =
