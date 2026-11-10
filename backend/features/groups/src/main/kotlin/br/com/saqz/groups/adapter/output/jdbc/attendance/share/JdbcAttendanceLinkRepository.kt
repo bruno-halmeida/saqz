@@ -80,9 +80,15 @@ class JdbcAttendanceLinkRepository(dataSource: DataSource) : AttendanceLinkRepos
             WHERE user_id = :userId
         """
 
+        /**
+         * O cadastro de atleta só é pedido a quem acabou de entrar no grupo (o link de presença também vale como
+         * convite). Quem já era membro e nunca preencheu responde direto: ninguém é cobrado do cadastro depois.
+         */
         const val RESOLVABLE_TARGET = """
             SELECT m.group_id, game.id AS game_id, game.status, game.confirmation_deadline,
-                   NOT member.athlete_registration_completed AS registration_required, game.starts_at
+                   (NOT member.athlete_registration_completed
+                       AND member.created_at > now() - interval '10 minutes') AS registration_required,
+                   game.starts_at
             FROM notification_attendance_links link
             JOIN group_messages m ON m.id = link.message_id
             JOIN games game ON game.id = m.game_id AND game.group_id = m.group_id

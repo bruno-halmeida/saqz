@@ -160,7 +160,7 @@ export default [
         grupo.link = await codigoDoLembrete(c, grupo.jogo.id)
         return grupo
       })
-      await c.passo('membro com cadastro incompleto: o link pede o cadastro antes da resposta (registrationRequired)', async () => {
+      await c.passo('membro que acabou de entrar com cadastro incompleto: o link pede o cadastro antes da resposta (registrationRequired; só nos 10 min depois da entrada)', async () => {
         c.igual(c.status(await ATL1.resolverLink(g.link), 200).corpo.registrationRequired, true, 'cadastro pendente')
       })
       await c.passo('depois de completar o cadastro de atleta (uma vez por grupo), o link responde direto', async () => {

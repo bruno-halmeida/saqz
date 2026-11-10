@@ -49,6 +49,7 @@ Rode **em iOS e em Android**: nas colunas *iOS* e *Android* troque `☐` por `�
 | --- | --- | --- | --- |
 | Membro novo, cadastro incompleto | Cadastro, depois a presença | ☐ | ☐ |
 | Membro com cadastro completo | Resposta direta | ☐ | ☐ |
+| Membro antigo (entrou há mais de 10 min) que nunca preencheu o cadastro | Resposta direta, sem cadastro | ☐ | ☐ |
 | Membro novo, cadastro incompleto, jogo 5-1 | Cadastro, depois a tela de escolher posição | ☐ | ☐ |
 | Grupo com aprovação, pedido pendente | Sem resposta agora; dá para adiantar o cadastro, que fica no pedido | ☐ | ☐ |
 | Pedido aprovado, cadastro adiantado | Presença registrada ao voltar à tela, sem cadastro de novo | ☐ | ☐ |

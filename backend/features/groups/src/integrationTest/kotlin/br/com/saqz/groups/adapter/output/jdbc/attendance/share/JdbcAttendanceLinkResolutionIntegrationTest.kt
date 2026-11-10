@@ -88,7 +88,24 @@ class JdbcAttendanceLinkResolutionIntegrationTest {
     }
 
     @Test
-    fun `member without the athlete registration resolves asking for it`() {
+    fun `member who skipped the athlete registration is not asked for it later`() {
+        val fixture = fixture("registration-skipped")
+        insertMembership(fixture.group, fixture.member, "ATHLETE", registered = false)
+        execute(
+            "UPDATE group_memberships SET created_at = now() - interval '11 minutes' " +
+                "WHERE group_id = '${fixture.group}' AND user_id = '${fixture.member}'",
+        )
+        insertLink(fixture, code)
+
+        val resolved = transaction.inTransaction {
+            repository.findResolvableTarget(fixture.member, AttendanceLinkTokenDigest.sha256(code))
+        }
+
+        assertEquals(false, resolved?.registrationRequired)
+    }
+
+    @Test
+    fun `member who just joined without the athlete registration resolves asking for it`() {
         val fixture = fixture("registration-required")
         insertMembership(fixture.group, fixture.member, "ATHLETE", registered = false)
         insertLink(fixture, code)
